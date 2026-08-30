@@ -147,6 +147,28 @@ class PlaybackController: ObservableObject {
         post(down: false)
     }
 
+    /// Runs a voice-agent media-control action (play, pause, toggle, next, previous) against
+    /// whatever app is currently handling media keys, via MediaRemote — no HID key simulation
+    /// needed here since this isn't working around an app that ignores MediaRemote commands.
+    @discardableResult
+    func performAgentMediaAction(_ action: String) -> Bool {
+        switch action.lowercased() {
+        case "play":
+            mediaController.play()
+        case "pause":
+            mediaController.pause()
+        case "toggle", "playpause", "play_pause":
+            mediaController.togglePlayPause()
+        case "next":
+            mediaController.nextTrack()
+        case "previous", "prev":
+            mediaController.previousTrack()
+        default:
+            return false
+        }
+        return true
+    }
+
     private func isAppStillRunning(bundleId: String) -> Bool {
         let runningApps = NSWorkspace.shared.runningApplications
         return runningApps.contains { $0.bundleIdentifier == bundleId }

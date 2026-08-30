@@ -255,6 +255,12 @@ enum AgentTools {
         case "recall":
             return AgentMemory.recall(key: s("key"))
 
+        case "location_now":
+            return await AgentLocation.current()
+
+        case "media_key":
+            return await MainActor.run { mediaKey(action: s("action")) }
+
         default:
             return ["error": "unknown tool: \(name)"]
         }
@@ -561,6 +567,18 @@ extension AgentTools {
         return FileManager.default.fileExists(atPath: path)
             ? ["result": "saved screenshot", "path": path]
             : ["error": "screenshot failed"]
+    }
+
+    // MARK: - Media control
+
+    @MainActor
+    static func mediaKey(action: String) -> [String: Any] {
+        let normalized = action.trimmingCharacters(in: .whitespacesAndNewlines)
+        guard !normalized.isEmpty else { return ["error": "action is required"] }
+        guard PlaybackController.shared.performAgentMediaAction(normalized) else {
+            return ["error": "unknown media action \(normalized); use play, pause, toggle, next, or previous"]
+        }
+        return ["result": "media \(normalized)"]
     }
 
     // MARK: - Slack (UI automation via System Events; draft-safe, user presses Return to send)

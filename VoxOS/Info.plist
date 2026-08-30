@@ -10,6 +10,10 @@
 	<string>VoxOS needs to interact with your browser to detect the current website for applying website-specific configurations.</string>
 	<key>NSScreenCaptureUsageDescription</key>
 	<string>VoxOS needs screen recording access to understand context from your screen for improved transcription accuracy.</string>
+	<key>NSLocationUsageDescription</key>
+	<string>VoxOS uses your location when you ask it to, e.g. "what's my current location?"</string>
+	<key>NSLocationWhenInUseUsageDescription</key>
+	<string>VoxOS uses your location when you ask it to, e.g. "what's my current location?"</string>
 	<key>CFBundleDocumentTypes</key>
 	<array>
 		<dict>

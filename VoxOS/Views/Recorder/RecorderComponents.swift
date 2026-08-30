@@ -555,6 +555,16 @@ private struct AssistantMessageBubble: View {
     }
 
     var body: some View {
+        VStack(alignment: isUser ? .trailing : .leading, spacing: 6) {
+            textRow
+
+            if !isUser, let timeAnswer = TimeAnswerParser.parse(message.content) {
+                TimeAnswerWidget(answer: timeAnswer)
+            }
+        }
+    }
+
+    private var textRow: some View {
         HStack {
             if isUser {
                 Spacer(minLength: 36)
@@ -583,6 +593,64 @@ private struct AssistantMessageBubble: View {
                 Spacer(minLength: 36)
             }
         }
+    }
+}
+
+/// A parsed "what time is it" style answer, extracted from a short assistant reply so it can be
+/// rendered as a big digital-clock widget instead of plain text — matches VoiceOS's demoed style.
+private struct TimeAnswer {
+    let time: String
+    let meridiem: String?
+    let timeZoneLabel: String?
+}
+
+private enum TimeAnswerParser {
+    private static let regex = try? NSRegularExpression(
+        pattern: #"\b(\d{1,2}:\d{2})\s*(AM|PM|am|pm)?\b"#
+    )
+
+    static func parse(_ content: String) -> TimeAnswer? {
+        let trimmed = content.trimmingCharacters(in: .whitespacesAndNewlines)
+        // Only treat this as a rich time answer when the reply is essentially just the time,
+        // not a longer message that happens to mention a clock time in passing.
+        guard trimmed.count <= 80, let regex else { return nil }
+
+        let range = NSRange(trimmed.startIndex..., in: trimmed)
+        guard let match = regex.firstMatch(in: trimmed, range: range),
+            let timeRange = Range(match.range(at: 1), in: trimmed)
+        else { return nil }
+
+        var meridiem: String?
+        if match.range(at: 2).location != NSNotFound, let meridiemRange = Range(match.range(at: 2), in: trimmed) {
+            meridiem = trimmed[meridiemRange].uppercased()
+        }
+
+        return TimeAnswer(time: String(trimmed[timeRange]), meridiem: meridiem, timeZoneLabel: TimeZone.current.identifier.components(separatedBy: "/").last?.replacingOccurrences(of: "_", with: " "))
+    }
+}
+
+private struct TimeAnswerWidget: View {
+    let answer: TimeAnswer
+
+    var body: some View {
+        VStack(alignment: .leading, spacing: 2) {
+            HStack(alignment: .firstTextBaseline, spacing: 4) {
+                Text(answer.time)
+                    .font(.system(size: 34, weight: .semibold, design: .rounded))
+                    .foregroundStyle(Color.white)
+                if let meridiem = answer.meridiem {
+                    Text(meridiem)
+                        .font(.system(size: 13, weight: .medium))
+                        .foregroundStyle(Color.white.opacity(0.6))
+                }
+            }
+            if let timeZoneLabel = answer.timeZoneLabel {
+                Text(timeZoneLabel)
+                    .font(.system(size: 12))
+                    .foregroundStyle(Color.white.opacity(0.5))
+            }
+        }
+        .padding(.top, 2)
     }
 }
 

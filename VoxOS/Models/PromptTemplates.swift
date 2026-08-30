@@ -151,6 +151,8 @@ enum PromptTemplates {
                     - cancel_action {} -> call when the user declines.
                     - remember {"key": str, "value": str} -> save a fact for later (people, emails, preferences...).
                     - recall {"key": str} -> look up a remembered fact; empty key lists all keys.
+                    - location_now {} -> the user's current location (place name + coordinates). Prompts for permission the first time.
+                    - media_key {"action": str} -> control whatever app is currently playing media. action is one of: play, pause, toggle, next, previous.
 
                     # Rules
                     - Use <CURRENTLY_SELECTED_TEXT>, <CLIPBOARD_CONTEXT>, and <CURRENT_WINDOW_CONTEXT> to resolve what "this" or "that" refers to.
