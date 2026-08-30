@@ -40,11 +40,19 @@ enum AgentTools {
 
         switch name {
         case "get_datetime":
+            let now = Date()
             let formatter = DateFormatter()
             formatter.dateFormat = "yyyy-MM-dd HH:mm"
             let dayFormatter = DateFormatter()
             dayFormatter.dateFormat = "EEEE"
-            return ["now": formatter.string(from: Date()), "weekday": dayFormatter.string(from: Date())]
+            let displayFormatter = DateFormatter()
+            displayFormatter.dateFormat = "h:mm a"
+            return [
+                "now": formatter.string(from: now),
+                "weekday": dayFormatter.string(from: now),
+                "display_time": displayFormatter.string(from: now),
+                "timezone": TimeZone.current.identifier,
+            ]
 
         case "calendar_add_event":
             return await MainActor.run {
