@@ -120,6 +120,18 @@ class TranscriptionPipeline {
 
             text = text.trimmingCharacters(in: .whitespacesAndNewlines)
 
+            // Silence or an unintelligible hold produces no words. Rather than opening an empty
+            // assistant panel and leaving a blank row in history, drop the recording quietly.
+            if text.isEmpty {
+                logger.info("Transcription produced no words; discarding the recording")
+                modelContext.delete(transcription)
+                try? modelContext.save()
+                try? FileManager.default.removeItem(at: audioURL)
+                onStateChange(.idle)
+                await onDismiss()
+                return
+            }
+
             if !assistant.isFollowUp,
                 let processedText = triggerWordModeSelection(text)
             {
