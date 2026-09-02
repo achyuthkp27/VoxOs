@@ -60,6 +60,17 @@ struct AgentLogicTests {
         }
     }
 
+    @Test func controlModeRoundTrips() {
+        let original = AgentControlMode.current
+        for mode in AgentControlMode.allCases {
+            AgentControlMode.current = mode
+            #expect(AgentControlMode.current == mode)
+            #expect(!mode.displayName.isEmpty && !mode.summary.isEmpty)
+        }
+        AgentControlMode.current = original
+        #expect(AgentControlMode(rawValue: "nonsense") == nil)
+    }
+
     // MARK: Confirmation must come from a later request
 
     @Test func pendingActionCannotBeConfirmedInTheSameRun() {
