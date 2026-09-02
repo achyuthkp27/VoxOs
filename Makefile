@@ -8,7 +8,7 @@ LOCAL_CODESIGN_IDENTITY ?=
 # lying around in ~/Downloads for Spotlight to index.
 INSTALL_PATH ?= /Applications/VoxOS.app
 
-.PHONY: all clean whisper setup build local check healthcheck help dev run release release-setup
+.PHONY: all clean whisper setup build local check healthcheck help dev run release release-setup test
 
 # Default target
 all: check build
@@ -150,3 +150,15 @@ help:
 	@echo "  all                Run full build process (default)"
 	@echo "  clean              Remove build artifacts"
 	@echo "  help               Show this help message"
+
+# Unit tests (agent logic). Uses its own derived data so it never disturbs `make local`.
+test: check
+	@mkdir -p .local-build-tests && touch .local-build-tests/.metadata_never_index
+	@SIGNING_IDENTITY=$$(security find-identity -v -p codesigning 2>/dev/null | awk '/"Apple Development: / { print $$2; exit }'); \
+	xcodebuild test -project VoxOS.xcodeproj -scheme VoxOS -destination 'platform=macOS' \
+		-derivedDataPath .local-build-tests -xcconfig LocalBuild.xcconfig \
+		-skipPackagePluginValidation -skipMacroValidation -only-testing:VoxOSTests \
+		LOCAL_CODE_SIGN_IDENTITY="$${SIGNING_IDENTITY:--}" CODE_SIGNING_REQUIRED=NO CODE_SIGNING_ALLOWED=YES DEVELOPMENT_TEAM="" \
+		CODE_SIGN_ENTITLEMENTS="$(CURDIR)/VoxOS/VoxOS.local.entitlements" \
+		SWIFT_ACTIVE_COMPILATION_CONDITIONS='$$(inherited) LOCAL_BUILD' ENABLE_TESTABILITY=YES \
+		2>&1 | grep -E "Test case|Executed|error:" | sed -E "s/ on 'My Mac.*//" | sort -u

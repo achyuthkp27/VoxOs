@@ -86,8 +86,11 @@ enum AgentMacros {
     }
 
     static func slug(_ name: String) -> String {
-        let s = name.lowercased().replacingOccurrences(of: " ", with: "-")
+        let s = name.trimmingCharacters(in: .whitespacesAndNewlines).lowercased()
+            .replacingOccurrences(of: #"\s+"#, with: "-", options: .regularExpression)
             .filter { $0.isLetter || $0.isNumber || $0 == "-" || $0 == "_" }
+            .replacingOccurrences(of: #"-{2,}"#, with: "-", options: .regularExpression)
+            .trimmingCharacters(in: CharacterSet(charactersIn: "-"))
         return s.isEmpty ? "macro" : s
     }
 
