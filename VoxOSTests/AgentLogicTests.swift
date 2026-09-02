@@ -144,6 +144,19 @@ struct AgentLogicTests {
         #expect(AgentWeb.stripHTML(html) == "Hi & bye two words")
     }
 
+    @Test func pluginRoundTrip() async {
+        let name = "unit test echo \(Int(Date().timeIntervalSince1970) % 10_000)"
+        let created = AgentPlugins.create(name: name, description: "echoes", runType: "shell", template: "echo unit-{{word}}", parameters: ["word": "a word"])
+        let tool = created["tool"] as? String ?? ""
+        #expect(tool.hasPrefix("plugin_unit_test_echo"))
+        #expect(AgentPlugins.load().contains { $0.name == tool })
+        let ran = await AgentPlugins.run(name: tool, args: ["word": "it's fine"])
+        #expect((ran["output"] as? String)?.contains("unit-it's fine") == true, "quoting must survive the shell")
+        #expect(AgentPlugins.create(name: "unit risky", description: "x", runType: "shell", template: "sudo rm -rf {{p}}", parameters: [:])["error"] != nil)
+        #expect(AgentPlugins.delete(name: tool)["ok"] as? Bool == true)
+        #expect(!AgentPlugins.load().contains { $0.name == tool })
+    }
+
     // MARK: Tool catalogue
 
     @Test func catalogueMentionsEveryComputerTool() {

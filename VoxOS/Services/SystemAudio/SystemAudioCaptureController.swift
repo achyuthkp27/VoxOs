@@ -154,6 +154,7 @@ final class SystemAudioCaptureController: ObservableObject {
 
     func agentStart() async -> [String: Any] {
         if isCapturing { return ["ok": true, "note": "already capturing system audio"] }
+        if isTranscribing { return ["error": "still transcribing the previous capture — try again in a moment"] }
         await beginCapture()
         return isCapturing ? ["ok": true, "note": "capturing what the Mac plays; call system_audio_stop to get the transcript"]
             : ["error": "could not start system audio capture — Screen Recording permission may be missing"]

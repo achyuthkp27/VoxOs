@@ -137,7 +137,12 @@ final class EdgeHistoryWindowManager {
             }
 
         case .hidden:
-            guard mouseLocation.x <= screen.frame.minX + EdgeHistoryPanel.hoverTriggerZone else { return }
+            // Only the true left edge of the desktop counts — on a multi-display setup the seam
+            // between two screens must not open the panel.
+            let leftmostEdge = NSScreen.screens.map(\.frame.minX).min() ?? screen.frame.minX
+            guard screen.frame.minX == leftmostEdge,
+                mouseLocation.x <= screen.frame.minX + EdgeHistoryPanel.hoverTriggerZone
+            else { return }
             // Only the middle band of the edge reveals the notch, so the menu bar and
             // Dock corners stay usable.
             let band = EdgeHistoryPanel.notchHeight * 2.2
