@@ -20,11 +20,24 @@ It does two things:
    set reminders, draft emails, send WhatsApp/Slack/iMessage messages, find files, open apps and URLs, and more,
    using a provider-agnostic JSON tool-calling loop (works with local Ollama, Local CLI, or any hosted provider).
 
+## Build
+
+`make local` builds, signs with your Apple Development identity and installs to `/Applications`;
+`make test` runs the agent-logic unit tests; `make dev` does both build and launch.
+
 ## Features
 
 - 🎙️ **Local transcription** — Whisper.cpp / Parakeet models, fully offline
-- 🤖 **Agent Mode** — 27 voice-triggered tools (calendar, reminders, notes, mail drafts, WhatsApp, Slack,
-  Linear, iMessage, file search, app/URL opening, memory, system utilities)
+- 🤖 **Agent Mode** — 90+ voice-triggered tools: calendar, reminders, notes, mail drafts, WhatsApp, Slack,
+  Linear, iMessage, memory, system utilities — plus full **computer control**: click UI by name through the
+  Accessibility tree, OCR and on-screen set-of-marks ("click 7"), synthetic mouse/keyboard, window management,
+  shell and AppleScript behind a risk gate, files and PDFs, browser DOM control, macros ("teach it a skill"),
+  JSON plugins the agent can write and repair itself, screen/audio watchers, and control modes
+  (act freely / ask before acting / observe only)
+- 🔊 **System audio** — `⌃/` captures what the Mac is playing (never the mic), transcribes it, copies and
+  pastes it; `⌃⇧/` transcribes the last N seconds from a rolling buffer; also callable by the agent
+- 🪟 **Liquid Glass UI** — macOS Tahoe glass throughout: floating sidebar, glass cards, translucent notch panel,
+  left-edge history card (hover the screen edge, click the notch, pin with the lock)
 - ⚡ **One-click Agent setup** — a quick-install button wires up a working AI provider, the built-in Agent
   prompt, and a Control+Option hold-to-talk shortcut automatically
 - 🧠 **Modes** — per-app/per-URL configuration for transcription + AI enhancement behavior
