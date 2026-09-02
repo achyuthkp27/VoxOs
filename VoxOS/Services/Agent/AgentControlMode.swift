@@ -8,21 +8,29 @@ enum AgentEnvironment {
 
 /// A task the agent paused with `wait_for_user`; surfaced in the next prompt, then cleared.
 enum AgentPausedTask {
+    struct Paused: Equatable {
+        let id: UUID
+        let question: String
+        let context: String
+    }
+
     private static let lock = NSLock()
-    private static var pending: (question: String, context: String)?
+    private static var pending: Paused?
 
     static func set(question: String, context: String) {
         lock.lock(); defer { lock.unlock() }
-        pending = (question, context)
+        pending = Paused(id: UUID(), question: question, context: context)
     }
 
-    static func peek() -> (question: String, context: String)? {
+    static func peek() -> Paused? {
         lock.lock(); defer { lock.unlock() }
         return pending
     }
 
-    static func clear() {
+    /// Clears only the task that was resumed — never one the current run just created.
+    static func clear(resumed id: UUID?) {
         lock.lock(); defer { lock.unlock() }
+        guard let id, pending?.id == id else { return }
         pending = nil
     }
 }

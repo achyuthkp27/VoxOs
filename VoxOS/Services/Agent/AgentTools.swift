@@ -484,11 +484,17 @@ enum AgentPendingAction {
         pending = (name, args, currentRun, Date())
     }
 
+    /// Consumes the pending action only when it is eligible: created in an earlier run and
+    /// not yet expired. A same-run attempt leaves it in place for the user's real answer.
     static func take() -> (name: String, args: [String: Any])? {
         lock.lock(); defer { lock.unlock() }
         guard let value = pending else { return nil }
+        if Date().timeIntervalSince(value.createdAt) >= expiry {
+            pending = nil
+            return nil
+        }
+        guard value.run != currentRun else { return nil }
         pending = nil
-        guard value.run != currentRun, Date().timeIntervalSince(value.createdAt) < expiry else { return nil }
         return (value.name, value.args)
     }
 

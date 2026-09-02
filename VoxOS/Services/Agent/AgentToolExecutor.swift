@@ -44,8 +44,10 @@ enum AgentToolExecutor {
 
         // A confirmation must come from a later request than the one that asked for it.
         AgentPendingAction.beginRun()
-        // Whatever task was paused is now being resumed by this request.
-        defer { AgentPausedTask.clear() }
+        // The task that was paused before this request is being resumed by it; a task this
+        // run pauses must survive to the next one.
+        let resumedTask = AgentPausedTask.peek()?.id
+        defer { AgentPausedTask.clear(resumed: resumedTask) }
 
         var messages = priorMessages
         var reply = firstReply

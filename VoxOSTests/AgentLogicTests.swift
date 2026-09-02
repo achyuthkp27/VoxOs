@@ -49,11 +49,23 @@ struct AgentLogicTests {
         AgentPendingAction.set(name: "run_shell", args: ["command": "ls"])
         #expect(AgentPendingAction.take() == nil, "same run must not confirm")
 
-        AgentPendingAction.set(name: "run_shell", args: ["command": "ls"])
+        // The same-run attempt must not have thrown the action away.
         AgentPendingAction.beginRun()
         let taken = AgentPendingAction.take()
-        #expect(taken?.name == "run_shell")
+        #expect(taken?.name == "run_shell", "pending action survives a same-run attempt")
         #expect(AgentPendingAction.take() == nil, "a pending action is consumed once")
+    }
+
+    @Test func pausedTaskCreatedInARunSurvivesThatRun() {
+        AgentPausedTask.clear(resumed: AgentPausedTask.peek()?.id)
+        let before = AgentPausedTask.peek()?.id  // nil: nothing to resume
+        AgentPausedTask.set(question: "Which file?", context: "moving photos")
+        AgentPausedTask.clear(resumed: before)  // what runLoop does at the end of that run
+        #expect(AgentPausedTask.peek()?.question == "Which file?", "the new pause must reach the next request")
+
+        let resumed = AgentPausedTask.peek()?.id
+        AgentPausedTask.clear(resumed: resumed)  // the next run consumed it
+        #expect(AgentPausedTask.peek() == nil)
     }
 
     // MARK: Macros
