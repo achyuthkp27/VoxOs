@@ -171,8 +171,19 @@ final class SystemAudioCaptureController: ObservableObject {
             return ["error": "nothing was playing"]
         }
         let text = await transcribeText(url: url) ?? ""
-        try? FileManager.default.removeItem(at: url)
-        return text.isEmpty ? ["error": "no speech found in the captured audio"] : ["ok": true, "seconds": Int(duration), "transcript": text]
+        guard !text.isEmpty else {
+            try? FileManager.default.removeItem(at: url)
+            return ["error": "no speech found in the captured audio"]
+        }
+        // Same bookkeeping as the shortcut flow, so agent captures show up in History too.
+        if shouldSaveToHistory, let engine,
+            let configuration = ModeRuntimeResolver.transcriptionConfiguration(transcriptionModelManager: engine.transcriptionModelManager)
+        {
+            save(text: text, duration: duration, audioURL: url, modelName: configuration.model.displayName)
+        } else {
+            try? FileManager.default.removeItem(at: url)
+        }
+        return ["ok": true, "seconds": Int(duration), "transcript": text]
     }
 
     func agentRecall(seconds: Double) async -> [String: Any] {
