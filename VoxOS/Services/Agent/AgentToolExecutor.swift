@@ -7,7 +7,7 @@ import LLMkit
 enum AgentToolExecutor {
     /// Presence of this marker in the system prompt is what turns the tool loop on.
     static let promptMarker = "VOXOS AGENT PROTOCOL"
-    static let maxSteps = 6
+    static let maxSteps = 14
 
     static func isAgentConversation(systemPrompt: String?) -> Bool {
         systemPrompt?.contains(promptMarker) == true

@@ -30,7 +30,9 @@ enum AgentTools {
         "edge": "com.microsoft.edgemac",
     ]
 
-    static func execute(name: String, args: [String: Any]) async -> [String: Any] {
+    /// App-integration tools. Called through `execute` (see AgentTools+Computer.swift),
+    /// which applies the control-mode gate and routes computer-control tools first.
+    static func executeBuiltin(name: String, args: [String: Any]) async -> [String: Any] {
         func s(_ key: String) -> String { (args[key] as? String) ?? "" }
         func i(_ key: String, _ def: Int) -> Int {
             if let v = args[key] as? Int { return v }
@@ -92,8 +94,11 @@ enum AgentTools {
             }
 
         case "open_url":
-            guard let url = URL(string: s("url")), url.scheme != nil else {
-                return ["error": "invalid url"]
+            guard let url = URL(string: s("url")),
+                let scheme = url.scheme?.lowercased(),
+                scheme == "http" || scheme == "https"
+            else {
+                return ["error": "invalid url: only http/https links are supported"]
             }
             let browserName = s("browser")
             return await MainActor.run {
@@ -242,21 +247,6 @@ enum AgentTools {
                     "Ready to iMessage \(to): \"\(text)\". Ask the user to say 'confirm' to send or 'cancel'."
             ]
 
-        case "confirm_action":
-            guard let pending = AgentPendingAction.take() else {
-                return ["error": "nothing pending to confirm"]
-            }
-            if pending.name == "messages_send_confirmed" {
-                let to = (pending.args["to"] as? String) ?? ""
-                let text = (pending.args["text"] as? String) ?? ""
-                return await MainActor.run { messagesSend(to: to, text: text) }
-            }
-            return ["error": "unknown pending action"]
-
-        case "cancel_action":
-            AgentPendingAction.clear()
-            return ["result": "pending action canceled"]
-
         case "remember":
             return AgentMemory.remember(key: s("key"), value: s("value"))
 
@@ -270,7 +260,7 @@ enum AgentTools {
             return await MainActor.run { mediaKey(action: s("action")) }
 
         default:
-            return ["error": "unknown tool: \(name)"]
+            return ["error": "unknown tool: \(name)", "hint": "reply with a plain-text answer if no tool fits"]
         }
     }
 
@@ -407,9 +397,16 @@ enum AgentTools {
 
     private static func findFiles(query: String, dir: String) -> [String: Any] {
         let fm = FileManager.default
-        let base = ((dir.isEmpty ? "~" : dir) as NSString).expandingTildeInPath
+        let home = fm.homeDirectoryForCurrentUser.standardizedFileURL.path
+        let requestedPath = ((dir.isEmpty ? "~" : dir) as NSString).expandingTildeInPath
+        let base = URL(fileURLWithPath: requestedPath).standardizedFileURL.path
         let q = query.lowercased().trimmingCharacters(in: .whitespaces)
         guard !q.isEmpty else { return ["error": "empty query"] }
+        // Sandbox to the user's home folder so a manipulated query can't be used to browse
+        // arbitrary system or other-user directories (e.g. "/etc", "/Users/someoneElse").
+        guard base == home || base.hasPrefix(home + "/") else {
+            return ["error": "directory must be within your home folder"]
+        }
         guard fm.fileExists(atPath: base) else { return ["error": "directory not found: \(base)"] }
 
         var matches: [String] = []

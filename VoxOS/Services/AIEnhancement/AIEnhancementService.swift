@@ -203,7 +203,15 @@ class AIEnhancementService: ObservableObject {
                 ""
             }
 
-        return [prompt.finalPromptText, customVocabularySection, contextSection]
+        // The Agent prompt is seeded into the database, so the computer-control tool
+        // catalogue is injected here at request time: it stays in sync with the code and
+        // reaches installs whose stored prompt predates those tools.
+        let agentSections: [String] =
+            AgentToolExecutor.isAgentConversation(systemPrompt: prompt.finalPromptText)
+            ? [AgentToolCatalog.promptSection, AgentToolCatalog.runtimeSection()]
+            : []
+
+        return ([prompt.finalPromptText] + agentSections + [customVocabularySection, contextSection])
             .filter { !$0.isEmpty }
             .joined(separator: "\n\n")
     }
