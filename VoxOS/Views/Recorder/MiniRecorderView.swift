@@ -69,7 +69,7 @@ struct MiniRecorderView<S: RecorderStateProvider & ObservableObject>: View {
         VStack(spacing: 0) {
             if hasLiveTranscript {
                 LiveTranscriptView(text: stateProvider.partialTranscript)
-                Divider().background(Color.primary.opacity(0.15))
+                Divider().overlay(Color.primary.opacity(0.10))
             }
         }
     }
@@ -82,18 +82,22 @@ struct MiniRecorderView<S: RecorderStateProvider & ObservableObject>: View {
                     liveFollowUpText: liveAssistantFollowUpText,
                     onSend: onAssistantFollowUp
                 )
-                Divider().background(Color.primary.opacity(0.15))
+                Divider().overlay(Color.primary.opacity(0.10))
             } else {
                 transcriptSection
             }
             controlBar
         }
         .frame(width: hasAssistantResponse ? assistantWidth : (hasLiveTranscript ? expandedWidth : compactWidth))
-        .background(Color.black)
-        .clipShape(
+        // Same glass as the notch: the text uses system label colours, so a flat black ground
+        // would be unreadable in light mode.
+        .liquidGlass(cornerRadius: hasLiveTranscript || hasAssistantResponse ? expandedCornerRadius : compactCornerRadius)
+        .overlay(
             RoundedRectangle(
                 cornerRadius: hasLiveTranscript || hasAssistantResponse ? expandedCornerRadius : compactCornerRadius,
-                style: .continuous)
+                style: .continuous
+            )
+            .stroke(AppTheme.Notch.rim, lineWidth: 1)
         )
         .animation(.easeInOut(duration: 0.3), value: hasLiveTranscript)
         .animation(.easeInOut(duration: 0.3), value: hasAssistantResponse)
