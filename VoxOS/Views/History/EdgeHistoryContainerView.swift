@@ -32,10 +32,10 @@ private struct EdgeHistoryNotchHandle: View {
 
     var body: some View {
         RoundedRectangle(cornerRadius: 4, style: .continuous)
-            .fill(Color.black.opacity(isHovering ? 0.92 : 0.72))
+            .fill(Color.primary.opacity(isHovering ? 0.75 : 0.45))
             .overlay(
                 RoundedRectangle(cornerRadius: 4, style: .continuous)
-                    .strokeBorder(Color.white.opacity(isHovering ? 0.22 : 0.10), lineWidth: 0.5)
+                    .strokeBorder(Color.primary.opacity(isHovering ? 0.35 : 0.15), lineWidth: 0.5)
             )
             .frame(width: isHovering ? 7 : 5)
             .frame(maxHeight: .infinity)
