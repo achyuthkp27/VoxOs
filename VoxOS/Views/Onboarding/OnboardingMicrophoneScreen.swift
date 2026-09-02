@@ -59,7 +59,7 @@ struct OnboardingMicrophoneScreen: View {
     private var listHeader: some View {
         HStack {
             Text("Available Microphones")
-                .font(.system(size: 13, weight: .semibold))
+                .font(.app(size: 13, weight: .semibold))
                 .foregroundColor(AppTheme.Text.secondary)
 
             Spacer()
@@ -77,7 +77,7 @@ struct OnboardingMicrophoneScreen: View {
         } label: {
             HStack(spacing: 14) {
                 Image(systemName: isSelected ? "checkmark" : "mic")
-                    .font(.system(size: 13, weight: .semibold))
+                    .font(.app(size: 13, weight: .semibold))
                     .foregroundColor(isSelected ? AppTheme.Text.primary : AppTheme.Text.muted)
                     .frame(width: 30, height: 30)
                     .background(
@@ -86,7 +86,7 @@ struct OnboardingMicrophoneScreen: View {
                     )
 
                 Text(device.name)
-                    .font(.system(size: 14, weight: .semibold))
+                    .font(.app(size: 14, weight: .semibold))
                     .foregroundColor(AppTheme.Text.primary)
                     .lineLimit(1)
 
@@ -108,16 +108,16 @@ struct OnboardingMicrophoneScreen: View {
     private var emptyState: some View {
         VStack(spacing: 14) {
             Image(systemName: "mic.slash")
-                .font(.system(size: 22, weight: .semibold))
+                .font(.app(size: 22, weight: .semibold))
                 .foregroundColor(AppTheme.Text.secondary)
 
             VStack(spacing: 4) {
                 Text("No microphones found")
-                    .font(.system(size: 14, weight: .semibold))
+                    .font(.app(size: 14, weight: .semibold))
                     .foregroundColor(AppTheme.Text.primary)
 
                 Text("Connect a microphone or allow microphone access, then refresh.")
-                    .font(.system(size: 13))
+                    .font(.app(size: 13, weight: .regular))
                     .foregroundColor(AppTheme.Text.secondary)
                     .multilineTextAlignment(.center)
                     .lineLimit(2)
@@ -136,10 +136,10 @@ struct OnboardingMicrophoneScreen: View {
         } label: {
             Label {
                 Text("Refresh")
-                    .font(.system(size: 12, weight: .semibold))
+                    .font(.app(size: 12, weight: .semibold))
             } icon: {
                 Image(systemName: "arrow.clockwise")
-                    .font(.system(size: 12, weight: .semibold))
+                    .font(.app(size: 12, weight: .semibold))
                     .rotationEffect(.degrees(refreshIconRotation))
             }
             .foregroundColor(AppTheme.Text.secondary)

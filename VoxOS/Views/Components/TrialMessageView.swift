@@ -15,16 +15,16 @@ struct TrialMessageView: View {
     var body: some View {
         HStack(spacing: 12) {
             Image(systemName: icon)
-                .font(.system(size: 20))
+                .font(.app(size: 20, weight: .regular))
                 .foregroundColor(iconColor)
 
             VStack(alignment: .leading, spacing: 4) {
                 Text(title)
-                    .font(.headline)
+                    .font(.app(.headline))
 
                 if let message {
                     message
-                        .font(.subheadline)
+                        .font(.app(.subheadline))
                         .foregroundColor(.secondary)
                 }
             }
@@ -36,7 +36,7 @@ struct TrialMessageView: View {
                     onAddLicenseKey?()
                 }) {
                     Text("Enter License")
-                        .font(.system(size: 13, weight: .medium))
+                        .font(.app(size: 13, weight: .medium))
                 }
                 .buttonStyle(.bordered)
 
@@ -46,7 +46,7 @@ struct TrialMessageView: View {
                     }
                 }) {
                     Text("Buy License")
-                        .font(.system(size: 13, weight: .medium))
+                        .font(.app(size: 13, weight: .medium))
                 }
                 .buttonStyle(.borderedProminent)
             }

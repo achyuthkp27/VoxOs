@@ -53,7 +53,7 @@ struct AudioFileRow: View {
             Spacer()
 
             Text("Waiting")
-                .font(.caption)
+                .font(.app(.caption))
                 .foregroundColor(.secondary)
 
             Button {
@@ -82,7 +82,7 @@ struct AudioFileRow: View {
             Spacer()
 
             Text(LocalizedStringKey(phase.rawValue))
-                .font(.caption)
+                .font(.app(.caption))
                 .foregroundColor(AppTheme.Accent.primary)
         }
     }
@@ -116,13 +116,13 @@ struct AudioFileRow: View {
 
                 if transcription.duration > 0 {
                     Text(formatDuration(transcription.duration))
-                        .font(.caption.weight(.medium))
+                        .font(.app(.caption, weight: .medium))
                         .foregroundColor(.secondary)
                 }
             }
 
             Image(systemName: "chevron.right")
-                .font(.caption2.weight(.semibold))
+                .font(.app(.caption2, weight: .semibold))
                 .foregroundColor(.secondary)
                 .rotationEffect(.degrees(isExpanded ? 90 : 0))
                 .animation(.easeInOut(duration: 0.2), value: isExpanded)
@@ -151,12 +151,12 @@ struct AudioFileRow: View {
             HStack(spacing: 12) {
                 if let model = transcription.transcriptionModelName {
                     Label(model, systemImage: "cpu")
-                        .font(.caption)
+                        .font(.app(.caption))
                         .foregroundColor(.secondary)
                 }
                 if let prompt = transcription.promptName {
                     Label(prompt, systemImage: "sparkles")
-                        .font(.caption)
+                        .font(.app(.caption))
                         .foregroundColor(.secondary)
                 }
                 Spacer()
@@ -194,7 +194,7 @@ struct AudioFileRow: View {
                     .truncationMode(.middle)
 
                 Text(message)
-                    .font(.caption)
+                    .font(.app(.caption))
                     .foregroundColor(AppTheme.Status.error.opacity(0.80))
                     .lineLimit(2)
             }

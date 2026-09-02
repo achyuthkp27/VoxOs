@@ -28,7 +28,7 @@ struct CustomModelCardView: View {
     private var headerSection: some View {
         HStack(alignment: .firstTextBaseline) {
             Text(model.displayName)
-                .font(.system(size: 13, weight: .semibold))
+                .font(.app(size: 13, weight: .semibold))
                 .foregroundColor(Color(.labelColor))
 
             Spacer()
@@ -38,19 +38,19 @@ struct CustomModelCardView: View {
     private var metadataSection: some View {
         HStack(spacing: 12) {
             Label(model.modelName, systemImage: "cube")
-                .font(.system(size: 11))
+                .font(.app(size: 11, weight: .regular))
                 .foregroundColor(Color(.secondaryLabelColor))
                 .lineLimit(1)
 
             // Language
             Label(model.language, systemImage: "globe")
-                .font(.system(size: 11))
+                .font(.app(size: 11, weight: .regular))
                 .foregroundColor(Color(.secondaryLabelColor))
                 .lineLimit(1)
 
             // OpenAI Compatible
             Label("OpenAI Compatible", systemImage: "checkmark.seal")
-                .font(.system(size: 11))
+                .font(.app(size: 11, weight: .regular))
                 .foregroundColor(Color(.secondaryLabelColor))
                 .lineLimit(1)
         }
@@ -59,7 +59,7 @@ struct CustomModelCardView: View {
 
     private var descriptionSection: some View {
         Text(model.description)
-            .font(.system(size: 11))
+            .font(.app(size: 11, weight: .regular))
             .foregroundColor(Color(.secondaryLabelColor))
             .lineLimit(2)
             .fixedSize(horizontal: false, vertical: true)
@@ -84,7 +84,7 @@ struct CustomModelCardView: View {
                 }
             } label: {
                 Image(systemName: "ellipsis.circle")
-                    .font(.system(size: 14))
+                    .font(.app(size: 14, weight: .regular))
             }
             .menuStyle(.borderlessButton)
             .menuIndicator(.hidden)

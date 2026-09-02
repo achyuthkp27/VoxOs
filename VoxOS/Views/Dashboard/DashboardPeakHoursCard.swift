@@ -43,7 +43,7 @@ struct DashboardPeakHoursCard: View {
     private var header: some View {
         HStack(alignment: .firstTextBaseline, spacing: 12) {
             Text("Peak Dictation Hours")
-                .font(.system(size: 18, weight: .bold, design: .rounded))
+                .font(.app(size: 18, weight: .bold))
                 .foregroundStyle(AppTheme.Text.primary)
                 .lineLimit(1)
                 .minimumScaleFactor(0.84)
@@ -52,11 +52,11 @@ struct DashboardPeakHoursCard: View {
 
             HStack(spacing: 5) {
                 Image(systemName: "clock")
-                    .font(.system(size: 12, weight: .semibold))
+                    .font(.app(size: 12, weight: .semibold))
                     .foregroundStyle(AppTheme.Text.secondary.opacity(0.78))
 
                 Text(canShowPattern ? windowText : "--")
-                    .font(.system(size: 13, weight: .bold, design: .rounded))
+                    .font(.app(size: 13, weight: .bold))
                     .foregroundStyle(AppTheme.Text.secondary)
                     .lineLimit(1)
                     .minimumScaleFactor(0.76)
@@ -83,14 +83,14 @@ struct DashboardPeakHoursCard: View {
     private var lockedOverlay: some View {
         VStack(spacing: 8) {
             Image(systemName: "lock.fill")
-                .font(.system(size: 16, weight: .bold))
+                .font(.app(size: 16, weight: .bold))
                 .foregroundStyle(AppTheme.Accent.primary)
                 .frame(width: 34, height: 34)
                 .background(AppTheme.Accent.fill)
                 .clipShape(RoundedRectangle(cornerRadius: 11, style: .continuous))
 
             Text("Continue using VoxOS to unlock peak hours.")
-                .font(.system(size: 13, weight: .semibold))
+                .font(.app(size: 13, weight: .semibold))
                 .foregroundStyle(AppTheme.Text.primary)
                 .multilineTextAlignment(.center)
                 .lineLimit(2)
@@ -213,7 +213,7 @@ private struct DashboardPeakHoursHistogram: View {
 
     private func axisLabel(_ label: LocalizedStringKey) -> some View {
         Text(label)
-            .font(.system(size: 10, weight: .semibold))
+            .font(.app(size: 10, weight: .semibold))
             .foregroundStyle(AppTheme.Text.secondary)
             .lineLimit(1)
     }

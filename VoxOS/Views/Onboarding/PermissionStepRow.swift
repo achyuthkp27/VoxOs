@@ -19,11 +19,11 @@ struct PermissionStepRow: View {
 
                 VStack(alignment: .leading, spacing: 4) {
                     Text(LocalizedStringKey(descriptor.title))
-                        .font(.system(size: 14, weight: .semibold))
+                        .font(.app(size: 14, weight: .semibold))
                         .foregroundColor(AppTheme.Text.primary)
 
                     Text(LocalizedStringKey(descriptor.subtitle))
-                        .font(.system(size: 12))
+                        .font(.app(size: 12, weight: .regular))
                         .foregroundColor(AppTheme.Text.muted)
                         .fixedSize(horizontal: false, vertical: true)
                 }
@@ -64,11 +64,11 @@ struct PermissionStepRow: View {
 
             if status.isGranted {
                 Image(systemName: "checkmark")
-                    .font(.system(size: 12, weight: .bold))
+                    .font(.app(size: 12, weight: .bold))
                     .foregroundColor(AppTheme.Text.primary)
             } else {
                 Text("\(stepNumber)")
-                    .font(.system(size: 12, weight: .semibold))
+                    .font(.app(size: 12, weight: .semibold))
                     .foregroundColor(isActive && !isLocked ? AppTheme.Text.primary : AppTheme.Text.muted)
             }
         }
@@ -78,7 +78,7 @@ struct PermissionStepRow: View {
     private var actionButton: some View {
         Button(action: onAction) {
             Text(LocalizedStringKey(actionTitle))
-                .font(.system(size: 12, weight: .semibold))
+                .font(.app(size: 12, weight: .semibold))
                 .foregroundColor(AppTheme.Action.primaryForeground)
                 .frame(minWidth: 94)
                 .padding(.horizontal, 12)
@@ -93,7 +93,7 @@ struct PermissionStepRow: View {
 
     private var statusBadge: some View {
         Text(isLocked ? LocalizedStringKey("Locked") : LocalizedStringKey(status.label))
-            .font(.system(size: 12, weight: .semibold))
+            .font(.app(size: 12, weight: .semibold))
             .foregroundColor(isLocked ? AppTheme.Text.muted : statusTone)
             .padding(.horizontal, 10)
             .padding(.vertical, 7)
@@ -113,14 +113,14 @@ struct PermissionStepRow: View {
     private var restartHint: some View {
         HStack(spacing: 8) {
             Text("Restart VoxOS after enabling Screen Recording.")
-                .font(.system(size: 12))
+                .font(.app(size: 12, weight: .regular))
                 .foregroundColor(AppTheme.Text.muted)
                 .fixedSize(horizontal: false, vertical: true)
 
             Button("Quit") {
                 onQuit()
             }
-            .font(.system(size: 12, weight: .semibold))
+            .font(.app(size: 12, weight: .semibold))
             .buttonStyle(.plain)
             .foregroundColor(AppTheme.Action.secondaryForeground)
         }

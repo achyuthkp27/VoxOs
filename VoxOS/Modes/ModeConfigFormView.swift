@@ -111,14 +111,14 @@ struct ModeConfigFormView: View {
 
             TextField("Mode name", text: $draft.name)
                 .textFieldStyle(.plain)
-                .font(.system(size: 16, weight: .semibold))
+                .font(.app(size: 16, weight: .semibold))
                 .focused($isNameFieldFocused)
 
             Spacer()
 
             Button(action: onDismiss) {
                 Image(systemName: "xmark")
-                    .font(.system(size: 14, weight: .medium))
+                    .font(.app(size: 14, weight: .medium))
                     .foregroundColor(.secondary)
                     .padding(6)
                     .background(AppTheme.Surface.card)
@@ -498,7 +498,7 @@ struct ModeConfigFormView: View {
                     openPromptEditor(.edit(selectedPrompt))
                 } label: {
                     Image(systemName: "pencil.circle.fill")
-                        .font(.system(size: 18))
+                        .font(.app(size: 18, weight: .regular))
                         .symbolRenderingMode(.hierarchical)
                         .foregroundStyle(.secondary)
                 }

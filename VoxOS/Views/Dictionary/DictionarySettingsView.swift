@@ -167,7 +167,7 @@ private struct DictionarySectionButtonLabel: View {
     var body: some View {
         HStack(spacing: 8) {
             Image(systemName: icon)
-                .font(.system(size: 13, weight: .semibold))
+                .font(.app(size: 13, weight: .semibold))
                 .symbolRenderingMode(.hierarchical)
 
             Text(title)

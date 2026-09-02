@@ -16,7 +16,7 @@ struct TriggerGroupRow: View {
             TriggerSymbol(systemName: groupSystemImage)
 
             Text(group.name)
-                .font(.system(size: 12, weight: .semibold))
+                .font(.app(size: 12, weight: .semibold))
                 .foregroundStyle(.primary)
                 .lineLimit(1)
                 .layoutPriority(1)
@@ -129,18 +129,18 @@ private struct TriggerTextChip: View {
     var body: some View {
         HStack(spacing: 5) {
             Image(systemName: systemName)
-                .font(.system(size: 9, weight: .semibold))
+                .font(.app(size: 9, weight: .semibold))
                 .foregroundStyle(.secondary)
 
             Text(title)
-                .font(.system(size: 12))
+                .font(.app(size: 12, weight: .regular))
                 .lineLimit(1)
                 .truncationMode(truncationMode)
                 .frame(maxWidth: 100, alignment: .leading)
 
             Button(action: onRemove) {
                 Image(systemName: "xmark")
-                    .font(.system(size: 9, weight: .bold))
+                    .font(.app(size: 9, weight: .bold))
                     .foregroundStyle(.secondary)
                     .frame(width: 14, height: 14)
             }
@@ -188,7 +188,7 @@ struct TriggerGroupPreviewStack: View {
 
             if overflowCount > 0 {
                 Text("+\(overflowCount)")
-                    .font(.system(size: tileSize * 0.30, weight: .semibold))
+                    .font(.app(size: tileSize * 0.30, weight: .semibold))
                     .foregroundStyle(.primary)
                     .lineLimit(1)
                     .minimumScaleFactor(0.75)
@@ -222,12 +222,12 @@ struct TriggerGroupPreviewStack: View {
                         .fill(AppTheme.Surface.card)
                         .frame(width: tileSize - 8, height: tileSize - 8)
                     Image(systemName: "globe")
-                        .font(.system(size: tileSize * 0.38, weight: .semibold))
+                        .font(.app(size: tileSize * 0.38, weight: .semibold))
                         .foregroundStyle(.primary)
                 }
             case .empty:
                 Image(systemName: "folder")
-                    .font(.system(size: tileSize * 0.43, weight: .medium))
+                    .font(.app(size: tileSize * 0.43, weight: .medium))
                     .foregroundStyle(.secondary)
             }
         }
@@ -284,7 +284,7 @@ struct TriggerAppIcon: View {
                 .clipShape(RoundedRectangle(cornerRadius: size * 0.22))
         } else {
             Image(systemName: "app.fill")
-                .font(.system(size: size * 0.58, weight: .medium))
+                .font(.app(size: size * 0.58, weight: .medium))
                 .foregroundStyle(.primary)
                 .frame(width: size, height: size)
                 .background {
@@ -301,7 +301,7 @@ struct TriggerRemoveButton: View {
     var body: some View {
         Button(action: action) {
             Image(systemName: "xmark.circle.fill")
-                .font(.system(size: 12, weight: .medium))
+                .font(.app(size: 12, weight: .medium))
                 .symbolRenderingMode(.hierarchical)
                 .foregroundStyle(.secondary)
         }
@@ -316,7 +316,7 @@ struct TriggerEditButton: View {
     var body: some View {
         Button(action: action) {
             Image(systemName: "pencil.circle.fill")
-                .font(.system(size: 12, weight: .medium))
+                .font(.app(size: 12, weight: .medium))
                 .symbolRenderingMode(.hierarchical)
                 .foregroundStyle(.secondary)
         }

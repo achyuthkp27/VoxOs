@@ -10,7 +10,7 @@ struct AnnouncementView: View {
         VStack(alignment: .leading, spacing: 12) {
             HStack(alignment: .top) {
                 Text(title)
-                    .font(.system(size: 14, weight: .semibold))
+                    .font(.app(size: 14, weight: .semibold))
                     .foregroundColor(.white)
                     .lineLimit(2)
                     .multilineTextAlignment(.leading)
@@ -19,7 +19,7 @@ struct AnnouncementView: View {
 
                 Button(action: onClose) {
                     Image(systemName: "xmark")
-                        .font(.system(size: 11, weight: .medium))
+                        .font(.app(size: 11, weight: .medium))
                         .foregroundColor(.white.opacity(0.7))
                 }
                 .buttonStyle(PlainButtonStyle())
@@ -28,7 +28,7 @@ struct AnnouncementView: View {
             if !description.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty {
                 ScrollView {
                     Text(description)
-                        .font(.system(size: 12))
+                        .font(.app(size: 12, weight: .regular))
                         .foregroundColor(.white.opacity(0.9))
                         .multilineTextAlignment(.leading)
                         .frame(maxWidth: .infinity, alignment: .leading)
@@ -39,7 +39,7 @@ struct AnnouncementView: View {
             HStack(spacing: 8) {
                 Button(action: onLearnMore) {
                     Text("Learn more")
-                        .font(.system(size: 12, weight: .medium))
+                        .font(.app(size: 12, weight: .medium))
                         .foregroundColor(.black)
                         .padding(.horizontal, 10)
                         .padding(.vertical, 6)
@@ -50,7 +50,7 @@ struct AnnouncementView: View {
 
                 Button(action: onClose) {
                     Text("Dismiss")
-                        .font(.system(size: 12, weight: .medium))
+                        .font(.app(size: 12, weight: .medium))
                         .foregroundColor(.white.opacity(0.9))
                         .padding(.horizontal, 8)
                         .padding(.vertical, 6)

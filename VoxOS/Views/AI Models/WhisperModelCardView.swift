@@ -37,7 +37,7 @@ struct WhisperModelCardView: View {
     private var headerSection: some View {
         HStack(alignment: .firstTextBaseline) {
             Text(model.displayName)
-                .font(.system(size: 13, weight: .semibold))
+                .font(.app(size: 13, weight: .semibold))
                 .foregroundColor(Color(.labelColor))
 
             Spacer()
@@ -48,20 +48,20 @@ struct WhisperModelCardView: View {
         HStack(spacing: 12) {
             // Language
             Label(model.language, systemImage: "globe")
-                .font(.system(size: 11))
+                .font(.app(size: 11, weight: .regular))
                 .foregroundColor(Color(.secondaryLabelColor))
                 .lineLimit(1)
 
             // Size
             Label(model.size, systemImage: "internaldrive")
-                .font(.system(size: 11))
+                .font(.app(size: 11, weight: .regular))
                 .foregroundColor(Color(.secondaryLabelColor))
                 .lineLimit(1)
 
             // Speed
             HStack(spacing: 3) {
                 Text("Speed")
-                    .font(.system(size: 11, weight: .medium))
+                    .font(.app(size: 11, weight: .medium))
                     .foregroundColor(Color(.secondaryLabelColor))
                 progressDotsWithNumber(value: model.speed * 10)
             }
@@ -71,7 +71,7 @@ struct WhisperModelCardView: View {
             // Accuracy
             HStack(spacing: 3) {
                 Text("Accuracy")
-                    .font(.system(size: 11, weight: .medium))
+                    .font(.app(size: 11, weight: .medium))
                     .foregroundColor(Color(.secondaryLabelColor))
                 progressDotsWithNumber(value: model.accuracy * 10)
             }
@@ -83,7 +83,7 @@ struct WhisperModelCardView: View {
 
     private var descriptionSection: some View {
         Text(model.description)
-            .font(.system(size: 11))
+            .font(.app(size: 11, weight: .regular))
             .foregroundColor(Color(.secondaryLabelColor))
             .lineLimit(2)
             .fixedSize(horizontal: false, vertical: true)
@@ -112,9 +112,9 @@ struct WhisperModelCardView: View {
                 Button(action: downloadAction) {
                     HStack(spacing: 4) {
                         Text(LocalizedStringKey(isDownloading ? "Downloading..." : "Download"))
-                            .font(.system(size: 12, weight: .medium))
+                            .font(.app(size: 12, weight: .medium))
                         Image(systemName: "arrow.down.circle")
-                            .font(.system(size: 12, weight: .medium))
+                            .font(.app(size: 12, weight: .medium))
                     }
                     .foregroundColor(.white)
                     .padding(.horizontal, 12)
@@ -144,7 +144,7 @@ struct WhisperModelCardView: View {
                     }
                 } label: {
                     Image(systemName: "ellipsis.circle")
-                        .font(.system(size: 14))
+                        .font(.app(size: 14, weight: .regular))
                 }
                 .menuStyle(.borderlessButton)
                 .menuIndicator(.hidden)
@@ -167,13 +167,13 @@ struct ImportedWhisperModelCardView: View {
             VStack(alignment: .leading, spacing: 6) {
                 HStack(alignment: .firstTextBaseline) {
                     Text(model.displayName)
-                        .font(.system(size: 13, weight: .semibold))
+                        .font(.app(size: 13, weight: .semibold))
                         .foregroundColor(Color(.labelColor))
                     Spacer()
                 }
 
                 Text("Imported local model")
-                    .font(.system(size: 11))
+                    .font(.app(size: 11, weight: .regular))
                     .foregroundColor(Color(.secondaryLabelColor))
                     .lineLimit(2)
                     .fixedSize(horizontal: false, vertical: true)
@@ -200,7 +200,7 @@ struct ImportedWhisperModelCardView: View {
                         }
                     } label: {
                         Image(systemName: "ellipsis.circle")
-                            .font(.system(size: 14))
+                            .font(.app(size: 14, weight: .regular))
                     }
                     .menuStyle(.borderlessButton)
                     .menuIndicator(.hidden)
@@ -245,7 +245,7 @@ func performanceColor(value: Double) -> Color {
 
 func modelStatusPill(_ text: LocalizedStringKey, systemImage: String) -> some View {
     Label(text, systemImage: systemImage)
-        .font(.system(size: 11, weight: .medium))
+        .font(.app(size: 11, weight: .medium))
         .foregroundColor(Color(.secondaryLabelColor))
         .padding(.horizontal, 8)
         .padding(.vertical, 4)

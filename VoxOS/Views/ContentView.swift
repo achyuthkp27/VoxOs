@@ -41,13 +41,17 @@ struct ContentView: View {
     @EnvironmentObject private var navigation: MainWindowNavigation
 
     var body: some View {
-        HStack(spacing: 0) {
+        HStack(spacing: 6) {
             AppSidebar(selectedView: $navigation.selectedView)
 
             detailContent
         }
         .frame(width: AppWindowLayout.width)
         .frame(minHeight: AppWindowLayout.minimumHeight)
+        // Liquid Glass reads the wallpaper and the system appearance; nothing is forced.
+        .glassWindowBackground()
+        // Forms and lists drop their opaque ground so the glass shows through everywhere.
+        .scrollContentBackground(.hidden)
         .onAppear {
             logger.notice("ContentView appeared")
         }
@@ -70,16 +74,7 @@ struct ContentView: View {
     }
 
     private var detailBackground: some View {
-        ZStack {
-            VisualEffectView(
-                material: .sidebar,
-                blendingMode: .behindWindow
-            )
-
-            AppTheme.Surface.window
-                .opacity(Self.detailBackgroundTintOpacity)
-        }
-        .ignoresSafeArea(.container, edges: .top)
+        Color.clear
     }
 
     @ViewBuilder
@@ -104,5 +99,21 @@ struct ContentView: View {
         case .license:
             LicenseManagementView()
         }
+    }
+}
+
+
+/// Pins the hosting NSWindow to an appearance so the title bar and SwiftUI content agree.
+private struct WindowAppearanceSetter: NSViewRepresentable {
+    let appearance: NSAppearance.Name
+
+    func makeNSView(context: Context) -> NSView {
+        let view = NSView()
+        DispatchQueue.main.async { view.window?.appearance = NSAppearance(named: appearance) }
+        return view
+    }
+
+    func updateNSView(_ nsView: NSView, context: Context) {
+        nsView.window?.appearance = NSAppearance(named: appearance)
     }
 }

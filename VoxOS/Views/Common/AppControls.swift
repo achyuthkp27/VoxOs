@@ -31,7 +31,7 @@ struct AppIconButton: View {
     var body: some View {
         Button(action: action) {
             Image(systemName: systemName)
-                .font(.system(size: iconSize, weight: .medium))
+                .font(.app(size: iconSize, weight: .medium))
                 .foregroundColor(isDisabled ? .secondary.opacity(0.45) : .primary.opacity(0.7))
                 .frame(width: size, height: size)
                 .background(
@@ -52,7 +52,7 @@ struct AppPanelHeader: View {
     var body: some View {
         HStack(spacing: 12) {
             Text(title)
-                .font(.headline)
+                .font(.app(.headline))
                 .fontWeight(.semibold)
                 .foregroundColor(.primary)
 
@@ -84,7 +84,7 @@ struct AppScreenHeader<Trailing: View>: View {
         HStack {
             HStack(spacing: 8) {
                 Text(title)
-                    .font(.system(size: 28, weight: .bold))
+                    .font(.app(size: 28, weight: .bold))
                     .foregroundColor(.primary)
 
                 if let infoMessage {

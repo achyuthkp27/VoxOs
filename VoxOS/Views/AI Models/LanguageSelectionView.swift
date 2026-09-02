@@ -100,7 +100,7 @@ struct LanguageSelectionView: View {
     private var languageSelectionSection: some View {
         VStack(alignment: .leading, spacing: 16) {
             Text("Transcription Language")
-                .font(.headline)
+                .font(.app(.headline))
 
             if transcriptionModelManager.currentTranscriptionModel != nil {
                 if hasLanguageChoices() {
@@ -128,20 +128,20 @@ struct LanguageSelectionView: View {
                         Text(
                             "Select a supported transcription language or locale. Automatic multilingual transcription is shown when available."
                         )
-                        .font(.caption)
+                        .font(.app(.caption))
                         .foregroundColor(.secondary)
                     }
                 } else {
                     // For English-only models, force set language to English
                     VStack(alignment: .leading, spacing: 8) {
                         Text("Language: English")
-                            .font(.subheadline)
+                            .font(.app(.subheadline))
                             .foregroundColor(.primary)
 
                         Text(
                             "This is an English-optimized model and only supports English transcription."
                         )
-                        .font(.caption)
+                        .font(.app(.caption))
                         .foregroundColor(.secondary)
                     }
                     .onAppear {
@@ -151,7 +151,7 @@ struct LanguageSelectionView: View {
                 }
             } else {
                 Text("No model selected")
-                    .font(.subheadline)
+                    .font(.app(.subheadline))
                     .foregroundColor(.secondary)
             }
         }
@@ -189,7 +189,7 @@ struct LanguageSelectionView: View {
                         HStack {
                             Text(String(format: String(localized: "Language: %@"), currentLanguageDisplayName()))
                             Image(systemName: "chevron.up.chevron.down")
-                                .font(.system(size: 10))
+                                .font(.app(size: 10, weight: .regular))
                         }
                     }
 

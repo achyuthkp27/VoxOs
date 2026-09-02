@@ -25,7 +25,7 @@ struct OnboardingHeroHeader: View {
     var body: some View {
         VStack(spacing: 16) {
             Image(systemName: systemImage)
-                .font(.system(size: 24, weight: .semibold))
+                .font(.app(size: 24, weight: .semibold))
                 .foregroundColor(AppTheme.Text.primary)
                 .frame(width: 56, height: 56)
                 .background(
@@ -35,14 +35,14 @@ struct OnboardingHeroHeader: View {
 
             VStack(spacing: 8) {
                 Text(LocalizedStringKey(title))
-                    .font(.system(size: 30, weight: .bold))
+                    .font(.app(size: 30, weight: .bold))
                     .foregroundColor(AppTheme.Text.primary)
                     .multilineTextAlignment(.center)
                     .lineLimit(2)
                     .fixedSize(horizontal: false, vertical: true)
 
                 Text(LocalizedStringKey(subtitle))
-                    .font(.system(size: 14))
+                    .font(.app(size: 14, weight: .regular))
                     .foregroundColor(AppTheme.Text.muted)
                     .multilineTextAlignment(.center)
                     .lineLimit(3)
@@ -113,7 +113,7 @@ struct OnboardingBottomBar: View {
         if let leadingTitle, let onLeading {
             Button(action: onLeading) {
                 Text(LocalizedStringKey(leadingTitle))
-                    .font(.system(size: 14, weight: .medium))
+                    .font(.app(size: 14, weight: .medium))
                     .foregroundColor(AppTheme.Action.secondaryForeground)
                     .frame(width: Metrics.controlButtonWidth, height: Metrics.buttonHeight)
                     .background(AppMaterialCardBackground(cornerRadius: AppTheme.Radius.control))
@@ -129,7 +129,7 @@ struct OnboardingBottomBar: View {
     private var primaryButton: some View {
         Button(action: onPrimary) {
             Text(LocalizedStringKey(primaryTitle))
-                .font(.system(size: 14, weight: .semibold))
+                .font(.app(size: 14, weight: .semibold))
                 .foregroundColor(
                     isPrimaryEnabled ? AppTheme.Action.primaryForeground : AppTheme.Action.disabledForeground
                 )
@@ -259,7 +259,7 @@ private struct SegmentedProgressRing: View {
             }
 
             Text(progress, format: .percent.precision(.fractionLength(0)))
-                .font(.system(size: 10, weight: .semibold))
+                .font(.app(size: 10, weight: .semibold))
                 .foregroundColor(AppTheme.Text.primary)
         }
         .frame(width: 46, height: 46)

@@ -8,7 +8,7 @@ struct DashboardIconGlyph: View {
 
     var body: some View {
         Image(systemName: systemName)
-            .font(.system(size: size, weight: .semibold))
+            .font(.app(size: size, weight: .semibold))
             .symbolRenderingMode(.monochrome)
             .foregroundStyle(color)
             .frame(width: frameSize, height: frameSize)

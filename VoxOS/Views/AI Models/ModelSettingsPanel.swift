@@ -47,7 +47,7 @@ private struct ModelSettingsTabBar: View {
                 } label: {
                     HStack(spacing: 8) {
                         Image(systemName: tab.systemImage)
-                            .font(.system(size: 13, weight: .semibold))
+                            .font(.app(size: 13, weight: .semibold))
                             .symbolRenderingMode(.hierarchical)
 
                         Text(LocalizedStringKey(tab.rawValue))
@@ -116,7 +116,7 @@ private struct WhisperPromptSettingsSection: View {
 
                 if promptLanguage != "auto", isEditing {
                     TextEditor(text: $draftPrompt)
-                        .font(.body)
+                        .font(.app(.body))
                         .padding(6)
                         .frame(height: 72)
                         .scrollContentBackground(.hidden)

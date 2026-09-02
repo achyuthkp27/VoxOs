@@ -32,7 +32,7 @@ private struct OnboardingContextAwarenessContent: View {
         ZStack {
             VStack(spacing: 18) {
                 Image(systemName: "sparkles.square.fill.on.square")
-                    .font(.system(size: 24, weight: .semibold))
+                    .font(.app(size: 24, weight: .semibold))
                     .foregroundColor(AppTheme.Text.primary)
                     .frame(width: 56, height: 56)
                     .background(
@@ -42,7 +42,7 @@ private struct OnboardingContextAwarenessContent: View {
 
                 VStack(spacing: 10) {
                     Text("VoxOS is context-aware.")
-                        .font(.system(size: 32, weight: .bold))
+                        .font(.app(size: 32, weight: .bold))
                         .foregroundColor(AppTheme.Text.primary)
                         .multilineTextAlignment(.center)
                         .lineLimit(2)
@@ -51,7 +51,7 @@ private struct OnboardingContextAwarenessContent: View {
                     Text(
                         "VoxOS automatically understands what you are working with and selects your preferred setup. You can always configure this by editing or creating new modes."
                     )
-                    .font(.system(size: 15))
+                    .font(.app(size: 15, weight: .regular))
                     .foregroundColor(AppTheme.Text.secondary)
                     .multilineTextAlignment(.center)
                     .lineLimit(4)
@@ -76,7 +76,7 @@ private struct OnboardingContextAwarenessContent: View {
 
     private var optionSwitchingText: some View {
         Text("Note: Press Option 1-9 during recording to switch modes manually.")
-            .font(.system(size: 13, weight: .medium))
+            .font(.app(size: 13, weight: .medium))
             .foregroundColor(AppTheme.Text.secondary)
             .multilineTextAlignment(.center)
             .fixedSize(horizontal: false, vertical: true)
@@ -146,11 +146,11 @@ private struct ContextAwarenessModePill: View {
     var body: some View {
         HStack(spacing: 8) {
             Image(systemName: model.systemImage)
-                .font(.system(size: 13, weight: .semibold))
+                .font(.app(size: 13, weight: .semibold))
                 .foregroundColor(AppTheme.Text.secondary)
 
             Text(LocalizedStringKey(model.title))
-                .font(.system(size: 13, weight: .semibold))
+                .font(.app(size: 13, weight: .semibold))
                 .foregroundColor(AppTheme.Text.primary)
                 .lineLimit(1)
         }
@@ -173,12 +173,12 @@ private struct ContextAwarenessModeHub: View {
     var body: some View {
         HStack(spacing: 8) {
             Image(systemName: "sparkles.square.fill.on.square")
-                .font(.system(size: 14, weight: .semibold))
+                .font(.app(size: 14, weight: .semibold))
                 .foregroundColor(AppTheme.Text.secondary)
                 .frame(width: 18)
 
             Text("VoxOS Modes")
-                .font(.system(size: 14, weight: .semibold))
+                .font(.app(size: 14, weight: .semibold))
                 .foregroundColor(AppTheme.Text.primary)
                 .lineLimit(1)
         }

@@ -12,7 +12,7 @@ struct DashboardProductivityCard: View {
         VStack(alignment: .leading, spacing: 18) {
             HStack(alignment: .center, spacing: 16) {
                 Text(period.chartTitle)
-                    .font(.system(size: 18, weight: .bold, design: .rounded))
+                    .font(.app(size: 18, weight: .bold))
                     .foregroundStyle(AppTheme.Text.primary)
                     .lineLimit(1)
                     .minimumScaleFactor(0.84)
@@ -21,7 +21,7 @@ struct DashboardProductivityCard: View {
 
                 HStack(spacing: 8) {
                     Text(statusText)
-                        .font(.system(size: 12, weight: .medium))
+                        .font(.app(size: 12, weight: .medium))
                         .foregroundStyle(AppTheme.Text.muted)
                         .lineLimit(1)
                         .minimumScaleFactor(0.86)
@@ -82,7 +82,7 @@ struct DashboardProductivitySummaryStrip: View {
                     )
 
                 Image(systemName: systemName)
-                    .font(.system(size: 17, weight: .semibold))
+                    .font(.app(size: 17, weight: .semibold))
                     .symbolRenderingMode(.monochrome)
                     .foregroundStyle(AppTheme.Text.secondary.opacity(0.86))
             }
@@ -91,13 +91,13 @@ struct DashboardProductivitySummaryStrip: View {
 
             VStack(alignment: .leading, spacing: 5) {
                 Text(title)
-                    .font(.system(size: 11, weight: .bold))
+                    .font(.app(size: 11, weight: .bold))
                     .foregroundStyle(AppTheme.Text.secondary)
                     .lineLimit(1)
                     .minimumScaleFactor(0.76)
 
                 Text(value)
-                    .font(.system(size: 23, weight: .bold, design: .rounded))
+                    .font(.app(size: 23, weight: .bold))
                     .foregroundStyle(AppTheme.Text.primary)
                     .lineLimit(1)
                     .minimumScaleFactor(0.66)
@@ -126,7 +126,7 @@ private struct DashboardStatsRefreshButton: View {
                         .transition(.opacity)
                 } else {
                     Image(systemName: "arrow.clockwise")
-                        .font(.system(size: 12, weight: .semibold))
+                        .font(.app(size: 12, weight: .semibold))
                         .foregroundStyle(AppTheme.Text.primary.opacity(0.72))
                         .transition(.opacity)
                 }
@@ -273,7 +273,7 @@ private struct DashboardProductivityYAxis: View {
             }
 
             Text("Words")
-                .font(.system(size: 10, weight: .semibold))
+                .font(.app(size: 10, weight: .semibold))
                 .foregroundStyle(AppTheme.Text.secondary.opacity(0.82))
                 .lineLimit(1)
                 .frame(height: 30, alignment: .topLeading)
@@ -283,7 +283,7 @@ private struct DashboardProductivityYAxis: View {
 
     private func yAxisLabel(_ label: Int) -> some View {
         Text(Formatters.formattedAxisValue(label))
-            .font(.system(size: 11, weight: .medium))
+            .font(.app(size: 11, weight: .medium))
             .foregroundStyle(AppTheme.Text.secondary)
             .lineLimit(1)
     }

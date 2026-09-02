@@ -72,7 +72,7 @@ private struct MessageBubble: View {
 
             VStack(alignment: isEnhanced ? .leading : .trailing, spacing: 4) {
                 Text(label)
-                    .font(.system(size: 9, weight: .medium))
+                    .font(.app(size: 9, weight: .medium))
                     .foregroundColor(AppTheme.Text.muted)
                     .padding(.horizontal, 12)
 

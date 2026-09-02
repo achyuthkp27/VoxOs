@@ -24,11 +24,11 @@ struct VoxOSRefineModelCardView: View {
     private var headerSection: some View {
         HStack(alignment: .firstTextBaseline) {
             Text(VoxOSRefineService.modelName)
-                .font(.system(size: 14, weight: .semibold))
+                .font(.app(size: 14, weight: .semibold))
                 .foregroundStyle(Color(.labelColor))
 
             Text("New")
-                .font(.system(size: 10, weight: .medium))
+                .font(.app(size: 10, weight: .medium))
                 .foregroundColor(.black)
                 .padding(.horizontal, 6)
                 .padding(.vertical, 2)
@@ -48,7 +48,7 @@ struct VoxOSRefineModelCardView: View {
                 Image(systemName: "internaldrive")
             }
         }
-        .font(.system(size: 11))
+        .font(.app(size: 11, weight: .regular))
         .foregroundColor(Color(.secondaryLabelColor))
         .lineLimit(1)
     }
@@ -56,14 +56,14 @@ struct VoxOSRefineModelCardView: View {
     private var descriptionSection: some View {
         VStack(alignment: .leading, spacing: 4) {
             Text("Cleans up raw transcripts. Processing stays on your Mac.")
-                .font(.system(size: 11))
+                .font(.app(size: 11, weight: .regular))
                 .foregroundColor(Color(.secondaryLabelColor))
                 .lineLimit(2)
                 .fixedSize(horizontal: false, vertical: true)
 
             if let unavailableDescription = service.unavailableDescription {
                 Text(unavailableDescription)
-                    .font(.system(size: 11, weight: .medium))
+                    .font(.app(size: 11, weight: .medium))
                     .foregroundStyle(AppTheme.Status.warningStrong)
                     .fixedSize(horizontal: false, vertical: true)
             }
@@ -87,7 +87,7 @@ struct VoxOSRefineModelCardView: View {
                     )
                     .fontDesign(.monospaced)
                 }
-                .font(.system(size: 11, weight: .medium))
+                .font(.app(size: 11, weight: .medium))
                 .foregroundColor(Color(.secondaryLabelColor))
 
                 ProgressView(value: service.downloadProgress)
@@ -102,7 +102,7 @@ struct VoxOSRefineModelCardView: View {
 
         if let downloadError = service.downloadError {
             Text(downloadError)
-                .font(.system(size: 11, weight: .medium))
+                .font(.app(size: 11, weight: .medium))
                 .foregroundStyle(AppTheme.Status.error)
                 .fixedSize(horizontal: false, vertical: true)
                 .padding(.top, 4)
@@ -141,7 +141,7 @@ struct VoxOSRefineModelCardView: View {
                         }
                     } label: {
                         Image(systemName: "ellipsis.circle")
-                            .font(.system(size: 14))
+                            .font(.app(size: 14, weight: .regular))
                     }
                     .menuStyle(.borderlessButton)
                     .menuIndicator(.hidden)
@@ -158,7 +158,7 @@ struct VoxOSRefineModelCardView: View {
                             }
                             Image(systemName: "arrow.down.circle")
                         }
-                        .font(.system(size: 12, weight: .medium))
+                        .font(.app(size: 12, weight: .medium))
                         .foregroundColor(.white)
                         .padding(.horizontal, 12)
                         .padding(.vertical, 6)

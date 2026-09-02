@@ -164,7 +164,7 @@ struct AudioSetupView: View {
 
                 if !isAvailable {
                     Text("Unavailable")
-                        .font(.caption)
+                        .font(.app(.caption))
                         .foregroundStyle(.secondary)
                 }
             }
@@ -173,7 +173,7 @@ struct AudioSetupView: View {
 
             if isActive {
                 Label("Active", systemImage: "checkmark.circle.fill")
-                    .font(.caption)
+                    .font(.app(.caption))
                     .foregroundStyle(.secondary)
                     .labelStyle(.titleAndIcon)
             }

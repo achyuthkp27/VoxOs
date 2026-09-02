@@ -114,7 +114,7 @@ struct PromptEditorView: View {
                 dismissPanel()
             } label: {
                 Image(systemName: "chevron.left")
-                    .font(.system(size: 14, weight: .semibold))
+                    .font(.app(size: 14, weight: .semibold))
                     .foregroundColor(.secondary)
                     .frame(width: 28, height: 28)
                     .background(AppTheme.Surface.card)
@@ -126,7 +126,7 @@ struct PromptEditorView: View {
 
             TextField("Prompt name", text: $title)
                 .textFieldStyle(.plain)
-                .font(.system(size: 16, weight: .semibold))
+                .font(.app(size: 16, weight: .semibold))
 
             Spacer()
         }
@@ -164,7 +164,7 @@ struct PromptEditorView: View {
             }
         } label: {
             Label("Template", systemImage: "sparkles")
-                .font(.system(size: 13, weight: .medium))
+                .font(.app(size: 13, weight: .medium))
                 .foregroundColor(.secondary)
         }
         .menuStyle(.borderlessButton)

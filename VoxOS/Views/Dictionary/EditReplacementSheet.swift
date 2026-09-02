@@ -45,7 +45,7 @@ struct EditReplacementSheet: View {
             Spacer()
 
             Text("Edit Word Replacement")
-                .font(.headline)
+                .font(.app(.headline))
 
             Spacer()
 
@@ -72,7 +72,7 @@ struct EditReplacementSheet: View {
 
     private var descriptionSection: some View {
         Text("Update the word or phrase that should be automatically replaced.")
-            .font(.subheadline)
+            .font(.app(.subheadline))
             .foregroundColor(.secondary)
             .frame(maxWidth: .infinity, alignment: .leading)
             .padding(.horizontal)
@@ -85,9 +85,9 @@ struct EditReplacementSheet: View {
             VStack(alignment: .leading, spacing: 6) {
                 HStack {
                     Text("Original Text")
-                        .font(.headline)
+                        .font(.app(.headline))
                     Text("Required")
-                        .font(.caption)
+                        .font(.app(.caption))
                         .foregroundColor(.secondary)
                 }
                 TextField("Enter word or phrase to replace (use commas for multiple)", text: $originalWord)
@@ -100,13 +100,13 @@ struct EditReplacementSheet: View {
             VStack(alignment: .leading, spacing: 6) {
                 HStack {
                     Text("Replacement Text")
-                        .font(.headline)
+                        .font(.app(.headline))
                     Text("Required")
-                        .font(.caption)
+                        .font(.app(.caption))
                         .foregroundColor(.secondary)
                 }
                 TextEditor(text: $replacementWord)
-                    .font(.body)
+                    .font(.app(.body))
                     .frame(height: 100)
                     .padding(8)
                     .background(Color(.textBackgroundColor))

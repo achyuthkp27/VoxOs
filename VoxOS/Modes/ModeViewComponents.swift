@@ -8,7 +8,7 @@ struct VoxOSButton: View {
     var body: some View {
         Button(action: action) {
             Text(title)
-                .font(.headline)
+                .font(.app(.headline))
                 .foregroundColor(.white)
                 .frame(maxWidth: .infinity)
                 .padding(.vertical, 12)
@@ -28,11 +28,11 @@ struct ModeEmptyStateView: View {
     var body: some View {
         VStack(spacing: 16) {
             Image(systemName: "bolt.circle.fill")
-                .font(.system(size: 48))
+                .font(.app(size: 48, weight: .regular))
                 .foregroundColor(.secondary)
 
             Text("No Modes")
-                .font(.title2)
+                .font(.app(.title2))
                 .fontWeight(.semibold)
 
             Text("Add customized modes for different contexts")
@@ -72,12 +72,12 @@ struct DefaultModeIndicator: View {
     var body: some View {
         HStack(spacing: 5) {
             Image(systemName: "checkmark.seal.fill")
-                .font(.system(size: 11, weight: .semibold))
+                .font(.app(size: 11, weight: .semibold))
                 .symbolRenderingMode(.hierarchical)
                 .foregroundStyle(.primary)
 
             Text("Default")
-                .font(.system(size: 11, weight: .semibold))
+                .font(.app(size: 11, weight: .semibold))
                 .foregroundStyle(.secondary)
                 .lineLimit(1)
         }
@@ -181,7 +181,7 @@ struct ConfigurationRow: View {
             onEditConfig(config)
         } label: {
             Text("Edit")
-                .font(.caption)
+                .font(.app(.caption))
                 .foregroundStyle(.secondary)
                 .padding(.horizontal, 6)
                 .padding(.vertical, 2)
@@ -213,7 +213,7 @@ struct ConfigurationRow: View {
 
                     VStack(alignment: .leading, spacing: 3) {
                         Text(config.name)
-                            .font(.system(size: 15, weight: .semibold))
+                            .font(.app(size: 15, weight: .semibold))
                             .lineLimit(1)
                             .truncationMode(.tail)
 
@@ -221,18 +221,18 @@ struct ConfigurationRow: View {
                             if appCount > 0 {
                                 HStack(spacing: 4) {
                                     Image(systemName: "app.fill")
-                                        .font(.system(size: 10))
+                                        .font(.app(size: 10, weight: .regular))
                                     Text(appText)
-                                        .font(.caption2)
+                                        .font(.app(.caption2))
                                 }
                             }
 
                             if websiteCount > 0 {
                                 HStack(spacing: 4) {
                                     Image(systemName: "globe")
-                                        .font(.system(size: 10))
+                                        .font(.app(size: 10, weight: .regular))
                                     Text(websiteText)
-                                        .font(.caption2)
+                                        .font(.app(.caption2))
                                 }
                             }
                         }
@@ -280,9 +280,9 @@ struct ConfigurationRow: View {
                 let modelMetadata = transcriptionModelMetadata
                 HStack(spacing: 4) {
                     Image(systemName: "waveform")
-                        .font(.system(size: 10))
+                        .font(.app(size: 10, weight: .regular))
                     Text(modelMetadata.label)
-                        .font(.caption)
+                        .font(.app(.caption))
                 }
                 .foregroundStyle(modelMetadata.isWarning ? Color.white : Color.primary)
                 .padding(.horizontal, 6)
@@ -305,9 +305,9 @@ struct ConfigurationRow: View {
                 if let language = selectedLanguage, language != "Default" {
                     HStack(spacing: 4) {
                         Image(systemName: "globe")
-                            .font(.system(size: 10))
+                            .font(.app(size: 10, weight: .regular))
                         Text(language)
-                            .font(.caption)
+                            .font(.app(.caption))
                     }
                     .padding(.horizontal, 6)
                     .padding(.vertical, 2)
@@ -328,9 +328,9 @@ struct ConfigurationRow: View {
                 {
                     HStack(spacing: 4) {
                         Image(systemName: "cpu")
-                            .font(.system(size: 10))
+                            .font(.app(size: 10, weight: .regular))
                         Text(modelName.count > 20 ? String(modelName.prefix(18)) + "..." : modelName)
-                            .font(.caption)
+                            .font(.app(.caption))
                     }
                     .padding(.horizontal, 6)
                     .padding(.vertical, 2)
@@ -347,9 +347,9 @@ struct ConfigurationRow: View {
                 if config.outputMode != .paste {
                     HStack(spacing: 4) {
                         Image(systemName: config.outputMode.iconName)
-                            .font(.system(size: 10))
+                            .font(.app(size: 10, weight: .regular))
                         Text(config.outputMode.displayName)
-                            .font(.caption)
+                            .font(.app(.caption))
                     }
                     .padding(.horizontal, 6)
                     .padding(.vertical, 2)
@@ -366,9 +366,9 @@ struct ConfigurationRow: View {
                 if config.outputMode == .paste && config.autoSendKey.isEnabled {
                     HStack(spacing: 4) {
                         Image(systemName: "keyboard")
-                            .font(.system(size: 10))
+                            .font(.app(size: 10, weight: .regular))
                         Text(config.autoSendKey.displayName)
-                            .font(.caption)
+                            .font(.app(.caption))
                     }
                     .padding(.horizontal, 6)
                     .padding(.vertical, 2)
@@ -384,13 +384,13 @@ struct ConfigurationRow: View {
                 if config.isAIEnhancementEnabled {
                     HStack(spacing: 4) {
                         Image(systemName: "sparkles")
-                            .font(.system(size: 10))
+                            .font(.app(size: 10, weight: .regular))
                         Text(
                             config.selectedAIProvider == AIProvider.voxOSRefine.rawValue
                                 ? VoxOSRefineService.providerName
                                 : selectedPrompt?.title ?? "AI"
                         )
-                            .font(.caption)
+                            .font(.app(.caption))
                     }
                     .padding(.horizontal, 6)
                     .padding(.vertical, 2)
@@ -448,7 +448,7 @@ struct ModeAppIcon: View {
                 .frame(width: 20, height: 20)
         } else {
             Image(systemName: "app.fill")
-                .font(.system(size: 14))
+                .font(.app(size: 14, weight: .regular))
                 .foregroundColor(.secondary)
                 .frame(width: 20, height: 20)
         }
@@ -469,7 +469,7 @@ struct AppGridItem: View {
                     .cornerRadius(8)
                     .shadow(color: Color(NSColor.shadowColor).opacity(0.1), radius: 2, x: 0, y: 1)
                 Text(app.name)
-                    .font(.system(size: 10))
+                    .font(.app(size: 10, weight: .regular))
                     .lineLimit(2)
                     .multilineTextAlignment(.center)
                     .frame(height: 28)

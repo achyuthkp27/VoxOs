@@ -63,14 +63,14 @@ struct ProviderDetailPanel: View {
             )
 
             Text(descriptor.displayName)
-                .font(.headline)
+                .font(.app(.headline))
                 .fontWeight(.semibold)
 
             Spacer()
 
             Button(action: onClose) {
                 Image(systemName: "xmark")
-                    .font(.system(size: 14, weight: .medium))
+                    .font(.app(size: 14, weight: .medium))
                     .foregroundStyle(.secondary)
                     .padding(6)
                     .background(AppTheme.Surface.card)
@@ -103,14 +103,14 @@ struct ProviderDetailPanel: View {
         if let verificationMessage {
             VStack(alignment: .leading, spacing: 3) {
                 Text(verificationMessage)
-                    .font(.caption)
+                    .font(.app(.caption))
                     .fontWeight(.medium)
                     .foregroundStyle(verificationSucceeded ? AppTheme.Status.positive : AppTheme.Status.error)
                     .fixedSize(horizontal: false, vertical: true)
 
                 if let verificationDetailMessage, !verificationSucceeded {
                     Text(verificationDetailMessage)
-                        .font(.caption)
+                        .font(.app(.caption))
                         .foregroundStyle(AppTheme.Status.error.opacity(0.82))
                         .fixedSize(horizontal: false, vertical: true)
                 }
@@ -124,7 +124,7 @@ struct ProviderDetailPanel: View {
 
             VStack(alignment: .leading, spacing: 3) {
                 Text("Key verified")
-                    .font(.system(size: 13, weight: .semibold))
+                    .font(.app(size: 13, weight: .semibold))
                     .foregroundStyle(.primary)
 
                 if let obfuscatedKey {
@@ -141,7 +141,7 @@ struct ProviderDetailPanel: View {
                 isShowingRemoveAPIKeyConfirmation = true
             } label: {
                 Image(systemName: "xmark.circle.fill")
-                    .font(.system(size: 13, weight: .semibold))
+                    .font(.app(size: 13, weight: .semibold))
                     .symbolRenderingMode(.hierarchical)
                     .foregroundStyle(.secondary)
             }
@@ -171,7 +171,7 @@ struct ProviderDetailPanel: View {
 
                 VStack(alignment: .leading, spacing: 3) {
                     Text("API Key")
-                        .font(.system(size: 13, weight: .semibold))
+                        .font(.app(size: 13, weight: .semibold))
                         .foregroundStyle(.primary)
                 }
             }
@@ -179,7 +179,7 @@ struct ProviderDetailPanel: View {
             HStack(spacing: 8) {
                 SecureField("Paste API key", text: $apiKey)
                     .textFieldStyle(.roundedBorder)
-                    .font(.system(size: 12))
+                    .font(.app(size: 12, weight: .regular))
                     .disabled(isVerifying)
                     .onChange(of: apiKey) { _, newValue in
                         guard !newValue.isEmpty else { return }
@@ -199,7 +199,7 @@ struct ProviderDetailPanel: View {
                         }
                         Text(isVerifying ? LocalizedStringKey("Verifying") : LocalizedStringKey("Verify"))
                     }
-                    .font(.system(size: 12, weight: .medium))
+                    .font(.app(size: 12, weight: .medium))
                 }
                 .buttonStyle(.bordered)
                 .controlSize(.small)
@@ -211,13 +211,13 @@ struct ProviderDetailPanel: View {
                 Link(destination: consoleURL) {
                     HStack(spacing: 7) {
                         Image(systemName: "link")
-                            .font(.system(size: 11, weight: .semibold))
+                            .font(.app(size: 11, weight: .semibold))
 
                         Text(String(format: String(localized: "Get %@ API Key"), descriptor.displayName))
-                            .font(.system(size: 12, weight: .medium))
+                            .font(.app(size: 12, weight: .medium))
 
                         Image(systemName: "arrow.up.right.square")
-                            .font(.system(size: 11, weight: .medium))
+                            .font(.app(size: 11, weight: .medium))
                             .foregroundStyle(.secondary)
                     }
                     .foregroundStyle(.primary)
@@ -236,7 +236,7 @@ struct ProviderDetailPanel: View {
 
     private func providerDetailIcon(_ systemName: String) -> some View {
         Image(systemName: systemName)
-            .font(.system(size: 14, weight: .semibold))
+            .font(.app(size: 14, weight: .semibold))
             .foregroundStyle(.primary)
             .frame(width: 30, height: 30)
             .background(
@@ -278,7 +278,7 @@ struct ProviderDetailPanel: View {
             if models.count > 8 {
                 Divider()
                 Text("More transcription models available")
-                    .font(.caption)
+                    .font(.app(.caption))
                     .foregroundStyle(.secondary)
                     .padding(.vertical, 8)
             }
@@ -294,7 +294,7 @@ struct ProviderDetailPanel: View {
                 if provider == .openRouter {
                     HStack(spacing: 12) {
                         Text(openRouterModelAvailabilityText(for: models.count))
-                            .font(.system(size: 12, weight: .medium))
+                            .font(.app(size: 12, weight: .medium))
                             .foregroundStyle(models.isEmpty ? .secondary : .primary)
 
                         Spacer()
@@ -313,7 +313,7 @@ struct ProviderDetailPanel: View {
                                     isRefreshingOpenRouterModels
                                         ? LocalizedStringKey("Refreshing") : LocalizedStringKey("Refresh"))
                             }
-                            .font(.system(size: 12, weight: .medium))
+                            .font(.app(size: 12, weight: .medium))
                         }
                         .buttonStyle(.bordered)
                         .controlSize(.small)
@@ -323,7 +323,7 @@ struct ProviderDetailPanel: View {
                     .padding(.vertical, 8)
                 } else if models.isEmpty {
                     Text("No models listed.")
-                        .font(.caption)
+                        .font(.app(.caption))
                         .foregroundStyle(.secondary)
                         .padding(.vertical, 8)
                 } else {
@@ -343,7 +343,7 @@ struct ProviderDetailPanel: View {
                     if models.count > 8 {
                         Divider()
                         Text("More enhancement models available")
-                            .font(.caption)
+                            .font(.app(.caption))
                             .foregroundStyle(.secondary)
                             .padding(.vertical, 8)
                     }
@@ -367,12 +367,12 @@ struct ProviderDetailPanel: View {
 
             VStack(alignment: .leading, spacing: 3) {
                 Text(title)
-                    .font(.system(size: 12, weight: .medium))
+                    .font(.app(size: 12, weight: .medium))
                     .lineLimit(1)
 
                 if let subtitle {
                     Text(subtitle)
-                        .font(.caption)
+                        .font(.app(.caption))
                         .foregroundStyle(.secondary)
                         .lineLimit(1)
                 }
@@ -382,7 +382,7 @@ struct ProviderDetailPanel: View {
 
             if let trailing {
                 Text(trailing)
-                    .font(.caption)
+                    .font(.app(.caption))
                     .foregroundStyle(.secondary)
             }
         }
@@ -391,7 +391,7 @@ struct ProviderDetailPanel: View {
 
     private func modelTypeIcon(_ systemName: String) -> some View {
         Image(systemName: systemName)
-            .font(.system(size: 11, weight: .semibold))
+            .font(.app(size: 11, weight: .semibold))
             .foregroundStyle(.primary)
             .frame(width: 24, height: 24)
             .background(

@@ -9,15 +9,15 @@ struct CompactHeroSection: View {
     var body: some View {
         VStack(spacing: 16) {
             Image(systemName: icon)
-                .font(.system(size: 28))
+                .font(.app(size: 28, weight: .regular))
                 .foregroundStyle(AppTheme.Status.infoStrong)
                 .symbolRenderingMode(.hierarchical)
 
             VStack(spacing: 6) {
                 Text(title)
-                    .font(.system(size: 22, weight: .bold))
+                    .font(.app(size: 22, weight: .bold))
                 Text(description)
-                    .font(.system(size: 14))
+                    .font(.app(size: 14, weight: .regular))
                     .foregroundStyle(.secondary)
                     .multilineTextAlignment(.center)
                     .frame(maxWidth: maxDescriptionWidth)

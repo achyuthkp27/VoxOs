@@ -117,11 +117,11 @@ struct TranscriptionInfoPanel: View {
     private var aiRequestTokenEstimate: some View {
         HStack(spacing: 6) {
             Image(systemName: "number")
-                .font(.system(size: 11, weight: .medium))
+                .font(.app(size: 11, weight: .medium))
                 .foregroundColor(.secondary)
 
             Text("Around \(estimatedAIRequestTokenCount.formatted()) tokens")
-                .font(.system(size: 11, weight: .medium))
+                .font(.app(size: 11, weight: .medium))
                 .foregroundColor(.secondary)
                 .textSelection(.enabled)
         }
@@ -151,7 +151,7 @@ struct TranscriptionInfoPanel: View {
     private func requestMessageBlock(title: LocalizedStringKey, message: String) -> some View {
         VStack(alignment: .leading, spacing: 6) {
             Text(title)
-                .font(.system(size: 11, weight: .semibold))
+                .font(.app(size: 11, weight: .semibold))
                 .foregroundColor(.secondary)
             Text(message)
                 .font(.system(size: 11, weight: .regular, design: .monospaced))
@@ -164,18 +164,18 @@ struct TranscriptionInfoPanel: View {
     private func metadataRow(icon: String, label: LocalizedStringKey, value: String) -> some View {
         HStack(spacing: 8) {
             Image(systemName: icon)
-                .font(.system(size: 11, weight: .medium))
+                .font(.app(size: 11, weight: .medium))
                 .foregroundColor(.secondary)
                 .frame(width: 20, height: 20)
 
             Text(label)
-                .font(.system(size: 12, weight: .medium))
+                .font(.app(size: 12, weight: .medium))
                 .foregroundColor(.secondary)
 
             Spacer(minLength: 0)
 
             Text(value)
-                .font(.system(size: 12, weight: .semibold))
+                .font(.app(size: 12, weight: .semibold))
                 .foregroundColor(.primary)
                 .lineLimit(1)
         }

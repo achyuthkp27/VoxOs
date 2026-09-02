@@ -168,7 +168,7 @@ struct DictionaryQuickAddView: View {
             inputArea
             if let errorMessage {
                 Text(errorMessage)
-                    .font(.caption)
+                    .font(.app(.caption))
                     .foregroundColor(AppTheme.Status.error)
                     .padding(.horizontal, 16)
                     .padding(.bottom, 6)
@@ -216,9 +216,9 @@ struct DictionaryQuickAddView: View {
                 } label: {
                     HStack(spacing: 5) {
                         Image(systemName: m.icon)
-                            .font(.system(size: 10, weight: .medium))
+                            .font(.app(size: 10, weight: .medium))
                         Text(m.label)
-                            .font(.system(size: 12, weight: .medium))
+                            .font(.app(size: 12, weight: .medium))
                     }
                     .foregroundStyle(mode == m ? .primary : .secondary)
                     .padding(.horizontal, 10)
@@ -250,11 +250,11 @@ struct DictionaryQuickAddView: View {
     private var vocabularyInput: some View {
         HStack(spacing: 11) {
             Image(systemName: "character.book.closed.fill")
-                .font(.system(size: 14))
+                .font(.app(size: 14, weight: .regular))
                 .foregroundStyle(.secondary)
             TextField("", text: $wordInput, prompt: Text("e.g. Prakash, VoxOS").foregroundColor(.secondary))
                 .textFieldStyle(.roundedBorder)
-                .font(.system(size: 14))
+                .font(.app(size: 14, weight: .regular))
                 .focused($focusedField, equals: .word)
                 .onSubmit { submitVocabulary() }
         }
@@ -266,19 +266,19 @@ struct DictionaryQuickAddView: View {
         VStack(spacing: 8) {
             HStack(spacing: 10) {
                 Text("Replace")
-                    .font(.system(size: 12, weight: .medium))
+                    .font(.app(size: 12, weight: .medium))
                     .foregroundStyle(.secondary)
                     .frame(width: 56, alignment: .trailing)
                 TextField("", text: $originalInput, prompt: Text("e.g. my email, my mail").foregroundColor(.secondary))
                     .textFieldStyle(.roundedBorder)
-                    .font(.system(size: 14))
+                    .font(.app(size: 14, weight: .regular))
                     .focused($focusedField, equals: .original)
                     .onSubmit { focusedField = .replacement }
             }
 
             HStack(spacing: 10) {
                 Text("With")
-                    .font(.system(size: 12, weight: .medium))
+                    .font(.app(size: 12, weight: .medium))
                     .foregroundStyle(.secondary)
                     .frame(width: 56, alignment: .trailing)
                 TextField(
@@ -286,7 +286,7 @@ struct DictionaryQuickAddView: View {
                     prompt: Text("e.g. support@tryvoiceink.com").foregroundColor(.secondary)
                 )
                 .textFieldStyle(.roundedBorder)
-                .font(.system(size: 14))
+                .font(.app(size: 14, weight: .regular))
                 .focused($focusedField, equals: .replacement)
                 .onSubmit { submitReplacement() }
             }
@@ -304,13 +304,13 @@ struct DictionaryQuickAddView: View {
                 HStack(spacing: 4) {
                     KeyHint("↵")
                     Text("Add")
-                        .font(.system(size: 11))
+                        .font(.app(size: 11, weight: .regular))
                         .foregroundStyle(.tertiary)
                 }
                 HStack(spacing: 4) {
                     KeyHint("esc")
                     Text("Dismiss")
-                        .font(.system(size: 11))
+                        .font(.app(size: 11, weight: .regular))
                         .foregroundStyle(.tertiary)
                 }
             }
@@ -355,7 +355,7 @@ private struct KeyHint: View {
 
     var body: some View {
         Text(label)
-            .font(.system(size: 10, weight: .medium))
+            .font(.app(size: 10, weight: .medium))
             .foregroundStyle(.secondary)
             .padding(.horizontal, 5)
             .padding(.vertical, 2)

@@ -127,18 +127,18 @@ struct ModeView: View {
 
                                     VStack(spacing: 16) {
                                         Image(systemName: "square.grid.2x2.fill")
-                                            .font(.system(size: 48, weight: .regular))
+                                            .font(.app(size: 48, weight: .regular))
                                             .foregroundColor(.secondary.opacity(0.6))
 
                                         VStack(spacing: 8) {
                                             Text("Create your first mode")
-                                                .font(.system(size: 20, weight: .medium))
+                                                .font(.app(size: 20, weight: .medium))
                                                 .foregroundColor(.primary)
 
                                             Text(
                                                 "Set how VoxOS transcribes and formats your speech, then start dictating in any app."
                                             )
-                                            .font(.system(size: 14))
+                                            .font(.app(size: 14, weight: .regular))
                                             .foregroundColor(.secondary)
                                             .multilineTextAlignment(.center)
                                             .lineSpacing(2)
@@ -215,7 +215,7 @@ struct SectionHeader: View {
 
     var body: some View {
         Text(title)
-            .font(.system(size: 16, weight: .bold))
+            .font(.app(size: 16, weight: .bold))
             .frame(maxWidth: .infinity, alignment: .leading)
             .padding(.bottom, 8)
     }

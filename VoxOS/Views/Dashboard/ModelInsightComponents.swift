@@ -11,9 +11,9 @@ struct ModelDetailActionLabel: View {
                 .lineLimit(1)
 
             Image(systemName: icon)
-                .font(.system(size: 10, weight: .bold))
+                .font(.app(size: 10, weight: .bold))
         }
-        .font(.system(size: 12, weight: .semibold))
+        .font(.app(size: 12, weight: .semibold))
         .foregroundStyle(AppTheme.Text.secondary)
         .padding(.horizontal, 8)
         .frame(height: 28)
@@ -38,7 +38,7 @@ struct InsightPeriodPicker: View {
                             Spacer()
 
                             Image(systemName: "checkmark")
-                                .font(.system(size: 11, weight: .semibold))
+                                .font(.app(size: 11, weight: .semibold))
                         }
                     }
                 }
@@ -46,17 +46,17 @@ struct InsightPeriodPicker: View {
         } label: {
             HStack(spacing: 7) {
                 Image(systemName: "calendar")
-                    .font(.system(size: 12, weight: .medium))
+                    .font(.app(size: 12, weight: .medium))
                     .foregroundStyle(AppTheme.Text.secondary.opacity(0.86))
 
                 Text(selection.pickerTitle)
-                    .font(.system(size: 12, weight: .semibold))
+                    .font(.app(size: 12, weight: .semibold))
                     .foregroundStyle(AppTheme.Text.primary)
                     .lineLimit(1)
                     .minimumScaleFactor(0.82)
 
                 Image(systemName: "chevron.down")
-                    .font(.system(size: 9, weight: .bold))
+                    .font(.app(size: 9, weight: .bold))
                     .foregroundStyle(AppTheme.Text.secondary.opacity(0.70))
             }
             .padding(.leading, 11)
@@ -94,12 +94,12 @@ struct ModelActionLabel: View {
     var body: some View {
         HStack(spacing: 7) {
             Image(systemName: icon)
-                .font(.system(size: 12, weight: .semibold))
+                .font(.app(size: 12, weight: .semibold))
 
             Text(title)
                 .lineLimit(1)
         }
-        .font(.system(size: 12, weight: .semibold))
+        .font(.app(size: 12, weight: .semibold))
         .foregroundStyle(isPrimary ? Color.white : AppTheme.Text.primary)
         .padding(.horizontal, isPrimary ? 14 : 12)
         .frame(height: 34)
@@ -122,11 +122,11 @@ struct InsightEmptyState: View {
     var body: some View {
         HStack(spacing: 8) {
             Image(systemName: icon)
-                .font(.system(size: 12, weight: .semibold))
+                .font(.app(size: 12, weight: .semibold))
                 .foregroundStyle(AppTheme.Text.secondary)
 
             Text(title)
-                .font(.system(size: 12, weight: .medium))
+                .font(.app(size: 12, weight: .medium))
                 .foregroundStyle(AppTheme.Text.secondary)
                 .lineLimit(1)
         }
@@ -143,7 +143,7 @@ struct ModelPreviewCardHeader: View {
     var body: some View {
         HStack(alignment: .center, spacing: 8) {
             Text(title)
-                .font(.system(size: 18, weight: .bold, design: .rounded))
+                .font(.app(size: 18, weight: .bold))
                 .foregroundStyle(AppTheme.Text.primary)
                 .lineLimit(1)
                 .minimumScaleFactor(0.84)
@@ -255,7 +255,7 @@ private struct ModelPreviewColumn: View {
                     .frame(width: valueColumnWidth, alignment: .trailing)
                     .padding(.trailing, 4)
             }
-            .font(.system(size: 11, weight: .semibold))
+            .font(.app(size: 11, weight: .semibold))
             .foregroundStyle(AppTheme.Text.secondary)
             .lineLimit(1)
 
@@ -282,7 +282,7 @@ private struct ModelPreviewRowView: View {
             ModelProviderIcon(modelName: row.name, kind: row.kind, size: 22)
 
             Text(row.name)
-                .font(.system(size: 12, weight: .semibold))
+                .font(.app(size: 12, weight: .semibold))
                 .foregroundStyle(AppTheme.Text.primary)
                 .lineLimit(1)
                 .minimumScaleFactor(0.76)

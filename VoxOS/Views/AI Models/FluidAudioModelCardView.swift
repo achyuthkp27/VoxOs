@@ -37,7 +37,7 @@ struct FluidAudioModelCardView: View {
     private var headerSection: some View {
         HStack(alignment: .firstTextBaseline) {
             Text(model.displayName)
-                .font(.system(size: 13, weight: .semibold))
+                .font(.app(size: 13, weight: .semibold))
                 .foregroundColor(Color(.labelColor))
 
             Spacer()
@@ -59,14 +59,14 @@ struct FluidAudioModelCardView: View {
             }
             .fixedSize(horizontal: true, vertical: false)
         }
-        .font(.system(size: 11))
+        .font(.app(size: 11, weight: .regular))
         .foregroundColor(Color(.secondaryLabelColor))
         .lineLimit(1)
     }
 
     private var descriptionSection: some View {
         Text(model.description)
-            .font(.system(size: 11))
+            .font(.app(size: 11, weight: .regular))
             .foregroundColor(Color(.secondaryLabelColor))
             .lineLimit(2)
             .fixedSize(horizontal: false, vertical: true)
@@ -92,7 +92,7 @@ struct FluidAudioModelCardView: View {
                         Text(status.fractionCompleted, format: .percent.precision(.fractionLength(0)))
                             .fontDesign(.monospaced)
                     }
-                    .font(.system(size: 11, weight: .medium))
+                    .font(.app(size: 11, weight: .medium))
                     .foregroundColor(Color(.secondaryLabelColor))
 
                     ProgressView(value: status.fractionCompleted)
@@ -119,7 +119,7 @@ struct FluidAudioModelCardView: View {
                         Text(LocalizedStringKey(isDownloading ? "Downloading..." : "Download"))
                         Image(systemName: "arrow.down.circle")
                     }
-                    .font(.system(size: 12, weight: .medium))
+                    .font(.app(size: 12, weight: .medium))
                     .foregroundColor(.white)
                     .padding(.horizontal, 12)
                     .padding(.vertical, 6)
@@ -145,7 +145,7 @@ struct FluidAudioModelCardView: View {
 
                 } label: {
                     Image(systemName: "ellipsis.circle")
-                        .font(.system(size: 14))
+                        .font(.app(size: 14, weight: .regular))
                 }
                 .menuStyle(.borderlessButton)
                 .menuIndicator(.hidden)

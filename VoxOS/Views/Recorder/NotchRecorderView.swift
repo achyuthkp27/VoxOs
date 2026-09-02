@@ -71,12 +71,12 @@ struct NotchRecorderView<S: RecorderStateProvider & ObservableObject>: View {
 
     // MARK: - Layout Constants
 
-    private let recordingSideExpansion: CGFloat = 90
-    private let transcriptSideExpansion: CGFloat = 110
-    private let assistantSideExpansion: CGFloat = 230
-    private let activeHeightBonus: CGFloat = 6
-    private let transcriptPanelHeight: CGFloat = 57
-    private let assistantPanelHeight: CGFloat = 320
+    private let recordingSideExpansion: CGFloat = 118
+    private let transcriptSideExpansion: CGFloat = 130
+    private let assistantSideExpansion: CGFloat = 130
+    private let activeHeightBonus: CGFloat = 14
+    private let transcriptPanelHeight: CGFloat = 64
+    private let assistantPanelHeight: CGFloat = 300
 
     private var mainRowHeight: CGFloat { notchHeight + activeHeightBonus }
 
@@ -112,7 +112,7 @@ struct NotchRecorderView<S: RecorderStateProvider & ObservableObject>: View {
     }
 
     private var sideEdgePadding: CGFloat {
-        displayState == .liveText || displayState == .assistant ? 20 : 16
+        displayState == .liveText || displayState == .assistant ? 22 : 20
     }
 
     private var shouldShowCloseButton: Bool {
@@ -156,18 +156,14 @@ struct NotchRecorderView<S: RecorderStateProvider & ObservableObject>: View {
             assistantPanel
         }
         .frame(width: pillWidth, height: pillHeight)
-        .background(
-            LinearGradient(
-                colors: [Color.black, Color.black.opacity(displayState == .assistant ? 0.92 : 1.0)],
-                startPoint: .top,
-                endPoint: .bottom
-            )
-        )
-        .clipShape(
-            NotchShape(
-                topCornerRadius: displayState == .liveText ? 12 : 8,
-                bottomCornerRadius: displayState == .liveText || displayState == .assistant ? 22 : 16
-            )
+        .background(notchShape.fill(AppTheme.Notch.ground.opacity(0.72)))
+        .liquidGlass(in: notchShape, tint: AppTheme.Notch.tint, clear: true)
+    }
+
+    private var notchShape: NotchShape {
+        NotchShape(
+            topCornerRadius: 10,
+            bottomCornerRadius: displayState == .active ? 22 : AppTheme.Notch.cornerRadius
         )
     }
 

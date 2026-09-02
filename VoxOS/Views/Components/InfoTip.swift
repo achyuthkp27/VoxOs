@@ -30,10 +30,10 @@ struct InfoTip: View {
                             + Text(" ")
                             + Text("Learn more")
                             .foregroundColor(AppTheme.Accent.primary))
-                            .font(.callout)
+                            .font(.app(.callout))
                     } else {
                         Text(message)
-                            .font(.callout)
+                            .font(.app(.callout))
                             .foregroundColor(.secondary)
                     }
                 }

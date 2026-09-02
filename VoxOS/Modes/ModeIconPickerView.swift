@@ -10,11 +10,11 @@ struct ModeIconView: View {
             switch icon.kind {
             case .symbol:
                 Image(systemName: icon.value)
-                    .font(.system(size: size, weight: .medium))
+                    .font(.app(size: size, weight: .medium))
                     .foregroundStyle(color)
             case .emoji:
                 Text(icon.value)
-                    .font(.system(size: size))
+                    .font(.app(size: size, weight: .regular))
             }
         }
     }
@@ -115,7 +115,7 @@ struct ModeIconPickerView: View {
             HStack(spacing: 8) {
                 TextField("+", text: $newEmojiText)
                     .textFieldStyle(.roundedBorder)
-                    .font(.title2)
+                    .font(.app(.title2))
                     .multilineTextAlignment(.center)
                     .frame(maxWidth: 70)
                     .focused($isEmojiTextFieldFocused)
@@ -150,7 +150,7 @@ struct ModeIconPickerView: View {
 
             if !inputFeedbackMessage.isEmpty {
                 Text(inputFeedbackMessage)
-                    .font(.caption)
+                    .font(.app(.caption))
                     .foregroundColor(AppTheme.Status.error)
             }
         }
@@ -229,7 +229,7 @@ private struct ModeIconButton: View {
                     Image(systemName: "xmark.circle.fill")
                         .symbolRenderingMode(.palette)
                         .foregroundStyle(Color.white, AppTheme.Status.error)
-                        .font(.caption2)
+                        .font(.app(.caption2))
                         .background(Circle().fill(Color.white.opacity(0.8)))
                 }
                 .buttonStyle(.borderless)
@@ -245,7 +245,7 @@ private struct AddEmojiButton: View {
     var body: some View {
         Button(action: action) {
             Image(systemName: "plus.circle.fill")
-                .font(.title2)
+                .font(.app(.title2))
                 .symbolRenderingMode(.hierarchical)
                 .foregroundStyle(.secondary)
                 .frame(width: 44, height: 44)

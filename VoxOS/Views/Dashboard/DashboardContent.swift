@@ -279,7 +279,7 @@ struct DashboardContent: View {
         VStack(alignment: .leading, spacing: 10) {
             HStack(alignment: .firstTextBaseline, spacing: 8) {
                 Text(greetingEmoji)
-                    .font(.system(size: 25))
+                    .font(.app(size: 25, weight: .regular))
                     .accessibilityHidden(true)
 
                 Text("\(greetingText),")
@@ -297,7 +297,7 @@ struct DashboardContent: View {
 
             HStack(alignment: .top, spacing: 0) {
                 Text(headerSubtitle)
-                    .font(.system(size: 13, weight: .medium))
+                    .font(.app(size: 13, weight: .medium))
                     .foregroundStyle(AppTheme.Text.secondary)
                     .lineLimit(2)
 
@@ -345,7 +345,7 @@ struct DashboardContent: View {
     }
 
     private var displayNameFont: Font {
-        .system(size: Self.displayNameFontSize, weight: .bold, design: .rounded)
+        .app(size: Self.displayNameFontSize, weight: .bold)
     }
 
     private var dismissingSpacer: some View {
@@ -589,7 +589,7 @@ struct DashboardContent: View {
             DashboardIconGlyph(systemName: icon, color: color, size: 13, frameSize: 16)
 
             Text(title)
-                .font(.system(size: 13, weight: .medium))
+                .font(.app(size: 13, weight: .medium))
                 .lineLimit(1)
                 .fixedSize(horizontal: true, vertical: false)
         }
@@ -832,7 +832,7 @@ private struct DashboardAccessibilityReminder: View {
                     .fill(AppTheme.Accent.fill)
 
                 Image(systemName: "hand.raised")
-                    .font(.system(size: 15, weight: .medium))
+                    .font(.app(size: 15, weight: .medium))
                     .symbolRenderingMode(.hierarchical)
                     .foregroundStyle(AppTheme.Accent.primary)
             }
@@ -840,12 +840,12 @@ private struct DashboardAccessibilityReminder: View {
 
             VStack(alignment: .leading, spacing: 3) {
                 Text("Enable Accessibility Access")
-                    .font(.system(size: 13, weight: .semibold))
+                    .font(.app(size: 13, weight: .semibold))
                     .foregroundStyle(.primary)
                     .lineLimit(1)
 
                 Text("Required for VoxOS shortcuts and app-wide controls to work properly.")
-                    .font(.system(size: 11))
+                    .font(.app(size: 11, weight: .regular))
                     .foregroundStyle(.secondary)
                     .lineLimit(2)
             }
@@ -872,7 +872,7 @@ private struct DashboardNoModesReminder: View {
                     .fill(AppTheme.Accent.fill)
 
                 Image(systemName: "square.grid.2x2")
-                    .font(.system(size: 15, weight: .medium))
+                    .font(.app(size: 15, weight: .medium))
                     .symbolRenderingMode(.hierarchical)
                     .foregroundStyle(AppTheme.Accent.primary)
             }
@@ -880,12 +880,12 @@ private struct DashboardNoModesReminder: View {
 
             VStack(alignment: .leading, spacing: 3) {
                 Text("Set Up a Mode")
-                    .font(.system(size: 13, weight: .semibold))
+                    .font(.app(size: 13, weight: .semibold))
                     .foregroundStyle(.primary)
                     .lineLimit(1)
 
                 Text("VoxOS needs at least one mode to record. Create one to start dictating.")
-                    .font(.system(size: 11))
+                    .font(.app(size: 11, weight: .regular))
                     .foregroundStyle(.secondary)
                     .lineLimit(2)
             }

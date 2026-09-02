@@ -6,8 +6,8 @@ struct DashboardTranscriptCards: View {
     var body: some View {
         VStack(alignment: .leading, spacing: 14) {
             Text("Recent Transcripts")
-                .font(.system(size: 18, weight: .bold, design: .rounded))
-                .foregroundStyle(AppTheme.Text.primary)
+                .font(.app(size: 18, weight: .semibold))
+                .foregroundStyle(AppTheme.Text.heading)
                 .lineLimit(1)
 
             VStack(spacing: 0) {
@@ -16,10 +16,14 @@ struct DashboardTranscriptCards: View {
 
                     if index < transcriptions.count - 1 {
                         Divider()
-                            .padding(.horizontal, 8)
+                            .overlay(AppTheme.Border.subtle)
+                            .padding(.horizontal, 16)
                     }
                 }
             }
+            .padding(.vertical, 6)
+            .padding(.horizontal, 8)
+            .voiceOSCard()
         }
         .frame(maxWidth: .infinity, alignment: .leading)
     }
@@ -114,13 +118,13 @@ private struct DashboardTranscriptCardRow: View {
 
             VStack(alignment: .leading, spacing: 5) {
                 Text(metadataText)
-                    .font(.system(size: 12, weight: .semibold))
+                    .font(.app(size: 12, weight: .semibold))
                     .foregroundStyle(AppTheme.Text.secondary)
                     .lineLimit(1)
                     .frame(maxWidth: .infinity, alignment: .leading)
 
                 Text(isExpanded ? copyText : previewText)
-                    .font(.system(size: 13, weight: .regular))
+                    .font(.app(size: 13, weight: .regular))
                     .foregroundStyle(AppTheme.Text.primary)
                     .lineLimit(isExpanded ? nil : 2)
                     .frame(maxWidth: .infinity, alignment: .leading)

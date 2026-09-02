@@ -15,7 +15,7 @@ struct SaveIconButton: View {
             }
         } label: {
             Image(systemName: saved ? "checkmark" : "square.and.arrow.down")
-                .font(.system(size: 12, weight: .semibold))
+                .font(.app(size: 12, weight: .semibold))
                 .foregroundColor(saved ? AppTheme.Status.positive : .secondary)
                 .frame(width: 28, height: 28)
                 .background(AppTheme.Surface.control.opacity(0.9))

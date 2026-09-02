@@ -100,12 +100,12 @@ private struct CustomProviderEmptyState: View {
     var body: some View {
         VStack(spacing: 10) {
             Image(systemName: systemImage)
-                .font(.system(size: 32))
+                .font(.app(size: 32, weight: .regular))
                 .symbolRenderingMode(.hierarchical)
                 .foregroundStyle(.secondary)
 
             Text(title)
-                .font(.subheadline.weight(.medium))
+                .font(.app(.subheadline, weight: .medium))
                 .foregroundStyle(.secondary)
         }
         .frame(maxWidth: .infinity)
@@ -123,7 +123,7 @@ private struct CustomEnhancementModelRow: View {
     var body: some View {
         HStack(spacing: 12) {
             Image(systemName: "sparkles")
-                .font(.system(size: 15, weight: .semibold))
+                .font(.app(size: 15, weight: .semibold))
                 .foregroundStyle(.secondary)
                 .frame(width: 28, height: 28)
                 .background(
@@ -137,16 +137,16 @@ private struct CustomEnhancementModelRow: View {
 
             VStack(alignment: .leading, spacing: 5) {
                 Text(provider.name)
-                    .font(.system(size: 13, weight: .semibold))
+                    .font(.app(size: 13, weight: .semibold))
 
                 if provider.modelName.isEmpty {
                     Text("No model configured")
-                        .font(.caption)
+                        .font(.app(.caption))
                         .foregroundStyle(.secondary)
                         .lineLimit(1)
                 } else {
                     Text(provider.modelName)
-                        .font(.caption)
+                        .font(.app(.caption))
                         .foregroundStyle(.secondary)
                         .lineLimit(1)
                 }
@@ -159,7 +159,7 @@ private struct CustomEnhancementModelRow: View {
                 Button("Delete", role: .destructive, action: onDelete)
             } label: {
                 Image(systemName: "ellipsis.circle")
-                    .font(.system(size: 14))
+                    .font(.app(size: 14, weight: .regular))
             }
             .menuStyle(.borderlessButton)
             .menuIndicator(.hidden)
@@ -582,7 +582,7 @@ private struct CustomModelEditorSection<Content: View>: View {
     var body: some View {
         VStack(alignment: .leading, spacing: 8) {
             Text(title)
-                .font(.system(size: 12, weight: .semibold))
+                .font(.app(size: 12, weight: .semibold))
                 .foregroundStyle(.secondary)
 
             VStack(spacing: 0) {
@@ -603,7 +603,7 @@ private struct CustomModelTextField: View {
     var body: some View {
         HStack(spacing: 12) {
             Text(label)
-                .font(.system(size: 12, weight: .medium))
+                .font(.app(size: 12, weight: .medium))
                 .foregroundStyle(.primary)
                 .lineLimit(1)
                 .frame(width: CustomModelEditorMetrics.labelWidth, alignment: .leading)
@@ -616,7 +616,7 @@ private struct CustomModelTextField: View {
                 }
             }
             .textFieldStyle(.roundedBorder)
-            .font(.system(size: 12))
+            .font(.app(size: 12, weight: .regular))
             .frame(maxWidth: CustomModelEditorMetrics.fieldMaxWidth, alignment: .trailing)
         }
         .frame(maxWidth: .infinity, alignment: .leading)
@@ -651,7 +651,7 @@ private struct ConnectionTestRow: View {
     var body: some View {
         HStack(spacing: 12) {
             Text("Connection")
-                .font(.system(size: 12, weight: .medium))
+                .font(.app(size: 12, weight: .medium))
                 .foregroundStyle(.primary)
                 .lineLimit(1)
                 .frame(width: CustomModelEditorMetrics.labelWidth, alignment: .leading)
@@ -659,9 +659,9 @@ private struct ConnectionTestRow: View {
             Button(action: action) {
                 HStack(spacing: 5) {
                     Image(systemName: "wifi")
-                        .font(.system(size: 11))
+                        .font(.app(size: 11, weight: .regular))
                     Text("Test")
-                        .font(.system(size: 12))
+                        .font(.app(size: 12, weight: .regular))
                 }
             }
             .disabled(isDisabled || state.isTesting)
@@ -684,11 +684,11 @@ private struct ConnectionTestRow: View {
                     .controlSize(.small)
                 Text("Testing…")
             }
-            .font(.system(size: 12))
+            .font(.app(size: 12, weight: .regular))
             .foregroundStyle(AppTheme.Text.secondary)
         case .success:
             Label("Test successful", systemImage: "checkmark.circle")
-                .font(.system(size: 12))
+                .font(.app(size: 12, weight: .regular))
                 .foregroundStyle(AppTheme.Status.positive)
                 .lineLimit(1)
         }
@@ -716,7 +716,7 @@ private struct CustomModelToggleRow: View {
     var body: some View {
         HStack(spacing: 12) {
             Text(title)
-                .font(.system(size: 12, weight: .medium))
+                .font(.app(size: 12, weight: .medium))
                 .foregroundStyle(.primary)
                 .frame(width: CustomModelEditorMetrics.labelWidth, alignment: .leading)
 
@@ -736,7 +736,7 @@ private struct CustomModelErrorBox: View {
         VStack(alignment: .leading, spacing: 6) {
             ForEach(messages, id: \.self) { message in
                 Text(message)
-                    .font(.caption)
+                    .font(.app(.caption))
                     .foregroundStyle(AppTheme.Status.error)
                     .fixedSize(horizontal: false, vertical: true)
             }
@@ -754,7 +754,7 @@ private struct CustomModelEditorHeader: View {
     var body: some View {
         HStack(spacing: 12) {
             Text(title)
-                .font(.headline)
+                .font(.app(.headline))
                 .fontWeight(.semibold)
                 .foregroundColor(.primary)
 
@@ -762,7 +762,7 @@ private struct CustomModelEditorHeader: View {
 
             Button(action: onClose) {
                 Image(systemName: "xmark")
-                    .font(.system(size: 14, weight: .medium))
+                    .font(.app(size: 14, weight: .medium))
                     .foregroundColor(.secondary)
                     .padding(6)
                     .background(AppTheme.Surface.card)

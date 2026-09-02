@@ -114,7 +114,7 @@ struct LocalEnhancementServiceManagementView: View {
 
             if let ollamaUserRefreshError {
                 Text(ollamaUserRefreshError)
-                    .font(.caption)
+                    .font(.app(.caption))
                     .foregroundStyle(AppTheme.Status.error)
                     .fixedSize(horizontal: false, vertical: true)
                     .padding(.leading, LocalProviderMetrics.labelWidth + 12)
@@ -147,7 +147,7 @@ struct LocalEnhancementServiceManagementView: View {
             VStack(alignment: .leading, spacing: 8) {
                 HStack(alignment: .firstTextBaseline) {
                     Text("Command")
-                        .font(.system(size: 12, weight: .medium))
+                        .font(.app(size: 12, weight: .medium))
                         .foregroundStyle(.secondary)
 
                     Spacer()
@@ -161,7 +161,7 @@ struct LocalEnhancementServiceManagementView: View {
                         }
                     } label: {
                         Label("Template", systemImage: "doc.on.doc")
-                            .font(.system(size: 12, weight: .medium))
+                            .font(.app(size: 12, weight: .medium))
                     }
                     .menuStyle(.button)
                     .buttonStyle(.bordered)
@@ -276,7 +276,7 @@ private struct LocalProviderDisclosureRow<Content: View>: View {
             } label: {
                 HStack(spacing: 12) {
                     Image(systemName: systemImage)
-                        .font(.system(size: 14, weight: .medium))
+                        .font(.app(size: 14, weight: .medium))
                         .symbolRenderingMode(.hierarchical)
                         .foregroundStyle(.secondary)
                         .frame(width: 30, height: 30)
@@ -291,11 +291,11 @@ private struct LocalProviderDisclosureRow<Content: View>: View {
 
                     VStack(alignment: .leading, spacing: 2) {
                         title
-                            .font(.system(size: 13, weight: .semibold))
+                            .font(.app(size: 13, weight: .semibold))
                             .foregroundStyle(.primary)
 
                         subtitle
-                            .font(.system(size: 11))
+                            .font(.app(size: 11, weight: .regular))
                             .foregroundStyle(.secondary)
                             .lineLimit(1)
                     }
@@ -303,12 +303,12 @@ private struct LocalProviderDisclosureRow<Content: View>: View {
                     Spacer(minLength: 12)
 
                     statusTitle
-                        .font(.caption)
+                        .font(.app(.caption))
                         .foregroundStyle(.secondary)
                         .lineLimit(1)
 
                     Image(systemName: "chevron.right")
-                        .font(.system(size: 11, weight: .semibold))
+                        .font(.app(size: 11, weight: .semibold))
                         .foregroundStyle(.tertiary)
                         .rotationEffect(.degrees(isExpanded ? 90 : 0))
                 }
@@ -359,7 +359,7 @@ private struct LocalProviderFormRow<Content: View>: View {
     var body: some View {
         HStack(alignment: .firstTextBaseline, spacing: 12) {
             Text(title)
-                .font(.system(size: 12, weight: .medium))
+                .font(.app(size: 12, weight: .medium))
                 .foregroundStyle(.secondary)
                 .frame(width: LocalProviderMetrics.labelWidth, alignment: .leading)
 

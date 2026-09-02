@@ -102,7 +102,7 @@ struct ProcessingStatusDisplay: View {
         VStack(spacing: 4) {
             Text(label)
                 .foregroundColor(color)
-                .font(.system(size: 11, weight: .medium))
+                .font(.app(size: 11, weight: .medium))
                 .lineLimit(1)
                 .minimumScaleFactor(0.5)
 

@@ -48,7 +48,7 @@ private struct TrustHeader: View {
     var body: some View {
         VStack(spacing: 16) {
             Image(systemName: "lock.shield")
-                .font(.system(size: 24, weight: .semibold))
+                .font(.app(size: 24, weight: .semibold))
                 .foregroundColor(AppTheme.Text.primary)
                 .frame(width: 56, height: 56)
                 .background(
@@ -57,7 +57,7 @@ private struct TrustHeader: View {
                 )
 
             Text("VoxOS is private by default")
-                .font(.system(size: 32, weight: .bold))
+                .font(.app(size: 32, weight: .bold))
                 .foregroundColor(AppTheme.Text.primary)
                 .multilineTextAlignment(.center)
                 .lineLimit(2)
@@ -75,12 +75,12 @@ private struct TrustBody: View {
 
             VStack(spacing: 10) {
                 Text("Your data never has to leave your device.")
-                    .font(.system(size: 18, weight: .semibold))
+                    .font(.app(size: 18, weight: .semibold))
                     .foregroundColor(AppTheme.Text.primary)
                     .multilineTextAlignment(.center)
 
                 Text("VoxOS is also open source, so you can inspect every single line of code.")
-                    .font(.system(size: 13))
+                    .font(.app(size: 13, weight: .regular))
                     .foregroundColor(AppTheme.Text.secondary)
                     .multilineTextAlignment(.center)
                     .fixedSize(horizontal: false, vertical: true)
@@ -157,11 +157,11 @@ private struct TrustPill: View {
     var body: some View {
         HStack(spacing: 8) {
             Image(systemName: systemImage)
-                .font(.system(size: 13, weight: .semibold))
+                .font(.app(size: 13, weight: .semibold))
                 .foregroundColor(AppTheme.Text.secondary)
 
             Text(LocalizedStringKey(title))
-                .font(.system(size: 13, weight: .semibold))
+                .font(.app(size: 13, weight: .semibold))
                 .foregroundColor(AppTheme.Text.primary)
                 .lineLimit(1)
         }
@@ -182,7 +182,7 @@ private struct TrustShield: View {
     var body: some View {
         ZStack {
             Image(systemName: "shield.fill")
-                .font(.system(size: 96, weight: .regular))
+                .font(.app(size: 96, weight: .regular))
                 .foregroundStyle(
                     LinearGradient(
                         colors: [
@@ -195,7 +195,7 @@ private struct TrustShield: View {
                 )
                 .overlay(
                     Image(systemName: "shield")
-                        .font(.system(size: 96, weight: .regular))
+                        .font(.app(size: 96, weight: .regular))
                         .foregroundColor(AppTheme.Border.control)
                 )
 

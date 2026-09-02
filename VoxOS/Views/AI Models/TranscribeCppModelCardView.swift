@@ -12,7 +12,7 @@ struct TranscribeCppModelCardView: View {
             VStack(alignment: .leading, spacing: 6) {
                 HStack(alignment: .firstTextBaseline) {
                     Text(model.displayName)
-                        .font(.system(size: 13, weight: .semibold))
+                        .font(.app(size: 13, weight: .semibold))
                         .foregroundColor(Color(.labelColor))
 
                     Spacer()
@@ -32,12 +32,12 @@ struct TranscribeCppModelCardView: View {
                     }
                     .fixedSize(horizontal: true, vertical: false)
                 }
-                .font(.system(size: 11))
+                .font(.app(size: 11, weight: .regular))
                 .foregroundColor(Color(.secondaryLabelColor))
                 .lineLimit(1)
 
                 Text(model.description)
-                    .font(.system(size: 11))
+                    .font(.app(size: 11, weight: .regular))
                     .foregroundColor(Color(.secondaryLabelColor))
                     .lineLimit(2)
                     .fixedSize(horizontal: false, vertical: true)
@@ -72,7 +72,7 @@ struct TranscribeCppModelCardView: View {
                     Text(status.fractionCompleted, format: .percent.precision(.fractionLength(0)))
                         .fontDesign(.monospaced)
                 }
-                .font(.system(size: 11, weight: .medium))
+                .font(.app(size: 11, weight: .medium))
                 .foregroundColor(Color(.secondaryLabelColor))
 
                 ProgressView(value: status.fractionCompleted)
@@ -103,7 +103,7 @@ struct TranscribeCppModelCardView: View {
                     }
                 } label: {
                     Image(systemName: "ellipsis.circle")
-                        .font(.system(size: 14))
+                        .font(.app(size: 14, weight: .regular))
                 }
                 .menuStyle(.borderlessButton)
                 .menuIndicator(.hidden)
@@ -116,7 +116,7 @@ struct TranscribeCppModelCardView: View {
                         Text(LocalizedStringKey(isDownloading ? "Downloading..." : "Download"))
                         Image(systemName: "arrow.down.circle")
                     }
-                    .font(.system(size: 12, weight: .medium))
+                    .font(.app(size: 12, weight: .medium))
                     .foregroundColor(.white)
                     .padding(.horizontal, 12)
                     .padding(.vertical, 6)

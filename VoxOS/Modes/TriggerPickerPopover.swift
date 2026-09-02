@@ -131,11 +131,11 @@ struct TriggerPickerPopover: View {
         HStack(spacing: 8) {
             Image(systemName: "magnifyingglass")
                 .foregroundColor(.secondary)
-                .font(.system(size: 12))
+                .font(.app(size: 12, weight: .regular))
 
             TextField("Search apps, website, or trigger word...", text: $searchText)
                 .textFieldStyle(.plain)
-                .font(.system(size: 13))
+                .font(.app(size: 13, weight: .regular))
                 .focused($isSearchFieldFocused)
                 .onSubmit(submitSearch)
 
@@ -143,7 +143,7 @@ struct TriggerPickerPopover: View {
                 Button(action: { searchText = "" }) {
                     Image(systemName: "xmark.circle.fill")
                         .foregroundColor(.secondary)
-                        .font(.system(size: 12))
+                        .font(.app(size: 12, weight: .regular))
                 }
                 .buttonStyle(.plain)
             }
@@ -155,7 +155,7 @@ struct TriggerPickerPopover: View {
     private var suggestedGroups: some View {
         VStack(alignment: .leading, spacing: 6) {
             Text("Suggested")
-                .font(.system(size: 11, weight: .semibold))
+                .font(.app(size: 11, weight: .semibold))
                 .foregroundStyle(.secondary)
                 .padding(.horizontal, 6)
                 .padding(.top, 2)
@@ -249,17 +249,17 @@ struct TriggerPickerPopover: View {
                 VStack(alignment: .leading, spacing: 1) {
                     if isUnavailable, let claimedBy {
                         Text("Already used by \"\(claimedBy.name)\"")
-                            .font(.system(size: 12, weight: .medium))
+                            .font(.app(size: 12, weight: .medium))
                             .foregroundStyle(.secondary)
                         Text(unavailableMessage)
-                            .font(.system(size: 11))
+                            .font(.app(size: 11, weight: .regular))
                             .foregroundStyle(.secondary)
                     } else {
                         Text(isSelected ? removeTitle : addTitle)
-                            .font(.system(size: 12, weight: .medium))
+                            .font(.app(size: 12, weight: .medium))
                             .foregroundStyle(.primary)
                         Text(detail)
-                            .font(.system(size: 11))
+                            .font(.app(size: 11, weight: .regular))
                             .foregroundStyle(.secondary)
                     }
                 }
@@ -268,7 +268,7 @@ struct TriggerPickerPopover: View {
 
                 if !isSelected && !isUnavailable {
                     Image(systemName: "plus.circle.fill")
-                        .font(.system(size: 14, weight: .medium))
+                        .font(.app(size: 14, weight: .medium))
                         .symbolRenderingMode(.hierarchical)
                         .foregroundStyle(.secondary)
                 }
@@ -298,16 +298,16 @@ struct TriggerPickerPopover: View {
                 if let claimedBy {
                     VStack(alignment: .leading, spacing: 1) {
                         Text(app.name)
-                            .font(.system(size: 13, weight: .medium))
+                            .font(.app(size: 13, weight: .medium))
                             .foregroundColor(.secondary)
                             .lineLimit(1)
                         Text("Used by \"\(claimedBy.name)\"")
-                            .font(.system(size: 11))
+                            .font(.app(size: 11, weight: .regular))
                             .foregroundStyle(.secondary)
                     }
                 } else {
                     Text(app.name)
-                        .font(.system(size: 13, weight: .medium))
+                        .font(.app(size: 13, weight: .medium))
                         .foregroundColor(.primary)
                         .lineLimit(1)
                 }
@@ -316,7 +316,7 @@ struct TriggerPickerPopover: View {
 
                 if isSelected {
                     Image(systemName: "checkmark.circle.fill")
-                        .font(.system(size: 14, weight: .semibold))
+                        .font(.app(size: 14, weight: .semibold))
                         .foregroundStyle(Color.accentColor)
                 }
             }
@@ -333,7 +333,7 @@ struct TriggerPickerPopover: View {
 
     private var emptyState: some View {
         Text(query.isEmpty ? LocalizedStringKey("No apps found") : LocalizedStringKey("No matching apps"))
-            .font(.system(size: 12, weight: .medium))
+            .font(.app(size: 12, weight: .medium))
             .foregroundStyle(.secondary)
             .frame(maxWidth: .infinity)
             .padding(.vertical, 32)
@@ -344,7 +344,7 @@ struct TriggerPickerPopover: View {
             ProgressView()
                 .controlSize(.small)
             Text("Loading apps")
-                .font(.system(size: 12, weight: .medium))
+                .font(.app(size: 12, weight: .medium))
                 .foregroundStyle(.secondary)
         }
         .frame(maxWidth: .infinity)

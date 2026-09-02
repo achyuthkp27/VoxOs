@@ -24,7 +24,7 @@ struct ModelPerformancePanel: View {
     private var header: some View {
         HStack(spacing: 10) {
             Text("AI Model Performance")
-                .font(.headline.weight(.semibold))
+                .font(.app(.headline, weight: .semibold))
 
             Spacer()
 
@@ -127,11 +127,11 @@ private struct ModelPerformancePanelContent: View {
     private var emptyState: some View {
         VStack(spacing: 8) {
             Image(systemName: "chart.bar.xaxis")
-                .font(.system(size: 32, weight: .light))
+                .font(.app(size: 32, weight: .light))
                 .foregroundColor(.secondary)
 
             Text("No model performance for this period")
-                .font(.subheadline)
+                .font(.app(.subheadline))
                 .foregroundColor(.secondary)
         }
         .frame(maxWidth: .infinity, maxHeight: .infinity)
@@ -152,14 +152,14 @@ private struct ModelPerformanceDetailSection: View {
                     .frame(maxWidth: .infinity, alignment: .leading)
 
                 Text(valueTitle)
-                    .font(.system(size: 11, weight: .semibold))
+                    .font(.app(size: 11, weight: .semibold))
                     .foregroundStyle(AppTheme.Text.secondary)
                     .lineLimit(1)
                     .minimumScaleFactor(0.82)
                     .frame(width: 96, alignment: .trailing)
                     .padding(.trailing, 4)
             }
-            .font(.system(size: 13, weight: .semibold))
+            .font(.app(size: 13, weight: .semibold))
             .foregroundStyle(AppTheme.Text.primary)
             .lineLimit(1)
 
@@ -186,7 +186,7 @@ private struct ModelPerformanceDetailRow: View {
 
             VStack(alignment: .leading, spacing: 3) {
                 Text(row.name)
-                    .font(.system(size: 12, weight: .semibold))
+                    .font(.app(size: 12, weight: .semibold))
                     .foregroundStyle(AppTheme.Text.primary)
                     .lineLimit(1)
                     .minimumScaleFactor(0.72)
@@ -195,7 +195,7 @@ private struct ModelPerformanceDetailRow: View {
                 if let detail = row.detail {
                     HStack(spacing: 6) {
                         Text(detail)
-                            .font(.system(size: 10, weight: .medium))
+                            .font(.app(size: 10, weight: .medium))
                             .foregroundStyle(AppTheme.Text.secondary)
                             .lineLimit(1)
                     }

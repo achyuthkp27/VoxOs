@@ -23,9 +23,9 @@ struct RecorderToggleButton: View {
         Button(action: action) {
             Group {
                 if isEmoji {
-                    Text(icon).font(.system(size: 14))
+                    Text(icon).font(.app(size: 14, weight: .regular))
                 } else {
-                    Image(systemName: icon).font(.system(size: 13))
+                    Image(systemName: icon).font(.app(size: 13, weight: .regular))
                 }
             }
             .foregroundColor(disabled ? .white.opacity(0.3) : (isEnabled ? .white : .white.opacity(0.6)))
@@ -169,7 +169,7 @@ struct RecorderCloseButton: View {
                     )
 
                 Image(systemName: "xmark")
-                    .font(.system(size: 9, weight: .semibold))
+                    .font(.app(size: 9, weight: .semibold))
                     .foregroundColor(.white.opacity(0.86))
             }
             .frame(width: 21, height: 21)
@@ -309,14 +309,14 @@ struct LiveTranscriptView: View {
         ScrollViewReader { proxy in
             ScrollView(.vertical, showsIndicators: false) {
                 Text(text)
-                    .font(.system(size: 12))
-                    .foregroundColor(.white.opacity(0.8))
+                    .font(.app(size: 15, weight: .regular))
+                    .foregroundColor(AppTheme.Notch.text)
                     .frame(maxWidth: .infinity, alignment: .leading)
-                    .padding(.horizontal, 16)
-                    .padding(.vertical, 6)
+                    .padding(.horizontal, 22)
+                    .padding(.vertical, 8)
                     .id("bottom")
             }
-            .frame(height: 56)
+            .frame(height: 62)
             .mask(
                 LinearGradient(
                     stops: [
@@ -387,8 +387,8 @@ struct AssistantPanelView: View {
     @State private var draftMessage = ""
     @FocusState private var isFollowUpFieldFocused: Bool
 
-    private let horizontalPadding: CGFloat = 20
-    private let followUpTextColor = Color.white.opacity(0.9)
+    private let horizontalPadding: CGFloat = 22
+    private let followUpTextColor = AppTheme.Notch.text
 
     private var statusText: String? {
         switch session.phase {
@@ -402,13 +402,14 @@ struct AssistantPanelView: View {
     }
 
     var body: some View {
-        VStack(spacing: 8) {
+        VStack(spacing: 14) {
             messageList
             followUpRow
         }
         .padding(.horizontal, horizontalPadding)
-        .padding(.vertical, 10)
-        .frame(height: 320)
+        .padding(.top, 8)
+        .padding(.bottom, 16)
+        .frame(height: 300)
         .onAppear(perform: focusFollowUpFieldIfAvailable)
         .onChange(of: session.phase) {
             focusFollowUpFieldIfAvailable()
@@ -425,7 +426,7 @@ struct AssistantPanelView: View {
     private var messageList: some View {
         ScrollViewReader { proxy in
             ScrollView(.vertical, showsIndicators: false) {
-                VStack(spacing: 8) {
+                VStack(spacing: 14) {
                     ForEach(session.messages) { message in
                         AssistantMessageBubble(message: message)
                             .id(message.id)
@@ -433,8 +434,8 @@ struct AssistantPanelView: View {
 
                     if let statusText {
                         Text(statusText)
-                            .font(.system(size: 11))
-                            .foregroundColor(.white.opacity(0.62))
+                            .font(.app(size: 14, weight: .regular))
+                            .foregroundColor(AppTheme.Notch.textMuted)
                             .padding(.horizontal, 10)
                             .padding(.vertical, 4)
                             .frame(maxWidth: .infinity, alignment: .leading)
@@ -442,12 +443,6 @@ struct AssistantPanelView: View {
                     }
                 }
                 .padding(.vertical, 2)
-                .overlay(alignment: .topLeading) {
-                    if !session.messages.isEmpty {
-                        CopyIconButton(textToCopy: fullConversationText)
-                            .scaleEffect(0.72)
-                    }
-                }
             }
             .onChange(of: session.messages.count) {
                 scrollToBottom(proxy)
@@ -463,7 +458,7 @@ struct AssistantPanelView: View {
             ZStack(alignment: .leading) {
                 if shouldShowLiveFollowUpText {
                     Text(liveFollowUpText)
-                        .font(.system(size: 12))
+                        .font(.app(size: 15, weight: .regular))
                         .foregroundStyle(followUpTextColor)
                         .lineLimit(1)
                         .truncationMode(.head)
@@ -471,20 +466,20 @@ struct AssistantPanelView: View {
                 }
 
                 if draftMessage.isEmpty && !shouldShowLiveFollowUpText {
-                    HStack(spacing: 4) {
+                    HStack(spacing: 7) {
                         Text("Type or hold")
                         ModifierKeyHintBadge(symbol: "option")
                         ModifierKeyHintBadge(symbol: "control")
                         Text("to speak")
                     }
-                    .font(.system(size: 12))
-                    .foregroundStyle(followUpTextColor.opacity(0.55))
+                    .font(.app(size: 15, weight: .regular))
+                    .foregroundStyle(AppTheme.Notch.textMuted)
                     .allowsHitTesting(false)
                 }
 
                 TextField("", text: $draftMessage)
                     .textFieldStyle(.plain)
-                    .font(.system(size: 12))
+                    .font(.app(size: 15, weight: .regular))
                     .foregroundStyle(followUpTextColor)
                     .tint(followUpTextColor)
                     .disabled(!session.canSendFollowUp)
@@ -492,19 +487,23 @@ struct AssistantPanelView: View {
                     .onSubmit(sendDraftMessage)
             }
             .frame(maxWidth: .infinity, alignment: .leading)
-            .padding(.horizontal, 10)
-            .padding(.vertical, 7)
-            .background(Color.white.opacity(0.10))
-            .clipShape(RoundedRectangle(cornerRadius: 8, style: .continuous))
+            .padding(.leading, 18)
+            .padding(.trailing, 8)
+            .padding(.vertical, 9)
+            .frame(minHeight: 46)
+            .background(Capsule().fill(AppTheme.Notch.field))
+            .overlay(Capsule().strokeBorder(AppTheme.Notch.fieldBorder, lineWidth: 1))
 
             Button(action: sendDraftMessage) {
-                Image(systemName: "paperplane.fill")
-                    .font(.system(size: 10, weight: .semibold))
+                Image(systemName: "arrow.up")
+                    .font(.app(size: 13, weight: .bold))
                     .foregroundColor(canSendDraft ? .black : .white.opacity(0.35))
-                    .frame(width: 24, height: 24)
-                    .background(canSendDraft ? Color.white.opacity(0.88) : Color.white.opacity(0.10))
+                    .frame(width: 32, height: 32)
+                    .background(canSendDraft ? Color.white.opacity(0.92) : Color.white.opacity(0.10))
                     .clipShape(Circle())
             }
+            .opacity(canSendDraft ? 1 : 0)
+            .frame(width: canSendDraft ? 32 : 0)
             .buttonStyle(.plain)
             .disabled(!canSendDraft)
             .help("Send follow up")
@@ -549,6 +548,7 @@ struct AssistantPanelView: View {
 
 private struct AssistantMessageBubble: View {
     let message: AssistantDisplayMessage
+    @State private var isHovering = false
 
     private var isUser: Bool {
         message.role == .user
@@ -565,34 +565,28 @@ private struct AssistantMessageBubble: View {
     }
 
     private var textRow: some View {
-        HStack {
-            if isUser {
-                Spacer(minLength: 36)
-            }
-
+        HStack(alignment: .center, spacing: 12) {
             MarkdownContentView(
                 message.content,
-                fontSize: 12,
-                foregroundColor: .white.opacity(isUser ? 0.92 : 0.86),
+                fontSize: isUser ? 16 : 15,
+                foregroundColor: AppTheme.Notch.text,
                 alignment: .leading
             )
-            .padding(.horizontal, isUser ? 10 : 0)
-            .padding(.vertical, isUser ? 7 : 2)
-            .background(isUser ? Color.white.opacity(0.16) : Color.clear)
-            .clipShape(RoundedRectangle(cornerRadius: 8, style: .continuous))
-            .overlay(alignment: .bottomTrailing) {
-                if !isUser {
-                    CopyIconButton(textToCopy: message.content)
-                        .scaleEffect(0.72)
-                        .padding(0)
-                }
-            }
-            .help(isUser ? message.content : "")
-
-            if !isUser {
-                Spacer(minLength: 36)
+            .frame(maxWidth: .infinity, alignment: .leading)
+        }
+        .padding(.horizontal, isUser ? 20 : 2)
+        .padding(.vertical, isUser ? 14 : 2)
+        .modifier(GlassIf(isUser, cornerRadius: 26, tint: AppTheme.Notch.bubble))
+        .overlay(alignment: .topTrailing) {
+            if !isUser, isHovering {
+                CopyIconButton(textToCopy: message.content)
+                    .scaleEffect(0.72)
+                    .offset(x: 6, y: -2)
+                    .transition(.opacity)
             }
         }
+        .onHover { hovering in withAnimation(.easeOut(duration: 0.12)) { isHovering = hovering } }
+        .help(isUser ? message.content : "")
     }
 }
 
@@ -636,17 +630,17 @@ private struct TimeAnswerWidget: View {
         VStack(alignment: .leading, spacing: 2) {
             HStack(alignment: .firstTextBaseline, spacing: 4) {
                 Text(answer.time)
-                    .font(.system(size: 34, weight: .semibold, design: .rounded))
+                    .font(.app(size: 34, weight: .semibold))
                     .foregroundStyle(Color.white)
                 if let meridiem = answer.meridiem {
                     Text(meridiem)
-                        .font(.system(size: 13, weight: .medium))
+                        .font(.app(size: 13, weight: .medium))
                         .foregroundStyle(Color.white.opacity(0.6))
                 }
             }
             if let timeZoneLabel = answer.timeZoneLabel {
                 Text(timeZoneLabel)
-                    .font(.system(size: 12))
+                    .font(.app(size: 12, weight: .regular))
                     .foregroundStyle(Color.white.opacity(0.5))
             }
         }
@@ -659,11 +653,32 @@ private struct ModifierKeyHintBadge: View {
 
     var body: some View {
         Text(symbol)
-            .font(.system(size: 10, weight: .medium))
-            .foregroundStyle(Color.white.opacity(0.85))
-            .padding(.horizontal, 6)
-            .padding(.vertical, 2)
-            .background(Color.white.opacity(0.14))
-            .clipShape(Capsule())
+            .font(.app(size: 13, weight: .medium))
+            .foregroundStyle(Color.white.opacity(0.88))
+            .padding(.horizontal, 11)
+            .padding(.vertical, 4)
+            .background(Capsule().fill(AppTheme.Notch.chip))
+    }
+}
+
+
+/// Applies rounded glass only when `enabled` — the user's bubble gets it, the reply does not.
+private struct GlassIf: ViewModifier {
+    let enabled: Bool
+    let cornerRadius: CGFloat
+    let tint: Color
+
+    init(_ enabled: Bool, cornerRadius: CGFloat, tint: Color) {
+        self.enabled = enabled
+        self.cornerRadius = cornerRadius
+        self.tint = tint
+    }
+
+    func body(content: Content) -> some View {
+        if enabled {
+            content.background(RoundedRectangle(cornerRadius: cornerRadius, style: .continuous).fill(tint))
+        } else {
+            content
+        }
     }
 }

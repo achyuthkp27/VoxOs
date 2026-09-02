@@ -190,10 +190,10 @@ struct TranscriptionHistoryView: View {
             HStack {
                 Image(systemName: "magnifyingglass")
                     .foregroundColor(.secondary)
-                    .font(.system(size: 13))
+                    .font(.app(size: 13, weight: .regular))
                 TextField("Search transcriptions", text: $searchText)
                     .textFieldStyle(PlainTextFieldStyle())
-                    .font(.system(size: 13))
+                    .font(.app(size: 13, weight: .regular))
             }
             .padding(10)
             .background(
@@ -212,10 +212,10 @@ struct TranscriptionHistoryView: View {
                 if displayedTranscriptions.isEmpty && !isLoading {
                     VStack(spacing: 12) {
                         Image(systemName: "doc.text.magnifyingglass")
-                            .font(.system(size: 40))
+                            .font(.app(size: 40, weight: .regular))
                             .foregroundColor(.secondary)
                         Text("No transcriptions")
-                            .font(.system(size: 14, weight: .medium))
+                            .font(.app(size: 14, weight: .medium))
                             .foregroundColor(.secondary)
                     }
                     .frame(maxWidth: .infinity, maxHeight: .infinity)
@@ -241,7 +241,7 @@ struct TranscriptionHistoryView: View {
                                             ProgressView().controlSize(.small)
                                         }
                                         Text(isLoading ? "Loading..." : "Load More")
-                                            .font(.system(size: 13, weight: .medium))
+                                            .font(.app(size: 13, weight: .medium))
                                     }
                                     .frame(maxWidth: .infinity)
                                     .padding(.vertical, 10)
@@ -277,13 +277,13 @@ struct TranscriptionHistoryView: View {
 
                         VStack(spacing: 12) {
                             Image(systemName: "doc.text")
-                                .font(.system(size: 50))
+                                .font(.app(size: 50, weight: .regular))
                                 .foregroundColor(.secondary)
                             Text("No Selection")
-                                .font(.system(size: 18, weight: .medium))
+                                .font(.app(size: 18, weight: .medium))
                                 .foregroundColor(.secondary)
                             Text("Select a transcription to view details")
-                                .font(.system(size: 14))
+                                .font(.app(size: 14, weight: .regular))
                                 .foregroundColor(.secondary)
                         }
 
@@ -312,10 +312,10 @@ struct TranscriptionHistoryView: View {
             } else {
                 VStack(spacing: 12) {
                     Image(systemName: "info.circle")
-                        .font(.system(size: 40))
+                        .font(.app(size: 40, weight: .regular))
                         .foregroundColor(.secondary)
                     Text("No Metadata")
-                        .font(.system(size: 14, weight: .medium))
+                        .font(.app(size: 14, weight: .medium))
                         .foregroundColor(.secondary)
                 }
                 .frame(maxWidth: .infinity, maxHeight: .infinity)
@@ -334,14 +334,14 @@ struct TranscriptionHistoryView: View {
                     selectedTranscriptions.removeAll()
                 }
                 .buttonStyle(.plain)
-                .font(.system(size: 13))
+                .font(.app(size: 13, weight: .regular))
                 .foregroundColor(.secondary)
             } else {
                 Button("Select All") {
                     Task { await selectAllTranscriptions() }
                 }
                 .buttonStyle(.plain)
-                .font(.system(size: 13))
+                .font(.app(size: 13, weight: .regular))
                 .foregroundColor(.secondary)
             }
 
@@ -353,7 +353,7 @@ struct TranscriptionHistoryView: View {
                     openAnalysisPanel()
                 }) {
                     Image(systemName: "chart.bar.xaxis")
-                        .font(.system(size: 14, weight: .regular))
+                        .font(.app(size: 14, weight: .regular))
                         .foregroundColor(.secondary)
                 }
                 .buttonStyle(.plain)
@@ -363,7 +363,7 @@ struct TranscriptionHistoryView: View {
                     exportService.exportTranscriptionsToCSV(transcriptions: Array(selectedTranscriptions))
                 }) {
                     Image(systemName: "square.and.arrow.up")
-                        .font(.system(size: 14, weight: .regular))
+                        .font(.app(size: 14, weight: .regular))
                         .foregroundColor(.secondary)
                 }
                 .buttonStyle(.plain)
@@ -371,7 +371,7 @@ struct TranscriptionHistoryView: View {
 
                 Button(action: { showDeleteConfirmation = true }) {
                     Image(systemName: "trash")
-                        .font(.system(size: 14, weight: .regular))
+                        .font(.app(size: 14, weight: .regular))
                         .foregroundColor(.secondary)
                 }
                 .buttonStyle(.plain)
@@ -382,7 +382,7 @@ struct TranscriptionHistoryView: View {
 
             if !selectedTranscriptions.isEmpty {
                 Text(String(format: String(localized: "%lld selected"), Int64(selectedTranscriptions.count)))
-                    .font(.system(size: 13, weight: .medium))
+                    .font(.app(size: 13, weight: .medium))
                     .foregroundColor(.secondary)
             }
         }

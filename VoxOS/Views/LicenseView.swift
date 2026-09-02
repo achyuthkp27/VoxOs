@@ -7,7 +7,7 @@ struct LicenseView: View {
     var body: some View {
         VStack(spacing: 15) {
             Text("License Management")
-                .font(.headline)
+                .font(.app(.headline))
 
             if licenseViewModel.hasVerifiedLicense {
                 VStack(spacing: 10) {
@@ -48,7 +48,7 @@ struct LicenseView: View {
                     .foregroundColor(
                         licenseViewModel.validationSuccess ? AppTheme.Status.positive : AppTheme.Status.error
                     )
-                    .font(.caption)
+                    .font(.app(.caption))
             }
         }
         .padding()

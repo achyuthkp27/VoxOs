@@ -285,18 +285,18 @@ private struct DashboardProductivityHoverTooltip: View {
     var body: some View {
         VStack(alignment: .leading, spacing: 4) {
             Text(point.accessibilityLabel)
-                .font(.system(size: 10, weight: .bold, design: .rounded))
+                .font(.app(size: 10, weight: .bold))
                 .foregroundStyle(AppTheme.Text.secondary)
 
             Text(wordsText(Formatters.formattedNumber(point.words)))
-                .font(.system(size: 12, weight: .bold, design: .rounded))
+                .font(.app(size: 12, weight: .bold))
                 .foregroundStyle(AppTheme.Text.primary)
                 .monospacedDigit()
                 .lineLimit(1)
                 .minimumScaleFactor(0.72)
 
             Text(comparisonText)
-                .font(.system(size: 10, weight: .bold, design: .rounded))
+                .font(.app(size: 10, weight: .bold))
                 .foregroundStyle(comparisonColor)
                 .monospacedDigit()
                 .lineLimit(1)
@@ -362,11 +362,11 @@ private struct DashboardProductivityEmptyHint: View {
     var body: some View {
         HStack(spacing: 8) {
             Image(systemName: "waveform.path.ecg")
-                .font(.system(size: 13, weight: .semibold))
+                .font(.app(size: 13, weight: .semibold))
                 .foregroundStyle(AppTheme.Text.secondary.opacity(0.78))
 
             Text("No dictated words in this period yet")
-                .font(.system(size: 12, weight: .semibold))
+                .font(.app(size: 12, weight: .semibold))
                 .foregroundStyle(AppTheme.Text.secondary)
                 .lineLimit(1)
                 .minimumScaleFactor(0.78)
@@ -390,7 +390,7 @@ private struct DashboardProductivityXAxisLabel: View {
 
     var body: some View {
         Text(label)
-            .font(.system(size: 12, weight: .semibold))
+            .font(.app(size: 12, weight: .semibold))
             .foregroundStyle(AppTheme.Text.secondary)
             .lineLimit(1)
             .minimumScaleFactor(0.72)

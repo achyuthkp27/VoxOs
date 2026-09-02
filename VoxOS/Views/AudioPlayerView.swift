@@ -178,7 +178,7 @@ struct WaveformView: View {
                         ProgressView()
                             .controlSize(.small)
                         Text("Loading...")
-                            .font(.system(size: 10))
+                            .font(.app(size: 10, weight: .regular))
                             .foregroundColor(.secondary)
                     }
                     .frame(maxWidth: .infinity, maxHeight: .infinity)
@@ -201,7 +201,7 @@ struct WaveformView: View {
 
                     if isHovering {
                         Text(formatTime(duration * Double(hoverLocation / geometry.size.width)))
-                            .font(.system(size: 10, weight: .medium))
+                            .font(.app(size: 10, weight: .medium))
                             .monospacedDigit()
                             .foregroundColor(AppTheme.Surface.window)
                             .padding(.horizontal, 6)
@@ -288,7 +288,7 @@ private struct CircleIconButton: View {
     let icon: String
     let action: () -> Void
     var fill: Color = AppTheme.Surface.subtle
-    var iconFont: Font = .system(size: 14, weight: .semibold)
+    var iconFont: Font = .app(size: 14, weight: .semibold)
 
     var body: some View {
         Button(action: action) {
@@ -323,11 +323,11 @@ private struct AsyncCircleButton: View {
                                 .controlSize(.small)
                         } else if showSuccess {
                             Image(systemName: "checkmark")
-                                .font(.system(size: 14, weight: .semibold))
+                                .font(.app(size: 14, weight: .semibold))
                                 .foregroundStyle(AppTheme.Status.success)
                         } else {
                             Image(systemName: defaultIcon)
-                                .font(.system(size: 14, weight: .semibold))
+                                .font(.app(size: 14, weight: .semibold))
                                 .foregroundStyle(.primary)
                         }
                     }
@@ -396,7 +396,7 @@ struct AudioPlayerView: View {
 
             HStack(spacing: 8) {
                 Text(formatTime(playerManager.currentTime))
-                    .font(.system(size: 11, weight: .medium))
+                    .font(.app(size: 11, weight: .medium))
                     .monospacedDigit()
                     .foregroundColor(.secondary)
 
@@ -418,7 +418,7 @@ struct AudioPlayerView: View {
                                     playerManager.playbackRate == 1.0
                                         ? "1×" : playerManager.playbackRate == 1.5 ? "1.5×" : "2×"
                                 )
-                                .font(.system(size: 11, weight: .semibold))
+                                .font(.app(size: 11, weight: .semibold))
                                 .foregroundStyle(.primary)
                             )
                     }
@@ -470,7 +470,7 @@ struct AudioPlayerView: View {
                 Spacer()
 
                 Text(formatTime(playerManager.duration))
-                    .font(.system(size: 11, weight: .medium))
+                    .font(.app(size: 11, weight: .medium))
                     .monospacedDigit()
                     .foregroundColor(.secondary)
             }
@@ -502,7 +502,7 @@ struct AudioPlayerView: View {
                         ModeIconView(icon: selectedMode.icon, size: selectedMode.icon.kind == .emoji ? 14 : 12)
                     } else {
                         Image(systemName: "square.grid.2x2")
-                            .font(.system(size: 13, weight: .semibold))
+                            .font(.app(size: 13, weight: .semibold))
                             .foregroundStyle(.primary.opacity(0.6))
                     }
                 }
@@ -525,7 +525,7 @@ struct AudioPlayerView: View {
     private var promptSelectionPopover: some View {
         VStack(alignment: .leading, spacing: 8) {
             Text("Select Prompt")
-                .font(.headline)
+                .font(.app(.headline))
                 .foregroundColor(AppTheme.Text.primary)
                 .padding(.horizontal)
                 .padding(.top, 8)
@@ -543,7 +543,7 @@ struct AudioPlayerView: View {
                             "Custom prompts aren't available with VoxOS Refine. Select a Mode that uses another AI provider."
                         )
                         .foregroundColor(AppTheme.Text.secondary)
-                        .font(.system(size: 12))
+                        .font(.app(size: 12, weight: .regular))
                         .fixedSize(horizontal: false, vertical: true)
                         .padding(.horizontal, 8)
                         .padding(.bottom, 6)
@@ -552,7 +552,7 @@ struct AudioPlayerView: View {
                     if prompts.isEmpty {
                         Text("No Prompts Available")
                             .foregroundColor(AppTheme.Text.primary)
-                            .font(.system(size: 13))
+                            .font(.app(size: 13, weight: .regular))
                             .frame(maxWidth: .infinity)
                             .padding(.vertical, 16)
                     } else {

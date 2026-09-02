@@ -41,13 +41,13 @@ struct AppNotificationView: View {
             HStack(alignment: .center, spacing: 12) {
                 // Type icon
                 Image(systemName: type.iconName)
-                    .font(.system(size: 16, weight: .medium))
+                    .font(.app(size: 16, weight: .medium))
                     .foregroundColor(type.iconColor)
                     .frame(width: 20, height: 20)
 
                 // Single message text
                 Text(title)
-                    .font(.system(size: 12))
+                    .font(.app(size: 12, weight: .regular))
                     .fontWeight(.medium)
                     .foregroundColor(.white)
                     .lineLimit(2)
@@ -61,7 +61,7 @@ struct AppNotificationView: View {
                         onClose()
                     }) {
                         Text(actionButton.label)
-                            .font(.system(size: 11, weight: .semibold))
+                            .font(.app(size: 11, weight: .semibold))
                             .foregroundColor(.white)
                             .padding(.horizontal, 8)
                             .padding(.vertical, 4)
@@ -73,7 +73,7 @@ struct AppNotificationView: View {
 
                 Button(action: onClose) {
                     Image(systemName: "xmark")
-                        .font(.system(size: 10, weight: .medium))
+                        .font(.app(size: 10, weight: .medium))
                         .foregroundColor(.white.opacity(0.6))
                 }
                 .buttonStyle(PlainButtonStyle())

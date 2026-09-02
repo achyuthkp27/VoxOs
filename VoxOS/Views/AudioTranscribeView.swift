@@ -67,11 +67,11 @@ struct AudioTranscribeView: View {
 
                 VStack(spacing: 14) {
                     Image(systemName: "arrow.down.doc")
-                        .font(.system(size: 32))
+                        .font(.app(size: 32, weight: .regular))
                         .foregroundColor(isDropTargeted ? AppTheme.Accent.primary : .gray)
 
                     Text("Drop audio or video files here")
-                        .font(.headline)
+                        .font(.app(.headline))
 
                     Text("or")
                         .foregroundColor(.secondary)
@@ -86,7 +86,7 @@ struct AudioTranscribeView: View {
             .frame(maxWidth: 480, maxHeight: 200)
 
             Text("Supports WAV, MP3, M4A, AIFF, MP4, MOV, AAC, FLAC, CAF, AMR, OGG, OPUS, 3GP")
-                .font(.caption)
+                .font(.app(.caption))
                 .foregroundColor(.secondary)
                 .padding(.top, 12)
 
@@ -131,7 +131,7 @@ struct AudioTranscribeView: View {
             .scrollContentBackground(.hidden)
             .safeAreaInset(edge: .bottom) {
                 Text("Drop files anywhere to add more")
-                    .font(.caption)
+                    .font(.app(.caption))
                     .foregroundColor(.secondary)
                     .frame(maxWidth: .infinity)
                     .padding(.vertical, 8)
@@ -145,7 +145,7 @@ struct AudioTranscribeView: View {
         HStack(spacing: 10) {
             let count = transcriptionManager.queue.count
             Text(String(localized: "\(count) files"))
-                .font(.subheadline)
+                .font(.app(.subheadline))
                 .foregroundColor(.secondary)
 
             Button {
@@ -153,9 +153,9 @@ struct AudioTranscribeView: View {
             } label: {
                 HStack(spacing: 4) {
                     Image(systemName: "plus")
-                        .font(.system(size: 12, weight: .medium))
+                        .font(.app(size: 12, weight: .medium))
                     Text("Add")
-                        .font(.system(size: 12, weight: .medium))
+                        .font(.app(size: 12, weight: .medium))
                 }
                 .foregroundColor(.secondary)
                 .padding(.horizontal, 10)
@@ -178,9 +178,9 @@ struct AudioTranscribeView: View {
                 } label: {
                     HStack(spacing: 4) {
                         Image(systemName: "stop.fill")
-                            .font(.system(size: 10, weight: .medium))
+                            .font(.app(size: 10, weight: .medium))
                         Text("Cancel")
-                            .font(.system(size: 12, weight: .medium))
+                            .font(.app(size: 12, weight: .medium))
                     }
                     .foregroundColor(AppTheme.Status.error)
                     .padding(.horizontal, 10)
@@ -198,9 +198,9 @@ struct AudioTranscribeView: View {
                 } label: {
                     HStack(spacing: 4) {
                         Image(systemName: "play.fill")
-                            .font(.system(size: 10, weight: .medium))
+                            .font(.app(size: 10, weight: .medium))
                         Text("Start")
-                            .font(.system(size: 12, weight: .semibold))
+                            .font(.app(size: 12, weight: .semibold))
                     }
                     .foregroundColor(.white)
                     .padding(.horizontal, 12)
@@ -225,9 +225,9 @@ struct AudioTranscribeView: View {
             } label: {
                 HStack(spacing: 4) {
                     Image(systemName: "xmark.bin")
-                        .font(.system(size: 12, weight: .medium))
+                        .font(.app(size: 12, weight: .medium))
                     Text("Clear")
-                        .font(.system(size: 12, weight: .medium))
+                        .font(.app(size: 12, weight: .medium))
                 }
                 .foregroundColor(.secondary)
                 .padding(.horizontal, 10)
@@ -247,14 +247,14 @@ struct AudioTranscribeView: View {
     private var modePicker: some View {
         HStack(spacing: 6) {
             Text("Mode")
-                .font(.system(size: 12, weight: .semibold))
+                .font(.app(size: 12, weight: .semibold))
                 .foregroundColor(.secondary)
                 .lineLimit(1)
                 .fixedSize(horizontal: true, vertical: false)
 
             if modeManager.enabledConfigurations.isEmpty {
                 Text("None")
-                    .font(.system(size: 12, weight: .medium))
+                    .font(.app(size: 12, weight: .medium))
                     .foregroundColor(.secondary)
                     .lineLimit(1)
                     .fixedSize(horizontal: true, vertical: false)
@@ -266,11 +266,11 @@ struct AudioTranscribeView: View {
                         ModeIconView(icon: selectedMode.icon, size: selectedMode.icon.kind == .emoji ? 13 : 11)
                             .frame(width: 16)
                         Text(selectedMode.name)
-                            .font(.system(size: 12, weight: .medium))
+                            .font(.app(size: 12, weight: .medium))
                             .lineLimit(1)
                             .truncationMode(.tail)
                         Image(systemName: "chevron.up.chevron.down")
-                            .font(.system(size: 9, weight: .semibold))
+                            .font(.app(size: 9, weight: .semibold))
                             .foregroundColor(.secondary)
                     }
                     .foregroundColor(.primary)
@@ -318,7 +318,7 @@ struct AudioTranscribeView: View {
             )
             .overlay {
                 Text("Drop to add files")
-                    .font(.subheadline.weight(.medium))
+                    .font(.app(.subheadline, weight: .medium))
                     .foregroundColor(AppTheme.Accent.primary)
             }
             .padding(16)

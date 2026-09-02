@@ -72,17 +72,17 @@ struct WordReplacementView: View {
             HStack(spacing: 8) {
                 TextField("", text: $originalWord, prompt: Text("Original text (use commas for multiple)"))
                     .textFieldStyle(.roundedBorder)
-                    .font(.system(size: 13))
+                    .font(.app(size: 13, weight: .regular))
                     .labelsHidden()
 
                 Image(systemName: "arrow.right")
                     .foregroundColor(.secondary)
-                    .font(.system(size: 10))
+                    .font(.app(size: 10, weight: .regular))
                     .frame(width: 10)
 
                 TextField("", text: $replacementWord, prompt: Text("Replacement text"))
                     .textFieldStyle(.roundedBorder)
-                    .font(.system(size: 13))
+                    .font(.app(size: 13, weight: .regular))
                     .onSubmit { addReplacement() }
                     .labelsHidden()
 
@@ -113,12 +113,12 @@ struct WordReplacementView: View {
                         Button(action: { toggleSort(for: .original) }) {
                             HStack(spacing: 4) {
                                 Text("Original")
-                                    .font(.system(size: 12, weight: .medium))
+                                    .font(.app(size: 12, weight: .medium))
                                     .foregroundColor(.secondary)
 
                                 if sortMode == .originalAsc || sortMode == .originalDesc {
                                     Image(systemName: sortMode == .originalAsc ? "chevron.up" : "chevron.down")
-                                        .font(.caption)
+                                        .font(.app(.caption))
                                         .foregroundColor(.secondary)
                                 }
                             }
@@ -129,18 +129,18 @@ struct WordReplacementView: View {
 
                         Image(systemName: "arrow.right")
                             .foregroundColor(.secondary)
-                            .font(.system(size: 10))
+                            .font(.app(size: 10, weight: .regular))
                             .frame(width: 10)
 
                         Button(action: { toggleSort(for: .replacement) }) {
                             HStack(spacing: 4) {
                                 Text("Replacement")
-                                    .font(.system(size: 12, weight: .medium))
+                                    .font(.app(size: 12, weight: .medium))
                                     .foregroundColor(.secondary)
 
                                 if sortMode == .replacementAsc || sortMode == .replacementDesc {
                                     Image(systemName: sortMode == .replacementAsc ? "chevron.up" : "chevron.down")
-                                        .font(.caption)
+                                        .font(.app(.caption))
                                         .foregroundColor(.secondary)
                                 }
                             }
@@ -229,15 +229,15 @@ struct WordReplacementInfoPopover: View {
     var body: some View {
         VStack(alignment: .leading, spacing: 16) {
             Text("How to use Word Replacements")
-                .font(.headline)
+                .font(.app(.headline))
 
             VStack(alignment: .leading, spacing: 8) {
                 Text("Separate multiple originals with commas:")
-                    .font(.subheadline)
+                    .font(.app(.subheadline))
                     .foregroundColor(.secondary)
 
                 Text("Voicing, Voice ink, Voiceing")
-                    .font(.callout)
+                    .font(.app(.callout))
                     .padding(8)
                     .frame(maxWidth: .infinity, alignment: .leading)
                     .background(Color(.textBackgroundColor))
@@ -247,29 +247,29 @@ struct WordReplacementInfoPopover: View {
             Divider()
 
             Text("Examples")
-                .font(.subheadline)
+                .font(.app(.subheadline))
                 .foregroundColor(.secondary)
 
             VStack(spacing: 12) {
                 HStack(spacing: 8) {
                     VStack(alignment: .leading, spacing: 4) {
                         Text("Original:")
-                            .font(.caption)
+                            .font(.app(.caption))
                             .foregroundColor(.secondary)
                         Text("my website link")
-                            .font(.callout)
+                            .font(.app(.callout))
                     }
 
                     Image(systemName: "arrow.right")
-                        .font(.caption)
+                        .font(.app(.caption))
                         .foregroundColor(.secondary)
 
                     VStack(alignment: .leading, spacing: 4) {
                         Text("Replacement:")
-                            .font(.caption)
+                            .font(.app(.caption))
                             .foregroundColor(.secondary)
                         Text(verbatim: "https://tryvoiceink.com")
-                            .font(.callout)
+                            .font(.app(.callout))
                     }
                 }
                 .padding(10)
@@ -280,22 +280,22 @@ struct WordReplacementInfoPopover: View {
                 HStack(spacing: 8) {
                     VStack(alignment: .leading, spacing: 4) {
                         Text("Original:")
-                            .font(.caption)
+                            .font(.app(.caption))
                             .foregroundColor(.secondary)
                         Text("Voicing, Voice ink")
-                            .font(.callout)
+                            .font(.app(.callout))
                     }
 
                     Image(systemName: "arrow.right")
-                        .font(.caption)
+                        .font(.app(.caption))
                         .foregroundColor(.secondary)
 
                     VStack(alignment: .leading, spacing: 4) {
                         Text("Replacement:")
-                            .font(.caption)
+                            .font(.app(.caption))
                             .foregroundColor(.secondary)
                         Text("VoxOS")
-                            .font(.callout)
+                            .font(.app(.callout))
                     }
                 }
                 .padding(10)
@@ -320,18 +320,18 @@ struct ReplacementRow: View {
     var body: some View {
         HStack(spacing: 8) {
             Text(original)
-                .font(.system(size: 13))
+                .font(.app(size: 13, weight: .regular))
                 .lineLimit(2)
                 .frame(maxWidth: .infinity, alignment: .leading)
 
             Image(systemName: "arrow.right")
                 .foregroundColor(.secondary)
-                .font(.system(size: 10))
+                .font(.app(size: 10, weight: .regular))
                 .frame(width: 10)
 
             ZStack(alignment: .trailing) {
                 Text(replacement)
-                    .font(.system(size: 13))
+                    .font(.app(size: 13, weight: .regular))
                     .lineLimit(2)
                     .truncationMode(.middle)
                     .frame(maxWidth: .infinity, alignment: .leading)

@@ -151,10 +151,10 @@ struct InlineHistoryView: View {
             HStack(spacing: 6) {
                 Image(systemName: "magnifyingglass")
                     .foregroundColor(.secondary)
-                    .font(.system(size: 12))
+                    .font(.app(size: 12, weight: .regular))
                 TextField("Search transcriptions...", text: $searchText)
                     .textFieldStyle(.plain)
-                    .font(.system(size: 13))
+                    .font(.app(size: 13, weight: .regular))
             }
             .padding(.horizontal, 10)
             .padding(.vertical, 6)
@@ -181,7 +181,7 @@ struct InlineHistoryView: View {
     private var selectionBar: some View {
         HStack(spacing: 16) {
             Text(String(format: String(localized: "%lld selected"), Int64(selectedTranscriptions.count)))
-                .font(.system(size: 13, weight: .medium))
+                .font(.app(size: 13, weight: .medium))
                 .foregroundColor(.secondary)
 
             Spacer()
@@ -190,7 +190,7 @@ struct InlineHistoryView: View {
                 openPanel(mode: .analysis)
             }) {
                 Label("Analyze", systemImage: "chart.bar.xaxis")
-                    .font(.system(size: 12, weight: .medium))
+                    .font(.app(size: 12, weight: .medium))
             }
             .buttonStyle(.plain)
             .foregroundColor(.secondary)
@@ -199,14 +199,14 @@ struct InlineHistoryView: View {
                 exportService.exportTranscriptionsToCSV(transcriptions: Array(selectedTranscriptions))
             }) {
                 Label("Export", systemImage: "square.and.arrow.up")
-                    .font(.system(size: 12, weight: .medium))
+                    .font(.app(size: 12, weight: .medium))
             }
             .buttonStyle(.plain)
             .foregroundColor(.secondary)
 
             Button(action: { showDeleteConfirmation = true }) {
                 Label("Delete", systemImage: "trash")
-                    .font(.system(size: 12, weight: .medium))
+                    .font(.app(size: 12, weight: .medium))
             }
             .buttonStyle(.plain)
             .foregroundColor(AppTheme.Status.error.opacity(0.80))
@@ -218,14 +218,14 @@ struct InlineHistoryView: View {
                 Button("Deselect All") {
                     selectedTranscriptions.removeAll()
                 }
-                .font(.system(size: 12, weight: .medium))
+                .font(.app(size: 12, weight: .medium))
                 .buttonStyle(.plain)
                 .foregroundColor(.secondary)
             } else {
                 Button("Select All") {
                     Task { await selectAllTranscriptions() }
                 }
-                .font(.system(size: 12, weight: .medium))
+                .font(.app(size: 12, weight: .medium))
                 .buttonStyle(.plain)
                 .foregroundColor(.secondary)
             }
@@ -244,13 +244,13 @@ struct InlineHistoryView: View {
         VStack(spacing: 12) {
             Spacer()
             Image(systemName: "doc.text.magnifyingglass")
-                .font(.system(size: 40))
+                .font(.app(size: 40, weight: .regular))
                 .foregroundColor(.secondary)
             Text(searchText.isEmpty ? "No transcriptions yet" : "No results found")
-                .font(.system(size: 16, weight: .medium))
+                .font(.app(size: 16, weight: .medium))
                 .foregroundColor(.secondary)
             Text(searchText.isEmpty ? "Your transcription history will appear here" : "Try a different search term")
-                .font(.system(size: 13))
+                .font(.app(size: 13, weight: .regular))
                 .foregroundColor(.secondary.opacity(0.8))
             Spacer()
         }
@@ -290,7 +290,7 @@ struct InlineHistoryView: View {
                                 ProgressView().controlSize(.small)
                             }
                             Text(isLoading ? "Loading..." : "Load More")
-                                .font(.system(size: 13, weight: .medium))
+                                .font(.app(size: 13, weight: .medium))
                         }
                         .frame(maxWidth: .infinity)
                         .padding(.vertical, 4)
@@ -514,12 +514,12 @@ private struct HistoryCardRow: View {
 
                 VStack(alignment: .leading, spacing: 4) {
                     Text(transcription.timestamp, format: .dateTime.month(.abbreviated).day().hour().minute())
-                        .font(.system(size: 11, weight: .medium))
+                        .font(.app(size: 11, weight: .medium))
                         .foregroundColor(.secondary)
 
                     if !isExpanded {
                         Text(transcription.enhancedText ?? transcription.text)
-                            .font(.system(size: 13))
+                            .font(.app(size: 13, weight: .regular))
                             .lineLimit(2)
                             .foregroundColor(.primary)
                     }
@@ -528,7 +528,7 @@ private struct HistoryCardRow: View {
                 Spacer()
 
                 Image(systemName: "chevron.right")
-                    .font(.caption2.weight(.semibold))
+                    .font(.app(.caption2, weight: .semibold))
                     .foregroundColor(.secondary)
                     .rotationEffect(.degrees(isExpanded ? 90 : 0))
                     .animation(.easeInOut(duration: 0.2), value: isExpanded)
@@ -557,7 +557,7 @@ private struct HistoryCardRow: View {
                             }
                         } label: {
                             Text(LocalizedStringKey(tab.rawValue))
-                                .font(.system(size: 11, weight: .medium))
+                                .font(.app(size: 11, weight: .medium))
                                 .foregroundColor(selectedTab == tab ? .primary : .secondary)
                                 .padding(.horizontal, 10)
                                 .padding(.vertical, 4)
@@ -593,7 +593,7 @@ private struct HistoryCardRow: View {
                     Spacer()
                     Button(action: onShowInfo) {
                         Image(systemName: "info.circle")
-                            .font(.system(size: 14, weight: .medium))
+                            .font(.app(size: 14, weight: .medium))
                             .foregroundColor(.secondary)
                     }
                     .buttonStyle(.plain)

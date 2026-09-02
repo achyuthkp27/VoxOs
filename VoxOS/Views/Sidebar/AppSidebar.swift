@@ -1,44 +1,49 @@
 import SwiftUI
 
+/// Tahoe sidebar: no rail colour of its own — the blurred window ground shows through — and
+/// the selected item is a floating glass capsule that morphs between rows.
 struct AppSidebar: View {
     @Binding var selectedView: ViewType
+    @Namespace private var selection
 
     var body: some View {
-        ZStack(alignment: .trailing) {
-            sidebarBackground
-            sidebarDivider
-            sidebarContent
+        VStack(spacing: 0) {
+            brand
+                .padding(.top, 40)
+                .padding(.bottom, 14)
+
+            LiquidGlassContainer(spacing: 8) {
+                VStack(spacing: 0) {
+                    sidebarSection(ViewType.primaryItems)
+                    Spacer(minLength: 16)
+                    sidebarSection(ViewType.secondaryItems)
+                        .padding(.bottom, 14)
+                }
+            }
         }
-        .frame(width: 220)
+        .frame(width: 208)
         .frame(maxHeight: .infinity)
+        .liquidGlass(cornerRadius: 24)
+        .padding(.leading, 10)
+        .padding(.vertical, 10)
         .onAppear {
             ViewType.assertSidebarItemsCoverAllCases()
         }
     }
 
-    private var sidebarContent: some View {
-        VStack(spacing: 0) {
-            sidebarSection(ViewType.primaryItems)
-                .padding(.top, 10)
-
-            Spacer(minLength: 16)
-
-            sidebarSection(ViewType.secondaryItems)
-                .padding(.bottom, 14)
+    private var brand: some View {
+        HStack(spacing: 8) {
+            Image(nsImage: NSImage(named: "menuBarIcon") ?? NSImage())
+                .resizable()
+                .renderingMode(.template)
+                .scaledToFit()
+                .frame(width: 17, height: 17)
+            Text("VoxOS")
+                .font(.app(size: 15, weight: .semibold))
+            Spacer(minLength: 0)
         }
-        .frame(maxWidth: .infinity, maxHeight: .infinity)
-    }
-
-    private var sidebarBackground: some View {
-        VisualEffectView(material: .sidebar, blendingMode: .behindWindow)
-            .ignoresSafeArea(.container, edges: .top)
-    }
-
-    private var sidebarDivider: some View {
-        Rectangle()
-            .fill(AppTheme.Border.control.opacity(0.55))
-            .frame(width: 1)
-            .ignoresSafeArea(.container, edges: .top)
+        .foregroundStyle(AppTheme.Text.primary)
+        .padding(.horizontal, 22)
     }
 
     private func sidebarSection(_ items: [ViewType]) -> some View {
@@ -46,13 +51,14 @@ struct AppSidebar: View {
             ForEach(items) { viewType in
                 SidebarItemButton(
                     viewType: viewType,
-                    isSelected: selectedView == viewType
+                    isSelected: selectedView == viewType,
+                    namespace: selection
                 ) {
-                    selectedView = viewType
+                    withAnimation(.snappy(duration: 0.28)) { selectedView = viewType }
                 }
             }
         }
-        .padding(.horizontal, 10)
+        .padding(.horizontal, 12)
     }
 }
 
@@ -66,20 +72,8 @@ private extension ViewType {
         }
     }
 
-    static let primaryItems: [ViewType] = [
-        .dashboard,
-        .modes,
-        .transcribeAudio,
-        .history,
-        .dictionary,
-        .models,
-        .audio,
-    ]
-
-    static let secondaryItems: [ViewType] = [
-        .settings,
-        .license,
-    ]
+    static let primaryItems: [ViewType] = [.dashboard, .modes, .transcribeAudio, .history, .dictionary, .models, .audio]
+    static let secondaryItems: [ViewType] = [.settings, .license]
 
     static func assertSidebarItemsCoverAllCases() {
         #if DEBUG
@@ -90,133 +84,75 @@ private extension ViewType {
 
     var icon: String {
         switch self {
-        case .dashboard: return "gauge.medium"
-        case .transcribeAudio: return "waveform.path"
-        case .history: return "doc.text.fill"
-        case .models: return "cpu"
-        case .modes: return "sparkles.square.fill.on.square"
+        case .dashboard: return "house.fill"
+        case .transcribeAudio: return "waveform"
+        case .history: return "clock.fill"
+        case .models: return "cpu.fill"
+        case .modes: return "square.on.square"
         case .audio: return "mic.fill"
-        case .dictionary: return "text.book.closed.fill"
+        case .dictionary: return "book.fill"
         case .settings: return "gearshape.fill"
-        case .license: return "checkmark.seal.fill"
+        case .license: return "sparkles"
         }
     }
-
-    var sidebarIconStyle: SidebarIconStyle {
-        switch self {
-        case .dashboard:
-            return .init(background: AppTheme.Sidebar.dashboard)
-        case .modes:
-            return .init(background: AppTheme.Sidebar.modes)
-        case .models:
-            return .init(background: AppTheme.Sidebar.models)
-        case .audio:
-            return .init(background: AppTheme.Sidebar.fallback)
-        case .dictionary:
-            return .init(background: AppTheme.Sidebar.dictionary)
-        case .history:
-            return .init(background: AppTheme.Sidebar.audio)
-        case .transcribeAudio:
-            return .init(background: AppTheme.Sidebar.transcribeAudio)
-        case .settings:
-            return .init(background: AppTheme.Sidebar.fallback)
-        case .license:
-            return .init(background: AppTheme.Sidebar.license)
-        }
-    }
-}
-
-private struct SidebarIconStyle {
-    let background: Color
-    var foreground: Color = .white
 }
 
 private struct SidebarItemButton: View {
     let viewType: ViewType
     let isSelected: Bool
+    let namespace: Namespace.ID
     let action: () -> Void
+    @State private var isHovering = false
 
     var body: some View {
         Button(action: action) {
-            HStack(spacing: 9) {
-                SidebarIconTile(
-                    systemName: viewType.icon,
-                    style: viewType.sidebarIconStyle
-                )
+            HStack(spacing: 10) {
+                Image(systemName: viewType.icon)
+                    .font(.app(size: 14, weight: .medium))
+                    .symbolRenderingMode(.hierarchical)
+                    .frame(width: 20)
 
                 Text(viewType.title)
-                    .font(.system(size: 13.5, weight: isSelected ? .semibold : .medium))
+                    .font(.app(size: 13.5, weight: isSelected ? .semibold : .medium))
                     .lineLimit(1)
 
                 Spacer(minLength: 0)
             }
-            .foregroundStyle(isSelected ? selectedForegroundColor : Color.primary)
-            .padding(.leading, 8)
-            .padding(.trailing, 10)
-            .frame(height: 38)
+            .foregroundStyle(isSelected ? Color.white : AppTheme.Text.primary)
+            .padding(.horizontal, 12)
+            .frame(height: 34)
             .frame(maxWidth: .infinity, alignment: .leading)
-            .background(rowBackground)
-            .contentShape(RoundedRectangle(cornerRadius: 10, style: .continuous))
+            .background {
+                if isHovering, !isSelected { Capsule().fill(AppTheme.Surface.subtle) }
+            }
+            .contentShape(Capsule())
+            .modifier(SelectionGlass(isSelected: isSelected, namespace: namespace))
         }
         .buttonStyle(.plain)
+        .focusEffectDisabled()
+        .onHover { isHovering = $0 }
         .help(viewType.title)
         .accessibilityLabel(viewType.title)
         .accessibilityAddTraits(isSelected ? .isSelected : [])
-        .animation(.easeInOut(duration: 0.12), value: isSelected)
     }
 
-    private var rowBackground: some View {
-        RoundedRectangle(cornerRadius: 10, style: .continuous)
-            .fill(rowBackgroundColor)
-            .overlay {
-                RoundedRectangle(cornerRadius: 10, style: .continuous)
-                    .strokeBorder(rowBorderColor, lineWidth: 1)
-            }
-    }
-
-    private var rowBackgroundColor: Color {
-        if isSelected {
-            return Color(nsColor: .selectedContentBackgroundColor)
-        }
-
-        return .clear
-    }
-
-    private var rowBorderColor: Color {
-        isSelected ? selectedForegroundColor.opacity(0.18) : .clear
-    }
-
-    private var selectedForegroundColor: Color {
-        Color(nsColor: .alternateSelectedControlTextColor)
-    }
 }
 
-private struct SidebarIconTile: View {
-    let systemName: String
-    let style: SidebarIconStyle
+/// Selection sits inside the glass sidebar, so it is a plain tinted capsule (glass does not
+/// nest); `matchedGeometryEffect` keeps the slide between rows.
+private struct SelectionGlass: ViewModifier {
+    let isSelected: Bool
+    let namespace: Namespace.ID
 
-    var body: some View {
-        ZStack {
-            RoundedRectangle(cornerRadius: 6, style: .continuous)
-                .fill(style.background)
-                .overlay(alignment: .top) {
-                    RoundedRectangle(cornerRadius: 6, style: .continuous)
-                        .fill(Color.white.opacity(0.18))
-                        .frame(height: 11)
-                        .blendMode(.screen)
-                }
-                .overlay {
-                    RoundedRectangle(cornerRadius: 6, style: .continuous)
-                        .strokeBorder(Color.white.opacity(0.24), lineWidth: 0.5)
-                }
-                .shadow(color: Color.black.opacity(0.18), radius: 1.2, y: 1)
-
-            Image(systemName: systemName)
-                .font(.system(size: 14.5, weight: .semibold))
-                .symbolRenderingMode(.monochrome)
-                .foregroundStyle(style.foreground)
-                .shadow(color: Color.black.opacity(0.16), radius: 0.5, y: 0.5)
+    func body(content: Content) -> some View {
+        content.background {
+            if isSelected {
+                Capsule()
+                    .fill(AppTheme.Accent.primary.opacity(0.85))
+                    .overlay(Capsule().strokeBorder(Color.white.opacity(0.18), lineWidth: 1))
+                    .shadow(color: AppTheme.Accent.primary.opacity(0.35), radius: 8, y: 2)
+                    .matchedGeometryEffect(id: "sidebar-selection", in: namespace)
+            }
         }
-        .frame(width: 24, height: 24)
     }
 }

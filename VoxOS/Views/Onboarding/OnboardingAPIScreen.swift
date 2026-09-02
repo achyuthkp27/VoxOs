@@ -30,7 +30,7 @@ struct OnboardingAPIScreen: View {
             HStack(spacing: 0) {
                 Button(action: onBack) {
                     Text("Back")
-                        .font(.system(size: 14, weight: .medium))
+                        .font(.app(size: 14, weight: .medium))
                         .foregroundColor(AppTheme.Action.secondaryForeground)
                         .frame(width: 132, height: 42)
                         .background(AppMaterialCardBackground(cornerRadius: AppTheme.Radius.control))
@@ -42,7 +42,7 @@ struct OnboardingAPIScreen: View {
                 if !isSelectedProviderVerified {
                     Button(action: onRequestSkip) {
                         Text("Set It Up Later")
-                            .font(.system(size: 10, weight: .medium))
+                            .font(.app(size: 10, weight: .medium))
                             .foregroundColor(AppTheme.Text.secondary)
                             .padding(.horizontal, 4)
                             .frame(minHeight: 42)
@@ -58,7 +58,7 @@ struct OnboardingAPIScreen: View {
 
                 Button(action: onContinue) {
                     Text("Continue")
-                        .font(.system(size: 14, weight: .semibold))
+                        .font(.app(size: 14, weight: .semibold))
                         .foregroundColor(
                             canContinue && isSelectedProviderVerified
                                 ? AppTheme.Action.primaryForeground : AppTheme.Action.disabledForeground

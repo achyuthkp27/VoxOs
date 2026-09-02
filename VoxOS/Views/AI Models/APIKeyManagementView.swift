@@ -47,7 +47,7 @@ struct APIKeyManagementView: View {
                         .fill(AppTheme.Status.positive)
                         .frame(width: 8, height: 8)
                     Text("Connected")
-                        .font(.subheadline)
+                        .font(.app(.subheadline))
                         .foregroundColor(.secondary)
                 } else if aiService.selectedProvider == .ollama {
                     Spacer()
@@ -59,14 +59,14 @@ struct APIKeyManagementView: View {
                             .fill(AppTheme.Status.positive)
                             .frame(width: 8, height: 8)
                         Text("Connected")
-                            .font(.subheadline)
+                            .font(.app(.subheadline))
                             .foregroundColor(.secondary)
                     } else {
                         Circle()
                             .fill(AppTheme.Status.error)
                             .frame(width: 8, height: 8)
                         Text("Disconnected")
-                            .font(.subheadline)
+                            .font(.app(.subheadline))
                             .foregroundColor(.secondary)
                     }
                 }
@@ -190,7 +190,7 @@ struct APIKeyManagementView: View {
                     VStack(alignment: .leading, spacing: 6) {
                         HStack {
                             Text("Command")
-                                .font(.subheadline)
+                                .font(.app(.subheadline))
                                 .foregroundColor(.secondary)
                             Spacer()
                             Menu("Load Template") {
@@ -241,17 +241,17 @@ struct APIKeyManagementView: View {
                     Text(
                         "Environment variables available: VOXOS_SYSTEM_PROMPT, VOXOS_USER_PROMPT, VOXOS_FULL_PROMPT. VoxOS also writes VOXOS_FULL_PROMPT to stdin for every command."
                     )
-                    .font(.caption)
+                    .font(.app(.caption))
                     .foregroundColor(.secondary)
 
                     if !aiService.isAPIKeyValid {
                         Text("Load a template or enter a command to enable Local CLI enhancement.")
-                            .font(.caption)
+                            .font(.app(.caption))
                             .foregroundColor(AppTheme.Status.warningStrong)
                     }
                 } else if aiService.selectedProvider == .custom {
                     Text("Manage custom enhancement models in the Custom tab.")
-                        .font(.caption)
+                        .font(.app(.caption))
                         .foregroundColor(.secondary)
                 } else {
                     if aiService.isAPIKeyValid {
@@ -275,7 +275,7 @@ struct APIKeyManagementView: View {
                                         Image(systemName: "key.fill")
                                         Text("Get API Key")
                                     }
-                                    .font(.caption)
+                                    .font(.app(.caption))
                                     .foregroundColor(AppTheme.Status.infoStrong)
                                     .padding(.vertical, 4)
                                     .padding(.horizontal, 8)

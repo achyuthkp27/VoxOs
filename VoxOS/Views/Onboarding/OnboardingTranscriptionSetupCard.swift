@@ -88,10 +88,10 @@ struct OnboardingTranscriptionSetupCard: View {
         } label: {
             HStack(spacing: 8) {
                 Image(systemName: systemImage)
-                    .font(.system(size: 12, weight: .semibold))
+                    .font(.app(size: 12, weight: .semibold))
 
                 Text(kind.title)
-                    .font(.system(size: 12, weight: .semibold))
+                    .font(.app(size: 12, weight: .semibold))
             }
             .foregroundColor(isSelected ? AppTheme.Text.primary : AppTheme.Text.secondary)
             .frame(maxWidth: .infinity)
@@ -125,11 +125,11 @@ struct OnboardingTranscriptionSetupCard: View {
     private var missingModelPanel: some View {
         HStack(spacing: 10) {
             Image(systemName: "exclamationmark.triangle.fill")
-                .font(.system(size: 14, weight: .semibold))
+                .font(.app(size: 14, weight: .semibold))
                 .foregroundColor(AppTheme.Status.error)
 
             Text("Parakeet V3 is not available.")
-                .font(.system(size: 12, weight: .medium))
+                .font(.app(size: 12, weight: .medium))
                 .foregroundColor(AppTheme.Text.secondary)
 
             Spacer(minLength: 0)
@@ -166,7 +166,7 @@ struct OnboardingTranscriptionSetupCard: View {
 
                 VStack(alignment: .leading, spacing: 2) {
                     Text(selectedProvider.providerKey)
-                        .font(.system(size: 13, weight: .semibold))
+                        .font(.app(size: 13, weight: .semibold))
                         .foregroundColor(AppTheme.Text.primary)
                 }
             }
@@ -180,9 +180,9 @@ struct OnboardingTranscriptionSetupCard: View {
                     HStack(spacing: 6) {
                         Text("Switch provider")
                         Image(systemName: isSwitchingProvider ? "chevron.up" : "chevron.down")
-                            .font(.system(size: 9, weight: .bold))
+                            .font(.app(size: 9, weight: .bold))
                     }
-                    .font(.system(size: 11, weight: .semibold))
+                    .font(.app(size: 11, weight: .semibold))
                     .foregroundColor(AppTheme.Text.secondary)
                     .padding(.horizontal, 11)
                     .padding(.vertical, 7)
@@ -205,7 +205,7 @@ struct OnboardingTranscriptionSetupCard: View {
         VStack(alignment: .leading, spacing: 8) {
             HStack(alignment: .center) {
                 Text(apiKeyLabel)
-                    .font(.system(size: 12, weight: .semibold))
+                    .font(.app(size: 12, weight: .semibold))
                     .foregroundColor(AppTheme.Text.primary)
 
                 Spacer()
@@ -217,9 +217,9 @@ struct OnboardingTranscriptionSetupCard: View {
                         HStack(spacing: 4) {
                             Text("Get API key")
                             Image(systemName: "arrow.up.right")
-                                .font(.system(size: 9, weight: .semibold))
+                                .font(.app(size: 9, weight: .semibold))
                         }
-                        .font(.system(size: 11, weight: .semibold))
+                        .font(.app(size: 11, weight: .semibold))
                         .foregroundColor(AppTheme.Text.secondary)
                     }
                     .buttonStyle(.plain)
@@ -228,7 +228,7 @@ struct OnboardingTranscriptionSetupCard: View {
 
             SecureField(apiKeyPlaceholder, text: $apiKey)
                 .textFieldStyle(.plain)
-                .font(.system(size: 13))
+                .font(.app(size: 13, weight: .regular))
                 .padding(.horizontal, 12)
                 .frame(height: 38)
                 .background(
@@ -257,7 +257,7 @@ struct OnboardingTranscriptionSetupCard: View {
 
                     Text(isVerifying ? LocalizedStringKey("Testing...") : LocalizedStringKey("Test connection"))
                 }
-                .font(.system(size: 12, weight: .semibold))
+                .font(.app(size: 12, weight: .semibold))
                 .foregroundColor(canVerify ? AppTheme.Action.primaryForeground : AppTheme.Action.disabledForeground)
                 .padding(.horizontal, 14)
                 .padding(.vertical, 8)
@@ -275,11 +275,11 @@ struct OnboardingTranscriptionSetupCard: View {
     private var verifiedProviderSummary: some View {
         HStack(alignment: .center, spacing: 9) {
             Image(systemName: "checkmark.circle.fill")
-                .font(.system(size: 14, weight: .semibold))
+                .font(.app(size: 14, weight: .semibold))
                 .foregroundColor(AppTheme.Status.positive)
 
             Text("Connection verified.")
-                .font(.system(size: 12, weight: .semibold))
+                .font(.app(size: 12, weight: .semibold))
                 .foregroundColor(AppTheme.Text.primary)
 
             Spacer(minLength: 0)
@@ -292,19 +292,19 @@ struct OnboardingTranscriptionSetupCard: View {
         if let verificationMessage {
             HStack(alignment: .top, spacing: 7) {
                 Image(systemName: verificationSucceeded ? "checkmark.circle.fill" : "exclamationmark.circle.fill")
-                    .font(.system(size: 12, weight: .semibold))
+                    .font(.app(size: 12, weight: .semibold))
                     .foregroundColor(verificationSucceeded ? AppTheme.Status.positive : AppTheme.Status.error)
                     .padding(.top, 1)
 
                 VStack(alignment: .leading, spacing: 3) {
                     Text(verificationMessage)
-                        .font(.system(size: 12, weight: .medium))
+                        .font(.app(size: 12, weight: .medium))
                         .foregroundColor(verificationSucceeded ? AppTheme.Text.secondary : AppTheme.Status.error)
                         .fixedSize(horizontal: false, vertical: true)
 
                     if let verificationDetailMessage, !verificationSucceeded {
                         Text(verificationDetailMessage)
-                            .font(.system(size: 11))
+                            .font(.app(size: 11, weight: .regular))
                             .foregroundColor(AppTheme.Status.error.opacity(0.82))
                             .fixedSize(horizontal: false, vertical: true)
                     }
@@ -312,7 +312,7 @@ struct OnboardingTranscriptionSetupCard: View {
             }
         } else {
             Text("Test the connection to continue.")
-                .font(.system(size: 12))
+                .font(.app(size: 12, weight: .regular))
                 .foregroundColor(AppTheme.Text.secondary)
         }
     }
@@ -465,7 +465,7 @@ private struct TranscriptionProviderChoiceButton: View {
 
                 VStack(alignment: .leading, spacing: 4) {
                     Text(provider.providerKey)
-                        .font(.system(size: 12, weight: .semibold))
+                        .font(.app(size: 12, weight: .semibold))
                         .foregroundColor(AppTheme.Text.primary)
                         .lineLimit(1)
 
@@ -478,7 +478,7 @@ private struct TranscriptionProviderChoiceButton: View {
 
                 if isSelected {
                     Image(systemName: "checkmark.circle.fill")
-                        .font(.system(size: 13, weight: .semibold))
+                        .font(.app(size: 13, weight: .semibold))
                         .foregroundColor(AppTheme.Text.secondary)
                 }
             }
@@ -508,7 +508,7 @@ private struct TranscriptionProviderChoiceButton: View {
 private struct RecommendedTranscriptionProviderPill: View {
     var body: some View {
         Text("Recommended")
-            .font(.system(size: 9, weight: .semibold))
+            .font(.app(size: 9, weight: .semibold))
             .foregroundColor(AppTheme.Text.muted)
             .lineLimit(1)
             .fixedSize(horizontal: true, vertical: false)

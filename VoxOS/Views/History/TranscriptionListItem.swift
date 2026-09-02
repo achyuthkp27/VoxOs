@@ -22,12 +22,12 @@ struct TranscriptionListItem: View {
             VStack(alignment: .leading, spacing: 4) {
                 HStack {
                     Text(transcription.timestamp, format: .dateTime.month(.abbreviated).day().hour().minute())
-                        .font(.system(size: 11, weight: .medium))
+                        .font(.app(size: 11, weight: .medium))
                         .foregroundColor(.secondary)
                     Spacer()
                     if transcription.duration > 0 {
                         Text(transcription.duration.formatTiming())
-                            .font(.system(size: 10, weight: .medium))
+                            .font(.app(size: 10, weight: .medium))
                             .padding(.horizontal, 6)
                             .padding(.vertical, 3)
                             .background(
@@ -39,7 +39,7 @@ struct TranscriptionListItem: View {
                 }
 
                 Text(transcription.enhancedText ?? transcription.text)
-                    .font(.system(size: 12, weight: .regular))
+                    .font(.app(size: 12, weight: .regular))
                     .lineLimit(2)
                     .foregroundColor(.primary)
             }
@@ -75,7 +75,7 @@ struct CircularCheckboxStyle: ToggleStyle {
             Image(systemName: configuration.isOn ? "checkmark.circle.fill" : "circle")
                 .symbolRenderingMode(.hierarchical)
                 .foregroundColor(configuration.isOn ? AppTheme.Selection.foreground : .secondary)
-                .font(.system(size: 18))
+                .font(.app(size: 18, weight: .regular))
         }
         .buttonStyle(.plain)
     }

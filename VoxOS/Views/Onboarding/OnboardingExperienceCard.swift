@@ -46,7 +46,7 @@ struct OnboardingExperienceCard: View {
     private var sayPanel: some View {
         panelShell(kicker: step.sampleLabel) {
             Text(LocalizedStringKey(step.sampleText))
-                .font(.system(size: 17, weight: .medium))
+                .font(.app(size: 17, weight: .medium))
                 .foregroundColor(AppTheme.Text.primary)
                 .lineSpacing(5)
                 .fixedSize(horizontal: false, vertical: true)
@@ -80,17 +80,17 @@ struct OnboardingExperienceCard: View {
             trafficLights
 
             Image(systemName: "note.text")
-                .font(.system(size: 12, weight: .semibold))
+                .font(.app(size: 12, weight: .semibold))
                 .foregroundColor(AppTheme.Text.secondary)
 
             Text("Notes")
-                .font(.system(size: 12, weight: .semibold))
+                .font(.app(size: 12, weight: .semibold))
                 .foregroundColor(AppTheme.Text.primary)
 
             Spacer(minLength: 0)
 
             Image(systemName: "square.and.pencil")
-                .font(.system(size: 12, weight: .semibold))
+                .font(.app(size: 12, weight: .semibold))
                 .foregroundColor(AppTheme.Text.muted)
         }
         .padding(.horizontal, 12)
@@ -114,7 +114,7 @@ struct OnboardingExperienceCard: View {
         ZStack(alignment: .topLeading) {
             if text.isEmpty {
                 Text(LocalizedStringKey(step.fieldPlaceholder))
-                    .font(.system(size: 13))
+                    .font(.app(size: 13, weight: .regular))
                     .foregroundColor(AppTheme.Text.muted)
                     .padding(editorTextInset)
                     .allowsHitTesting(false)
@@ -129,7 +129,7 @@ struct OnboardingExperienceCard: View {
 
     private var transformArrow: some View {
         Image(systemName: "arrow.right")
-            .font(.system(size: 15, weight: .semibold))
+            .font(.app(size: 15, weight: .semibold))
             .foregroundColor(AppTheme.Text.muted)
             .frame(width: 46)
     }
@@ -137,7 +137,7 @@ struct OnboardingExperienceCard: View {
     private var respondStage: some View {
         panelShell(kicker: step.sampleLabel, height: 150) {
             Text(LocalizedStringKey(step.sampleText))
-                .font(.system(size: 20, weight: .medium))
+                .font(.app(size: 20, weight: .medium))
                 .foregroundColor(AppTheme.Text.primary)
                 .lineSpacing(5)
                 .fixedSize(horizontal: false, vertical: true)
@@ -153,7 +153,7 @@ struct OnboardingExperienceCard: View {
     ) -> some View {
         VStack(alignment: .leading, spacing: 12) {
             Text(LocalizedStringKey(kicker))
-                .font(.system(size: 11, weight: .semibold))
+                .font(.app(size: 11, weight: .semibold))
                 .textCase(.uppercase)
                 .tracking(1.0)
                 .foregroundColor(AppTheme.Text.muted)
@@ -223,7 +223,7 @@ private struct OnboardingExperienceInstruction: View {
 
     private func instructionText(_ value: String) -> some View {
         Text(LocalizedStringKey(value))
-            .font(.system(size: 15, weight: .medium))
+            .font(.app(size: 15, weight: .medium))
             .foregroundColor(AppTheme.Text.primary)
             .fixedSize(horizontal: false, vertical: true)
     }

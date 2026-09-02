@@ -8,8 +8,8 @@ enum DashboardHeroHeadline {
 }
 
 struct DashboardHeroCard: View {
-    private static let headlineFont: Font = .system(size: 23, weight: .bold, design: .rounded)
-    private static let highlightedHeadlineFont: Font = .system(size: 30, weight: .black, design: .rounded)
+    private static let headlineFont: Font = .app(size: 23, weight: .semibold)
+    private static let highlightedHeadlineFont: Font = .app(size: 30, weight: .bold)
 
     let isLocked: Bool
     let headline: DashboardHeroHeadline
@@ -46,10 +46,10 @@ struct DashboardHeroCard: View {
             .padding(.top, 8)
         }
         .padding(.horizontal, 28)
-        .padding(.vertical, 18)
+        .padding(.vertical, 22)
         .frame(maxWidth: .infinity, minHeight: 160, alignment: .leading)
         .background(DashboardImpactBackground(isLocked: isLocked))
-        .clipShape(RoundedRectangle(cornerRadius: DashboardLayout.cardCornerRadius, style: .continuous))
+        .voiceOSCard()
     }
 
     private var heroCopy: some View {
@@ -58,7 +58,7 @@ struct DashboardHeroCard: View {
                 .frame(maxWidth: 720, alignment: .leading)
 
             Text(subtext)
-                .font(.system(size: 15, weight: .semibold))
+                .font(.app(size: 15, weight: .semibold))
                 .foregroundStyle(DashboardMomentumBackground.subtext)
                 .frame(maxWidth: 620, alignment: .leading)
         }
@@ -99,16 +99,16 @@ struct DashboardHeroCard: View {
         HStack(alignment: .center, spacing: 14) {
             ZStack {
                 RoundedRectangle(cornerRadius: 12, style: .continuous)
-                    .fill(Color.white.opacity(0.78))
+                    .fill(AppTheme.Accent.fill)
 
                 Image(systemName: "lock.fill")
-                    .font(.system(size: 17, weight: .bold))
+                    .font(.app(size: 17, weight: .bold))
                     .foregroundStyle(DashboardMomentumBackground.accent)
             }
             .frame(width: 42, height: 42)
 
             Text("Continue using VoxOS to unlock stats and insights.")
-                .font(.system(size: 26, weight: .black, design: .rounded))
+                .font(.app(size: 24, weight: .semibold))
                 .foregroundStyle(DashboardMomentumBackground.headline)
                 .frame(maxWidth: 540, alignment: .leading)
         }
@@ -130,19 +130,16 @@ private struct DashboardMomentumActionLabel: View {
                 .lineLimit(2)
 
             Image(systemName: icon)
-                .font(.system(size: 13, weight: .semibold))
+                .font(.app(size: 13, weight: .semibold))
         }
-        .font(.system(size: 13, weight: .semibold))
+        .font(.app(size: 13, weight: .semibold))
         .foregroundStyle(foregroundColor)
-        .padding(.horizontal, 18)
+        .padding(.horizontal, 22)
         .frame(minHeight: 40)
         .background(backgroundColor)
-        .clipShape(RoundedRectangle(cornerRadius: Self.cornerRadius, style: .continuous))
-        .overlay(
-            RoundedRectangle(cornerRadius: Self.cornerRadius, style: .continuous)
-                .stroke(borderColor, lineWidth: 1)
-        )
-        .shadow(color: shadowColor, radius: 5, y: 2)
+        .clipShape(Capsule())
+        .overlay(Capsule().stroke(borderColor, lineWidth: 1))
+        .shadow(color: shadowColor, radius: 2, y: 2)
     }
 
     private var foregroundColor: Color {
@@ -158,7 +155,7 @@ private struct DashboardMomentumActionLabel: View {
             return DashboardMomentumBackground.accent
         }
 
-        return isLocked ? Color.white.opacity(0.64) : Color.white.opacity(0.82)
+        return isLocked ? AppTheme.Surface.subtle : AppTheme.Surface.card
     }
 
     private var borderColor: Color {
@@ -166,11 +163,11 @@ private struct DashboardMomentumActionLabel: View {
             return Color.clear
         }
 
-        return isLocked ? DashboardMomentumBackground.accent.opacity(0.22) : Color.black.opacity(0.08)
+        return AppTheme.Border.control
     }
 
     private var shadowColor: Color {
-        isPrimary ? DashboardMomentumBackground.accent.opacity(0.18) : Color.black.opacity(0.06)
+        isPrimary ? AppTheme.Accent.shadow : AppTheme.Shadow.card
     }
 }
 
@@ -178,27 +175,15 @@ private struct DashboardImpactBackground: View {
     var isLocked = false
 
     var body: some View {
-        ZStack {
-            Image("momentum-hero-bg")
-                .resizable()
-                .scaledToFill()
-                .blur(radius: isLocked ? 2.5 : 0)
-                .saturation(isLocked ? 0.78 : 1)
-
-            if isLocked {
-                Color.white.opacity(0.32)
-            }
-        }
-        .clipShape(RoundedRectangle(cornerRadius: DashboardLayout.cardCornerRadius, style: .continuous))
-        .overlay(
-            RoundedRectangle(cornerRadius: DashboardLayout.cardCornerRadius, style: .continuous)
-                .stroke(AppTheme.Border.card, lineWidth: 1)
-        )
+        // A faint accent bloom in the far corner; the glass slab itself is the card.
+        RadialGradient(
+            colors: [AppTheme.Accent.primary.opacity(isLocked ? 0.18 : 0.32), .clear],
+            center: .init(x: 1.05, y: 1.1), startRadius: 0, endRadius: 560)
     }
 }
 
 private struct DashboardMomentumBackground {
-    static let accent = Color(red: 0.76, green: 0.31, blue: 0.08)
-    static let headline = Color(red: 0.10, green: 0.08, blue: 0.06)
-    static let subtext = Color(red: 0.40, green: 0.34, blue: 0.28)
+    static let accent = AppTheme.Accent.primary
+    static let headline = AppTheme.Text.heading
+    static let subtext = AppTheme.Text.secondary
 }

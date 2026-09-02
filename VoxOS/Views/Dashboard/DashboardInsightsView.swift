@@ -61,11 +61,11 @@ struct DashboardInsightsView: View {
         HStack(alignment: .top, spacing: 16) {
             VStack(alignment: .leading, spacing: 3) {
                 Text("VoxOS Insights")
-                    .font(.system(size: 26, weight: .bold, design: .rounded))
+                    .font(.app(size: 26, weight: .bold))
                     .foregroundStyle(AppTheme.Text.primary)
 
                 Text("A closer look at your VoxOS usage.")
-                    .font(.system(size: 13, weight: .medium))
+                    .font(.app(size: 13, weight: .medium))
                     .foregroundStyle(AppTheme.Text.secondary)
             }
 

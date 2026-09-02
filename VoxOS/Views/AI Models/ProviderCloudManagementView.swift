@@ -241,11 +241,11 @@ private struct ProviderListRow: View {
 
                 VStack(alignment: .leading, spacing: 4) {
                     Text(descriptor.displayName)
-                        .font(.system(size: 13, weight: .semibold))
+                        .font(.app(size: 13, weight: .semibold))
                         .foregroundStyle(.primary)
 
                     Text(capabilitySummary)
-                        .font(.caption)
+                        .font(.app(.caption))
                         .foregroundStyle(.secondary)
                         .lineLimit(1)
                 }
@@ -255,7 +255,7 @@ private struct ProviderListRow: View {
                 ProviderStatusBadge(title: statusText, color: statusColor)
 
                 Image(systemName: "chevron.right")
-                    .font(.system(size: 12, weight: .semibold))
+                    .font(.app(size: 12, weight: .semibold))
                     .foregroundStyle(.secondary)
             }
             .contentShape(Rectangle())

@@ -135,20 +135,20 @@ private struct OnboardingLicenseActionRow: View {
                         .fill(iconBackground)
 
                     Image(systemName: systemImage)
-                        .font(.system(size: 16, weight: .semibold))
+                        .font(.app(size: 16, weight: .semibold))
                         .foregroundColor(iconForeground)
                 }
                 .frame(width: 34, height: 34)
 
                 VStack(alignment: .leading, spacing: 4) {
                     Text(LocalizedStringKey(title))
-                        .font(.system(size: 13, weight: .semibold))
+                        .font(.app(size: 13, weight: .semibold))
                         .foregroundColor(AppTheme.Text.primary)
                         .lineLimit(1)
                         .minimumScaleFactor(0.88)
 
                     Text(LocalizedStringKey(subtitle))
-                        .font(.system(size: 11))
+                        .font(.app(size: 11, weight: .regular))
                         .foregroundColor(AppTheme.Text.muted)
                         .lineLimit(2)
                         .fixedSize(horizontal: false, vertical: true)
@@ -156,7 +156,7 @@ private struct OnboardingLicenseActionRow: View {
                 .frame(maxWidth: .infinity, alignment: .leading)
 
                 Image(systemName: "chevron.right")
-                    .font(.system(size: 10, weight: .bold))
+                    .font(.app(size: 10, weight: .bold))
                     .foregroundColor(AppTheme.Text.disabled)
                     .frame(width: 24, height: 24)
                     .background(
@@ -209,11 +209,11 @@ private struct OnboardingLicensePrimaryButton: View {
                         .controlSize(.small)
                 } else {
                     Image(systemName: systemImage)
-                        .font(.system(size: 12, weight: .semibold))
+                        .font(.app(size: 12, weight: .semibold))
                 }
 
                 Text(isLoading ? LocalizedStringKey("Activating") : title)
-                    .font(.system(size: 13, weight: .semibold))
+                    .font(.app(size: 13, weight: .semibold))
             }
             .foregroundColor(isEnabled ? AppTheme.Text.primary : AppTheme.Text.disabled)
             .frame(maxWidth: .infinity)
@@ -241,11 +241,11 @@ private struct OnboardingLicenseStatusMessage: View {
     var body: some View {
         Label {
             Text(message)
-                .font(.system(size: 12, weight: .medium))
+                .font(.app(size: 12, weight: .medium))
                 .fixedSize(horizontal: false, vertical: true)
         } icon: {
             Image(systemName: isSuccess ? "checkmark.circle.fill" : "exclamationmark.triangle.fill")
-                .font(.system(size: 12, weight: .semibold))
+                .font(.app(size: 12, weight: .semibold))
         }
         .foregroundColor(isSuccess ? AppTheme.Status.positive : AppTheme.Status.error)
     }

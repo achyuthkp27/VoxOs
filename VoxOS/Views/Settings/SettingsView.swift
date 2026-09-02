@@ -27,7 +27,17 @@ struct SettingsView: View {
     @State private var showLanguageRestartAlert = false
     @State private var cancelRecordingShortcutRecorderResetID = 0
 
+    @ObservedObject private var systemAudioController = SystemAudioCaptureController.shared
+    @AppStorage(SystemAudioCaptureController.DefaultsKey.bufferEnabled) private var systemAudioBufferEnabled = false
+    @AppStorage(SystemAudioCaptureController.DefaultsKey.bufferSeconds) private var systemAudioBufferSeconds =
+        SystemAudioCaptureController.defaultBufferSeconds
+    @AppStorage(SystemAudioCaptureController.DefaultsKey.pasteAtCursor) private var systemAudioPasteAtCursor = true
+    @AppStorage(SystemAudioCaptureController.DefaultsKey.saveToHistory) private var systemAudioSaveToHistory = true
+
     @State private var isMiddleClickExpanded = false
+    @State private var isSystemAudioBufferExpanded = false
+    @AppStorage(AgentControlMode.userDefaultsKey) private var agentControlModeRaw = AgentControlMode.takeover.rawValue
+    @AppStorage(AgentShell.allowRiskyKey) private var agentAllowRiskyShell = false
     @State private var isRestoreClipboardExpanded = false
 
     var body: some View {
@@ -147,6 +157,116 @@ struct SettingsView: View {
                         }
                     }
                 }
+            }
+
+            Section {
+                LabeledContent {
+                    ShortcutRecorder(action: .captureSystemAudio) {
+                        recordingShortcutManager.updateShortcutStatus()
+                    }
+                    .controlSize(.small)
+                } label: {
+                    HStack(spacing: 2) {
+                        Text("Capture System Audio")
+                        InfoTip(
+                            "Press once to start capturing what your Mac is playing, press again to stop. The transcript is copied to the clipboard and pasted at the cursor. Your microphone is never recorded."
+                        )
+                    }
+                }
+
+                ExpandableSettingsRow(
+                    isExpanded: $isSystemAudioBufferExpanded,
+                    isEnabled: $systemAudioBufferEnabled,
+                    label: "Keep Recent System Audio",
+                    infoMessage:
+                        "Continuously keeps the last few seconds of system audio in memory (never on disk) so a shortcut can transcribe what was just said. Nothing is captured while this is off."
+                ) {
+                    Picker("Remember", selection: $systemAudioBufferSeconds) {
+                        Text("15 seconds").tag(15.0)
+                        Text("30 seconds").tag(30.0)
+                        Text("60 seconds").tag(60.0)
+                        Text("2 minutes").tag(120.0)
+                    }
+                    .pickerStyle(.menu)
+
+                    LabeledContent("Transcribe Recent Audio") {
+                        ShortcutRecorder(action: .recallSystemAudio) {
+                            recordingShortcutManager.updateShortcutStatus()
+                        }
+                        .controlSize(.small)
+                    }
+                }
+
+                Toggle("Paste at Cursor", isOn: $systemAudioPasteAtCursor)
+                Toggle("Save to History", isOn: $systemAudioSaveToHistory)
+            } header: {
+                Text("System Audio")
+            } footer: {
+                Text(
+                    systemAudioController.isCapturing
+                        ? "Capturing system audio…"
+                        : "Requires Screen Recording permission. Captures only what your Mac plays — never your microphone."
+                )
+                .font(.app(.caption))
+                .foregroundStyle(.secondary)
+            }
+            .onChange(of: systemAudioBufferEnabled) { _, _ in
+                Task { await systemAudioController.syncBufferingWithPreference() }
+            }
+            .onChange(of: systemAudioBufferSeconds) { _, _ in
+                Task { await systemAudioController.syncBufferingWithPreference() }
+            }
+
+            Section {
+                Picker("Control Mode", selection: $agentControlModeRaw) {
+                    ForEach(AgentControlMode.allCases) { mode in
+                        Text(mode.displayName).tag(mode.rawValue)
+                    }
+                }
+                .pickerStyle(.menu)
+
+                Text((AgentControlMode(rawValue: agentControlModeRaw) ?? .takeover).summary)
+                    .font(.app(.caption))
+                    .foregroundStyle(.secondary)
+
+                Toggle(isOn: $agentAllowRiskyShell) {
+                    HStack(spacing: 2) {
+                        Text("Allow Risky Shell Commands")
+                        InfoTip(
+                            "Commands that look destructive (rm -rf, sudo, disk formatting, piping downloads into a shell…) are refused unless this is on. When on, they run and the agent tells you what it did."
+                        )
+                    }
+                }
+
+                LabeledContent("Plugins") {
+                    Button("Open Plugins Folder") {
+                        NSWorkspace.shared.open(AgentPlugins.directory)
+                    }
+                    .controlSize(.small)
+                }
+
+                LabeledContent("Permissions") {
+                    HStack(spacing: 6) {
+                        Label(
+                            AXIsProcessTrusted() ? "Accessibility" : "Accessibility missing",
+                            systemImage: AXIsProcessTrusted() ? "checkmark.circle.fill" : "xmark.circle"
+                        )
+                        .foregroundStyle(AXIsProcessTrusted() ? .green : .orange)
+                        Label(
+                            CGPreflightScreenCaptureAccess() ? "Screen Recording" : "Screen Recording missing",
+                            systemImage: CGPreflightScreenCaptureAccess() ? "checkmark.circle.fill" : "xmark.circle"
+                        )
+                        .foregroundStyle(CGPreflightScreenCaptureAccess() ? .green : .orange)
+                    }
+                    .font(.app(.caption))
+                    .labelStyle(.titleAndIcon)
+                }
+            } header: {
+                Text("Agent")
+            } footer: {
+                Text("Clicking, typing and reading the screen need Accessibility and Screen Recording. Plugins are JSON files that become voice tools; the agent can also write them itself.")
+                    .font(.app(.caption))
+                    .foregroundStyle(.secondary)
             }
 
             Section("Pasting") {
@@ -353,7 +473,7 @@ struct SettingsView: View {
 extension Text {
     func settingsDescription() -> some View {
         self
-            .font(.system(size: 12))
+            .font(.app(size: 12, weight: .regular))
             .foregroundColor(.secondary)
             .fixedSize(horizontal: false, vertical: true)
     }

@@ -7,12 +7,12 @@ struct ModeSettingsQuickSwitchTip: View {
         HStack(alignment: .top, spacing: 10) {
             VStack(alignment: .leading, spacing: 6) {
                 Text("Mode shortcuts")
-                    .font(.system(size: 13, weight: .semibold))
+                    .font(.app(size: 13, weight: .semibold))
                     .foregroundColor(AppTheme.Text.primary)
                     .lineLimit(1)
 
                 Text("During recording, press Option + 1-9 to switch modes quickly.")
-                    .font(.system(size: 12))
+                    .font(.app(size: 12, weight: .regular))
                     .foregroundColor(AppTheme.Text.secondary)
                     .fixedSize(horizontal: false, vertical: true)
                     .lineLimit(2)
@@ -22,7 +22,7 @@ struct ModeSettingsQuickSwitchTip: View {
 
             Button(action: onDismiss) {
                 Image(systemName: "xmark")
-                    .font(.system(size: 10, weight: .semibold))
+                    .font(.app(size: 10, weight: .semibold))
                     .foregroundColor(AppTheme.Text.secondary)
                     .frame(width: 22, height: 22)
                     .background(AppTheme.Surface.control)

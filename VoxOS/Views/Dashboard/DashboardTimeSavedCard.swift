@@ -57,19 +57,19 @@ struct DashboardTimeSavedCard: View {
     private var content: some View {
         VStack(alignment: .leading, spacing: 4) {
             Text("You saved")
-                .font(.system(size: 18, weight: .bold, design: .rounded))
+                .font(.app(size: 18, weight: .bold))
                 .foregroundStyle(AppTheme.Text.primary)
                 .lineLimit(1)
                 .minimumScaleFactor(0.84)
 
             Text(summary.hasData ? savedTimeText : "--")
-                .font(.system(size: 58, weight: .heavy, design: .rounded))
+                .font(.app(size: 58, weight: .heavy))
                 .foregroundStyle(savedTint)
                 .lineLimit(1)
                 .minimumScaleFactor(0.46)
 
             Text(period.timeSavedContext)
-                .font(.system(size: 13, weight: .bold, design: .rounded))
+                .font(.app(size: 13, weight: .bold))
                 .foregroundStyle(AppTheme.Text.secondary)
                 .lineLimit(1)
                 .minimumScaleFactor(0.82)
@@ -77,7 +77,7 @@ struct DashboardTimeSavedCard: View {
             Spacer(minLength: 12)
 
             Text(workdaySavingsText)
-                .font(.system(size: 13, weight: .semibold))
+                .font(.app(size: 13, weight: .semibold))
                 .foregroundStyle(AppTheme.Text.secondary)
                 .lineLimit(1)
                 .minimumScaleFactor(0.76)

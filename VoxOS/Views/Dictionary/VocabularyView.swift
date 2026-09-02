@@ -45,7 +45,7 @@ struct VocabularyView: View {
             HStack(spacing: 8) {
                 TextField("", text: $newWord, prompt: Text("Add word to vocabulary"))
                     .textFieldStyle(.roundedBorder)
-                    .font(.system(size: 13))
+                    .font(.app(size: 13, weight: .regular))
                     .onSubmit { addWords() }
                     .labelsHidden()
 
@@ -64,11 +64,11 @@ struct VocabularyView: View {
                     Button(action: toggleSort) {
                         HStack(spacing: 4) {
                             Text(String(localized: "Vocabulary Words (\(vocabularyWords.count))"))
-                                .font(.system(size: 12, weight: .medium))
+                                .font(.app(size: 12, weight: .medium))
                                 .foregroundColor(.secondary)
 
                             Image(systemName: sortMode == .wordAsc ? "chevron.up" : "chevron.down")
-                                .font(.caption)
+                                .font(.app(.caption))
                                 .foregroundColor(.secondary)
                         }
                     }
@@ -130,7 +130,7 @@ struct VocabularyWordView: View {
     var body: some View {
         HStack(spacing: 6) {
             Text(item.word)
-                .font(.system(size: 13))
+                .font(.app(size: 13, weight: .regular))
                 .lineLimit(1)
                 .foregroundColor(.primary)
 

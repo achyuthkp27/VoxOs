@@ -25,7 +25,7 @@ struct NativeAppleModelCardView: View {
     private var headerSection: some View {
         HStack(alignment: .firstTextBaseline) {
             Text(model.displayName)
-                .font(.system(size: 13, weight: .semibold))
+                .font(.app(size: 13, weight: .semibold))
                 .foregroundColor(Color(.labelColor))
 
             Spacer()
@@ -36,25 +36,25 @@ struct NativeAppleModelCardView: View {
         HStack(spacing: 12) {
             // Native Apple
             Label("Native Apple", systemImage: "apple.logo")
-                .font(.system(size: 11))
+                .font(.app(size: 11, weight: .regular))
                 .foregroundColor(Color(.secondaryLabelColor))
                 .lineLimit(1)
 
             // Language
             Label(model.language, systemImage: "globe")
-                .font(.system(size: 11))
+                .font(.app(size: 11, weight: .regular))
                 .foregroundColor(Color(.secondaryLabelColor))
                 .lineLimit(1)
 
             // On-Device
             Label("On-Device", systemImage: "checkmark.shield")
-                .font(.system(size: 11))
+                .font(.app(size: 11, weight: .regular))
                 .foregroundColor(Color(.secondaryLabelColor))
                 .lineLimit(1)
 
             // Requires macOS 26+
             Label("macOS 26+", systemImage: "macbook")
-                .font(.system(size: 11))
+                .font(.app(size: 11, weight: .regular))
                 .foregroundColor(Color(.secondaryLabelColor))
                 .lineLimit(1)
         }
@@ -63,7 +63,7 @@ struct NativeAppleModelCardView: View {
 
     private var descriptionSection: some View {
         Text(model.description)
-            .font(.system(size: 11))
+            .font(.app(size: 11, weight: .regular))
             .foregroundColor(Color(.secondaryLabelColor))
             .lineLimit(2)
             .fixedSize(horizontal: false, vertical: true)
