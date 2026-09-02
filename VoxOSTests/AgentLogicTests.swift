@@ -4,7 +4,9 @@ import Testing
 @testable import VoxOS
 
 /// Pure-logic checks for the agent layer: the parts that decide whether something runs at
-/// all. No UI, no permissions, no network.
+/// all. No UI, no permissions, no network. Serialized because several tests touch shared
+/// process state (control mode, pending action, paused task).
+@Suite(.serialized)
 struct AgentLogicTests {
 
     // MARK: Shell risk gate
