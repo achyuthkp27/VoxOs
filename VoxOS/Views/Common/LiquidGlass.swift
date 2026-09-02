@@ -64,9 +64,11 @@ extension View {
 /// stays legible; it is atmosphere, not a picture.
 struct AmbientMesh: View {
     @Environment(\.colorScheme) private var scheme
+    /// Animating an offscreen window still costs CPU; the drift pauses while no normal window is visible.
+    @State private var isVisible = true
 
     var body: some View {
-        TimelineView(.animation(minimumInterval: 1 / 8)) { context in
+        TimelineView(.animation(minimumInterval: 1 / 5, paused: !isVisible)) { context in
             let t = context.date.timeIntervalSinceReferenceDate / 14
             if #available(macOS 15.0, *) {
                 MeshGradient(width: 3, height: 3, points: Self.points(at: t), colors: palette)
@@ -78,6 +80,14 @@ struct AmbientMesh: View {
             }
         }
         .allowsHitTesting(false)
+        .onReceive(NotificationCenter.default.publisher(for: NSWindow.didChangeOcclusionStateNotification)) { _ in refreshVisibility() }
+        .onReceive(NotificationCenter.default.publisher(for: NSApplication.didHideNotification)) { _ in refreshVisibility() }
+        .onReceive(NotificationCenter.default.publisher(for: NSApplication.didUnhideNotification)) { _ in refreshVisibility() }
+        .onAppear(perform: refreshVisibility)
+    }
+
+    private func refreshVisibility() {
+        isVisible = NSApp.windows.contains { $0.level == .normal && $0.isVisible && $0.occlusionState.contains(.visible) }
     }
 
     private static func points(at t: Double) -> [SIMD2<Float>] {
