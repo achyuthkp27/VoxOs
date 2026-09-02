@@ -171,6 +171,20 @@ struct AgentLogicTests {
         #expect(again == sorted)
     }
 
+    // MARK: Runtime prompt section
+
+    @Test func runtimeSectionReflectsState() {
+        UserDefaults.standard.set("Spanish", forKey: "agentLearningLanguage")
+        AgentPausedTask.set(question: "Which folder?", context: "cleanup")
+        let section = AgentToolCatalog.runtimeSection()
+        #expect(section.contains("learning language: Spanish"))
+        #expect(section.contains("Which folder?"))
+        #expect(section.contains("control mode: \(AgentControlMode.current.rawValue)"))
+        UserDefaults.standard.removeObject(forKey: "agentLearningLanguage")
+        AgentPausedTask.clear(resumed: AgentPausedTask.peek()?.id)
+        #expect(!AgentToolCatalog.runtimeSection().contains("learning language"))
+    }
+
     // MARK: Tool catalogue
 
     @Test func catalogueMentionsEveryComputerTool() {
