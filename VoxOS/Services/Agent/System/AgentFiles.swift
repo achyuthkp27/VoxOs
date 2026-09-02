@@ -8,7 +8,7 @@ enum AgentFiles {
     private static let maxChars = 12_000
 
     /// Same boundary as find_files: the user's home folder (plus /tmp and /Applications for reading).
-    private static func isAllowed(_ path: String, forWriting: Bool) -> Bool {
+    static func isAllowed(_ path: String, forWriting: Bool) -> Bool {
         let resolved = URL(fileURLWithPath: path).standardizedFileURL.resolvingSymlinksInPath().path
         let home = FileManager.default.homeDirectoryForCurrentUser.standardizedFileURL.resolvingSymlinksInPath().path
         if resolved == home || resolved.hasPrefix(home + "/") {

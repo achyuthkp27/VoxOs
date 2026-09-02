@@ -105,6 +105,27 @@ struct AgentLogicTests {
         }
     }
 
+    // MARK: Files stay inside the home folder
+
+    @Test func fileSandboxBoundary() {
+        let home = NSHomeDirectory()
+        #expect(AgentFiles.isAllowed("\(home)/Documents/a.txt", forWriting: true))
+        #expect(AgentFiles.isAllowed("/Applications/SomeApp.app/Contents/Info.plist", forWriting: false))
+        #expect(AgentFiles.isAllowed("/tmp/x.txt", forWriting: false))
+        #expect(!AgentFiles.isAllowed("/tmp/x.txt", forWriting: true), "writes stay in home")
+        #expect(!AgentFiles.isAllowed("/etc/hosts", forWriting: false))
+        #expect(!AgentFiles.isAllowed("\(home)/.ssh/id_rsa", forWriting: false), "credentials are never readable")
+        #expect(!AgentFiles.isAllowed("\(home)/Library/Keychains/login.keychain-db", forWriting: false))
+        #expect(!AgentFiles.isAllowed("\(home)/../otheruser/file", forWriting: false), "no escaping via ..")
+    }
+
+    // MARK: Web text extraction
+
+    @Test func htmlIsStrippedToText() {
+        let html = "<html><head><style>p{}</style><script>x()</script></head><body><h1>Hi &amp; bye</h1><p>two  words</p></body></html>"
+        #expect(AgentWeb.stripHTML(html) == "Hi & bye two words")
+    }
+
     // MARK: Tool catalogue
 
     @Test func catalogueMentionsEveryComputerTool() {
