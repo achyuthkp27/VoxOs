@@ -133,6 +133,7 @@ clean:
 	@echo "Cleaning build artifacts..."
 	@rm -rf $(DEPS_DIR)
 	@echo "Clean complete"
+	@rm -rf "$(CURDIR)/.local-build-tests"
 
 # Help
 help:
@@ -141,9 +142,10 @@ help:
 	@echo "  whisper            Clone and build whisper.cpp XCFramework"
 	@echo "  setup              Copy whisper XCFramework to VoxOS project"
 	@echo "  build              Build the VoxOS Xcode project"
-	@echo "  local              Build locally with stable signing when available"
+	@echo "  local              Build, sign with your Apple Development identity, install to /Applications"
 	@echo "    LOCAL_CODESIGN_IDENTITY=<SHA or name> overrides automatic Apple Development detection"
-	@echo "  run                Launch the built VoxOS app"
+	@echo "  run                Launch the installed VoxOS app"
+	@echo "  test               Run the unit tests (agent logic)"
 	@echo "  dev                Build and run the app (for development)"
 	@echo "  release            Build DMG and Appcast using release-notes/<version>.html"
 	@echo "  release-setup      Store notarization credentials in Keychain"
