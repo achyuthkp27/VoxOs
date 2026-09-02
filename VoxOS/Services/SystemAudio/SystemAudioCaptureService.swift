@@ -63,6 +63,14 @@ final class SystemAudioCaptureService: NSObject, @unchecked Sendable {
     private var ringCapacity = 0
     private var isBuffering = false
 
+    /// All state access goes through here; the closure is synchronous, so no lock is ever
+    /// held across an `await`.
+    private func withState<T>(_ body: () -> T) -> T {
+        stateLock.lock()
+        defer { stateLock.unlock() }
+        return body()
+    }
+
     private lazy var outputFormat: AVAudioFormat = {
         AVAudioFormat(
             commonFormat: .pcmFormatFloat32,
@@ -129,10 +137,10 @@ final class SystemAudioCaptureService: NSObject, @unchecked Sendable {
             ]
         )
 
-        stateLock.lock()
-        audioFile = file
-        isWritingToFile = true
-        stateLock.unlock()
+        withState {
+            audioFile = file
+            isWritingToFile = true
+        }
 
         logger.info("Started system audio capture to \(url.lastPathComponent, privacy: .public)")
     }
@@ -140,13 +148,12 @@ final class SystemAudioCaptureService: NSObject, @unchecked Sendable {
     /// Stops writing and returns how many seconds were captured.
     @discardableResult
     func stopCapture() async -> Double {
-        stateLock.lock()
-        let file = audioFile
-        let frames = file?.length ?? 0
-        audioFile = nil
-        isWritingToFile = false
-        let stillNeeded = isBuffering
-        stateLock.unlock()
+        let (frames, stillNeeded): (AVAudioFramePosition, Bool) = withState {
+            let frames = audioFile?.length ?? 0
+            audioFile = nil
+            isWritingToFile = false
+            return (frames, isBuffering)
+        }
 
         if !stillNeeded {
             await teardownStream()
@@ -164,26 +171,26 @@ final class SystemAudioCaptureService: NSObject, @unchecked Sendable {
         let clamped = min(max(seconds, 5), Self.maximumBufferSeconds)
         try await ensureStreamRunning()
 
-        stateLock.lock()
-        ringCapacity = Int(clamped * Self.outputSampleRate)
-        ringBuffer = [Float](repeating: 0, count: ringCapacity)
-        ringWriteIndex = 0
-        ringFilled = false
-        isBuffering = true
-        stateLock.unlock()
+        withState {
+            ringCapacity = Int(clamped * Self.outputSampleRate)
+            ringBuffer = [Float](repeating: 0, count: ringCapacity)
+            ringWriteIndex = 0
+            ringFilled = false
+            isBuffering = true
+        }
 
         logger.info("Started system audio buffering (\(Int(clamped), privacy: .public)s window)")
     }
 
     func stopBuffering() async {
-        stateLock.lock()
-        isBuffering = false
-        ringBuffer = []
-        ringCapacity = 0
-        ringWriteIndex = 0
-        ringFilled = false
-        let stillNeeded = isWritingToFile
-        stateLock.unlock()
+        let stillNeeded: Bool = withState {
+            isBuffering = false
+            ringBuffer = []
+            ringCapacity = 0
+            ringWriteIndex = 0
+            ringFilled = false
+            return isWritingToFile
+        }
 
         if !stillNeeded {
             await teardownStream()
@@ -259,23 +266,24 @@ final class SystemAudioCaptureService: NSObject, @unchecked Sendable {
     // MARK: - Stream lifecycle
 
     private func ensureStreamRunning() async throws {
-        stateLock.lock()
-        let alreadyRunning = stream != nil
-        let starting = isStartingStream
-        if !alreadyRunning, !starting { isStartingStream = true }
-        stateLock.unlock()
+        let (alreadyRunning, starting): (Bool, Bool) = withState {
+            let running = stream != nil
+            let starting = isStartingStream
+            if !running, !starting { isStartingStream = true }
+            return (running, starting)
+        }
         if alreadyRunning { return }
         if starting {
             // Another caller is bringing the stream up; wait for it rather than start a second one.
             for _ in 0..<50 {
                 try? await Task.sleep(nanoseconds: 100_000_000)
-                stateLock.lock(); let ready = stream != nil; let still = isStartingStream; stateLock.unlock()
+                let (ready, still): (Bool, Bool) = withState { (stream != nil, isStartingStream) }
                 if ready { return }
                 if !still { break }
             }
             throw CaptureError.formatUnavailable
         }
-        defer { stateLock.lock(); isStartingStream = false; stateLock.unlock() }
+        defer { withState { isStartingStream = false } }
 
         guard await Self.requestPermission() else {
             throw CaptureError.permissionDenied
@@ -310,20 +318,19 @@ final class SystemAudioCaptureService: NSObject, @unchecked Sendable {
         try newStream.addStreamOutput(self, type: .audio, sampleHandlerQueue: sampleQueue)
         try await newStream.startCapture()
 
-        stateLock.lock()
-        stream = newStream
-        stateLock.unlock()
+        withState { stream = newStream }
 
         logger.info("System audio stream started")
     }
 
     private func teardownStream() async {
-        stateLock.lock()
-        let current = stream
-        stream = nil
-        converter = nil
-        converterInputFormat = nil
-        stateLock.unlock()
+        let current: SCStream? = withState {
+            let current = stream
+            stream = nil
+            converter = nil
+            converterInputFormat = nil
+            return current
+        }
 
         guard let current else { return }
         do {

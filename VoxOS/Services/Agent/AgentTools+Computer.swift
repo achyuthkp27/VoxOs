@@ -88,9 +88,9 @@ extension AgentTools {
 
     /// Returns nil when `name` is not one of the tools defined here.
     static func executeComputerTool(name: String, args: [String: Any]) async -> [String: Any]? {
-        func s(_ key: String) -> String { (args[key] as? String) ?? "" }
+        @Sendable func s(_ key: String) -> String { (args[key] as? String) ?? "" }
         // Model-supplied numbers are untrusted: NaN, ±inf or absurd magnitudes must not trap.
-        func n(_ key: String) -> Double? {
+        @Sendable func n(_ key: String) -> Double? {
             let raw: Double?
             if let d = args[key] as? Double { raw = d }
             else if let i = args[key] as? Int { raw = Double(i) }
@@ -100,8 +100,8 @@ extension AgentTools {
             guard let raw, raw.isFinite, abs(raw) < 1_000_000_000 else { return nil }
             return raw
         }
-        func i(_ key: String, _ fallback: Int) -> Int { n(key).map { Int($0) } ?? fallback }
-        func b(_ key: String, _ fallback: Bool) -> Bool {
+        @Sendable func i(_ key: String, _ fallback: Int) -> Int { n(key).map { Int($0) } ?? fallback }
+        @Sendable func b(_ key: String, _ fallback: Bool) -> Bool {
             if let v = args[key] as? Bool { return v }
             if let str = args[key] as? String { return ["true", "yes", "1"].contains(str.lowercased()) }
             return fallback

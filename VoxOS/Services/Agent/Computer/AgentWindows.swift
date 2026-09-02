@@ -23,6 +23,30 @@ enum AgentWindows {
             }
     }
 
+    /// Launch by display name or bundle id; brings it forward if it is already running.
+    @MainActor
+    static func openApp(name: String) -> [String: Any] {
+        let trimmed = name.trimmingCharacters(in: .whitespacesAndNewlines)
+        guard !trimmed.isEmpty else { return ["error": "name is required"] }
+        if let running = matchRunning(trimmed) {
+            running.activate(options: [.activateAllWindows])
+            return ["result": "opened \(running.localizedName ?? trimmed)"]
+        }
+        let workspace = NSWorkspace.shared
+        var url: URL?
+        if trimmed.contains("."), let byBundle = workspace.urlForApplication(withBundleIdentifier: trimmed) { url = byBundle }
+        if url == nil {
+            let base = trimmed.hasSuffix(".app") ? String(trimmed.dropLast(4)) : trimmed
+            for directory in ["/Applications", "/System/Applications", "/System/Applications/Utilities", "\(NSHomeDirectory())/Applications"] {
+                let candidate = "\(directory)/\(base).app"
+                if FileManager.default.fileExists(atPath: candidate) { url = URL(fileURLWithPath: candidate); break }
+            }
+        }
+        guard let appURL = url else { return ["error": "could not find an app named \(trimmed) — try the exact name or its bundle id"] }
+        workspace.openApplication(at: appURL, configuration: NSWorkspace.OpenConfiguration()) { _, _ in }
+        return ["result": "opened \(appURL.deletingPathExtension().lastPathComponent)"]
+    }
+
     @MainActor
     static func activateApp(query: String) -> [String: Any] {
         guard let app = matchRunning(query) else { return ["error": "no running app matching \"\(query)\""] }

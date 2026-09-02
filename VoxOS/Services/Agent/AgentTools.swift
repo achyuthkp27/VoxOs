@@ -33,8 +33,8 @@ enum AgentTools {
     /// App-integration tools. Called through `execute` (see AgentTools+Computer.swift),
     /// which applies the control-mode gate and routes computer-control tools first.
     static func executeBuiltin(name: String, args: [String: Any]) async -> [String: Any] {
-        func s(_ key: String) -> String { (args[key] as? String) ?? "" }
-        func i(_ key: String, _ def: Int) -> Int {
+        @Sendable func s(_ key: String) -> String { (args[key] as? String) ?? "" }
+        @Sendable func i(_ key: String, _ def: Int) -> Int {
             if let v = args[key] as? Int { return v }
             if let v = args[key] as? Double { return Int(v) }
             return Int(s(key)) ?? def
@@ -86,12 +86,7 @@ enum AgentTools {
         case "open_app":
             let appName = s("name")
             guard !appName.isEmpty else { return ["error": "name is required"] }
-            return await MainActor.run {
-                if NSWorkspace.shared.launchApplication(appName) {
-                    return ["result": "opened \(appName)"]
-                }
-                return ["error": "could not open app named \(appName)"]
-            }
+            return await MainActor.run { AgentWindows.openApp(name: appName) }
 
         case "open_url":
             guard let url = URL(string: s("url")),
