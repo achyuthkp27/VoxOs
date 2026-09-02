@@ -76,7 +76,7 @@ class NotificationManager {
             withTimeInterval: duration,
             repeats: false
         ) { [weak self] _ in
-            self?.dismissNotification()
+            Task { @MainActor in self?.dismissNotification() }
         }
     }
 

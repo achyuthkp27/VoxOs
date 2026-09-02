@@ -445,7 +445,7 @@ final class CoreAudioRecorder: @unchecked Sendable {
 
         // Get the device's native format (input scope, element 1)
         var formatSize = UInt32(MemoryLayout<AudioStreamBasicDescription>.size)
-        var status = AudioUnitGetProperty(
+        let status = AudioUnitGetProperty(
             audioUnit,
             kAudioUnitProperty_StreamFormat,
             kAudioUnitScope_Input,
