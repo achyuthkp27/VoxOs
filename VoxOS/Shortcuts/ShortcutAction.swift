@@ -9,6 +9,8 @@ enum ShortcutAction: Hashable {
     case cancelRecorder
     case openHistoryWindow
     case quickAddToDictionary
+    case captureSystemAudio
+    case recallSystemAudio
     case mode(UUID)
     case recorderPanelEscape
     case recorderPanelMode(Int)
@@ -44,6 +46,10 @@ enum ShortcutAction: Hashable {
             return "openHistoryWindow"
         case .quickAddToDictionary:
             return "quickAddToDictionary"
+        case .captureSystemAudio:
+            return "captureSystemAudio"
+        case .recallSystemAudio:
+            return "recallSystemAudio"
         case .mode(let id):
             return "mode_\(id.uuidString)"
         case .recorderPanelEscape:
@@ -71,6 +77,10 @@ enum ShortcutAction: Hashable {
             return String(localized: "Open History Window")
         case .quickAddToDictionary:
             return String(localized: "Quick Add to Dictionary")
+        case .captureSystemAudio:
+            return String(localized: "Capture System Audio")
+        case .recallSystemAudio:
+            return String(localized: "Transcribe Recent System Audio")
         case .mode(let id):
             if let config = ModeManager.shared.getConfiguration(with: id) {
                 return String(format: String(localized: "%@ Mode"), config.name)
@@ -94,6 +104,8 @@ enum ShortcutAction: Hashable {
         .retryLastTranscription,
         .openHistoryWindow,
         .quickAddToDictionary,
+        .captureSystemAudio,
+        .recallSystemAudio,
     ]
 
     static let recorderPanelStoredActions: [Self] = [

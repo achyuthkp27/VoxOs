@@ -49,6 +49,8 @@ class MenuBarManager: ObservableObject {
         self.engine = engine
         Task { @MainActor in
             EdgeHistoryWindowManager.shared.configure(modelContainer: modelContainer, engine: engine)
+            SystemAudioCaptureController.shared.configure(engine: engine)
+            AgentEnvironment.engine = engine
         }
     }
 
