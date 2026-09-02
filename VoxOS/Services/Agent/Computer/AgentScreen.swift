@@ -120,6 +120,13 @@ enum AgentScreen {
         }
     }
 
+    /// Top-to-bottom, then left-to-right. Rows are bucketed by height so the comparison is a
+    /// strict weak ordering — a threshold comparator ("close enough in y") is not, and `sort`
+    /// may scramble the result.
+    static func readingOrderKey(_ frame: CGRect, rowHeight: CGFloat = 12) -> (Int, CGFloat) {
+        (Int((frame.midY / rowHeight).rounded(.down)), frame.minX)
+    }
+
     static func filter(_ matches: [TextMatch], query: String?) -> [TextMatch] {
         guard let q = query?.trimmingCharacters(in: .whitespacesAndNewlines).lowercased(), !q.isEmpty else {
             return matches
@@ -133,9 +140,7 @@ enum AgentScreen {
             return ["error": "screen capture failed — Screen Recording permission may be missing"]
         }
         let matches = await recognizeText(in: shot)
-        let sorted = matches.sorted {
-            abs($0.frame.minY - $1.frame.minY) > 8 ? $0.frame.minY < $1.frame.minY : $0.frame.minX < $1.frame.minX
-        }
+        let sorted = matches.sorted { readingOrderKey($0.frame) < readingOrderKey($1.frame) }
         var text = sorted.map(\.text).joined(separator: "\n")
         if text.count > maxChars { text = String(text.prefix(maxChars)) + "\n…(truncated)" }
         return [

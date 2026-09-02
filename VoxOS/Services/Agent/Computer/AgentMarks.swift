@@ -51,7 +51,7 @@ enum AgentMarks {
         }
 
         // Read in the order a person scans: top to bottom, then left to right.
-        kept.sort { abs($0.frame.minY - $1.frame.minY) > 10 ? $0.frame.minY < $1.frame.minY : $0.frame.minX < $1.frame.minX }
+        kept.sort { AgentScreen.readingOrderKey($0.frame, rowHeight: 14) < AgentScreen.readingOrderKey($1.frame, rowHeight: 14) }
         current = kept.enumerated().map { Mark(index: $0.offset + 1, label: $0.element.label, frame: $0.element.frame) }
 
         show(on: shot.displayBounds)

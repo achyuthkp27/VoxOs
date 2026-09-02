@@ -157,6 +157,20 @@ struct AgentLogicTests {
         #expect(!AgentPlugins.load().contains { $0.name == tool })
     }
 
+    // MARK: Reading order
+
+    @Test func readingOrderIsRowsThenColumns() {
+        let frames = [
+            CGRect(x: 300, y: 10, width: 50, height: 10), CGRect(x: 20, y: 12, width: 50, height: 10),  // same row, out of order
+            CGRect(x: 10, y: 60, width: 50, height: 10), CGRect(x: 200, y: 30, width: 50, height: 10),
+        ]
+        let sorted = frames.sorted { AgentScreen.readingOrderKey($0) < AgentScreen.readingOrderKey($1) }
+        #expect(sorted.map(\.minX) == [20, 300, 200, 10])
+        // Strict weak ordering: sorting a shuffled copy gives the same answer.
+        let again = frames.reversed().sorted { AgentScreen.readingOrderKey($0) < AgentScreen.readingOrderKey($1) }
+        #expect(again == sorted)
+    }
+
     // MARK: Tool catalogue
 
     @Test func catalogueMentionsEveryComputerTool() {
