@@ -64,6 +64,14 @@ enum AgentMacros {
         return ["ok": true, "saved": macro.name, "steps": macro.steps.count, "note": "Saved. Replay it with macro_run."]
     }
 
+    /// Recording the recorder would make a macro that starts recording, replays itself, or
+    /// flips the control mode; those steps are never captured.
+    static let notRecordable: Set<String> = [
+        "macro_record_start", "macro_record_stop", "macro_run", "macro_delete", "set_control_mode", "wait_for_user",
+    ]
+
+    static func isRecordable(_ tool: String) -> Bool { !notRecordable.contains(tool) }
+
     /// Called by the dispatcher after every successful mutating tool call.
     static func record(tool: String, args: [String: Any]) {
         lock.lock()

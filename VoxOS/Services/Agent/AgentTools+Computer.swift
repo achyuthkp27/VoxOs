@@ -34,7 +34,7 @@ extension AgentTools {
         }
 
         let result = await executeUngated(name: name, args: args)
-        if AgentControlMode.isMutating(name), result["error"] == nil {
+        if AgentControlMode.isMutating(name), result["error"] == nil, AgentMacros.isRecordable(name) {
             AgentMacros.record(tool: name, args: args)
         }
         return result

@@ -70,6 +70,13 @@ struct AgentLogicTests {
 
     // MARK: Macros
 
+    @Test func macroRecorderDoesNotRecordItself() {
+        for tool in ["macro_record_start", "macro_record_stop", "macro_run", "set_control_mode"] {
+            #expect(!AgentMacros.isRecordable(tool), "\(tool) must not become a macro step")
+        }
+        #expect(AgentMacros.isRecordable("click_element"))
+    }
+
     @Test func macroSlugsAreStable() {
         #expect(AgentMacros.slug("Deploy Site") == "deploy-site")
         #expect(AgentMacros.slug("  ") == "macro")
