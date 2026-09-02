@@ -21,7 +21,9 @@ enum AppTheme {
 
     /// Surfaces are glass; these tokens are only the tints laid over it.
     enum Surface {
-        static let window = Color.clear
+        /// Opaque system ground for popovers, badges and other small floating surfaces. The
+        /// main window itself is glass (`glassWindowBackground`) and never reads this.
+        static let window = Color(nsColor: .windowBackgroundColor)
         static let card = Color.primary.opacity(0.04)
         static let materialCard = Color.primary.opacity(0.04)
         static let subtle = Color.primary.opacity(0.05)
