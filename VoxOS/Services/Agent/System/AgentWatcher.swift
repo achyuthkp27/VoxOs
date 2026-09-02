@@ -28,7 +28,7 @@ enum AgentWatcher {
         watch.task = Task { @MainActor in
             let deadline = Date().addingTimeInterval(timeout)
             while Date() < deadline, !Task.isCancelled {
-                if let shot = await AgentScreen.capture() {
+                if let shot = await AgentScreen.capture(lowResolution: true) {
                     let matches = await AgentScreen.recognizeText(in: shot, accurate: false)
                     if matches.contains(where: { $0.text.lowercased().contains(target.lowercased()) }) {
                         NotificationManager.shared.showNotification(

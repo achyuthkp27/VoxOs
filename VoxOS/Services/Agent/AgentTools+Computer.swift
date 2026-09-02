@@ -254,7 +254,7 @@ extension AgentTools {
             let timeout = min(60, max(1, i("timeout_seconds", 15)))
             let deadline = Date().addingTimeInterval(TimeInterval(timeout))
             while Date() < deadline {
-                if let shot = await AgentScreen.capture(),
+                if let shot = await AgentScreen.capture(lowResolution: true),
                     await AgentScreen.recognizeText(in: shot, accurate: false).contains(where: { $0.text.lowercased().contains(target) })
                 {
                     return ["found": true, "text": s("text")]

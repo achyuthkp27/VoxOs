@@ -60,8 +60,10 @@ enum AgentScreen {
         cachedContent = (content, Date())
     }
 
-    /// Screenshot of the display the mouse is on, excluding VoxOS's own windows.
-    static func capture() async -> Capture? {
+    /// Screenshot of the frontmost app's display, excluding VoxOS's own windows.
+    /// `lowResolution` halves the pixel size — right for polling loops that only need to know
+    /// whether a word is present, at a quarter of the OCR cost.
+    static func capture(lowResolution: Bool = false) async -> Capture? {
         guard await ScreenCaptureService.requestScreenCapturePermissionRegistration() else { return nil }
         do {
             let content = try await shareableContent()
@@ -75,8 +77,9 @@ enum AgentScreen {
             // SCDisplay reports points; the stream wants pixels. CGDisplayPixelsWide also
             // reports points on HiDPI modes, so read the mode's true pixel size.
             let mode = CGDisplayCopyDisplayMode(display.displayID)
-            config.width = mode?.pixelWidth ?? display.width
-            config.height = mode?.pixelHeight ?? display.height
+            let divisor = lowResolution ? 2 : 1
+            config.width = (mode?.pixelWidth ?? display.width) / divisor
+            config.height = (mode?.pixelHeight ?? display.height) / divisor
             config.showsCursor = false
             config.pixelFormat = kCVPixelFormatType_32BGRA
 
