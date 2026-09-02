@@ -49,7 +49,7 @@ struct AppNotificationView: View {
                 Text(title)
                     .font(.app(size: 12, weight: .regular))
                     .fontWeight(.medium)
-                    .foregroundColor(.white)
+                    .foregroundColor(Color.primary)
                     .lineLimit(2)
                     .multilineTextAlignment(.leading)
 
@@ -62,10 +62,10 @@ struct AppNotificationView: View {
                     }) {
                         Text(actionButton.label)
                             .font(.app(size: 11, weight: .semibold))
-                            .foregroundColor(.white)
+                            .foregroundColor(Color.primary)
                             .padding(.horizontal, 8)
                             .padding(.vertical, 4)
-                            .background(Color.white.opacity(0.14))
+                            .background(Color.primary.opacity(0.12))
                             .clipShape(RoundedRectangle(cornerRadius: 6))
                     }
                     .buttonStyle(PlainButtonStyle())
@@ -74,7 +74,7 @@ struct AppNotificationView: View {
                 Button(action: onClose) {
                     Image(systemName: "xmark")
                         .font(.app(size: 10, weight: .medium))
-                        .foregroundColor(.white.opacity(0.6))
+                        .foregroundColor(Color.secondary)
                 }
                 .buttonStyle(PlainButtonStyle())
                 .frame(width: 16, height: 16)
@@ -83,35 +83,13 @@ struct AppNotificationView: View {
             .padding(.vertical, 12)
         }
         .frame(minWidth: 220, maxWidth: 750, minHeight: 44)
-        .background(
-            RoundedRectangle(cornerRadius: AppTheme.Radius.card, style: .continuous)
-                .fill(.clear)
-                .background(
-                    ZStack {
-                        // Base dark background
-                        Color.black.opacity(0.9)
-
-                        // Subtle gradient overlay
-                        LinearGradient(
-                            colors: [
-                                Color.black.opacity(0.95),
-                                Color(red: 0.15, green: 0.15, blue: 0.15).opacity(0.9),
-                            ],
-                            startPoint: .top,
-                            endPoint: .bottom
-                        )
-
-                        // Very subtle visual effect for depth
-                        VisualEffectView(material: .hudWindow, blendingMode: .withinWindow)
-                            .opacity(0.05)
-                    }
-                    .clipShape(RoundedRectangle(cornerRadius: AppTheme.Radius.card, style: .continuous))
-                )
+        .liquidGlass(cornerRadius: AppTheme.Radius.card)
+        .overlay(RoundedRectangle(cornerRadius: AppTheme.Radius.card, style: .continuous).stroke(AppTheme.Notch.rim, lineWidth: 1))
         )
         .overlay(
             // Subtle inner border
             RoundedRectangle(cornerRadius: AppTheme.Radius.card, style: .continuous)
-                .strokeBorder(Color.white.opacity(0.1), lineWidth: 0.5)
+                .strokeBorder(Color.primary.opacity(0.1), lineWidth: 0.5)
         )
         .overlay(
             VStack {

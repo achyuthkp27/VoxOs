@@ -11,7 +11,7 @@ struct AnnouncementView: View {
             HStack(alignment: .top) {
                 Text(title)
                     .font(.app(size: 14, weight: .semibold))
-                    .foregroundColor(.white)
+                    .foregroundColor(Color.primary)
                     .lineLimit(2)
                     .multilineTextAlignment(.leading)
 
@@ -20,7 +20,7 @@ struct AnnouncementView: View {
                 Button(action: onClose) {
                     Image(systemName: "xmark")
                         .font(.app(size: 11, weight: .medium))
-                        .foregroundColor(.white.opacity(0.7))
+                        .foregroundColor(Color.secondary)
                 }
                 .buttonStyle(PlainButtonStyle())
             }
@@ -61,30 +61,12 @@ struct AnnouncementView: View {
         .padding(.horizontal, 16)
         .padding(.vertical, 14)
         .frame(minWidth: 360, idealWidth: 420)
-        .background(
-            RoundedRectangle(cornerRadius: 12, style: .continuous)
-                .fill(.clear)
-                .background(
-                    ZStack {
-                        // Match Mini Recorder background layers
-                        Color.black.opacity(0.9)
-                        LinearGradient(
-                            colors: [
-                                Color.black.opacity(0.95),
-                                Color(red: 0.15, green: 0.15, blue: 0.15).opacity(0.9),
-                            ],
-                            startPoint: .top,
-                            endPoint: .bottom
-                        )
-                        VisualEffectView(material: .hudWindow, blendingMode: .withinWindow)
-                            .opacity(0.05)
-                    }
-                    .clipShape(RoundedRectangle(cornerRadius: 12, style: .continuous))
-                )
+        .liquidGlass(cornerRadius: 12)
+        .overlay(RoundedRectangle(cornerRadius: 12, style: .continuous).stroke(AppTheme.Notch.rim, lineWidth: 1))
         )
         .overlay(
             RoundedRectangle(cornerRadius: 12, style: .continuous)
-                .strokeBorder(Color.white.opacity(0.3), lineWidth: 0.5)
+                .strokeBorder(Color.primary.opacity(0.3), lineWidth: 0.5)
         )
     }
 }
