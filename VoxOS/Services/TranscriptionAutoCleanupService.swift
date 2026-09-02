@@ -158,13 +158,23 @@ class TranscriptionAutoCleanupService {
                 includingPropertiesForKeys: nil
             )
 
+            // A recording in progress writes its audio file before a Transcription record
+            // exists for it, so a file with no matching record isn't necessarily orphaned —
+            // skip anything recent enough that it could still be an active recording.
+            let minimumOrphanAge: TimeInterval = 5 * 60
             var deletedCount = 0
             for fileURL in filesInDirectory {
                 let fileName = fileURL.lastPathComponent
-                if !referencedFiles.contains(fileName) {
-                    try? FileManager.default.removeItem(at: fileURL)
-                    deletedCount += 1
+                guard !referencedFiles.contains(fileName) else { continue }
+
+                let attributes = try? FileManager.default.attributesOfItem(atPath: fileURL.path)
+                let modificationDate = attributes?[.modificationDate] as? Date
+                if let modificationDate, Date().timeIntervalSince(modificationDate) < minimumOrphanAge {
+                    continue
                 }
+
+                try? FileManager.default.removeItem(at: fileURL)
+                deletedCount += 1
             }
 
             if deletedCount > 0 {

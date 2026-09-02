@@ -58,6 +58,12 @@ class CursorPaster {
             )
         else {
             logger.error("Failed to prepare clipboard for paste")
+            // setClipboard clears the pasteboard before writing, so on failure the
+            // original contents are already gone — restore them from the snapshot.
+            if shouldRestoreClipboard, !savedContents.isEmpty {
+                pasteboard.clearContents()
+                pasteboard.writeObjects(pasteboardItems(from: savedContents))
+            }
             return .commandNotPosted
         }
 

@@ -450,7 +450,9 @@ final class LicenseViewModel: ObservableObject {
             isPersistentStateAvailable = false
             persistentStateErrorStatus = status
             logger.error("License state is temporarily unavailable [Keychain status: \(status, privacy: .public)]")
-            licenseState = .licensed
+            // Fail closed: do not grant access while we can't verify license/trial state.
+            // The retry loop below re-resolves the real state once Keychain access recovers.
+            licenseState = .unlicensed
             setStorageError(keychainUnavailableMessage)
             stateRefreshTask?.cancel()
             stateRefreshTask = nil

@@ -2,7 +2,7 @@ import FluidAudio
 import Foundation
 import os.log
 
-class FluidAudioTranscriptionService: TranscriptionService {
+actor FluidAudioTranscriptionService: TranscriptionService {
     private var asrManager: AsrManager?
     private var unifiedAsrManager: UnifiedAsrManager?
     private var nemotronAsrManager: StreamingNemotronMultilingualAsrManager?
@@ -12,6 +12,21 @@ class FluidAudioTranscriptionService: TranscriptionService {
     private var loadingTask: (version: AsrModelVersion, task: Task<AsrModels, Error>)?
     private let audioConverter = AudioConverter()
     private let logger = Logger(subsystem: "com.achyuthkp.voxos", category: "FluidAudioTranscriptionService")
+
+    // Chains loadModel()/transcribe() calls so one can't tear down the shared ASR manager
+    // (in ensureModelsLoaded/cleanupLoadedManagers) while another is still using it —
+    // the same class of race the WhisperTranscriptionService actor call sequence had.
+    private var serialQueue: Task<Void, Never>?
+
+    private func serialized<T>(_ work: () async throws -> T) async throws -> T {
+        let previous = serialQueue
+        let barrier = Task<Void, Never> {
+            _ = await previous?.value
+        }
+        serialQueue = barrier
+        await barrier.value
+        return try await work()
+    }
 
     private func version(for model: any TranscriptionModel) -> AsrModelVersion {
         FluidAudioModelManager.asrVersion(for: model.name)
@@ -122,6 +137,10 @@ class FluidAudioTranscriptionService: TranscriptionService {
     }
 
     func loadModel(for model: FluidAudioModel) async throws {
+        try await serialized { try await self.loadModelUnserialized(for: model) }
+    }
+
+    private func loadModelUnserialized(for model: FluidAudioModel) async throws {
         if FluidAudioModelManager.isNemotronModel(named: model.name) {
             // Realtime Nemotron uses a dedicated streaming manager; batch loads lazily in transcribe().
             return
@@ -138,6 +157,14 @@ class FluidAudioTranscriptionService: TranscriptionService {
     func transcribe(audioURL: URL, model: any TranscriptionModel, context: TranscriptionRequestContext) async throws
         -> String
     {
+        try await serialized {
+            try await self.transcribeUnserialized(audioURL: audioURL, model: model, context: context)
+        }
+    }
+
+    private func transcribeUnserialized(
+        audioURL: URL, model: any TranscriptionModel, context: TranscriptionRequestContext
+    ) async throws -> String {
         if FluidAudioModelManager.isParakeetUnifiedModel(named: model.name) {
             try await ensureUnifiedModelsLoaded()
             guard let unifiedAsrManager else {

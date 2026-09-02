@@ -26,29 +26,20 @@ struct LicenseKeychainAccessibilityMigration {
         var succeeded = true
 
         if let licenseKey = state.licenseKey {
-            succeeded = keychain.save(
-                licenseKey,
-                forKey: LicenseKeychainKeys.licenseKey,
-                syncable: false,
-                accessibility: accessibility
+            succeeded = migrateAccessibility(
+                licenseKey, forKey: LicenseKeychainKeys.licenseKey
             ) && succeeded
         }
 
         if let activationId = state.activationId {
-            succeeded = keychain.save(
-                activationId,
-                forKey: LicenseKeychainKeys.activationId,
-                syncable: false,
-                accessibility: accessibility
+            succeeded = migrateAccessibility(
+                activationId, forKey: LicenseKeychainKeys.activationId
             ) && succeeded
         }
 
         if let trialStartDate = state.trialStartDate {
-            succeeded = keychain.save(
-                String(trialStartDate.timeIntervalSince1970),
-                forKey: LicenseKeychainKeys.trialStartDate,
-                syncable: false,
-                accessibility: accessibility
+            succeeded = migrateAccessibility(
+                String(trialStartDate.timeIntervalSince1970), forKey: LicenseKeychainKeys.trialStartDate
             ) && succeeded
         }
 
@@ -56,5 +47,18 @@ struct LicenseKeychainAccessibilityMigration {
 
         defaults.set(true, forKey: migrationKey)
         return true
+    }
+
+    // SecItemUpdate cannot change an existing item's kSecAttrAccessible — it either fails
+    // or silently leaves the original accessibility class in place. Deleting and re-adding
+    // is the only reliable way to move an item to a new accessibility class.
+    private func migrateAccessibility(_ value: String, forKey key: String) -> Bool {
+        keychain.delete(forKey: key, syncable: false)
+        return keychain.save(
+            value,
+            forKey: key,
+            syncable: false,
+            accessibility: accessibility
+        )
     }
 }

@@ -185,7 +185,9 @@ final class LicenseManager: LicenseStoring {
                 let timeInterval = Double(timestamp)
             else {
                 logger.error("Stored license date is malformed for key: \(identifier, privacy: .public)")
-                let resetDate = Date()
+                // Fail closed: treat corrupted/tampered data as an already-exhausted trial
+                // rather than resetting the clock to now, which would silently grant a fresh trial.
+                let resetDate = Date.distantPast
                 guard storeDate(resetDate, forKey: identifier) else {
                     return .unavailable(errSecIO)
                 }

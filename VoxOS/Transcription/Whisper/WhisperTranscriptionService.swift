@@ -57,19 +57,15 @@ class WhisperTranscriptionService: TranscriptionService {
         // Read audio data
         let data = try readAudioSamples(audioURL)
 
-        // Set prompt
-        await whisperContext.setLanguage(context.language)
-        await whisperContext.setPrompt(context.prompt ?? "")
-
-        // Transcribe
-        let success = await whisperContext.fullTranscribe(samples: data)
+        // Set language/prompt, transcribe, and read the result back atomically so a
+        // concurrent transcription sharing this context can't interleave its own state.
+        let (success, text) = await whisperContext.transcribe(
+            samples: data, language: context.language, prompt: context.prompt ?? "")
 
         guard success else {
             logger.error("❌ Core transcription engine failed (whisper_full).")
             throw VoxOSEngineError.whisperCoreFailed
         }
-
-        let text = await whisperContext.getTranscription()
 
         logger.notice("Whisper transcription completed successfully.")
 

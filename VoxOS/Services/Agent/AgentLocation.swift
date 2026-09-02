@@ -33,12 +33,15 @@ private final class LocationFetcher: NSObject, CLLocationManagerDelegate {
 
     func locationManagerDidChangeAuthorization(_ manager: CLLocationManager) {
         switch manager.authorizationStatus {
-        case .authorizedAlways, .authorized:
-            manager.requestLocation()
         case .denied, .restricted:
             finish(["error": "Location access is denied. Enable it in System Settings > Privacy > Location Services."])
+        case .notDetermined:
+            break  // still waiting on the user's response to the permission prompt
         default:
-            break
+            // Covers .authorizedAlways, .authorized, and .authorizedWhenInUse — omitting any of
+            // these here would leave the continuation waiting forever for a location update
+            // that requestLocation() was never called to produce.
+            manager.requestLocation()
         }
     }
 

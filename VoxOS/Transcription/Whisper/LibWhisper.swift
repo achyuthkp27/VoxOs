@@ -162,6 +162,17 @@ actor WhisperContext {
     func setLanguage(_ language: String?) {
         self.language = language
     }
+
+    /// Atomically sets language/prompt, runs transcription, and reads back the result.
+    /// Combining these steps into a single actor call prevents a concurrent transcribe()
+    /// on a shared context from interleaving its own language/prompt in between.
+    func transcribe(samples: [Float], language: String?, prompt: String?) -> (success: Bool, text: String) {
+        setLanguage(language)
+        setPrompt(prompt)
+        let success = fullTranscribe(samples: samples)
+        guard success else { return (false, "") }
+        return (true, getTranscription())
+    }
 }
 
 fileprivate func cpuCount() -> Int {

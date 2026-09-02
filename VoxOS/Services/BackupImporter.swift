@@ -40,43 +40,51 @@ enum BackupImporter {
         }
 
         if categories.contains(.prompts) {
-            enhancementService.customPrompts = backup.customPrompts
-            shouldRepairModePromptSelections = true
-            print("Successfully imported \(backup.customPrompts.count) prompts.")
+            if let customPrompts = backup.customPrompts {
+                enhancementService.customPrompts = customPrompts
+                shouldRepairModePromptSelections = true
+                print("Successfully imported \(customPrompts.count) prompts.")
+            } else {
+                print("No custom prompts found in the imported file. Existing prompts remain unchanged.")
+            }
         }
 
         if categories.contains(.modes) {
-            let modeManager = ModeManager.shared
-            for config in modeManager.configurations {
-                ShortcutStore.removeShortcutStorage(for: .mode(config.id))
-            }
+            if let modeConfigs = backup.modeConfigs {
+                let modeManager = ModeManager.shared
+                for config in modeManager.configurations {
+                    ShortcutStore.removeShortcutStorage(for: .mode(config.id))
+                }
 
-            modeManager.configurations = backup.modeConfigs
-            let importedModeIds = Set(backup.modeConfigs.map(\.id))
+                modeManager.configurations = modeConfigs
+                let importedModeIds = Set(modeConfigs.map(\.id))
 
-            if let shortcuts = backup.modeShortcuts {
-                for (idString, shortcutBackup) in shortcuts {
-                    guard
-                        let id = UUID(uuidString: idString),
-                        importedModeIds.contains(id)
-                    else {
-                        continue
+                if let shortcuts = backup.modeShortcuts {
+                    for (idString, shortcutBackup) in shortcuts {
+                        guard
+                            let id = UUID(uuidString: idString),
+                            importedModeIds.contains(id)
+                        else {
+                            continue
+                        }
+
+                        ShortcutStore.setShortcut(shortcutBackup.shortcut, for: .mode(id))
                     }
-
-                    ShortcutStore.setShortcut(shortcutBackup.shortcut, for: .mode(id))
                 }
-            }
 
-            modeManager.saveConfigurations()
-            shouldRepairModePromptSelections = true
+                modeManager.saveConfigurations()
+                shouldRepairModePromptSelections = true
 
-            if let customEmojis = backup.customEmojis {
-                let emojiManager = EmojiManager.shared
-                for emoji in customEmojis {
-                    _ = emojiManager.addCustomEmoji(emoji)
+                if let customEmojis = backup.customEmojis {
+                    let emojiManager = EmojiManager.shared
+                    for emoji in customEmojis {
+                        _ = emojiManager.addCustomEmoji(emoji)
+                    }
                 }
+                print("Successfully imported \(modeConfigs.count) Mode configurations.")
+            } else {
+                print("No Mode configurations found in the imported file. Existing Modes remain unchanged.")
             }
-            print("Successfully imported \(backup.modeConfigs.count) Mode configurations.")
         }
 
         if shouldRepairModePromptSelections {

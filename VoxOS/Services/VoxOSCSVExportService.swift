@@ -46,9 +46,18 @@ class VoxOSCSVExportService {
         return csvString
     }
 
+    private static let formulaTriggerCharacters: Set<Character> = ["=", "+", "-", "@", "\t", "\r"]
+
     private func escapeCSVString(_ string: String) -> String {
-        let escapedString = string.replacingOccurrences(of: "\"", with: "\"\"")
-        if escapedString.contains(",") || escapedString.contains("\n") {
+        var escapedString = string.replacingOccurrences(of: "\"", with: "\"\"")
+
+        // Neutralize spreadsheet formula/DDE injection: a cell whose first character is one
+        // of these is interpreted as a formula by Excel/Numbers/Sheets when the CSV is opened.
+        if let first = escapedString.first, Self.formulaTriggerCharacters.contains(first) {
+            escapedString = "'" + escapedString
+        }
+
+        if escapedString.contains(",") || escapedString.contains("\n") || escapedString.contains("\"") {
             return "\"\(escapedString)\""
         }
         return escapedString

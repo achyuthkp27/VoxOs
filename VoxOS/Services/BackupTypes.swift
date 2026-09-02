@@ -110,8 +110,8 @@ struct WordBackup: Codable {
 
 struct BackupFile: Codable {
     let version: String
-    let customPrompts: [CustomPrompt]
-    let modeConfigs: [ModeConfig]
+    let customPrompts: [CustomPrompt]?
+    let modeConfigs: [ModeConfig]?
     let modeShortcuts: [String: ShortcutBackup]?
     let vocabularyWords: [WordBackup]?
     let wordReplacements: [String: String]?
@@ -127,7 +127,7 @@ struct BackupFile: Codable {
     }
 
     init(
-        version: String, customPrompts: [CustomPrompt], modeConfigs: [ModeConfig],
+        version: String, customPrompts: [CustomPrompt]?, modeConfigs: [ModeConfig]?,
         modeShortcuts: [String: ShortcutBackup]?, vocabularyWords: [WordBackup]?, wordReplacements: [String: String]?,
         generalSettings: GeneralBackup?, customEmojis: [String]?, customCloudModels: [CustomModelBackup]?
     ) {
@@ -145,11 +145,10 @@ struct BackupFile: Codable {
     init(from decoder: Decoder) throws {
         let container = try decoder.container(keyedBy: CodingKeys.self)
         version = try container.decodeIfPresent(String.self, forKey: .version) ?? "0.0.0"
-        customPrompts = try container.decodeIfPresent([CustomPrompt].self, forKey: .customPrompts) ?? []
+        customPrompts = try container.decodeIfPresent([CustomPrompt].self, forKey: .customPrompts)
         modeConfigs =
             try container.decodeIfPresent([ModeConfig].self, forKey: .modeConfigs)
             ?? container.decodeIfPresent([ModeConfig].self, forKey: .legacyModeConfigs)
-            ?? []
         modeShortcuts =
             try container.decodeIfPresent([String: ShortcutBackup].self, forKey: .modeShortcuts)
             ?? container.decodeIfPresent([String: ShortcutBackup].self, forKey: .legacyModeShortcuts)
@@ -163,8 +162,8 @@ struct BackupFile: Codable {
     func encode(to encoder: Encoder) throws {
         var container = encoder.container(keyedBy: CodingKeys.self)
         try container.encode(version, forKey: .version)
-        try container.encode(customPrompts, forKey: .customPrompts)
-        try container.encode(modeConfigs, forKey: .modeConfigs)
+        try container.encodeIfPresent(customPrompts, forKey: .customPrompts)
+        try container.encodeIfPresent(modeConfigs, forKey: .modeConfigs)
         try container.encodeIfPresent(modeShortcuts, forKey: .modeShortcuts)
         try container.encodeIfPresent(vocabularyWords, forKey: .vocabularyWords)
         try container.encodeIfPresent(wordReplacements, forKey: .wordReplacements)
