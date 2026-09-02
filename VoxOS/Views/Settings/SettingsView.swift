@@ -36,6 +36,8 @@ struct SettingsView: View {
 
     @State private var isMiddleClickExpanded = false
     @State private var isSystemAudioBufferExpanded = false
+    @State private var agentHasAccessibility = AXIsProcessTrusted()
+    @State private var agentHasScreenRecording = CGPreflightScreenCaptureAccess()
     @AppStorage(AgentControlMode.userDefaultsKey) private var agentControlModeRaw = AgentControlMode.takeover.rawValue
     @AppStorage(AgentShell.allowRiskyKey) private var agentAllowRiskyShell = false
     @State private var isRestoreClipboardExpanded = false
@@ -248,15 +250,15 @@ struct SettingsView: View {
                 LabeledContent("Permissions") {
                     HStack(spacing: 6) {
                         Label(
-                            AXIsProcessTrusted() ? "Accessibility" : "Accessibility missing",
-                            systemImage: AXIsProcessTrusted() ? "checkmark.circle.fill" : "xmark.circle"
+                            agentHasAccessibility ? "Accessibility" : "Accessibility missing",
+                            systemImage: agentHasAccessibility ? "checkmark.circle.fill" : "xmark.circle"
                         )
-                        .foregroundStyle(AXIsProcessTrusted() ? .green : .orange)
+                        .foregroundStyle(agentHasAccessibility ? .green : .orange)
                         Label(
-                            CGPreflightScreenCaptureAccess() ? "Screen Recording" : "Screen Recording missing",
-                            systemImage: CGPreflightScreenCaptureAccess() ? "checkmark.circle.fill" : "xmark.circle"
+                            agentHasScreenRecording ? "Screen Recording" : "Screen Recording missing",
+                            systemImage: agentHasScreenRecording ? "checkmark.circle.fill" : "xmark.circle"
                         )
-                        .foregroundStyle(CGPreflightScreenCaptureAccess() ? .green : .orange)
+                        .foregroundStyle(agentHasScreenRecording ? .green : .orange)
                     }
                     .font(.app(.caption))
                     .labelStyle(.titleAndIcon)
