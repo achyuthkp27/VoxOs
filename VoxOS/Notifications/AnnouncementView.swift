@@ -29,7 +29,7 @@ struct AnnouncementView: View {
                 ScrollView {
                     Text(description)
                         .font(.app(size: 12, weight: .regular))
-                        .foregroundColor(.white.opacity(0.9))
+                        .foregroundColor(Color.primary.opacity(0.9))
                         .multilineTextAlignment(.leading)
                         .frame(maxWidth: .infinity, alignment: .leading)
                 }
@@ -40,10 +40,10 @@ struct AnnouncementView: View {
                 Button(action: onLearnMore) {
                     Text("Learn more")
                         .font(.app(size: 12, weight: .medium))
-                        .foregroundColor(.black)
+                        .foregroundColor(Color(nsColor: .windowBackgroundColor))
                         .padding(.horizontal, 10)
                         .padding(.vertical, 6)
-                        .background(Color.white)
+                        .background(Color.primary)
                         .clipShape(RoundedRectangle(cornerRadius: 8, style: .continuous))
                 }
                 .buttonStyle(PlainButtonStyle())
@@ -51,7 +51,7 @@ struct AnnouncementView: View {
                 Button(action: onClose) {
                     Text("Dismiss")
                         .font(.app(size: 12, weight: .medium))
-                        .foregroundColor(.white.opacity(0.9))
+                        .foregroundColor(Color.primary.opacity(0.9))
                         .padding(.horizontal, 8)
                         .padding(.vertical, 6)
                 }
@@ -63,7 +63,6 @@ struct AnnouncementView: View {
         .frame(minWidth: 360, idealWidth: 420)
         .liquidGlass(cornerRadius: 12)
         .overlay(RoundedRectangle(cornerRadius: 12, style: .continuous).stroke(AppTheme.Notch.rim, lineWidth: 1))
-        )
         .overlay(
             RoundedRectangle(cornerRadius: 12, style: .continuous)
                 .strokeBorder(Color.primary.opacity(0.3), lineWidth: 0.5)

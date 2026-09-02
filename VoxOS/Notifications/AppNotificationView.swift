@@ -85,7 +85,6 @@ struct AppNotificationView: View {
         .frame(minWidth: 220, maxWidth: 750, minHeight: 44)
         .liquidGlass(cornerRadius: AppTheme.Radius.card)
         .overlay(RoundedRectangle(cornerRadius: AppTheme.Radius.card, style: .continuous).stroke(AppTheme.Notch.rim, lineWidth: 1))
-        )
         .overlay(
             // Subtle inner border
             RoundedRectangle(cornerRadius: AppTheme.Radius.card, style: .continuous)
