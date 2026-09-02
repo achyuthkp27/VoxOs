@@ -31,6 +31,24 @@ struct AgentLogicTests {
         }
     }
 
+    @Test func shellRunsAndDrainsLargeOutput() async {
+        let small = await AgentShell.run("echo hello-agent")
+        #expect((small["output"] as? String)?.contains("hello-agent") == true)
+        #expect(small["exit"] as? Int == 0)
+
+        // 200 KB exceeds the pipe buffer; the old implementation deadlocked here.
+        let big = await AgentShell.run("head -c 200000 /dev/zero | tr '\\0' 'x'; echo END")
+        #expect(big["error"] == nil)
+        #expect((big["output"] as? String)?.contains("truncated") == true)
+    }
+
+    @Test func shellBlocksRiskyCommandsUnlessAllowed() async {
+        UserDefaults.standard.set(false, forKey: AgentShell.allowRiskyKey)
+        let blocked = await AgentShell.run("sudo ls")
+        #expect(blocked["blocked"] as? Bool == true)
+        #expect((blocked["error"] as? String)?.contains("NOT run") == true)
+    }
+
     // MARK: Control modes
 
     @Test func stateChangingToolsAreGated() {
