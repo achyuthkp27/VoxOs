@@ -362,7 +362,7 @@ struct RecorderStatusDisplay: View {
             } else if currentState == .recording {
                 AudioVisualizer(
                     audioMeterProvider: audioMeterProvider,
-                    color: Color.primary,
+                    color: AppTheme.Accent.primary,
                     isActive: true
                 )
                     .scaleEffect(y: menuBarHeight != nil ? min(1.0, (menuBarHeight! - 8) / 25) : 1.0, anchor: .center)
@@ -420,6 +420,19 @@ struct AssistantPanelView: View {
         ScrollViewReader { proxy in
             ScrollView(.vertical, showsIndicators: false) {
                 VStack(spacing: 14) {
+                    if session.messages.isEmpty, statusText == nil {
+                        VStack(spacing: 8) {
+                            Image(systemName: "waveform.and.magnifyingglass")
+                                .font(.app(size: 26, weight: .light))
+                                .foregroundStyle(AppTheme.Notch.textMuted)
+                            Text(shouldShowLiveFollowUpText ? "Listening…" : "Ask anything about what's on your screen")
+                                .font(.app(size: 14))
+                                .foregroundStyle(AppTheme.Notch.textMuted)
+                        }
+                        .frame(maxWidth: .infinity)
+                        .padding(.top, 56)
+                    }
+
                     ForEach(session.messages) { message in
                         AssistantMessageBubble(message: message)
                             .id(message.id)
