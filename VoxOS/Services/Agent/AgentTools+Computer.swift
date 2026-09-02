@@ -158,7 +158,7 @@ extension AgentTools {
             guard let match else {
                 return ["error": "no element matching \"\(query)\"", "hint": "call list_ui_elements to see what's available, or click_text to click visible text"]
             }
-            let count = i("count", 1)
+            let count = min(3, max(1, i("count", 1)))
             let pressed = count == 1 && AgentAXTree.tryPress(match.element)
             if !pressed { AgentInputSynth.click(at: CGPoint(x: match.frame.midX, y: match.frame.midY), count: count) }
             try? await Task.sleep(nanoseconds: 250_000_000)
