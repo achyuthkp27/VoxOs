@@ -4,6 +4,9 @@ WHISPER_CPP_DIR := $(DEPS_DIR)/whisper.cpp
 FRAMEWORK_PATH := $(WHISPER_CPP_DIR)/build-apple/whisper.xcframework
 LOCAL_DERIVED_DATA := $(CURDIR)/.local-build
 LOCAL_CODESIGN_IDENTITY ?=
+# `make local` installs straight to /Applications so no stray copies are left
+# lying around in ~/Downloads for Spotlight to index.
+INSTALL_PATH ?= /Applications/VoxOS.app
 
 .PHONY: all clean whisper setup build local check healthcheck help dev run release release-setup
 
@@ -49,6 +52,7 @@ build: setup
 local: check setup
 	@echo "Building VoxOS for local use (no Apple Developer certificate required)..."
 	@rm -rf "$(LOCAL_DERIVED_DATA)"
+	@mkdir -p "$(LOCAL_DERIVED_DATA)" && touch "$(LOCAL_DERIVED_DATA)/.metadata_never_index"
 	@SIGNING_IDENTITY="$(LOCAL_CODESIGN_IDENTITY)"; \
 	if [ -z "$$SIGNING_IDENTITY" ]; then \
 		SIGNING_IDENTITIES=$$(security find-identity -v -p codesigning 2>/dev/null | awk '/"Apple Development: / { print $$2 }'); \
@@ -70,7 +74,9 @@ local: check setup
 	xcodebuild -project VoxOS.xcodeproj -scheme VoxOS -configuration Debug \
 		-derivedDataPath "$(LOCAL_DERIVED_DATA)" \
 		-xcconfig LocalBuild.xcconfig \
-		CODE_SIGN_IDENTITY="$$SIGNING_IDENTITY" \
+		-skipPackagePluginValidation \
+		-skipMacroValidation \
+		LOCAL_CODE_SIGN_IDENTITY="$$SIGNING_IDENTITY" \
 		CODE_SIGNING_REQUIRED="$$SIGNING_REQUIRED" \
 		CODE_SIGNING_ALLOWED=YES \
 		DEVELOPMENT_TEAM="" \
@@ -79,13 +85,18 @@ local: check setup
 		build
 	@APP_PATH="$(LOCAL_DERIVED_DATA)/Build/Products/Debug/VoxOS.app" && \
 	if [ -d "$$APP_PATH" ]; then \
-		echo "Copying VoxOS.app to ~/Downloads..."; \
-		rm -rf "$$HOME/Downloads/VoxOS.app"; \
-		ditto "$$APP_PATH" "$$HOME/Downloads/VoxOS.app"; \
-		xattr -cr "$$HOME/Downloads/VoxOS.app"; \
+		if pgrep -x VoxOS >/dev/null; then \
+			echo "Quitting running VoxOS..."; \
+			osascript -e 'quit app "VoxOS"' >/dev/null 2>&1 || true; \
+			sleep 2; \
+		fi; \
+		echo "Installing to $(INSTALL_PATH)..."; \
+		rm -rf "$(INSTALL_PATH)"; \
+		ditto "$$APP_PATH" "$(INSTALL_PATH)"; \
+		xattr -cr "$(INSTALL_PATH)"; \
 		echo ""; \
-		echo "Build complete! App saved to: ~/Downloads/VoxOS.app"; \
-		echo "Run with: open ~/Downloads/VoxOS.app"; \
+		echo "Build complete! Installed to: $(INSTALL_PATH)"; \
+		echo "Run with: make run"; \
 		echo ""; \
 		echo "Limitations of local builds:"; \
 		echo "  - No iCloud dictionary sync"; \
@@ -97,19 +108,12 @@ local: check setup
 
 # Run application
 run:
-	@if [ -d "$$HOME/Downloads/VoxOS.app" ]; then \
-		echo "Opening ~/Downloads/VoxOS.app..."; \
-		open "$$HOME/Downloads/VoxOS.app"; \
+	@if [ -d "$(INSTALL_PATH)" ]; then \
+		echo "Opening $(INSTALL_PATH)..."; \
+		open "$(INSTALL_PATH)"; \
 	else \
-		echo "Looking for VoxOS.app in DerivedData..."; \
-		APP_PATH=$$(find "$$HOME/Library/Developer/Xcode/DerivedData" -name "VoxOS.app" -type d | head -1) && \
-		if [ -n "$$APP_PATH" ]; then \
-			echo "Found app at: $$APP_PATH"; \
-			open "$$APP_PATH"; \
-		else \
-			echo "VoxOS.app not found. Please run 'make build' or 'make local' first."; \
-			exit 1; \
-		fi; \
+		echo "VoxOS is not installed. Run 'make local' first."; \
+		exit 1; \
 	fi
 
 # Build a signed, notarized DMG and matching local Sparkle Appcast.
