@@ -90,7 +90,7 @@ struct DashboardContent: View {
             }
         }
         .task {
-            await scheduleDashboardStatsRefresh(allowSkipWhenFresh: hasLoadedStatsSnapshot)
+            scheduleDashboardStatsRefresh(allowSkipWhenFresh: hasLoadedStatsSnapshot)
         }
         .onAppear {
             refreshAccessibilityStatus()
@@ -327,7 +327,7 @@ struct DashboardContent: View {
                         .stroke(AppTheme.Accent.border, lineWidth: 1)
                 )
                 .onSubmit(finishEditingDisplayName)
-                .onChange(of: isNameFieldFocused) { isFocused in
+                .onChange(of: isNameFieldFocused) { _, isFocused in
                     if !isFocused {
                         finishEditingDisplayName()
                     }
