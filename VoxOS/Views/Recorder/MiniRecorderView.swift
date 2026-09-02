@@ -69,7 +69,7 @@ struct MiniRecorderView<S: RecorderStateProvider & ObservableObject>: View {
         VStack(spacing: 0) {
             if hasLiveTranscript {
                 LiveTranscriptView(text: stateProvider.partialTranscript)
-                Divider().background(Color.white.opacity(0.15))
+                Divider().background(Color.primary.opacity(0.15))
             }
         }
     }
@@ -82,7 +82,7 @@ struct MiniRecorderView<S: RecorderStateProvider & ObservableObject>: View {
                     liveFollowUpText: liveAssistantFollowUpText,
                     onSend: onAssistantFollowUp
                 )
-                Divider().background(Color.white.opacity(0.15))
+                Divider().background(Color.primary.opacity(0.15))
             } else {
                 transcriptSection
             }

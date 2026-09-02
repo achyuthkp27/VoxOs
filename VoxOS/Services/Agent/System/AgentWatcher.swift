@@ -22,7 +22,7 @@ enum AgentWatcher {
         let target = text.trimmingCharacters(in: .whitespacesAndNewlines)
         guard !target.isEmpty else { return ["error": "text is required"] }
         let timeout = min(maxTimeoutSeconds, max(10, TimeInterval(timeoutSeconds)))
-        let id = "w\(Int(Date().timeIntervalSince1970) % 100_000)"
+        let id = "w" + UUID().uuidString.prefix(6).lowercased()
 
         var watch = Watch(id: id, text: target, startedAt: Date(), timeout: timeout, task: nil)
         watch.task = Task { @MainActor in
@@ -56,7 +56,7 @@ enum AgentWatcher {
             return ["error": "system audio buffering is off; the user can enable “Keep Recent System Audio” in Settings → System Audio"]
         }
         let timeout = min(maxTimeoutSeconds, max(10, TimeInterval(timeoutSeconds)))
-        let id = "a\(Int(Date().timeIntervalSince1970) % 100_000)"
+        let id = "a" + UUID().uuidString.prefix(6).lowercased()
         var watch = Watch(id: id, text: target, startedAt: Date(), timeout: timeout, task: nil)
         watch.task = Task { @MainActor in
             let deadline = Date().addingTimeInterval(timeout)

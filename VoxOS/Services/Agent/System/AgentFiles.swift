@@ -7,11 +7,26 @@ import PDFKit
 enum AgentFiles {
     private static let maxChars = 12_000
 
+    /// Same boundary as find_files: the user's home folder (plus /tmp and /Applications for reading).
+    private static func isAllowed(_ path: String, forWriting: Bool) -> Bool {
+        let resolved = URL(fileURLWithPath: path).standardizedFileURL.resolvingSymlinksInPath().path
+        let home = FileManager.default.homeDirectoryForCurrentUser.standardizedFileURL.resolvingSymlinksInPath().path
+        if resolved == home || resolved.hasPrefix(home + "/") {
+            // Never hand out credentials.
+            return !resolved.hasPrefix(home + "/Library/Keychains") && !resolved.contains("/.ssh/") && !resolved.hasSuffix("/.ssh")
+        }
+        guard !forWriting else { return false }
+        return ["/tmp", "/private/tmp", "/Applications"].contains { resolved == $0 || resolved.hasPrefix($0 + "/") }
+    }
+
     static func move(from: String, to: String) -> [String: Any] {
         let fm = FileManager.default
         let source = expand(from)
         var destination = expand(to)
         guard !from.isEmpty, !to.isEmpty else { return ["error": "from and to are required"] }
+        guard isAllowed(source, forWriting: true), isAllowed(destination, forWriting: true) else {
+            return ["error": "move_file only works inside your home folder"]
+        }
         guard fm.fileExists(atPath: source) else { return ["error": "source not found: \(source)"] }
 
         var isDirectory: ObjCBool = false
@@ -29,6 +44,7 @@ enum AgentFiles {
 
     static func readPDF(path: String) -> [String: Any] {
         let p = expand(path)
+        guard isAllowed(p, forWriting: false) else { return ["error": "read_pdf only works inside your home folder, /tmp or /Applications"] }
         guard FileManager.default.fileExists(atPath: p) else { return ["error": "file not found: \(p)"] }
         guard let document = PDFDocument(url: URL(fileURLWithPath: p)) else {
             return ["error": "couldn't open as PDF (corrupt or not a PDF): \(p)"]
@@ -46,6 +62,7 @@ enum AgentFiles {
     static func readFile(path: String) -> [String: Any] {
         let p = expand(path)
         let fm = FileManager.default
+        guard isAllowed(p, forWriting: false) else { return ["error": "read_file only works inside your home folder, /tmp or /Applications"] }
         var isDirectory: ObjCBool = false
         guard fm.fileExists(atPath: p, isDirectory: &isDirectory) else { return ["error": "file not found: \(p)"] }
         if isDirectory.boolValue {

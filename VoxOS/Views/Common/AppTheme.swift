@@ -122,15 +122,17 @@ enum AppTheme {
     }
 
     /// The notch panel: dark glass rather than flat black, so what's behind blurs through.
+    /// The notch panel is plain Liquid Glass — no black fill — so it reads as frosted glass
+    /// over whatever is behind it and follows the system appearance.
     enum Notch {
-        static let tint = Color.black.opacity(0.96)
-        static let ground = Color.black
-        static let bubble = Color.white.opacity(0.10)
-        static let field = Color.white.opacity(0.10)
-        static let fieldBorder = Color.white.opacity(0.12)
-        static let chip = Color.white.opacity(0.26)
-        static let text = Color.white.opacity(0.95)
-        static let textMuted = Color.white.opacity(0.55)
+        static let tint: Color? = nil
+        static let bubble = Color.primary.opacity(0.08)
+        static let field = Color.primary.opacity(0.06)
+        static let fieldBorder = Color.primary.opacity(0.12)
+        static let chip = Color.primary.opacity(0.14)
+        static let text = Color.primary
+        static let textMuted = Color.secondary
+        static let rim = Color.primary.opacity(0.16)
         static let cornerRadius: CGFloat = 30
     }
 }

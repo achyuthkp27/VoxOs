@@ -193,22 +193,24 @@ extension AgentTools {
         // MARK: Raw input
         case "mouse_move":
             if let e = needsAccessibility() { return e }
-            AgentInputSynth.move(to: CGPoint(x: n("x") ?? 0, y: n("y") ?? 0))
+            guard let x = n("x"), let y = n("y") else { return ["error": "x and y are required — get them from list_ui_elements or find_text"] }
+            AgentInputSynth.move(to: CGPoint(x: x, y: y))
             return ["ok": true]
 
         case "mouse_click":
             if let e = needsAccessibility() { return e }
+            guard let x = n("x"), let y = n("y") else { return ["error": "x and y are required — get them from list_ui_elements or find_text"] }
             let button: CGMouseButton = s("button").lowercased() == "right" ? .right : .left
-            AgentInputSynth.click(at: CGPoint(x: n("x") ?? 0, y: n("y") ?? 0), button: button, count: i("count", 1))
+            AgentInputSynth.click(at: CGPoint(x: x, y: y), button: button, count: min(3, max(1, i("count", 1))))
             try? await Task.sleep(nanoseconds: 200_000_000)
             return ["ok": true]
 
         case "mouse_drag":
             if let e = needsAccessibility() { return e }
-            AgentInputSynth.drag(
-                from: CGPoint(x: n("from_x") ?? 0, y: n("from_y") ?? 0),
-                to: CGPoint(x: n("to_x") ?? 0, y: n("to_y") ?? 0),
-                durationMs: i("duration_ms", 350))
+            guard let fx = n("from_x"), let fy = n("from_y"), let tx = n("to_x"), let ty = n("to_y") else {
+                return ["error": "from_x, from_y, to_x and to_y are all required"]
+            }
+            AgentInputSynth.drag(from: CGPoint(x: fx, y: fy), to: CGPoint(x: tx, y: ty), durationMs: min(5000, max(50, i("duration_ms", 350))))
             return ["ok": true]
 
         case "scroll":
@@ -439,7 +441,7 @@ extension AgentTools {
         case "permissions_diagnostics":
             return [
                 "microphone": authStatus(AVCaptureDevice.authorizationStatus(for: .audio).rawValue),
-                "speech_recognition": authStatus(Int(SFSpeechRecognizer.authorizationStatus().rawValue)),
+                "speech_recognition": speechAuthStatus(SFSpeechRecognizer.authorizationStatus()),
                 "screen_recording": AgentScreen.hasPermission ? "authorized" : "not_authorized",
                 "accessibility": AgentInputSynth.isAccessibilityGranted ? "authorized" : "not_authorized",
                 "hint": "Screen Recording powers read_screen/find_text/mark_screen; Accessibility powers every click and keystroke.",
@@ -461,6 +463,17 @@ extension AgentTools {
 
         default:
             return nil
+        }
+    }
+
+    /// SFSpeechRecognizer orders its cases differently from AVFoundation (denied=1, restricted=2).
+    private static func speechAuthStatus(_ status: SFSpeechRecognizerAuthorizationStatus) -> String {
+        switch status {
+        case .notDetermined: return "not_determined"
+        case .denied: return "denied"
+        case .restricted: return "restricted"
+        case .authorized: return "authorized"
+        @unknown default: return "unknown"
         }
     }
 

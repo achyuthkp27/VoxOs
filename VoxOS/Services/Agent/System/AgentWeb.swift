@@ -12,10 +12,9 @@ enum AgentWeb {
 
     static func search(_ query: String, maxResults: Int = 6) async -> [String: Any] {
         let trimmed = query.trimmingCharacters(in: .whitespacesAndNewlines)
-        guard !trimmed.isEmpty,
-            let encoded = trimmed.addingPercentEncoding(withAllowedCharacters: .urlQueryAllowed),
-            let url = URL(string: "https://html.duckduckgo.com/html/?q=\(encoded)")
-        else { return ["error": "query is required"] }
+        var components = URLComponents(string: "https://html.duckduckgo.com/html/")
+        components?.queryItems = [URLQueryItem(name: "q", value: trimmed)]
+        guard !trimmed.isEmpty, let url = components?.url else { return ["error": "query is required"] }
 
         var request = URLRequest(url: url, timeoutInterval: 12)
         request.setValue("Mozilla/5.0 (Macintosh; VoxOS)", forHTTPHeaderField: "User-Agent")
@@ -39,7 +38,9 @@ enum AgentWeb {
         do {
             let (data, response) = try await URLSession.shared.data(for: request)
             let status = (response as? HTTPURLResponse)?.statusCode ?? 0
-            let html = String(data: data, encoding: .utf8) ?? String(data: data, encoding: .isoLatin1) ?? ""
+            // Bound the work: a multi-megabyte page is never worth more than its first slice.
+            let bounded = data.count > 3_000_000 ? data.prefix(3_000_000) : data
+            let html = String(data: bounded, encoding: .utf8) ?? String(data: bounded, encoding: .isoLatin1) ?? ""
             let text = stripHTML(html)
             let clipped = text.count > maxChars ? String(text.prefix(maxChars)) + "\n…(truncated)" : text
             return ["url": urlString, "status": status, "text": clipped]

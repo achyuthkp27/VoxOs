@@ -101,19 +101,3 @@ struct ContentView: View {
         }
     }
 }
-
-
-/// Pins the hosting NSWindow to an appearance so the title bar and SwiftUI content agree.
-private struct WindowAppearanceSetter: NSViewRepresentable {
-    let appearance: NSAppearance.Name
-
-    func makeNSView(context: Context) -> NSView {
-        let view = NSView()
-        DispatchQueue.main.async { view.window?.appearance = NSAppearance(named: appearance) }
-        return view
-    }
-
-    func updateNSView(_ nsView: NSView, context: Context) {
-        nsView.window?.appearance = NSAppearance(named: appearance)
-    }
-}

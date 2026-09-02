@@ -156,9 +156,24 @@ struct NotchRecorderView<S: RecorderStateProvider & ObservableObject>: View {
             assistantPanel
         }
         .frame(width: pillWidth, height: pillHeight)
-        .background(notchShape.fill(AppTheme.Notch.ground.opacity(0.72)))
-        .liquidGlass(in: notchShape, tint: AppTheme.Notch.tint, clear: true)
+        .liquidGlass(in: notchShape, tint: isRecording ? AppTheme.Accent.primary.opacity(0.10) : nil)
+        .overlay(
+            // Glass rim: brighter along the top edge, fading down the sides.
+            notchShape.stroke(
+                LinearGradient(colors: [AppTheme.Notch.rim, AppTheme.Notch.rim.opacity(0.25)], startPoint: .top, endPoint: .bottom),
+                lineWidth: 1)
+        )
+        .overlay(
+            // Sheen catching the light across the upper third.
+            LinearGradient(colors: [Color.primary.opacity(0.07), .clear], startPoint: .top, endPoint: .center)
+                .clipShape(notchShape)
+                .allowsHitTesting(false)
+        )
+        .shadow(color: isRecording ? AppTheme.Accent.primary.opacity(0.45) : Color.black.opacity(0.25), radius: isRecording ? 22 : 14, y: 6)
+        .animation(.easeInOut(duration: 0.35), value: isRecording)
     }
+
+    private var isRecording: Bool { stateProvider.recordingState == .recording }
 
     private var notchShape: NotchShape {
         NotchShape(
@@ -214,7 +229,7 @@ struct NotchRecorderView<S: RecorderStateProvider & ObservableObject>: View {
     private var liveTextPanel: some View {
         VStack(spacing: 0) {
             if displayState == .liveText {
-                Divider().background(Color.white.opacity(0.15))
+                Divider().overlay(Color.primary.opacity(0.10))
                 LiveTranscriptView(text: stateProvider.partialTranscript)
                     .padding(.horizontal, 8)
             }
@@ -226,7 +241,7 @@ struct NotchRecorderView<S: RecorderStateProvider & ObservableObject>: View {
     private var assistantPanel: some View {
         VStack(spacing: 0) {
             if displayState == .assistant {
-                Divider().background(Color.white.opacity(0.15))
+                Divider().overlay(Color.primary.opacity(0.10))
                 AssistantPanelView(
                     session: assistantSession,
                     liveFollowUpText: liveAssistantFollowUpText,

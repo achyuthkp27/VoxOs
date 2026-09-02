@@ -49,6 +49,8 @@ final class SystemAudioCaptureService: NSObject, @unchecked Sendable {
 
     private var stream: SCStream?
     private var isStartingStream = false
+    /// Fired when the stream dies underneath us (display change, permission revoked).
+    var onStreamStopped: (@Sendable () -> Void)?
     private var converter: AVAudioConverter?
     private var converterInputFormat: AVAudioFormat?
 
@@ -446,5 +448,6 @@ extension SystemAudioCaptureService: SCStreamDelegate {
         isWritingToFile = false
         isBuffering = false
         stateLock.unlock()
+        onStreamStopped?()
     }
 }

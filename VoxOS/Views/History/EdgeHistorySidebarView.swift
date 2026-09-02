@@ -194,7 +194,7 @@ private struct EdgeHistoryAvatar: View {
                 )
                 .overlay(Circle().strokeBorder(Color.white.opacity(0.12), lineWidth: 0.5))
 
-            if let emoji, !emoji.isEmpty, emoji.unicodeScalars.contains(where: { $0.properties.isEmojiPresentation }) {
+            if let emoji, !emoji.isEmpty, emoji.unicodeScalars.contains(where: { $0.properties.isEmoji && $0.value > 0x7F }) {
                 Text(emoji).font(.system(size: 15))
             }
         }

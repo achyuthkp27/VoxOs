@@ -14,7 +14,7 @@ INSTALL_PATH ?= /Applications/VoxOS.app
 all: check build
 
 # Development workflow
-dev: build run
+dev: local run
 
 # Prerequisites
 check:

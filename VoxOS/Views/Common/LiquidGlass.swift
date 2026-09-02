@@ -66,7 +66,7 @@ struct AmbientMesh: View {
     @Environment(\.colorScheme) private var scheme
 
     var body: some View {
-        TimelineView(.animation(minimumInterval: 1 / 20)) { context in
+        TimelineView(.animation(minimumInterval: 1 / 8)) { context in
             let t = context.date.timeIntervalSinceReferenceDate / 14
             if #available(macOS 15.0, *) {
                 MeshGradient(width: 3, height: 3, points: Self.points(at: t), colors: palette)

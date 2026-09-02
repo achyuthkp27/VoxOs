@@ -33,7 +33,6 @@ class NotchRecorderPanel: KeyablePanel {
         self.isMovableByWindowBackground = false
         self.hidesOnDeactivate = false
         self.collectionBehavior = [.canJoinAllSpaces, .fullScreenAuxiliary, .stationary, .ignoresCycle]
-        self.appearance = NSAppearance(named: .darkAqua)
         self.styleMask.remove(.titled)
         self.titlebarAppearsTransparent = true
         self.titleVisibility = .hidden

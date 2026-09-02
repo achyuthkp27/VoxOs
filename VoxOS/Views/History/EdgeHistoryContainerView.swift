@@ -40,12 +40,12 @@ private struct EdgeHistoryNotchHandle: View {
             .frame(width: isHovering ? 7 : 5)
             .frame(maxHeight: .infinity)
             .padding(.vertical, isHovering ? 0 : 12)
+            .frame(maxWidth: .infinity, alignment: .leading)
             .contentShape(Rectangle())
             .onHover { hovering in
                 withAnimation(.easeOut(duration: 0.15)) { isHovering = hovering }
             }
             .onTapGesture(perform: onTap)
-            .frame(maxWidth: .infinity, alignment: .leading)
             .accessibilityLabel("Show transcription history")
             .accessibilityAddTraits(.isButton)
     }

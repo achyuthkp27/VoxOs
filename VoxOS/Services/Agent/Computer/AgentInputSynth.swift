@@ -63,20 +63,6 @@ enum AgentInputSynth {
 
     // MARK: - Keyboard
 
-    /// Type a literal string via Unicode keystrokes, so any character works.
-    static func type(_ text: String) {
-        for scalar in text.unicodeScalars {
-            var unit = UniChar(truncatingIfNeeded: scalar.value)
-            for keyDown in [true, false] {
-                let event = CGEvent(keyboardEventSource: source, virtualKey: 0, keyDown: keyDown)
-                event?.keyboardSetUnicodeString(stringLength: 1, unicodeString: &unit)
-                event?.setIntegerValueField(.eventSourceUserData, value: eventUserDataMarker)
-                event?.post(tap: .cghidEventTap)
-            }
-            Thread.sleep(forTimeInterval: 0.008)
-        }
-    }
-
     /// Press a named key with optional modifiers (cmd, shift, option, control).
     @discardableResult
     static func pressKey(_ key: String, modifiers: [String] = []) -> Bool {

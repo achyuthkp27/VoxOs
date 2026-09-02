@@ -96,9 +96,9 @@ enum AgentTools {
         case "open_url":
             guard let url = URL(string: s("url")),
                 let scheme = url.scheme?.lowercased(),
-                scheme == "http" || scheme == "https"
+                ["http", "https", "mailto", "tel", "facetime", "maps", "x-apple.systempreferences"].contains(scheme)
             else {
-                return ["error": "invalid url: only http/https links are supported"]
+                return ["error": "invalid url: supported schemes are http, https, mailto, tel, facetime, maps, x-apple.systempreferences"]
             }
             let browserName = s("browser")
             return await MainActor.run {

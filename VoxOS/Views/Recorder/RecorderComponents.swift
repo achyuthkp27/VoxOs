@@ -28,7 +28,7 @@ struct RecorderToggleButton: View {
                     Image(systemName: icon).font(.app(size: 13, weight: .regular))
                 }
             }
-            .foregroundColor(disabled ? .white.opacity(0.3) : (isEnabled ? .white : .white.opacity(0.6)))
+            .foregroundColor(disabled ? Color.primary.opacity(0.3) : (isEnabled ? Color.primary : Color.primary.opacity(0.6)))
         }
         .buttonStyle(PlainButtonStyle())
         .disabled(disabled)
@@ -100,13 +100,13 @@ struct RecorderRecordButton: View {
             return StateColors(
                 surface: red.opacity(0.92),
                 border: red.opacity(0.98),
-                mark: .white
+                mark: Color.primary
             )
         case .processing:
             return StateColors(
-                surface: Color.white.opacity(0.13),
-                border: Color.white.opacity(0.18),
-                mark: Color.white.opacity(0.86)
+                surface: Color.primary.opacity(0.13),
+                border: Color.primary.opacity(0.18),
+                mark: Color.primary.opacity(0.86)
             )
         }
     }
@@ -162,15 +162,15 @@ struct RecorderCloseButton: View {
         Button(action: action) {
             ZStack {
                 Circle()
-                    .fill(Color.white.opacity(0.13))
+                    .fill(Color.primary.opacity(0.13))
                     .overlay(
                         Circle()
-                            .strokeBorder(Color.white.opacity(0.18), lineWidth: 0.6)
+                            .strokeBorder(Color.primary.opacity(0.18), lineWidth: 0.6)
                     )
 
                 Image(systemName: "xmark")
                     .font(.app(size: 9, weight: .semibold))
-                    .foregroundColor(.white.opacity(0.86))
+                    .foregroundColor(Color.primary.opacity(0.86))
             }
             .frame(width: 21, height: 21)
             .contentShape(Circle())
@@ -213,7 +213,7 @@ struct ProgressAnimation: View {
     @State private var currentDot = 0
     @State private var timer: Timer?
 
-    init(color: Color = .white, animationSpeed: Double = 0.3) {
+    init(color: Color = Color.primary, animationSpeed: Double = 0.3) {
         self.color = color
         self.animationSpeed = animationSpeed
     }
@@ -356,19 +356,19 @@ struct RecorderStatusDisplay: View {
     var body: some View {
         Group {
             if currentState == .enhancing {
-                ProcessingStatusDisplay(mode: .enhancing, color: .white).transition(.opacity)
+                ProcessingStatusDisplay(mode: .enhancing, color: Color.primary).transition(.opacity)
             } else if currentState == .transcribing {
-                ProcessingStatusDisplay(mode: .transcribing, color: .white).transition(.opacity)
+                ProcessingStatusDisplay(mode: .transcribing, color: Color.primary).transition(.opacity)
             } else if currentState == .recording {
                 AudioVisualizer(
                     audioMeterProvider: audioMeterProvider,
-                    color: .white,
+                    color: Color.primary,
                     isActive: true
                 )
                     .scaleEffect(y: menuBarHeight != nil ? min(1.0, (menuBarHeight! - 8) / 25) : 1.0, anchor: .center)
                     .transition(.opacity)
             } else {
-                StaticVisualizer(color: .white)
+                StaticVisualizer(color: Color.primary)
                     .scaleEffect(y: menuBarHeight != nil ? min(1.0, (menuBarHeight! - 8) / 25) : 1.0, anchor: .center)
                     .transition(.opacity)
             }
@@ -414,13 +414,6 @@ struct AssistantPanelView: View {
         .onChange(of: session.phase) {
             focusFollowUpFieldIfAvailable()
         }
-    }
-
-    private var fullConversationText: String {
-        session.messages.map { msg in
-            let prefix = msg.role == .user ? "You" : "Assistant"
-            return "\(prefix): \(msg.content)"
-        }.joined(separator: "\n\n")
     }
 
     private var messageList: some View {
@@ -492,14 +485,14 @@ struct AssistantPanelView: View {
             .padding(.vertical, 9)
             .frame(minHeight: 46)
             .background(Capsule().fill(AppTheme.Notch.field))
-            .overlay(Capsule().strokeBorder(AppTheme.Notch.fieldBorder, lineWidth: 1))
+            .overlay(Capsule().strokeBorder(LinearGradient(colors: [Color.primary.opacity(0.22), AppTheme.Notch.fieldBorder], startPoint: .top, endPoint: .bottom), lineWidth: 1))
 
             Button(action: sendDraftMessage) {
                 Image(systemName: "arrow.up")
                     .font(.app(size: 13, weight: .bold))
-                    .foregroundColor(canSendDraft ? .black : .white.opacity(0.35))
+                    .foregroundColor(canSendDraft ? Color(nsColor: .windowBackgroundColor) : Color.primary.opacity(0.35))
                     .frame(width: 32, height: 32)
-                    .background(canSendDraft ? Color.white.opacity(0.92) : Color.white.opacity(0.10))
+                    .background(canSendDraft ? Color.primary.opacity(0.92) : Color.primary.opacity(0.10))
                     .clipShape(Circle())
             }
             .opacity(canSendDraft ? 1 : 0)
@@ -631,17 +624,17 @@ private struct TimeAnswerWidget: View {
             HStack(alignment: .firstTextBaseline, spacing: 4) {
                 Text(answer.time)
                     .font(.app(size: 34, weight: .semibold))
-                    .foregroundStyle(Color.white)
+                    .foregroundStyle(Color.primary)
                 if let meridiem = answer.meridiem {
                     Text(meridiem)
                         .font(.app(size: 13, weight: .medium))
-                        .foregroundStyle(Color.white.opacity(0.6))
+                        .foregroundStyle(Color.primary.opacity(0.6))
                 }
             }
             if let timeZoneLabel = answer.timeZoneLabel {
                 Text(timeZoneLabel)
                     .font(.app(size: 12, weight: .regular))
-                    .foregroundStyle(Color.white.opacity(0.5))
+                    .foregroundStyle(Color.primary.opacity(0.5))
             }
         }
         .padding(.top, 2)
@@ -654,7 +647,7 @@ private struct ModifierKeyHintBadge: View {
     var body: some View {
         Text(symbol)
             .font(.app(size: 13, weight: .medium))
-            .foregroundStyle(Color.white.opacity(0.88))
+            .foregroundStyle(Color.primary.opacity(0.88))
             .padding(.horizontal, 11)
             .padding(.vertical, 4)
             .background(Capsule().fill(AppTheme.Notch.chip))

@@ -34,8 +34,19 @@ final class SystemAudioCaptureController: ObservableObject {
 
     private init() {}
 
+    private var activeBufferSeconds: Double = 0
+
     func configure(engine: VoxOSEngine) {
         self.engine = engine
+        capture.onStreamStopped = { [weak self] in
+            Task { @MainActor in
+                guard let self else { return }
+                self.isCapturing = false
+                self.isBufferRunning = false
+                self.currentCaptureURL = nil
+                self.logger.error("System audio stream stopped unexpectedly")
+            }
+        }
         Task { await self.syncBufferingWithPreference() }
     }
 
@@ -61,9 +72,11 @@ final class SystemAudioCaptureController: ObservableObject {
     /// Starts or stops the rolling buffer to match the user's preference.
     func syncBufferingWithPreference() async {
         if isBufferEnabled {
-            guard !capture.isBufferingRecentAudio else { return }
+            if capture.isBufferingRecentAudio, activeBufferSeconds == bufferSeconds { return }
             do {
+                // A changed length restarts the ring at the new size.
                 try await capture.startBuffering(seconds: bufferSeconds)
+                activeBufferSeconds = bufferSeconds
                 isBufferRunning = true
             } catch {
                 isBufferRunning = false

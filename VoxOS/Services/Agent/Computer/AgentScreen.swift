@@ -36,11 +36,35 @@ enum AgentScreen {
 
     static var hasPermission: Bool { CGPreflightScreenCaptureAccess() }
 
+    private static var cachedContent: (content: SCShareableContent, at: Date)?
+    private static let contentLock = NSLock()
+
+    /// `wait_for_text` and the watchers poll every couple of seconds; the display list changes
+    /// far less often than that.
+    private static func shareableContent() async throws -> SCShareableContent {
+        if let cached = cachedContentIfFresh() { return cached }
+        let fresh = try await SCShareableContent.excludingDesktopWindows(false, onScreenWindowsOnly: true)
+        storeContent(fresh)
+        return fresh
+    }
+
+    // Locking lives in synchronous helpers so no lock is held across an await.
+    private static func cachedContentIfFresh() -> SCShareableContent? {
+        contentLock.lock(); defer { contentLock.unlock() }
+        guard let cached = cachedContent, Date().timeIntervalSince(cached.at) < 5 else { return nil }
+        return cached.content
+    }
+
+    private static func storeContent(_ content: SCShareableContent) {
+        contentLock.lock(); defer { contentLock.unlock() }
+        cachedContent = (content, Date())
+    }
+
     /// Screenshot of the display the mouse is on, excluding VoxOS's own windows.
     static func capture() async -> Capture? {
         guard await ScreenCaptureService.requestScreenCapturePermissionRegistration() else { return nil }
         do {
-            let content = try await SCShareableContent.excludingDesktopWindows(false, onScreenWindowsOnly: true)
+            let content = try await shareableContent()
             guard let display = pickDisplay(content) else { return nil }
 
             let ours = Bundle.main.bundleIdentifier ?? "com.achyuthkp.VoxOS"

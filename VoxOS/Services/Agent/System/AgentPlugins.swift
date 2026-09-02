@@ -130,6 +130,15 @@ enum AgentPlugins {
 
     private static func substitute(_ template: String, args: [String: Any], runType: String) -> String {
         var s = template
+        // {{secret:name}} pulls a value saved with secret_save; it never appears in the prompt.
+        if let regex = try? NSRegularExpression(pattern: #"\{\{secret:([a-zA-Z0-9_.-]+)\}\}"#) {
+            let ns = s as NSString
+            for match in regex.matches(in: s, range: NSRange(location: 0, length: ns.length)).reversed() {
+                let name = ns.substring(with: match.range(at: 1)).lowercased()
+                let value = KeychainService.shared.getString(forKey: "AgentSecret.\(name)") ?? ""
+                s = (s as NSString).replacingCharacters(in: match.range, with: value)
+            }
+        }
         for (key, value) in args {
             let raw = "\(value)"
             let safe: String
