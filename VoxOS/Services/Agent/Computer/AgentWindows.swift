@@ -87,7 +87,9 @@ enum AgentWindows {
             else { return ["error": "no window found for \(app.localizedName ?? appQuery)"] }
             windowRef = first
         }
-        let window = windowRef as! AXUIElement
+        guard let window = AgentAXTree.axElement(windowRef) else {
+            return ["error": "no window found for \(app.localizedName ?? appQuery)"]
+        }
 
         var position = CGPoint(x: x, y: y)
         var size = CGSize(width: width, height: height)

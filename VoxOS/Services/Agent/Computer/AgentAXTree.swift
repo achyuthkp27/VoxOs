@@ -39,8 +39,8 @@ enum AgentAXTree {
         let axApp = AXUIElementCreateApplication(app.processIdentifier)
 
         var roots: [AXUIElement] = []
-        if let focused = copyAttribute(axApp, kAXFocusedWindowAttribute) {
-            roots = [focused as! AXUIElement]
+        if let focused = axElement(copyAttribute(axApp, kAXFocusedWindowAttribute)) {
+            roots = [focused]
         } else if let windows = copyAttribute(axApp, kAXWindowsAttribute) as? [AXUIElement] {
             roots = windows
         }
@@ -80,8 +80,8 @@ enum AgentAXTree {
     static func focusedElementValue() -> String? {
         guard AXIsProcessTrusted() else { return nil }
         let system = AXUIElementCreateSystemWide()
-        guard let focused = copyAttribute(system, kAXFocusedUIElementAttribute) else { return nil }
-        return stringFrom(copyAttribute(focused as! AXUIElement, kAXValueAttribute))
+        guard let focused = axElement(copyAttribute(system, kAXFocusedUIElementAttribute)) else { return nil }
+        return stringFrom(copyAttribute(focused, kAXValueAttribute))
     }
 
     // MARK: - Private
@@ -131,13 +131,24 @@ enum AgentAXTree {
     private static func frameOf(_ element: AXUIElement) -> CGRect {
         var pos = CGPoint.zero
         var size = CGSize.zero
-        if let p = copyAttribute(element, kAXPositionAttribute) {
-            AXValueGetValue(p as! AXValue, .cgPoint, &pos)
+        if let p = axValue(copyAttribute(element, kAXPositionAttribute)) {
+            AXValueGetValue(p, .cgPoint, &pos)
         }
-        if let s = copyAttribute(element, kAXSizeAttribute) {
-            AXValueGetValue(s as! AXValue, .cgSize, &size)
+        if let s = axValue(copyAttribute(element, kAXSizeAttribute)) {
+            AXValueGetValue(s, .cgSize, &size)
         }
         return CGRect(origin: pos, size: size)
+    }
+
+    /// Accessibility attributes are untyped CF values; a misbehaving app can hand back anything.
+    static func axElement(_ value: AnyObject?) -> AXUIElement? {
+        guard let value, CFGetTypeID(value) == AXUIElementGetTypeID() else { return nil }
+        return unsafeBitCast(value, to: AXUIElement.self)
+    }
+
+    private static func axValue(_ value: AnyObject?) -> AXValue? {
+        guard let value, CFGetTypeID(value) == AXValueGetTypeID() else { return nil }
+        return unsafeBitCast(value, to: AXValue.self)
     }
 
     private static func stringFrom(_ any: AnyObject?) -> String {
