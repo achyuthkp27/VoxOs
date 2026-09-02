@@ -94,7 +94,7 @@ enum AgentToolCatalog {
     /// Live state appended after the catalogue: control mode, plugins, active macro recording.
     static func runtimeSection() -> String {
         var lines: [String] = ["# Agent state", "- control mode: \(AgentControlMode.current.rawValue) — \(AgentControlMode.current.summary)"]
-        if let paused = AgentPausedTask.take() {
+        if let paused = AgentPausedTask.peek() {
             lines.append("- RESUMING a paused task. You asked the user: \"\(paused.question)\". Treat <TRANSCRIPT> as their answer and continue the task." + (paused.context.isEmpty ? "" : " Context: \(paused.context)"))
         }
         if let language = UserDefaults.standard.string(forKey: "agentLearningLanguage"), !language.isEmpty {

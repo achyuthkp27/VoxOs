@@ -256,10 +256,17 @@ final class SystemAudioCaptureController: ObservableObject {
     private func save(text: String, duration: TimeInterval, audioURL: URL, modelName: String) {
         guard let engine else { return }
 
+        // Temp files are purged by the system; keep the audio alongside the other recordings.
+        var storedURL = audioURL
+        let destination = engine.recordingsDirectory.appendingPathComponent(audioURL.lastPathComponent)
+        if (try? FileManager.default.moveItem(at: audioURL, to: destination)) != nil {
+            storedURL = destination
+        }
+
         let transcription = Transcription(
             text: text,
             duration: duration,
-            audioFileURL: audioURL.absoluteString,
+            audioFileURL: storedURL.absoluteString,
             transcriptionModelName: modelName,
             modeName: String(localized: "System Audio"),
             modeEmoji: "🔊",

@@ -42,6 +42,11 @@ enum AgentToolExecutor {
     ) async -> String {
         guard let provider else { return firstReply }
 
+        // A confirmation must come from a later request than the one that asked for it.
+        AgentPendingAction.beginRun()
+        // Whatever task was paused is now being resumed by this request.
+        defer { AgentPausedTask.clear() }
+
         var messages = priorMessages
         var reply = firstReply
         var steps = 0

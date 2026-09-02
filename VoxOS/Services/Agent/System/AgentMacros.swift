@@ -7,7 +7,15 @@ enum AgentMacros {
 
     struct Step: Codable {
         let tool: String
-        let args: [String: String]
+        /// JSON so arrays and dictionaries (hotkey keys, batch steps) replay intact.
+        let argsJSON: String
+
+        var args: [String: Any] {
+            guard let data = argsJSON.data(using: .utf8),
+                let object = try? JSONSerialization.jsonObject(with: data) as? [String: Any]
+            else { return [:] }
+            return object
+        }
     }
 
     struct Macro: Codable {
@@ -61,10 +69,11 @@ enum AgentMacros {
         lock.lock()
         defer { lock.unlock() }
         guard recording != nil else { return }
-        let stringArgs = args.reduce(into: [String: String]()) { acc, pair in
-            if let s = pair.value as? String { acc[pair.key] = s } else { acc[pair.key] = "\(pair.value)" }
-        }
-        recording?.steps.append(Step(tool: tool, args: stringArgs))
+        guard JSONSerialization.isValidJSONObject(args),
+            let data = try? JSONSerialization.data(withJSONObject: args),
+            let json = String(data: data, encoding: .utf8)
+        else { return }
+        recording?.steps.append(Step(tool: tool, argsJSON: json))
     }
 
     // MARK: - Storage
@@ -91,6 +100,7 @@ enum AgentMacros {
         if let data = try? encoder.encode(macro) { try? data.write(to: url(for: macro.name), options: .atomic) }
     }
 
+    /// Exact slug, or a single unambiguous prefix match of at least three characters.
     static func load(_ name: String) -> Macro? {
         let decoder = JSONDecoder()
         decoder.dateDecodingStrategy = .iso8601
@@ -98,7 +108,17 @@ enum AgentMacros {
             return macro
         }
         let want = slug(name)
-        return list().first { slug($0.name).contains(want) || want.contains(slug($0.name)) }
+        guard want.count >= 3 else { return nil }
+        let candidates = list().filter { slug($0.name).hasPrefix(want) }
+        return candidates.count == 1 ? candidates.first : nil
+    }
+
+    /// Deletion never guesses.
+    static func loadExact(_ name: String) -> Macro? {
+        let decoder = JSONDecoder()
+        decoder.dateDecodingStrategy = .iso8601
+        guard let data = try? Data(contentsOf: url(for: name)) else { return nil }
+        return try? decoder.decode(Macro.self, from: data)
     }
 
     static func list() -> [Macro] {
@@ -112,7 +132,7 @@ enum AgentMacros {
 
     @discardableResult
     static func delete(_ name: String) -> Bool {
-        guard let macro = load(name) else { return false }
+        guard let macro = loadExact(name) else { return false }
         try? FileManager.default.removeItem(at: url(for: macro.name))
         return true
     }

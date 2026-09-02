@@ -20,11 +20,14 @@ actor FluidAudioTranscriptionService: TranscriptionService {
 
     private func serialized<T>(_ work: () async throws -> T) async throws -> T {
         let previous = serialQueue
-        let barrier = Task<Void, Never> {
+        let (finished, signal) = AsyncStream<Void>.makeStream()
+        // The next caller's gate opens only after `previous` finished AND this work signals.
+        serialQueue = Task<Void, Never> {
             _ = await previous?.value
+            for await _ in finished {}
         }
-        serialQueue = barrier
-        await barrier.value
+        _ = await previous?.value
+        defer { signal.finish() }
         return try await work()
     }
 

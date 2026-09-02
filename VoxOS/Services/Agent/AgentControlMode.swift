@@ -16,11 +16,14 @@ enum AgentPausedTask {
         pending = (question, context)
     }
 
-    static func take() -> (question: String, context: String)? {
+    static func peek() -> (question: String, context: String)? {
         lock.lock(); defer { lock.unlock() }
-        let value = pending
+        return pending
+    }
+
+    static func clear() {
+        lock.lock(); defer { lock.unlock() }
         pending = nil
-        return value
     }
 }
 
@@ -70,9 +73,12 @@ enum AgentControlMode: String, CaseIterable, Identifiable {
         "whatsapp_send", "gmail_compose", "slack_send", "linear_create_issue",
         "system_volume", "lock_screen", "media_key",
         "system_audio_start", "system_audio_stop",
+        "set_control_mode", "messages_send", "secret_save", "linear_save_token", "remember", "take_screenshot",
+        "macro_record_start", "macro_record_stop", "watch_for", "watch_for_audio", "watch_cancel",
+        "set_learning_language", "mark_vocabulary_known",
     ]
 
     static func isMutating(_ tool: String) -> Bool {
-        mutatingTools.contains(tool) || AgentPlugins.isPlugin(tool)
+        mutatingTools.contains(tool) || (AgentPlugins.isPlugin(tool) && tool != "plugin_list")
     }
 }

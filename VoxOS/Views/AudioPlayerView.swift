@@ -203,7 +203,7 @@ struct WaveformView: View {
                         Text(formatTime(duration * Double(hoverLocation / geometry.size.width)))
                             .font(.app(size: 10, weight: .medium))
                             .monospacedDigit()
-                            .foregroundColor(AppTheme.Surface.window)
+                            .foregroundColor(Color(nsColor: .windowBackgroundColor))
                             .padding(.horizontal, 6)
                             .padding(.vertical, 3)
                             .background(Capsule().fill(AppTheme.Waveform.hoverBubble))

@@ -48,8 +48,11 @@ enum AgentScreen {
             let filter = SCContentFilter(display: display, excludingWindows: ourWindows)
 
             let config = SCStreamConfiguration()
-            config.width = display.width
-            config.height = display.height
+            // SCDisplay reports points; the stream wants pixels. CGDisplayPixelsWide also
+            // reports points on HiDPI modes, so read the mode's true pixel size.
+            let mode = CGDisplayCopyDisplayMode(display.displayID)
+            config.width = mode?.pixelWidth ?? display.width
+            config.height = mode?.pixelHeight ?? display.height
             config.showsCursor = false
             config.pixelFormat = kCVPixelFormatType_32BGRA
 

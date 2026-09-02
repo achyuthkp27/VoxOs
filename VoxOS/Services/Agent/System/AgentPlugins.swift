@@ -104,7 +104,7 @@ enum AgentPlugins {
         guard !sanitized.isEmpty else { return ["error": "name is required"] }
         guard runTypes.contains(runType) else { return ["error": "run_type must be one of shell, applescript, open_url"] }
         guard !template.isEmpty else { return ["error": "template is required"] }
-        if runType == "shell", let risk = AgentShell.riskReason(template) {
+        if runType != "open_url", let risk = AgentShell.riskReason(template) {
             return ["error": "refusing to save a plugin whose command looks risky (\(risk))"]
         }
         let manifest: [String: Any] = [

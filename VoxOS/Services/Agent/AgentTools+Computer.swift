@@ -42,7 +42,7 @@ extension AgentTools {
 
     /// Runs a tool with no control-mode gate. Used for confirmed actions and macro replay.
     static func executeUngated(name: String, args: [String: Any]) async -> [String: Any] {
-        if AgentPlugins.isPlugin(name) {
+        if AgentPlugins.isPlugin(name), !Self.builtinPluginTools.contains(name) {
             var result = await AgentPlugins.run(name: name, args: args)
             let exit = (result["exit"] as? Int) ?? 0
             if result["error"] != nil || exit != 0 {
@@ -55,11 +55,20 @@ extension AgentTools {
         return await executeBuiltin(name: name, args: args)
     }
 
+    /// The built-in plugin management tools share the `plugin_` prefix with user manifests.
+    static let builtinPluginTools: Set<String> = ["plugin_list", "plugin_create", "plugin_delete"]
+
     /// Tools that ask for confirmation regardless of mode (they really send something).
     private static func alwaysConfirms(_ name: String) -> Bool { name == "messages_send" }
 
     private static func confirmPending() async -> [String: Any] {
-        guard let pending = AgentPendingAction.take() else { return ["error": "nothing pending to confirm"] }
+        guard AgentControlMode.current != .observeOnly else {
+            AgentPendingAction.clear()
+            return ["error": "observe-only mode: nothing can be confirmed"]
+        }
+        guard let pending = AgentPendingAction.take() else {
+            return ["error": "nothing pending to confirm — a confirmation must come from the user's next request, not from the same turn"]
+        }
         if pending.name == "messages_send_confirmed" {
             let to = (pending.args["to"] as? String) ?? ""
             let text = (pending.args["text"] as? String) ?? ""
@@ -80,14 +89,18 @@ extension AgentTools {
     /// Returns nil when `name` is not one of the tools defined here.
     static func executeComputerTool(name: String, args: [String: Any]) async -> [String: Any]? {
         func s(_ key: String) -> String { (args[key] as? String) ?? "" }
+        // Model-supplied numbers are untrusted: NaN, ±inf or absurd magnitudes must not trap.
         func n(_ key: String) -> Double? {
-            if let d = args[key] as? Double { return d }
-            if let i = args[key] as? Int { return Double(i) }
-            if let v = args[key] as? NSNumber { return v.doubleValue }
-            if let str = args[key] as? String { return Double(str) }
-            return nil
+            let raw: Double?
+            if let d = args[key] as? Double { raw = d }
+            else if let i = args[key] as? Int { raw = Double(i) }
+            else if let v = args[key] as? NSNumber { raw = v.doubleValue }
+            else if let str = args[key] as? String { raw = Double(str) }
+            else { raw = nil }
+            guard let raw, raw.isFinite, abs(raw) < 1_000_000_000 else { return nil }
+            return raw
         }
-        func i(_ key: String, _ fallback: Int) -> Int { n(key).map(Int.init) ?? fallback }
+        func i(_ key: String, _ fallback: Int) -> Int { n(key).map { Int($0) } ?? fallback }
         func b(_ key: String, _ fallback: Bool) -> Bool {
             if let v = args[key] as? Bool { return v }
             if let str = args[key] as? String { return ["true", "yes", "1"].contains(str.lowercased()) }
@@ -201,7 +214,7 @@ extension AgentTools {
         case "scroll":
             if let e = needsAccessibility() { return e }
             if let x = n("x"), let y = n("y") { AgentInputSynth.move(to: CGPoint(x: x, y: y)) }
-            AgentInputSynth.scroll(deltaX: Int32(i("delta_x", 0)), deltaY: Int32(i("delta_y", 0)))
+            AgentInputSynth.scroll(deltaX: Int32(clamping: i("delta_x", 0)), deltaY: Int32(clamping: i("delta_y", 0)))
             return ["ok": true]
 
         case "press_key":
@@ -293,6 +306,9 @@ extension AgentTools {
         case "run_applescript":
             let script = s("script")
             guard !script.isEmpty else { return ["error": "script is required"] }
+            if let risk = AgentShell.riskReason(script), !UserDefaults.standard.bool(forKey: AgentShell.allowRiskyKey) {
+                return ["blocked": true, "risk": risk, "error": "blocked: this script looks risky (\(risk)) and was NOT run. The user can enable “Allow risky shell commands” in Settings → Agent."]
+            }
             return await MainActor.run { AgentAppleScript.run(script) }
         case "read_file":
             return AgentFiles.readFile(path: s("path"))

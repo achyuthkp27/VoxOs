@@ -38,6 +38,16 @@ enum AgentShell {
                     return
                 }
 
+                // Drain the pipe while the process runs; waiting first would deadlock any
+                // command whose output exceeds the pipe buffer.
+                let collected = NSMutableData()
+                let collectLock = NSLock()
+                pipe.fileHandleForReading.readabilityHandler = { handle in
+                    let chunk = handle.availableData
+                    guard !chunk.isEmpty else { return }
+                    collectLock.lock(); collected.append(chunk); collectLock.unlock()
+                }
+
                 var timedOut = false
                 let watchdog = DispatchWorkItem {
                     if process.isRunning {
@@ -48,8 +58,11 @@ enum AgentShell {
                 DispatchQueue.global().asyncAfter(deadline: .now() + timeoutSeconds, execute: watchdog)
                 process.waitUntilExit()
                 watchdog.cancel()
-
-                var output = String(data: pipe.fileHandleForReading.readDataToEndOfFile(), encoding: .utf8) ?? ""
+                usleep(50_000)  // let the last readability callback land
+                pipe.fileHandleForReading.readabilityHandler = nil
+                collectLock.lock()
+                var output = String(data: collected as Data, encoding: .utf8) ?? ""
+                collectLock.unlock()
                 if output.count > 4000 { output = String(output.prefix(4000)) + "\n…(truncated)" }
 
                 var result: [String: Any] = ["exit": Int(process.terminationStatus), "output": output]
@@ -67,23 +80,24 @@ enum AgentShell {
             .replacingOccurrences(of: "\\s+", with: " ", options: .regularExpression)
             .trimmingCharacters(in: .whitespaces)
 
+        // Word-boundary patterns so "2> /dev/null" and "shutdown-notes.txt" do not trip the gate.
         let patterns: [(String, String)] = [
-            ("rm -rf", "recursive force-delete"), ("rm -fr", "recursive force-delete"),
-            ("rm -r -f", "recursive force-delete"), ("rm -f -r", "recursive force-delete"),
-            ("rm --no-preserve-root", "delete from the filesystem root"),
-            ("sudo ", "runs as root"), ("doas ", "runs as root"),
-            ("mkfs", "formats a filesystem"), ("dd if=", "raw disk read/write"),
-            ("of=/dev/", "raw disk write"), ("> /dev/", "writes to a device file"),
-            ("shutdown", "powers off the machine"), ("halt", "powers off the machine"),
-            ("reboot", "reboots the machine"),
-            ("diskutil erase", "erases a disk"), ("diskutil reformat", "reformats a disk"),
-            (":(){:|:&};:", "fork bomb"), (":(){ :|:& };:", "fork bomb"),
-            ("csrutil disable", "disables System Integrity Protection"),
-            ("spctl --master-disable", "disables Gatekeeper"),
-            ("launchctl unload", "unloads a system service"),
-            ("killall -9", "force-kills processes"),
+            (#"\brm\s+(-[a-z]*r[a-z]*f|-[a-z]*f[a-z]*r|-r\s+-f|-f\s+-r)\b"#, "recursive force-delete"),
+            (#"\brm\b.*--no-preserve-root"#, "delete from the filesystem root"),
+            (#"(^|[;&|\s])sudo\s"#, "runs as root"), (#"(^|[;&|\s])doas\s"#, "runs as root"),
+            (#"\bmkfs(\.|\b)"#, "formats a filesystem"), (#"\bdd\s+.*\bif="#, "raw disk read/write"),
+            (#"\bof=/dev/"#, "raw disk write"), (#">\s*/dev/(?!null\b)"#, "writes to a device file"),
+            (#"(^|[;&|\s])shutdown(\s|$)"#, "powers off the machine"), (#"(^|[;&|\s])halt(\s|$)"#, "powers off the machine"),
+            (#"(^|[;&|\s])reboot(\s|$)"#, "reboots the machine"),
+            (#"\bdiskutil\s+(erase|reformat|partition)"#, "erases a disk"),
+            (#":\(\)\s*\{\s*:\|:&\s*\};:"#, "fork bomb"),
+            (#"\bcsrutil\s+disable"#, "disables System Integrity Protection"),
+            (#"\bspctl\s+--master-disable"#, "disables Gatekeeper"),
+            (#"\blaunchctl\s+(unload|bootout)\b"#, "unloads a system service"),
+            (#"\bkillall\s+-9\b"#, "force-kills processes"),
+            (#"administrator privileges"#, "runs as root"),
         ]
-        for (needle, reason) in patterns where collapsed.contains(needle) { return reason }
+        for (pattern, reason) in patterns where collapsed.range(of: pattern, options: .regularExpression) != nil { return reason }
 
         let downloads = collapsed.contains("curl ") || collapsed.contains("wget ")
         let pipedToShell = collapsed.contains("| sh") || collapsed.contains("| bash") || collapsed.contains("|sh") || collapsed.contains("|bash")

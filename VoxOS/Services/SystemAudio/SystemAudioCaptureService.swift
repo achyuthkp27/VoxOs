@@ -48,6 +48,7 @@ final class SystemAudioCaptureService: NSObject, @unchecked Sendable {
     private let stateLock = NSLock()
 
     private var stream: SCStream?
+    private var isStartingStream = false
     private var converter: AVAudioConverter?
     private var converterInputFormat: AVAudioFormat?
 
@@ -258,8 +259,21 @@ final class SystemAudioCaptureService: NSObject, @unchecked Sendable {
     private func ensureStreamRunning() async throws {
         stateLock.lock()
         let alreadyRunning = stream != nil
+        let starting = isStartingStream
+        if !alreadyRunning, !starting { isStartingStream = true }
         stateLock.unlock()
         if alreadyRunning { return }
+        if starting {
+            // Another caller is bringing the stream up; wait for it rather than start a second one.
+            for _ in 0..<50 {
+                try? await Task.sleep(nanoseconds: 100_000_000)
+                stateLock.lock(); let ready = stream != nil; let still = isStartingStream; stateLock.unlock()
+                if ready { return }
+                if !still { break }
+            }
+            throw CaptureError.formatUnavailable
+        }
+        defer { stateLock.lock(); isStartingStream = false; stateLock.unlock() }
 
         guard await Self.requestPermission() else {
             throw CaptureError.permissionDenied

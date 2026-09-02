@@ -472,19 +472,29 @@ enum AgentTools {
 
 /// Holds an action that must be confirmed by voice before it executes.
 enum AgentPendingAction {
-    private static var pending: (name: String, args: [String: Any])?
+    private static var pending: (name: String, args: [String: Any], run: UUID, createdAt: Date)?
+    private static var currentRun = UUID()
     private static let lock = NSLock()
+    /// A pending action older than this is discarded rather than confirmed.
+    static let expiry: TimeInterval = 5 * 60
+
+    /// Called at the start of every agent run so a confirmation cannot come from the same turn.
+    static func beginRun() {
+        lock.lock(); defer { lock.unlock() }
+        currentRun = UUID()
+    }
 
     static func set(name: String, args: [String: Any]) {
         lock.lock(); defer { lock.unlock() }
-        pending = (name, args)
+        pending = (name, args, currentRun, Date())
     }
 
     static func take() -> (name: String, args: [String: Any])? {
         lock.lock(); defer { lock.unlock() }
-        let value = pending
+        guard let value = pending else { return nil }
         pending = nil
-        return value
+        guard value.run != currentRun, Date().timeIntervalSince(value.createdAt) < expiry else { return nil }
+        return (value.name, value.args)
     }
 
     static func clear() {
