@@ -81,14 +81,18 @@ enum AgentShell {
             .trimmingCharacters(in: .whitespaces)
 
         // Word-boundary patterns so "2> /dev/null" and "shutdown-notes.txt" do not trip the gate.
+        // The prefix class includes quotes/parens too, since a command is often wrapped as
+        // `zsh -c "shutdown -h now"` or `(shutdown now)` — quoting must not defeat the gate.
+        let b = #"(^|[;&|\s"'(])"#
+        let e = #"(\s|$|["')])"#
         let patterns: [(String, String)] = [
             (#"\brm\s+(-[a-z]*r[a-z]*f|-[a-z]*f[a-z]*r|-r\s+-f|-f\s+-r)\b"#, "recursive force-delete"),
             (#"\brm\b.*--no-preserve-root"#, "delete from the filesystem root"),
-            (#"(^|[;&|\s])sudo\s"#, "runs as root"), (#"(^|[;&|\s])doas\s"#, "runs as root"),
+            (b + #"sudo\s"#, "runs as root"), (b + #"doas\s"#, "runs as root"),
             (#"\bmkfs(\.|\b)"#, "formats a filesystem"), (#"\bdd\s+.*\bif="#, "raw disk read/write"),
             (#"\bof=/dev/"#, "raw disk write"), (#">\s*/dev/(?!null\b)"#, "writes to a device file"),
-            (#"(^|[;&|\s])shutdown(\s|$)"#, "powers off the machine"), (#"(^|[;&|\s])halt(\s|$)"#, "powers off the machine"),
-            (#"(^|[;&|\s])reboot(\s|$)"#, "reboots the machine"),
+            (b + "shutdown" + e, "powers off the machine"), (b + "halt" + e, "powers off the machine"),
+            (b + "reboot" + e, "reboots the machine"),
             (#"\bdiskutil\s+(erase|reformat|partition)"#, "erases a disk"),
             (#":\(\)\s*\{\s*:\|:&\s*\};:"#, "fork bomb"),
             (#"\bcsrutil\s+disable"#, "disables System Integrity Protection"),

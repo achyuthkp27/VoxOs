@@ -90,6 +90,16 @@ enum AgentPlugins {
             await MainActor.run { _ = NSWorkspace.shared.open(url) }
             return ["ok": true, "opened": command]
         case "applescript":
+            // AgentAppleScript.run has no risk gate of its own (it's also used for safe
+            // built-ins like volume control), so plugins must gate themselves here — the
+            // template alone was scanned at plugin_create, but substituted args weren't.
+            if let risk = AgentShell.riskReason(command), !UserDefaults.standard.bool(forKey: AgentShell.allowRiskyKey) {
+                return [
+                    "blocked": true,
+                    "risk": risk,
+                    "error": "blocked: this command looks risky (\(risk)) and was NOT run. The user can enable “Allow risky shell commands” in Settings → Agent and ask again.",
+                ]
+            }
             return await MainActor.run { AgentAppleScript.run(command) }
         case "shell":
             return await AgentShell.run(command)

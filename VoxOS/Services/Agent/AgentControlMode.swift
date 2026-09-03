@@ -77,7 +77,7 @@ enum AgentControlMode: String, CaseIterable, Identifiable {
         "run_shell", "run_applescript", "open_url", "open_app", "activate_app", "set_window_bounds",
         "calendar_add_event", "reminders_add", "notes_create", "mail_compose",
         "browser_click_text", "browser_run_js", "switch_browser_tab",
-        "clipboard_write", "move_file", "macro_run", "macro_delete", "plugin_create", "plugin_delete",
+        "clipboard_write", "move_file", "read_file", "read_pdf", "macro_run", "macro_delete", "plugin_create", "plugin_delete",
         "whatsapp_send", "gmail_compose", "slack_send", "linear_create_issue",
         "system_volume", "lock_screen", "media_key",
         "system_audio_start", "system_audio_stop",

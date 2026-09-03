@@ -31,6 +31,11 @@ final class SystemAudioCaptureController: ObservableObject {
     private let logger = Logger(subsystem: "com.achyuthkp.voxos", category: "SystemAudioController")
     private weak var engine: VoxOSEngine?
     private var currentCaptureURL: URL?
+    /// Guards the window between a beginCapture() call and `isCapturing` becoming true —
+    /// `startCapture` suspends, so a second near-simultaneous call (double-fired hotkey,
+    /// or a hotkey racing an agent system_audio_start) would otherwise pass the stale
+    /// `isCapturing == false` check and clobber this capture's temp file.
+    private var isStarting = false
 
     private init() {}
 
@@ -99,7 +104,9 @@ final class SystemAudioCaptureController: ObservableObject {
     }
 
     private func beginCapture() async {
-        guard !isTranscribing else { return }
+        guard !isTranscribing, !isCapturing, !isStarting else { return }
+        isStarting = true
+        defer { isStarting = false }
 
         let url = FileManager.default.temporaryDirectory
             .appendingPathComponent("voxos-system-audio-\(UUID().uuidString).wav")

@@ -54,11 +54,14 @@ struct LicenseKeychainAccessibilityMigration {
     // is the only reliable way to move an item to a new accessibility class.
     private func migrateAccessibility(_ value: String, forKey key: String) -> Bool {
         keychain.delete(forKey: key, syncable: false)
-        return keychain.save(
-            value,
-            forKey: key,
-            syncable: false,
-            accessibility: accessibility
-        )
+        if keychain.save(value, forKey: key, syncable: false, accessibility: accessibility) {
+            return true
+        }
+        // The re-add failed (Keychain daemon hiccup, disk pressure) after the delete already
+        // succeeded. Restore the value now, even under the old default accessibility, so the
+        // credential isn't permanently lost — the migration flag stays unset, so this key is
+        // retried (and its accessibility actually migrated) on the next launch.
+        _ = keychain.save(value, forKey: key, syncable: false)
+        return false
     }
 }

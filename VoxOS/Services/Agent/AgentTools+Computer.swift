@@ -17,7 +17,9 @@ extension AgentTools {
             return ["result": "pending action canceled"]
         }
 
-        if AgentControlMode.isMutating(name) {
+        // set_control_mode must stay reachable from every mode — otherwise a user who says
+        // "switch to observe only" has no voice command left to undo it.
+        if AgentControlMode.isMutating(name), name != "set_control_mode" {
             switch AgentControlMode.current {
             case .observeOnly:
                 return [
@@ -280,7 +282,8 @@ extension AgentTools {
                 }
                 let result = await executeUngated(name: tool, args: stepArgs)
                 results.append(["tool": tool, "result": result])
-                if result["error"] != nil {
+                if result["error"] != nil || result["confirm_required"] != nil {
+                    if result["confirm_required"] != nil { AgentPendingAction.clear() }
                     failed = true
                     if stopOnError { break }
                 }
@@ -361,7 +364,15 @@ extension AgentTools {
             var failures: [[String: Any]] = []
             for (index, step) in macro.steps.enumerated() {
                 let result = await executeUngated(name: step.tool, args: step.args)
-                if result["error"] != nil { failures.append(["step": index + 1, "tool": step.tool, "error": result["error"] ?? ""]) }
+                if let confirmMessage = result["confirm_required"] {
+                    // A step that only queues a confirmation (e.g. messages_send) never
+                    // actually runs during replay — there's no live turn to say "confirm".
+                    // Reporting this as success would silently mislead the user.
+                    AgentPendingAction.clear()
+                    failures.append(["step": index + 1, "tool": step.tool, "error": "requires live confirmation, so it did not run during replay: \(confirmMessage)"])
+                } else if result["error"] != nil {
+                    failures.append(["step": index + 1, "tool": step.tool, "error": result["error"] ?? ""])
+                }
                 try? await Task.sleep(nanoseconds: 400_000_000)
             }
             return ["ok": failures.isEmpty, "macro": macro.name, "steps_run": macro.steps.count, "failed_steps": failures]

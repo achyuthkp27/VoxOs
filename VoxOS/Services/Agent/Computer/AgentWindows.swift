@@ -107,6 +107,7 @@ enum AgentWindows {
     @MainActor
     private static func matchRunning(_ query: String) -> NSRunningApplication? {
         let q = query.lowercased().trimmingCharacters(in: .whitespaces)
+        guard !q.isEmpty else { return nil }
         let apps = NSWorkspace.shared.runningApplications.filter { $0.activationPolicy == .regular }
         return apps.first { $0.localizedName?.lowercased() == q || $0.bundleIdentifier?.lowercased() == q }
             ?? apps.first { $0.localizedName?.lowercased().contains(q) ?? false }
