@@ -75,15 +75,19 @@ enum BackupImporter {
                 modeManager.saveConfigurations()
                 shouldRepairModePromptSelections = true
 
-                if let customEmojis = backup.customEmojis {
-                    let emojiManager = EmojiManager.shared
-                    for emoji in customEmojis {
-                        _ = emojiManager.addCustomEmoji(emoji)
-                    }
-                }
                 print("Successfully imported \(modeConfigs.count) Mode configurations.")
             } else {
                 print("No Mode configurations found in the imported file. Existing Modes remain unchanged.")
+            }
+
+            // Independent of modeConfigs — a backup can carry custom emojis without a full
+            // mode-configuration set, and skipping them silently would lose user data.
+            if let customEmojis = backup.customEmojis {
+                let emojiManager = EmojiManager.shared
+                for emoji in customEmojis {
+                    _ = emojiManager.addCustomEmoji(emoji)
+                }
+                print("Successfully imported \(customEmojis.count) custom emojis.")
             }
         }
 

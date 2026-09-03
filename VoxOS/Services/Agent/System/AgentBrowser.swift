@@ -59,7 +59,13 @@ enum AgentBrowser {
     @MainActor
     static func clickText(_ query: String) -> [String: Any] {
         guard !query.isEmpty else { return ["error": "text is required"] }
-        let q = query.replacingOccurrences(of: "'", with: "\\'")
+        // Backslashes must be escaped before quotes, or a trailing backslash in the query
+        // (e.g. from a prompt-injected page) escapes the closing quote and lets arbitrary
+        // JS run in the page's context.
+        let q = query
+            .replacingOccurrences(of: "\\", with: "\\\\")
+            .replacingOccurrences(of: "'", with: "\\'")
+            .replacingOccurrences(of: "\n", with: " ")
         let js = """
             (function(){
               var q='\(q)'.toLowerCase();

@@ -64,11 +64,12 @@ extension View {
 /// stays legible; it is atmosphere, not a picture.
 struct AmbientMesh: View {
     @Environment(\.colorScheme) private var scheme
+    @Environment(\.accessibilityReduceMotion) private var reduceMotion
     /// Animating an offscreen window still costs CPU; the drift pauses while no normal window is visible.
     @State private var isVisible = true
 
     var body: some View {
-        TimelineView(.animation(minimumInterval: 1 / 5, paused: !isVisible)) { context in
+        TimelineView(.animation(minimumInterval: 1 / 5, paused: !isVisible || reduceMotion)) { context in
             let t = context.date.timeIntervalSinceReferenceDate / 14
             if #available(macOS 15.0, *) {
                 MeshGradient(width: 3, height: 3, points: Self.points(at: t), colors: palette)

@@ -31,12 +31,15 @@ struct EdgeHistorySidebarView: View {
     }
 
     /// Groups by day; the header carries the newest time in that group, as VoiceOS does.
-    private var groupedByDay: [(label: String, items: [Transcription])] {
+    /// `id` is the stable day boundary — `label` embeds the newest timestamp and changes
+    /// every time a new transcription lands, so it can't be the ForEach identity without
+    /// making SwiftUI treat the whole day section as a new view and flicker it.
+    private var groupedByDay: [(id: Date, label: String, items: [Transcription])] {
         let calendar = Calendar.current
         let groups = Dictionary(grouping: filteredTranscriptions) { calendar.startOfDay(for: $0.timestamp) }
         return groups.keys.sorted(by: >).map { day in
             let items = (groups[day] ?? []).sorted { $0.timestamp > $1.timestamp }
-            return (label: Self.groupLabel(day: day, newest: items.first?.timestamp ?? day), items: items)
+            return (id: day, label: Self.groupLabel(day: day, newest: items.first?.timestamp ?? day), items: items)
         }
     }
 
@@ -111,7 +114,7 @@ struct EdgeHistorySidebarView: View {
                         .frame(maxWidth: .infinity)
                         .padding(.top, 32)
                 } else {
-                    ForEach(groupedByDay, id: \.label) { group in
+                    ForEach(groupedByDay, id: \.id) { group in
                         Text(group.label)
                             .font(.app(size: 13.5))
                             .foregroundStyle(Self.caption)

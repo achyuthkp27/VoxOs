@@ -82,7 +82,21 @@ extension AgentTools {
     }
 
     private static func summarize(_ args: [String: Any]) -> String {
-        let parts = args.map { "\($0.key)=\(String(describing: $0.value).prefix(60))" }.sorted()
+        let parts = args.map { key, value -> String in
+            // batch_actions' "actions" is a list of nested tool calls — crushing the whole
+            // array's description to 60 chars can hide everything past the first step from
+            // the user right before they confirm it. List each nested step instead.
+            if key == "actions", let steps = value as? [[String: Any]] {
+                let stepSummaries = steps.enumerated().map { index, step -> String in
+                    let tool = (step["tool"] as? String) ?? (step["type"] as? String) ?? "?"
+                    let stepArgs = (step["args"] as? [String: Any]) ?? step.filter { $0.key != "tool" && $0.key != "type" }
+                    let argsText = stepArgs.map { "\($0.key)=\(String(describing: $0.value).prefix(60))" }.sorted().joined(separator: ", ")
+                    return "\(index + 1). \(tool)(\(argsText))"
+                }
+                return "actions=[\(stepSummaries.joined(separator: "; "))]"
+            }
+            return "\(key)=\(String(describing: value).prefix(60))"
+        }.sorted()
         return parts.isEmpty ? "no arguments" : parts.joined(separator: ", ")
     }
 

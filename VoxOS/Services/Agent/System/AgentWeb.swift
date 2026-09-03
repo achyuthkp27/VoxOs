@@ -20,7 +20,10 @@ enum AgentWeb {
         request.setValue("Mozilla/5.0 (Macintosh; VoxOS)", forHTTPHeaderField: "User-Agent")
         do {
             let (data, _) = try await URLSession.shared.data(for: request)
-            let html = String(data: data, encoding: .utf8) ?? ""
+            // Bound the work the same way fetch() does: an oversized response is never
+            // worth parsing in full and would otherwise risk unbounded memory growth.
+            let bounded = data.count > 3_000_000 ? data.prefix(3_000_000) : data
+            let html = String(data: bounded, encoding: .utf8) ?? ""
             let results = parse(html: html).prefix(maxResults)
             return ["query": trimmed, "results": results.map { ["title": $0.title, "url": $0.url, "snippet": $0.snippet] }]
         } catch {
