@@ -59,6 +59,12 @@ enum AgentToolCatalog {
         - macro_record_start {"name": str} -> from now on every action is captured. Then the user performs the steps by voice.
         - macro_record_stop {} -> saves it. macro_run {"name": str} replays it. macro_list {} · macro_delete {"name": str}
 
+        ## More apps (deep links)
+        - obsidian_note {"name": str, "content": str?, "vault": str?, "append": bool?} -> creates (or appends to) a note in Obsidian.
+        - open_in_editor {"path": str, "editor": "vscode"|"cursor"?, "line": int?} -> opens a file or folder in VS Code or Cursor. Use find_files first if the user names a file loosely.
+        - maps_search {"query": str} · maps_directions {"to": str, "from": str?, "mode": "driving"|"walking"|"transit"?} -> Apple Maps.
+        - telegram_send {"to": str?, "text": str} -> opens Telegram with the message prefilled (user presses Send). "to" is a username.
+
         ## Sending for real (email, Slack, iMessage)
         - mail_compose, gmail_compose and slack_send accept "send": true. Without it they only leave a draft for the user to send. With it they return confirm_required first — tell the user exactly what will be sent and to whom, then wait; on the next request, if they say confirm/yes/send, call confirm_action {} and the message goes out (Mail sends the message, Slack presses Return, Gmail presses its Send button). If they decline, call cancel_action {}.
         - Use "send": true when the user clearly asked to send ("send an email to…", "message Sam that…"). Use a draft when they said draft/prepare/write.

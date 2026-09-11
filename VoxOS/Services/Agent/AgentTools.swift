@@ -104,6 +104,53 @@ enum AgentTools {
             guard !appName.isEmpty else { return ["error": "name is required"] }
             return await MainActor.run { AgentWindows.openApp(name: appName) }
 
+        case "obsidian_note":
+            let name = s("name"), content = s("content")
+            guard !name.isEmpty || !content.isEmpty else { return ["error": "name or content is required"] }
+            return await MainActor.run {
+                AgentAppLinks.open(
+                    AgentAppLinks.obsidianURL(vault: s("vault"), name: name, content: content, append: b("append")),
+                    appName: "Obsidian",
+                    success: b("append") ? "appended to the Obsidian note \(name)" : "created the Obsidian note \(name)")
+            }
+
+        case "open_in_editor":
+            let path = s("path")
+            guard !path.isEmpty else { return ["error": "path is required"] }
+            let editor = s("editor").isEmpty ? "vscode" : s("editor")
+            let line = args["line"] as? Int
+            return await MainActor.run {
+                AgentAppLinks.open(
+                    AgentAppLinks.editorURL(path: path, editor: editor, line: line),
+                    appName: editor.lowercased() == "cursor" ? "Cursor" : "VS Code",
+                    success: "opened \(path) in \(editor)")
+            }
+
+        case "maps_search":
+            let query = s("query")
+            guard !query.isEmpty else { return ["error": "query is required"] }
+            return await MainActor.run {
+                AgentAppLinks.open(AgentAppLinks.mapsSearchURL(query: query), appName: "Maps", success: "searching Maps for \(query)")
+            }
+
+        case "maps_directions":
+            let to = s("to")
+            guard !to.isEmpty else { return ["error": "to is required"] }
+            return await MainActor.run {
+                AgentAppLinks.open(
+                    AgentAppLinks.mapsDirectionsURL(to: to, from: s("from"), mode: s("mode")),
+                    appName: "Maps", success: "opened directions to \(to) in Maps")
+            }
+
+        case "telegram_send":
+            let text = s("text")
+            guard !text.isEmpty else { return ["error": "text is required"] }
+            return await MainActor.run {
+                AgentAppLinks.open(
+                    AgentAppLinks.telegramURL(to: s("to"), text: text),
+                    appName: "Telegram", success: "opened Telegram with the message prefilled — the user presses Send")
+            }
+
         case "open_url":
             guard let url = URL(string: s("url")),
                 let scheme = url.scheme?.lowercased(),

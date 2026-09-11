@@ -248,4 +248,27 @@ struct AgentLogicTests {
         AgentControlMode.current = .takeover
     }
 
+
+    // MARK: App deep links
+
+    @Test func appLinksAreWellFormed() {
+        let obsidian = AgentAppLinks.obsidianURL(vault: "Notes", name: "Daily log", content: "hi there", append: true)
+        #expect(obsidian?.scheme == "obsidian")
+        #expect(obsidian?.host == "new")
+        #expect(obsidian?.query?.contains("name=Daily%20log") == true)
+        #expect(obsidian?.query?.contains("append=true") == true)
+
+        let code = AgentAppLinks.editorURL(path: "~/Projects/app/main.swift", editor: "cursor", line: 12)
+        #expect(code?.scheme == "cursor")
+        #expect(code?.path.hasSuffix("/Projects/app/main.swift:12") == true)
+        #expect(AgentAppLinks.editorURL(path: "/x", editor: "emacs", line: nil) == nil)
+
+        let directions = AgentAppLinks.mapsDirectionsURL(to: "Airport", from: "", mode: "walking")
+        #expect(directions?.scheme == "maps")
+        #expect(directions?.query?.contains("dirflg=w") == true)
+        #expect(directions?.query?.contains("saddr") == false)
+
+        let tg = AgentAppLinks.telegramURL(to: "sam", text: "on my way")
+        #expect(tg?.absoluteString == "tg://msg?text=on%20my%20way&to=sam")
+    }
 }

@@ -80,6 +80,7 @@ enum AgentControlMode: String, CaseIterable, Identifiable {
         "clipboard_write", "move_file", "read_file", "read_pdf", "macro_run", "macro_delete", "plugin_create", "plugin_delete",
         "whatsapp_send", "gmail_compose", "gmail_search", "web_search", "slack_send", "linear_create_issue",
         "system_volume", "lock_screen", "media_key",
+        "obsidian_note", "open_in_editor", "maps_search", "maps_directions", "telegram_send",
         "system_audio_start", "system_audio_stop",
         "set_control_mode", "messages_send", "secret_save", "linear_save_token", "remember", "take_screenshot",
         "macro_record_start", "macro_record_stop", "watch_for", "watch_for_audio", "watch_cancel",
