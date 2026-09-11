@@ -86,7 +86,7 @@ struct SettingsView: View {
 
                 if recordingShortcutManager.isPrimaryShortcutFnKey {
                     VStack(alignment: .leading, spacing: 6) {
-                        Text("Hold fn to talk, tap fn to record hands-free, double-tap fn to switch the recording into Agent mode.")
+                        Text("Hold fn to talk, tap fn to record hands-free. Double-tap ⌃ for the Agent — it sends when you stop talking.")
                             .font(.callout)
                             .foregroundStyle(.secondary)
                         if !RecordingShortcutManager.systemFnKeyActionIsOff {

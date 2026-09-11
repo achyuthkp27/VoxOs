@@ -50,6 +50,7 @@ class RecordingShortcutManager: ObservableObject {
     private var shortcutChangeObserver: NSObjectProtocol?
     private let shortcutModeHandler: RecordingShortcutModeHandler
     private let primaryRecordingShortcutModeSource: RecordingShortcutModeSource
+    private let autoSend: AgentAutoSend
 
     // MARK: - Helper Properties
     private var canHandleShortcutAction: Bool {
@@ -92,10 +93,19 @@ class RecordingShortcutManager: ObservableObject {
 
     /// VoiceOS-style default: hold fn to talk, tap fn for hands-free, double-tap fn for Agent.
     static let fnShortcut = Shortcut.modifierOnly(keyCode: UInt16(kVK_Function), modifierFlags: [.function])
+    /// Double-tapping this modifier (default: either Control key) opens the Agent, or switches a
+    /// running recording into Agent mode.
+    static let agentTapShortcut = Shortcut.modifierOnly(keyCode: nil, modifierFlags: [.control])
+    static let agentDoubleTapWindow: TimeInterval = 0.4
+    static let agentTapMaxHold: TimeInterval = 0.35
+
+    private var agentTapDownAt: TimeInterval?
+    private var agentLastTapUpAt: TimeInterval?
 
     init(engine: VoxOSEngine, recorderUIManager: RecorderUIManager) {
         ShortcutMigration.migrateLegacyShortcutsIfNeeded()
         ShortcutStore.seedShortcut(Self.fnShortcut, for: .primaryRecording)
+        ShortcutStore.seedShortcut(Self.agentTapShortcut, for: .agentDoubleTap)
 
         self.primaryRecordingShortcut = ShortcutMigration.migrateShortcutSelection(
             action: .primaryRecording,
@@ -117,6 +127,9 @@ class RecordingShortcutManager: ObservableObject {
         self.isMiddleClickToggleEnabled = UserDefaults.standard.bool(forKey: "isMiddleClickToggleEnabled")
         self.middleClickActivationDelay = UserDefaults.standard.integer(forKey: "middleClickActivationDelay")
 
+        let autoSend = AgentAutoSend(engine: engine, recorderUIManager: recorderUIManager)
+        self.autoSend = autoSend
+
         let shortcutModeHandler = RecordingShortcutModeHandler(
             canHandleShortcutAction: {
                 Self.canHandleShortcutAction(for: engine.recordingState)
@@ -133,8 +146,13 @@ class RecordingShortcutManager: ObservableObject {
             cancelRecording: {
                 await recorderUIManager.cancelRecording()
             },
-            toggleAgentMode: {
-                Self.toggleAgentMode()
+            toggleAgentMode: { [weak autoSend] in
+                let switched = Self.toggleAgentMode()
+                if switched { autoSend?.startIfAgentMode() }
+                return switched
+            },
+            onHandsFreeRecordingStarted: { [weak autoSend] in
+                autoSend?.startIfAgentMode()
             }
         )
 
@@ -218,6 +236,11 @@ class RecordingShortcutManager: ObservableObject {
         var shortcuts = ShortcutStore.shortcuts(for: ShortcutAction.globalUtilityActions)
         var interruptibleRecordingActions = Set<ShortcutAction>()
 
+        if let agentTap = ShortcutStore.shortcut(for: .agentDoubleTap) {
+            shortcuts[.agentDoubleTap] = agentTap
+            interruptibleRecordingActions.insert(.agentDoubleTap)
+        }
+
         if let primaryShortcut {
             shortcuts[.primaryRecording] = primaryShortcut
             interruptibleRecordingActions.insert(.primaryRecording)
@@ -234,6 +257,10 @@ class RecordingShortcutManager: ObservableObject {
             onKeyDown: { [weak self] action, eventTime in
                 Task { @MainActor in
                     guard let self else { return }
+                    if action == .agentDoubleTap {
+                        self.agentTapDownAt = eventTime
+                        return
+                    }
                     guard let mode = self.recordingMode(for: action) else { return }
                     await self.shortcutModeHandler.handleKeyDown(
                         action: action,
@@ -245,6 +272,10 @@ class RecordingShortcutManager: ObservableObject {
             onKeyUp: { [weak self] action, eventTime in
                 Task { @MainActor in
                     guard let self else { return }
+                    if action == .agentDoubleTap {
+                        await self.handleAgentTapUp(eventTime: eventTime)
+                        return
+                    }
                     if let mode = self.recordingMode(for: action) {
                         await self.shortcutModeHandler.handleKeyUp(
                             action: action,
@@ -258,11 +289,54 @@ class RecordingShortcutManager: ObservableObject {
             },
             onShortcutInterrupted: { [weak self] action, _ in
                 Task { @MainActor in
-                    guard let self, self.recordingMode(for: action) != nil else { return }
+                    guard let self else { return }
+                    if action == .agentDoubleTap {
+                        // Control was part of a real key combo, not a tap.
+                        self.agentTapDownAt = nil
+                        self.agentLastTapUpAt = nil
+                        return
+                    }
+                    guard self.recordingMode(for: action) != nil else { return }
                     await self.shortcutModeHandler.handleInterruption(action: action)
                 }
             }
         )
+    }
+
+    private func handleAgentTapUp(eventTime: TimeInterval) async {
+        guard let downAt = agentTapDownAt else { return }
+        agentTapDownAt = nil
+        guard eventTime - downAt <= Self.agentTapMaxHold else {
+            agentLastTapUpAt = nil
+            return
+        }
+        if let last = agentLastTapUpAt, eventTime - last <= Self.agentDoubleTapWindow {
+            agentLastTapUpAt = nil
+            await triggerAgent()
+        } else {
+            agentLastTapUpAt = eventTime
+        }
+    }
+
+    /// Control double-tap: switch a live recording into Agent mode, or start an Agent
+    /// recording from idle. Either way the request auto-sends after the user stops talking.
+    func triggerAgent() async {
+        let manager = ModeManager.shared
+        guard let agent = manager.getConfiguration(with: StarterModeCatalog.agentId), agent.isEnabled else { return }
+
+        if recorderUIManager.isRecorderPanelVisible, engine.recordingState == .recording {
+            if manager.currentEffectiveConfiguration?.id != agent.id {
+                Self.toggleAgentMode()
+            }
+            autoSend.startIfAgentMode()
+            return
+        }
+
+        guard canHandleShortcutAction else { return }
+        Self.previousModeBeforeAgent = manager.currentEffectiveConfiguration?.id
+        manager.setActiveConfiguration(agent)
+        await recorderUIManager.toggleRecorderPanel(modeId: agent.id)
+        autoSend.startWhenRecording()
     }
 
     private func recordingMode(for action: ShortcutAction) -> Mode? {
@@ -417,6 +491,7 @@ final class RecordingShortcutModeHandler {
     private let toggleRecorderPanel: @MainActor (UUID?) async -> Void
     private let cancelRecording: @MainActor () async -> Void
     private let toggleAgentMode: @MainActor () -> Bool
+    private let onHandsFreeRecordingStarted: @MainActor () -> Void
 
     private var shortcutPressStartTime: TimeInterval?
     private var lastKeyUpTime: TimeInterval?
@@ -433,6 +508,11 @@ final class RecordingShortcutModeHandler {
     /// A second press of the same recording shortcut within this window, while a hands-free
     /// recording is running, flips the recording into Agent mode instead of stopping it.
     static let doubleTapWindow: TimeInterval = 0.45
+    static let doubleTapDefaultsKey = "recordingShortcutDoubleTapSwitchesToAgent"
+    static var recordingShortcutDoubleTapSwitchesToAgent: Bool {
+        UserDefaults.standard.object(forKey: doubleTapDefaultsKey) == nil
+            ? false : UserDefaults.standard.bool(forKey: doubleTapDefaultsKey)
+    }
 
     init(
         canHandleShortcutAction: @escaping @MainActor () -> Bool,
@@ -440,7 +520,8 @@ final class RecordingShortcutModeHandler {
         recordingState: @escaping @MainActor () -> RecordingState,
         toggleRecorderPanel: @escaping @MainActor (UUID?) async -> Void,
         cancelRecording: @escaping @MainActor () async -> Void,
-        toggleAgentMode: @escaping @MainActor () -> Bool = { false }
+        toggleAgentMode: @escaping @MainActor () -> Bool = { false },
+        onHandsFreeRecordingStarted: @escaping @MainActor () -> Void = {}
     ) {
         self.canHandleShortcutAction = canHandleShortcutAction
         self.isRecorderVisible = isRecorderVisible
@@ -448,6 +529,7 @@ final class RecordingShortcutModeHandler {
         self.toggleRecorderPanel = toggleRecorderPanel
         self.cancelRecording = cancelRecording
         self.toggleAgentMode = toggleAgentMode
+        self.onHandsFreeRecordingStarted = onHandsFreeRecordingStarted
     }
 
     func reset() {
@@ -482,7 +564,10 @@ final class RecordingShortcutModeHandler {
         }
 
         // Double-tap (primary/secondary shortcut only): keep recording, switch to Agent mode.
-        if modeId == nil, isDoubleTap(action: action, eventTime: eventTime) {
+        // Off by default since the Control double-tap took over; kept for users who prefer it.
+        if modeId == nil, Self.recordingShortcutDoubleTapSwitchesToAgent,
+            isDoubleTap(action: action, eventTime: eventTime)
+        {
             lastKeyUpTime = nil
             lastKeyUpAction = nil
             if toggleAgentMode() {
@@ -543,6 +628,7 @@ final class RecordingShortcutModeHandler {
         switch mode {
         case .toggle:
             isHandsFreeRecording = true
+            onHandsFreeRecordingStarted()
 
         case .pushToTalk:
             if isRecorderVisible() {
@@ -557,6 +643,7 @@ final class RecordingShortcutModeHandler {
                 await toggleRecorderPanel(modeId)
             } else {
                 isHandsFreeRecording = true
+                onHandsFreeRecordingStarted()
             }
         }
 

@@ -2,7 +2,69 @@ import Foundation
 import LLMkit
 
 extension AIService {
+    /// Chat completion with retries for transient failures (429 rate limits, 5xx, network).
+    /// Providers like Groq say "try again in 12.3s" in the 429 body; that wait is honoured
+    /// (capped) so a burst of agent tool calls does not surface a raw HTTP error to the user.
     func completeChat(
+        provider: AIProvider,
+        modelName: String?,
+        messages: [ChatMessage],
+        systemPrompt: String? = nil,
+        timeout: TimeInterval = 30
+    ) async throws -> String {
+        var attempt = 0
+        var delay: TimeInterval = 1.5
+        while true {
+            do {
+                return try await completeChatOnce(
+                    provider: provider, modelName: modelName, messages: messages,
+                    systemPrompt: systemPrompt, timeout: timeout)
+            } catch let error as LLMKitError {
+                attempt += 1
+                guard attempt < 4, let wait = Self.retryDelay(for: error, fallback: delay) else {
+                    throw Self.friendlyChatError(error, modelName: modelName)
+                }
+                try await Task.sleep(nanoseconds: UInt64(wait * 1_000_000_000))
+                delay *= 2
+            }
+        }
+    }
+
+    private static func retryDelay(for error: LLMKitError, fallback: TimeInterval) -> TimeInterval? {
+        switch error {
+        case .httpError(let status, let message):
+            if status == 429 {
+                // "Please try again in 7.5s" / "in 1m2.3s"
+                if let match = message.range(of: #"try again in ([0-9.]+)(m)?([0-9.]+)?s"#, options: .regularExpression) {
+                    let text = String(message[match])
+                    let numbers = text.components(separatedBy: CharacterSet(charactersIn: "0123456789.").inverted)
+                        .compactMap { Double($0) }
+                    let seconds: Double
+                    if text.contains("m"), numbers.count >= 2 { seconds = numbers[0] * 60 + numbers[1] }
+                    else if text.contains("m"), numbers.count == 1 { seconds = numbers[0] * 60 }
+                    else { seconds = numbers.first ?? fallback }
+                    return min(max(seconds + 0.5, fallback), 25)
+                }
+                return fallback
+            }
+            return (500...599).contains(status) ? fallback : nil
+        case .networkError, .timeout:
+            return fallback
+        default:
+            return nil
+        }
+    }
+
+    private static func friendlyChatError(_ error: LLMKitError, modelName: String?) -> Error {
+        if case .httpError(let status, _) = error, status == 429 {
+            return EnhancementError.customError(
+                String(format: String(localized: "%@ is rate-limited right now. Wait a moment and try again, or pick another model in Modes → Agent."),
+                       modelName ?? "The model"))
+        }
+        return error
+    }
+
+    private func completeChatOnce(
         provider: AIProvider,
         modelName: String?,
         messages: [ChatMessage],

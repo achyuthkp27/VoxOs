@@ -546,9 +546,10 @@ struct AssistantPanelView: View {
 
                 if draftMessage.isEmpty && !shouldShowLiveFollowUpText {
                     HStack(spacing: 7) {
-                        Text("Type or hold")
-                        ModifierKeyHintBadge(symbol: "option")
-                        ModifierKeyHintBadge(symbol: "control")
+                        Text("Type, or hold")
+                        ForEach(Array(followUpShortcutTokens.enumerated()), id: \.offset) { _, token in
+                            ModifierKeyHintBadge(symbol: token)
+                        }
                         Text("to speak")
                     }
                     .font(.app(size: 15, weight: .regular))
@@ -587,6 +588,11 @@ struct AssistantPanelView: View {
             .disabled(!canSendDraft)
             .help("Send follow up")
         }
+    }
+
+    private var followUpShortcutTokens: [String] {
+        let tokens = ShortcutStore.shortcut(for: .primaryRecording)?.displayTokens ?? []
+        return tokens.isEmpty ? ["fn"] : tokens
     }
 
     private var shouldShowLiveFollowUpText: Bool {

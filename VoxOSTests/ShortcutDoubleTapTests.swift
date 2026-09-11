@@ -32,6 +32,8 @@ struct ShortcutDoubleTapTests {
     }
 
     @Test func doubleTapSwitchesToAgentInsteadOfStopping() async {
+        UserDefaults.standard.set(true, forKey: RecordingShortcutModeHandler.doubleTapDefaultsKey)
+        defer { UserDefaults.standard.removeObject(forKey: RecordingShortcutModeHandler.doubleTapDefaultsKey) }
         let h = Harness()
         // Tap 1: short press in hybrid mode → hands-free recording.
         await h.handler.handleKeyDown(action: .primaryRecording, eventTime: 10.0, mode: .hybrid)

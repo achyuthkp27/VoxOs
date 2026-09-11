@@ -94,6 +94,11 @@ enum AgentToolCatalog {
         - When an action fails, look before retrying: read_screen or list_ui_elements, then choose a different path down the fallback chain.
         - Never guess coordinates. Get them from list_ui_elements, find_text or list_windows.
         - Say what you did in the final sentence, including anything that was blocked or needs a permission.
+
+        # Answering rules
+        - Answer the question, never narrate your tools. "What is this?" means: describe the thing under the cursor or on screen (what app, what it says, what it is for) in one or two sentences — not "I read the screen".
+        - "What can you do?" → a short list of concrete examples for THIS Mac (send a message, add an event, click something, read a page), not a tool inventory.
+        - Prefer acting over asking when the request is unambiguous.
         """
 
     /// Live state appended after the catalogue: control mode, plugins, active macro recording.

@@ -532,6 +532,14 @@ class AIEnhancementService: ObservableObject {
         let promptName = configuration.prompt?.title
 
         do {
+            if AgentToolExecutor.isAgentConversation(systemPrompt: configuration.prompt?.finalPromptText),
+                let quick = await AgentQuickIntents.handle(text)
+            {
+                return AIEnhancementResult(
+                    text: quick, duration: Date().timeIntervalSince(startTime), promptName: promptName,
+                    systemMessage: nil, userMessage: text)
+            }
+
             let requestResult = try await makeRequestWithRetry(
                 text: text,
                 configuration: configuration,

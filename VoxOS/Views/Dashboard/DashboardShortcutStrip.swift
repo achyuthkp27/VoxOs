@@ -7,6 +7,7 @@ struct DashboardShortcutStrip: View {
 
     private var primary: Shortcut? { ShortcutStore.shortcut(for: .primaryRecording) }
     private var agentShortcut: Shortcut? { ShortcutStore.shortcut(for: .mode(StarterModeCatalog.agentId)) }
+    private var agentTap: Shortcut? { ShortcutStore.shortcut(for: .agentDoubleTap) }
     private var hasAgentMode: Bool {
         modeManager.getConfiguration(with: StarterModeCatalog.agentId)?.isEnabled == true
     }
@@ -16,12 +17,12 @@ struct DashboardShortcutStrip: View {
             if let primary {
                 chip(keys: [primary.displayString], title: "Hold to dictate", detail: "Release to paste")
                 chip(keys: [primary.displayString], title: "Tap for hands-free", detail: "Tap again to stop")
-                if hasAgentMode {
-                    chip(
-                        keys: [primary.displayString, primary.displayString],
-                        title: "Double-tap for Agent",
-                        detail: "Say what to do on your Mac")
-                }
+            }
+            if let agentTap, hasAgentMode {
+                chip(
+                    keys: [agentTap.displayString, agentTap.displayString],
+                    title: "Double-tap for Agent",
+                    detail: "Say what to do; it sends when you pause")
             }
             if let agentShortcut, hasAgentMode {
                 chip(keys: [agentShortcut.displayString], title: "Hold for Agent", detail: "Direct to Agent mode")

@@ -9,8 +9,8 @@ struct AppSidebar: View {
     var body: some View {
         VStack(spacing: 0) {
             brand
-                .padding(.top, 40)
-                .padding(.bottom, 14)
+                .padding(.top, 34)
+                .padding(.bottom, 22)
 
             LiquidGlassContainer(spacing: 8) {
                 VStack(spacing: 0) {
@@ -32,18 +32,19 @@ struct AppSidebar: View {
     }
 
     private var brand: some View {
-        HStack(spacing: 8) {
-            Image(nsImage: NSImage(named: "menuBarIcon") ?? NSImage())
+        HStack(spacing: 10) {
+            Image(nsImage: NSApp.applicationIconImage)
                 .resizable()
-                .renderingMode(.template)
                 .scaledToFit()
-                .frame(width: 17, height: 17)
+                .frame(width: 36, height: 36)
+                .shadow(color: .black.opacity(0.25), radius: 4, y: 2)
             Text("VoxOS")
-                .font(.app(size: 15, weight: .semibold))
+                .font(.app(size: 22, weight: .bold))
+                .tracking(-0.3)
             Spacer(minLength: 0)
         }
         .foregroundStyle(AppTheme.Text.primary)
-        .padding(.horizontal, 22)
+        .padding(.horizontal, 18)
     }
 
     private func sidebarSection(_ items: [ViewType]) -> some View {
