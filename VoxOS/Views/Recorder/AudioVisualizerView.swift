@@ -98,13 +98,20 @@ struct ProcessingStatusDisplay: View {
         }
     }
 
+    private var symbol: String {
+        switch mode {
+        case .transcribing: return "waveform"
+        case .enhancing: return "sparkles"
+        }
+    }
+
     var body: some View {
-        VStack(spacing: 4) {
-            Text(label)
-                .foregroundColor(color)
-                .font(.app(size: 11, weight: .medium))
-                .lineLimit(1)
-                .minimumScaleFactor(0.5)
+        HStack(spacing: 10) {
+            Image(systemName: symbol)
+                .font(.app(size: 15, weight: .semibold))
+                .foregroundStyle(color)
+                .symbolEffect(.variableColor.iterative.reversing, options: .repeating)
+                .accessibilityLabel(Text(label))
 
             ProgressAnimation(color: color, animationSpeed: animationSpeed)
         }

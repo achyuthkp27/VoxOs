@@ -370,6 +370,104 @@ struct RecorderModeChip: View {
     }
 }
 
+// MARK: - Recorder Mode Glyph (notch)
+
+/// Icon-only mode indicator for the notch. Three looks, no words: a mic for plain dictation,
+/// sparkles for an AI-enhanced dictation mode, a wand on violet for the Agent. Hover opens
+/// the mode picker.
+struct RecorderModeGlyph: View {
+    @ObservedObject private var modeManager = ModeManager.shared
+
+    @State private var isPopoverPresented = false
+    @State private var isHoveringButton = false
+    @State private var isHoveringPopover = false
+    @State private var dismissWorkItem: DispatchWorkItem?
+
+    private enum Kind { case dictation, enhanced, agent }
+
+    private var config: ModeConfig? { modeManager.currentEffectiveConfiguration }
+
+    private var kind: Kind {
+        guard let config else { return .dictation }
+        if config.id == StarterModeCatalog.agentId { return .agent }
+        return config.isAIEnhancementEnabled ? .enhanced : .dictation
+    }
+
+    private var symbol: String {
+        switch kind {
+        case .dictation: return "mic.fill"
+        case .enhanced: return "sparkles"
+        case .agent: return "wand.and.stars"
+        }
+    }
+
+    private var tint: Color {
+        switch kind {
+        case .dictation: return AppTheme.Notch.text
+        case .enhanced: return AppTheme.Accent.primary
+        case .agent: return AppTheme.Recorder.agentAccent
+        }
+    }
+
+    var body: some View {
+        Button {
+            isPopoverPresented.toggle()
+        } label: {
+            ZStack {
+                Circle()
+                    .fill(
+                        kind == .dictation
+                            ? AnyShapeStyle(AppTheme.Notch.chip)
+                            : AnyShapeStyle(
+                                LinearGradient(
+                                    colors: [tint.opacity(0.95), tint.opacity(0.65)],
+                                    startPoint: .topLeading, endPoint: .bottomTrailing))
+                    )
+                    .frame(width: 26, height: 26)
+                    .overlay(Circle().stroke(Color.white.opacity(kind == .dictation ? 0.10 : 0.35), lineWidth: 0.8))
+                    .shadow(color: kind == .dictation ? .clear : tint.opacity(0.6), radius: 7)
+
+                Image(systemName: symbol)
+                    .font(.app(size: 12, weight: .bold))
+                    .foregroundStyle(kind == .dictation ? AppTheme.Notch.text : Color.white)
+                    .symbolEffect(.bounce, value: config?.id)
+            }
+            .contentShape(Circle())
+            .animation(.spring(response: 0.35, dampingFraction: 0.75), value: config?.id)
+        }
+        .buttonStyle(.plain)
+        .disabled(modeManager.enabledConfigurations.isEmpty)
+        .accessibilityLabel(Text(config?.name ?? "Mode"))
+        .help(config?.name ?? "")
+        .onHover {
+            isHoveringButton = $0
+            syncPopoverVisibility()
+        }
+        .popover(isPresented: $isPopoverPresented, arrowEdge: .bottom) {
+            ModePopover()
+                .onHover {
+                    isHoveringPopover = $0
+                    syncPopoverVisibility()
+                }
+        }
+    }
+
+    private func syncPopoverVisibility() {
+        if isHoveringButton || isHoveringPopover {
+            dismissWorkItem?.cancel()
+            dismissWorkItem = nil
+            isPopoverPresented = true
+        } else {
+            dismissWorkItem?.cancel()
+            let work = DispatchWorkItem { [isPopoverPresentedBinding = $isPopoverPresented] in
+                isPopoverPresentedBinding.wrappedValue = false
+            }
+            dismissWorkItem = work
+            DispatchQueue.main.asyncAfter(deadline: .now() + 0.25, execute: work)
+        }
+    }
+}
+
 // MARK: - Live Transcript View
 
 struct LiveTranscriptView: View {

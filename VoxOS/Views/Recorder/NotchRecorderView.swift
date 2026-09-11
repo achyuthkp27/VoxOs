@@ -72,9 +72,9 @@ struct NotchRecorderView<S: RecorderStateProvider & ObservableObject>: View {
 
     // MARK: - Layout Constants
 
-    private let recordingSideExpansion: CGFloat = 156
-    private let transcriptSideExpansion: CGFloat = 164
-    private let assistantSideExpansion: CGFloat = 164
+    private let recordingSideExpansion: CGFloat = 124
+    private let transcriptSideExpansion: CGFloat = 140
+    private let assistantSideExpansion: CGFloat = 140
     private let activeHeightBonus: CGFloat = 14
     private let transcriptPanelHeight: CGFloat = 64
     private let assistantPanelHeight: CGFloat = 300
@@ -198,7 +198,7 @@ struct NotchRecorderView<S: RecorderStateProvider & ObservableObject>: View {
                 if shouldShowCloseButton {
                     RecorderCloseButton(action: onCloseTapped)
                 }
-                RecorderModeChip()
+                RecorderModeGlyph()
                 Spacer(minLength: 0)
             }
             .padding(.leading, sideEdgePadding)
