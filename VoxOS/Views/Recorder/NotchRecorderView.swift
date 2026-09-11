@@ -72,10 +72,10 @@ struct NotchRecorderView<S: RecorderStateProvider & ObservableObject>: View {
 
     // MARK: - Layout Constants
 
-    private let recordingSideExpansion: CGFloat = 124
-    private let transcriptSideExpansion: CGFloat = 140
+    private let recordingSideExpansion: CGFloat = 64
+    private let transcriptSideExpansion: CGFloat = 130
     private let assistantSideExpansion: CGFloat = 140
-    private let activeHeightBonus: CGFloat = 14
+    private let activeHeightBonus: CGFloat = 10
     private let transcriptPanelHeight: CGFloat = 64
     private let assistantPanelHeight: CGFloat = 300
 
@@ -113,7 +113,7 @@ struct NotchRecorderView<S: RecorderStateProvider & ObservableObject>: View {
     }
 
     private var sideEdgePadding: CGFloat {
-        displayState == .liveText || displayState == .assistant ? 22 : 20
+        displayState == .liveText || displayState == .assistant ? 22 : 18
     }
 
     private var shouldShowCloseButton: Bool {
@@ -157,20 +157,11 @@ struct NotchRecorderView<S: RecorderStateProvider & ObservableObject>: View {
             assistantPanel
         }
         .frame(width: pillWidth, height: pillHeight)
-        .liquidGlass(in: notchShape, tint: isRecording ? recordingAccent.opacity(0.12) : nil)
-        .overlay(
-            // Glass rim: brighter along the top edge, fading down the sides.
-            notchShape.stroke(
-                LinearGradient(colors: [AppTheme.Notch.rim, AppTheme.Notch.rim.opacity(0.25)], startPoint: .top, endPoint: .bottom),
-                lineWidth: 1)
-        )
-        .overlay(
-            // Sheen catching the light across the upper third.
-            LinearGradient(colors: [Color.primary.opacity(0.07), .clear], startPoint: .top, endPoint: .center)
-                .clipShape(notchShape)
-                .allowsHitTesting(false)
-        )
-        .shadow(color: isRecording ? recordingAccent.opacity(0.45) : Color.black.opacity(0.25), radius: isRecording ? 22 : 14, y: 6)
+        // Solid black so the pill reads as part of the physical notch. Forced dark appearance
+        // keeps the system label colours white on it in light mode.
+        .background(Color.black.clipShape(notchShape))
+        .environment(\.colorScheme, .dark)
+        .shadow(color: Color.black.opacity(0.35), radius: 10, y: 4)
         .animation(.easeInOut(duration: 0.35), value: isRecording)
         .animation(.easeInOut(duration: 0.35), value: isAgentMode)
     }
@@ -194,11 +185,15 @@ struct NotchRecorderView<S: RecorderStateProvider & ObservableObject>: View {
         ZStack {
             Color.clear
 
-            HStack(spacing: 14) {
+            HStack(spacing: 10) {
                 if shouldShowCloseButton {
                     RecorderCloseButton(action: onCloseTapped)
                 }
-                RecorderModeGlyph()
+                NotchWave(
+                    state: stateProvider.recordingState,
+                    audioMeterProvider: recorder.audioMeterSnapshot,
+                    accent: modeAccent
+                )
                 Spacer(minLength: 0)
             }
             .padding(.leading, sideEdgePadding)
@@ -209,26 +204,15 @@ struct NotchRecorderView<S: RecorderStateProvider & ObservableObject>: View {
                 displayState != .collapsed ? expandAnimation.delay(0.09) : collapseAnimation,
                 value: displayState
             )
-
-            HStack(spacing: 0) {
-                Spacer(minLength: 0)
-                RecorderStatusDisplay(
-                    currentState: stateProvider.recordingState,
-                    audioMeterProvider: recorder.audioMeterSnapshot,
-                    menuBarHeight: notchHeight,
-                    accent: recordingAccent
-                )
-            }
-            .padding(.trailing, sideEdgePadding)
-            .frame(width: sideExpansion)
-            .frame(maxWidth: .infinity, alignment: .trailing)
-            .opacity(displayState != .collapsed ? 1 : 0)
-            .animation(
-                displayState != .collapsed ? expandAnimation.delay(0.09) : collapseAnimation,
-                value: displayState
-            )
         }
         .frame(height: mainRowHeight)
+    }
+
+    /// Mode colour for the wave: dictation white, AI-enhanced dictation blue, Agent violet.
+    private var modeAccent: Color {
+        guard let config = modeManager.currentEffectiveConfiguration else { return AppTheme.Notch.text }
+        if config.id == StarterModeCatalog.agentId { return AppTheme.Recorder.agentAccent }
+        return config.isAIEnhancementEnabled ? AppTheme.Accent.primary : AppTheme.Notch.text
     }
 
     // MARK: - Live Text Panel

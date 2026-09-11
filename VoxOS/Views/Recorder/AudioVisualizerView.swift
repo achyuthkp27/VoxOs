@@ -5,19 +5,28 @@ struct AudioVisualizer: View {
     let color: Color
     let isActive: Bool
 
-    private let barCount = 15
-    private let barWidth: CGFloat = 3
-    private let barSpacing: CGFloat = 2
-    private let minHeight: CGFloat = 4
-    private let maxHeight: CGFloat = 28
+    private let barCount: Int
+    private let barWidth: CGFloat
+    private let barSpacing: CGFloat
+    private let minHeight: CGFloat
+    private let maxHeight: CGFloat
 
     private let phases: [Double]
 
-    init(audioMeterProvider: @escaping () -> AudioMeter, color: Color, isActive: Bool) {
+    init(
+        audioMeterProvider: @escaping () -> AudioMeter, color: Color, isActive: Bool,
+        barCount: Int = 15, barWidth: CGFloat = 3, barSpacing: CGFloat = 2,
+        minHeight: CGFloat = 4, maxHeight: CGFloat = 28
+    ) {
         self.audioMeterProvider = audioMeterProvider
         self.color = color
         self.isActive = isActive
-        self.phases = (0..<barCount).map { Double($0) * 0.4 }
+        self.barCount = barCount
+        self.barWidth = barWidth
+        self.barSpacing = barSpacing
+        self.minHeight = minHeight
+        self.maxHeight = maxHeight
+        self.phases = (0..<barCount).map { Double($0) * 0.9 }
     }
 
     var body: some View {
@@ -47,7 +56,7 @@ struct AudioVisualizer: View {
         let time = date.timeIntervalSince1970
         let amplitude = max(0, min(1, pow(audioMeter.averagePower, 0.7)))  // boosted for visibility
         let wave = sin(time * 8 + phases[index]) * 0.5 + 0.5
-        let centerDistance = abs(Double(index) - Double(barCount) / 2) / Double(barCount / 2)
+        let centerDistance = abs(Double(index) - Double(barCount) / 2) / max(1, Double(barCount / 2))
         let centerBoost = 1.0 - (centerDistance * 0.4)
 
         return max(minHeight, minHeight + CGFloat(amplitude * wave * centerBoost) * (maxHeight - minHeight))

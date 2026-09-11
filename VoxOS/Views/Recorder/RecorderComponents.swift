@@ -370,6 +370,79 @@ struct RecorderModeChip: View {
     }
 }
 
+// MARK: - Notch Wave (minimal)
+
+/// The whole notch UI while recording: four small bars at the left edge. Colour says which
+/// mode is listening (white dictation, blue enhanced, violet Agent); the bars breathe while
+/// transcribing or enhancing. Hover opens the mode picker.
+struct NotchWave: View {
+    let state: RecordingState
+    let audioMeterProvider: () -> AudioMeter
+    let accent: Color
+
+    @State private var isPopoverPresented = false
+    @State private var isHoveringButton = false
+    @State private var isHoveringPopover = false
+    @State private var dismissWorkItem: DispatchWorkItem?
+    @State private var breathe = false
+
+    private var isProcessing: Bool { state == .transcribing || state == .enhancing || state == .starting }
+
+    var body: some View {
+        Group {
+            if state == .recording {
+                AudioVisualizer(
+                    audioMeterProvider: audioMeterProvider, color: accent, isActive: true,
+                    barCount: 4, barWidth: 3, barSpacing: 3, minHeight: 4, maxHeight: 16)
+            } else {
+                HStack(spacing: 3) {
+                    ForEach(0..<4, id: \.self) { index in
+                        RoundedRectangle(cornerRadius: 1.5)
+                            .fill(accent.opacity(isProcessing ? 0.95 : 0.55))
+                            .frame(width: 3, height: isProcessing && breathe ? (index % 2 == 0 ? 12 : 7) : 4)
+                            .animation(
+                                isProcessing
+                                    ? .easeInOut(duration: 0.55).repeatForever(autoreverses: true).delay(Double(index) * 0.1)
+                                    : .easeOut(duration: 0.2),
+                                value: breathe)
+                    }
+                }
+                .onAppear { breathe = true }
+                .onChange(of: isProcessing) { _, processing in breathe = processing || breathe }
+            }
+        }
+        .frame(width: 24, height: 18)
+        .contentShape(Rectangle().inset(by: -6))
+        .animation(.easeInOut(duration: 0.3), value: accent)
+        .onHover {
+            isHoveringButton = $0
+            syncPopoverVisibility()
+        }
+        .popover(isPresented: $isPopoverPresented, arrowEdge: .bottom) {
+            ModePopover()
+                .onHover {
+                    isHoveringPopover = $0
+                    syncPopoverVisibility()
+                }
+        }
+    }
+
+    private func syncPopoverVisibility() {
+        if isHoveringButton || isHoveringPopover {
+            dismissWorkItem?.cancel()
+            dismissWorkItem = nil
+            isPopoverPresented = true
+        } else {
+            dismissWorkItem?.cancel()
+            let work = DispatchWorkItem { [isPopoverPresentedBinding = $isPopoverPresented] in
+                isPopoverPresentedBinding.wrappedValue = false
+            }
+            dismissWorkItem = work
+            DispatchQueue.main.asyncAfter(deadline: .now() + 0.25, execute: work)
+        }
+    }
+}
+
 // MARK: - Recorder Mode Glyph (notch)
 
 /// Icon-only mode indicator for the notch. Three looks, no words: a mic for plain dictation,
