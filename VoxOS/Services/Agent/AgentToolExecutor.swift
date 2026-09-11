@@ -44,6 +44,7 @@ enum AgentToolExecutor {
 
         // A confirmation must come from a later request than the one that asked for it.
         AgentPendingAction.beginRun()
+        AgentCardStore.clear()
         // The task that was paused before this request is being resumed by it; a task this
         // run pauses must survive to the next one.
         let resumedTask = AgentPausedTask.peek()?.id
@@ -58,6 +59,7 @@ enum AgentToolExecutor {
             steps += 1
             let result = await AgentTools.execute(name: call.name, args: call.args)
             executed.append(call.name)
+            if let card = AgentCard.from(tool: call.name, result: result) { AgentCardStore.add(card) }
 
             let resultJSON =
                 (try? JSONSerialization.data(withJSONObject: result))

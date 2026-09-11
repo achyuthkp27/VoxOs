@@ -271,4 +271,22 @@ struct AgentLogicTests {
         let tg = AgentAppLinks.telegramURL(to: "sam", text: "on my way")
         #expect(tg?.absoluteString == "tg://msg?text=on%20my%20way&to=sam")
     }
+
+    // MARK: Result cards
+
+    @Test func cardsComeFromKnownToolResults() {
+        #expect(AgentCard.from(tool: "find_files", result: ["matches": ["/a/b.txt", "/c.md"], "count": 2])
+            == .files(["/a/b.txt", "/c.md"]))
+        #expect(AgentCard.from(tool: "find_files", result: ["matches": [], "count": 0]) == nil)
+        #expect(AgentCard.from(tool: "find_files", result: ["error": "nope"]) == nil)
+        let links = AgentCard.from(tool: "web_results", result: ["results": [["title": "T", "url": "https://x.y/z"]]])
+        #expect(links == .links([AgentCard.Link(title: "T", url: "https://x.y/z")]))
+        #expect(AgentCard.from(tool: "run_shell", result: ["output": "x"]) == nil)
+
+        AgentCardStore.clear()
+        AgentCardStore.add(.image(path: "/tmp/s.png"))
+        AgentCardStore.add(.image(path: "/tmp/s.png"))
+        #expect(AgentCardStore.drain().count == 1, "duplicates collapse")
+        #expect(AgentCardStore.drain().isEmpty, "drain empties the store")
+    }
 }

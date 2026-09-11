@@ -752,6 +752,10 @@ private struct AssistantMessageBubble: View {
             if !isUser, let timeAnswer = TimeAnswerParser.parse(message.content) {
                 TimeAnswerWidget(answer: timeAnswer)
             }
+
+            ForEach(message.cards) { card in
+                AgentCardView(card: card)
+            }
         }
     }
 
@@ -836,6 +840,70 @@ private struct TimeAnswerWidget: View {
             }
         }
         .padding(.top, 2)
+    }
+}
+
+/// Structured agent results: a file list, search links, or a screenshot thumbnail.
+private struct AgentCardView: View {
+    let card: AgentCard
+
+    var body: some View {
+        Group {
+            switch card {
+            case .files(let paths):
+                VStack(alignment: .leading, spacing: 0) {
+                    ForEach(paths, id: \.self) { path in
+                        row(icon: "doc.fill", title: (path as NSString).lastPathComponent,
+                            subtitle: ((path as NSString).deletingLastPathComponent as NSString).abbreviatingWithTildeInPath) {
+                            NSWorkspace.shared.activateFileViewerSelecting([URL(fileURLWithPath: path)])
+                        }
+                    }
+                }
+            case .links(let links):
+                VStack(alignment: .leading, spacing: 0) {
+                    ForEach(links) { link in
+                        row(icon: "link", title: link.title, subtitle: URL(string: link.url)?.host ?? link.url) {
+                            if let url = URL(string: link.url) { NSWorkspace.shared.open(url) }
+                        }
+                    }
+                }
+            case .image(let path):
+                if let image = NSImage(contentsOfFile: path) {
+                    Image(nsImage: image)
+                        .resizable()
+                        .scaledToFit()
+                        .frame(maxHeight: 140)
+                        .clipShape(RoundedRectangle(cornerRadius: 10, style: .continuous))
+                        .onTapGesture { NSWorkspace.shared.open(URL(fileURLWithPath: path)) }
+                }
+            }
+        }
+        .padding(6)
+        .background(RoundedRectangle(cornerRadius: 14, style: .continuous).fill(AppTheme.Notch.bubble))
+        .overlay(RoundedRectangle(cornerRadius: 14, style: .continuous).stroke(Color.primary.opacity(0.08), lineWidth: 1))
+    }
+
+    private func row(icon: String, title: String, subtitle: String, action: @escaping () -> Void) -> some View {
+        Button(action: action) {
+            HStack(spacing: 10) {
+                Image(systemName: icon)
+                    .font(.app(size: 13, weight: .semibold))
+                    .foregroundStyle(AppTheme.Accent.primary)
+                    .frame(width: 22)
+                VStack(alignment: .leading, spacing: 1) {
+                    Text(title).font(.app(size: 13, weight: .medium)).foregroundStyle(AppTheme.Notch.text).lineLimit(1)
+                    Text(subtitle).font(.app(size: 11)).foregroundStyle(AppTheme.Notch.textMuted).lineLimit(1)
+                }
+                Spacer(minLength: 0)
+                Image(systemName: "arrow.up.forward")
+                    .font(.app(size: 10, weight: .semibold))
+                    .foregroundStyle(AppTheme.Notch.textMuted)
+            }
+            .padding(.horizontal, 8)
+            .padding(.vertical, 6)
+            .contentShape(Rectangle())
+        }
+        .buttonStyle(.plain)
     }
 }
 

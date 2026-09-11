@@ -11,6 +11,7 @@ struct AssistantDisplayMessage: Identifiable, Equatable {
     let role: AssistantMessageRole
     let content: String
     let createdAt: Date
+    var cards: [AgentCard] = []
 }
 
 enum AssistantPhase: Equatable {
@@ -79,13 +80,15 @@ final class AssistantSession: ObservableObject {
         self.systemPrompt = systemPrompt
 
         let trimmedResponse = response.trimmingCharacters(in: .whitespacesAndNewlines)
-        if !trimmedResponse.isEmpty {
+        let cards = AgentCardStore.drain()
+        if !trimmedResponse.isEmpty || !cards.isEmpty {
             appendOrReplace(
                 message: AssistantDisplayMessage(
                     id: UUID(),
                     role: .assistant,
                     content: trimmedResponse,
-                    createdAt: Date()
+                    createdAt: Date(),
+                    cards: cards
                 )
             )
         }
@@ -111,7 +114,8 @@ final class AssistantSession: ObservableObject {
             id: UUID(),
             role: .assistant,
             content: text,
-            createdAt: Date()
+            createdAt: Date(),
+            cards: AgentCardStore.drain()
         )
         appendOrReplace(message: assistantMessage)
         phase = .ready
