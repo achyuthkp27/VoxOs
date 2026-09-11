@@ -21,7 +21,7 @@ extension AIService {
                     systemPrompt: systemPrompt, timeout: timeout)
             } catch let error as LLMKitError {
                 attempt += 1
-                guard attempt < 4, let wait = Self.retryDelay(for: error, fallback: delay) else {
+                guard attempt < 3, let wait = Self.retryDelay(for: error, fallback: delay) else {
                     throw Self.friendlyChatError(error, modelName: modelName)
                 }
                 try await Task.sleep(nanoseconds: UInt64(wait * 1_000_000_000))
@@ -43,7 +43,7 @@ extension AIService {
                     if text.contains("m"), numbers.count >= 2 { seconds = numbers[0] * 60 + numbers[1] }
                     else if text.contains("m"), numbers.count == 1 { seconds = numbers[0] * 60 }
                     else { seconds = numbers.first ?? fallback }
-                    return min(max(seconds + 0.5, fallback), 25)
+                    return min(max(seconds + 0.5, fallback), 8)
                 }
                 return fallback
             }
@@ -58,7 +58,7 @@ extension AIService {
     private static func friendlyChatError(_ error: LLMKitError, modelName: String?) -> Error {
         if case .httpError(let status, _) = error, status == 429 {
             return EnhancementError.customError(
-                String(format: String(localized: "%@ is rate-limited right now. Wait a moment and try again, or pick another model in Modes → Agent."),
+                String(format: String(localized: "%@ hit its per-minute token limit. Wait a moment, or pick a model with a higher limit in Modes → Agent."),
                        modelName ?? "The model"))
         }
         return error

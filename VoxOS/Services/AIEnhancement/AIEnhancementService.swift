@@ -141,12 +141,22 @@ class AIEnhancementService: ObservableObject {
         let useClipboard = configuration.useClipboardContext
         let useScreenCapture = configuration.useScreenCaptureContext
 
-        lastCapturedClipboard = contextSnapshot?.clipboardText
-        screenCaptureService.lastCapturedText = contextSnapshot?.screenText
+        // The Agent prompt already carries ~15k characters of tool catalogue, and every tool
+        // step re-sends the whole thing. Uncapped screen OCR on top of that is what trips
+        // per-minute token limits on hosted providers — the agent has read_screen for more.
+        let isAgent = AgentToolExecutor.isAgentConversation(systemPrompt: prompt.finalPromptText)
+        func capped(_ text: String?, _ limit: Int) -> String? {
+            guard let text else { return nil }
+            guard isAgent, text.count > limit else { return text }
+            return String(text.prefix(limit)) + "\n…(truncated; call read_screen for the full text)"
+        }
+
+        lastCapturedClipboard = capped(contextSnapshot?.clipboardText, 1200)
+        screenCaptureService.lastCapturedText = capped(contextSnapshot?.screenText, 1800)
 
         let selectedTextContext: String
         if useSelectedText,
-            let selectedText = contextSnapshot?.selectedText,
+            let selectedText = capped(contextSnapshot?.selectedText, 1500),
             !selectedText.isEmpty
         {
             selectedTextContext = "<CURRENTLY_SELECTED_TEXT>\n\(selectedText)\n</CURRENTLY_SELECTED_TEXT>"
