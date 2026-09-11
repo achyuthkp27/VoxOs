@@ -393,13 +393,13 @@ struct NotchWave: View {
             if state == .recording {
                 AudioVisualizer(
                     audioMeterProvider: audioMeterProvider, color: accent, isActive: true,
-                    barCount: 4, barWidth: 3, barSpacing: 3, minHeight: 4, maxHeight: 16)
+                    barCount: 4, barWidth: 3.5, barSpacing: 3.5, minHeight: 5, maxHeight: 22)
             } else {
                 HStack(spacing: 3) {
                     ForEach(0..<4, id: \.self) { index in
                         RoundedRectangle(cornerRadius: 1.5)
                             .fill(accent.opacity(isProcessing ? 0.95 : 0.55))
-                            .frame(width: 3, height: isProcessing && breathe ? (index % 2 == 0 ? 12 : 7) : 4)
+                            .frame(width: 3.5, height: isProcessing && breathe ? (index % 2 == 0 ? 16 : 9) : 5)
                             .animation(
                                 isProcessing
                                     ? .easeInOut(duration: 0.55).repeatForever(autoreverses: true).delay(Double(index) * 0.1)
@@ -411,7 +411,7 @@ struct NotchWave: View {
                 .onChange(of: isProcessing) { _, processing in breathe = processing || breathe }
             }
         }
-        .frame(width: 24, height: 18)
+        .frame(width: 28, height: 24)
         .contentShape(Rectangle().inset(by: -6))
         .animation(.easeInOut(duration: 0.3), value: accent)
         .onHover {
