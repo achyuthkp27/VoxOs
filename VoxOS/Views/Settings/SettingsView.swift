@@ -83,6 +83,33 @@ struct SettingsView: View {
                         withAnimation { recordingShortcutManager.secondaryRecordingShortcut = .custom }
                     }
                 }
+
+                if recordingShortcutManager.isPrimaryShortcutFnKey {
+                    VStack(alignment: .leading, spacing: 6) {
+                        Text("Hold fn to talk, tap fn to record hands-free, double-tap fn to switch the recording into Agent mode.")
+                            .font(.callout)
+                            .foregroundStyle(.secondary)
+                        if !RecordingShortcutManager.systemFnKeyActionIsOff {
+                            HStack(spacing: 8) {
+                                Image(systemName: "exclamationmark.triangle.fill")
+                                    .foregroundStyle(.orange)
+                                Text("macOS also reacts to a bare fn tap. Set “Press 🌐 key to” to “Do Nothing” in System Settings → Keyboard.")
+                                    .font(.callout)
+                                Spacer()
+                                Button("Open Keyboard Settings") {
+                                    if let url = URL(string: "x-apple.systempreferences:com.apple.Keyboard-Settings.extension") {
+                                        NSWorkspace.shared.open(url)
+                                    }
+                                }
+                                .controlSize(.small)
+                            }
+                        }
+                    }
+                } else {
+                    Button("Use the fn key (hold to talk, double-tap for Agent)") {
+                        recordingShortcutManager.useFnKeyPreset()
+                    }
+                }
             } header: {
                 Text("Shortcuts")
             }

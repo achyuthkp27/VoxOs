@@ -73,11 +73,13 @@ private extension ViewType {
     }
 
     static let primaryItems: [ViewType] = [.dashboard, .modes, .transcribeAudio, .history, .dictionary, .models, .audio]
-    static let secondaryItems: [ViewType] = [.settings, .license]
+    static let secondaryItems: [ViewType] = [.settings]
+    /// Reachable by navigation but deliberately absent from the sidebar (personal build: no licensing).
+    static let hiddenItems: [ViewType] = [.license]
 
     static func assertSidebarItemsCoverAllCases() {
         #if DEBUG
-            let sidebarItems = primaryItems + secondaryItems
+            let sidebarItems = primaryItems + secondaryItems + hiddenItems
             assert(Set(sidebarItems) == Set(allCases) && sidebarItems.count == allCases.count)
         #endif
     }

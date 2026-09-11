@@ -78,13 +78,22 @@ enum AgentControlMode: String, CaseIterable, Identifiable {
         "calendar_add_event", "reminders_add", "notes_create", "mail_compose",
         "browser_click_text", "browser_run_js", "switch_browser_tab",
         "clipboard_write", "move_file", "read_file", "read_pdf", "macro_run", "macro_delete", "plugin_create", "plugin_delete",
-        "whatsapp_send", "gmail_compose", "slack_send", "linear_create_issue",
+        "whatsapp_send", "gmail_compose", "gmail_search", "web_search", "slack_send", "linear_create_issue",
         "system_volume", "lock_screen", "media_key",
         "system_audio_start", "system_audio_stop",
         "set_control_mode", "messages_send", "secret_save", "linear_save_token", "remember", "take_screenshot",
         "macro_record_start", "macro_record_stop", "watch_for", "watch_for_audio", "watch_cancel",
         "set_learning_language", "mark_vocabulary_known",
     ]
+
+    /// How much freedom the mode grants; used to tell a loosening switch from a tightening one.
+    var rank: Int {
+        switch self {
+        case .observeOnly: return 0
+        case .askBeforeAction: return 1
+        case .takeover: return 2
+        }
+    }
 
     static func isMutating(_ tool: String) -> Bool {
         mutatingTools.contains(tool) || (AgentPlugins.isPlugin(tool) && tool != "plugin_list")

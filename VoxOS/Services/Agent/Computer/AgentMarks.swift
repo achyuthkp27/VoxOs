@@ -28,7 +28,8 @@ enum AgentMarks {
         guard let shot = await AgentScreen.capture() else {
             return ["error": "screen capture failed — Screen Recording permission may be missing"]
         }
-        let elements = AgentAXTree.enumerateFrontmost()
+        // AX IPC against a slow app can stall for seconds per call; keep it off the main thread.
+        let elements = await Task.detached(priority: .userInitiated) { AgentAXTree.enumerateFrontmost() }.value
         let ocr = await AgentScreen.recognizeText(in: shot)
 
         var raw: [(frame: CGRect, label: String)] = []

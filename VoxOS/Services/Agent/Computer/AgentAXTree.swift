@@ -37,6 +37,7 @@ enum AgentAXTree {
         guard AXIsProcessTrusted() else { return [] }
         guard let app = NSWorkspace.shared.frontmostApplication else { return [] }
         let axApp = AXUIElementCreateApplication(app.processIdentifier)
+        AXUIElementSetMessagingTimeout(axApp, 1.0)
 
         var roots: [AXUIElement] = []
         if let focused = axElement(copyAttribute(axApp, kAXFocusedWindowAttribute)) {

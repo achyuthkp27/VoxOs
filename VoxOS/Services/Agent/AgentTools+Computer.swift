@@ -25,7 +25,7 @@ extension AgentTools {
                 return [
                     "error": "blocked: the agent is in observe-only mode and cannot \(name). The user can switch modes in Settings → Agent or by saying “act freely”.",
                 ]
-            case .askBeforeAction where !alwaysConfirms(name):
+            case .askBeforeAction where !alwaysConfirms(name, args):
                 AgentPendingAction.set(name: name, args: args)
                 return [
                     "confirm_required": "Ask-before-acting is on. Ready to run \(name) with \(summarize(args)). Tell the user what will happen and ask them to say 'confirm' or 'cancel'.",
@@ -61,7 +61,13 @@ extension AgentTools {
     static let builtinPluginTools: Set<String> = ["plugin_list", "plugin_create", "plugin_delete"]
 
     /// Tools that ask for confirmation regardless of mode (they really send something).
-    private static func alwaysConfirms(_ name: String) -> Bool { name == "messages_send" }
+    private static func alwaysConfirms(_ name: String, _ args: [String: Any]) -> Bool {
+        if name == "messages_send" { return true }
+        guard ["mail_compose", "gmail_compose", "slack_send"].contains(name) else { return false }
+        if let v = args["send"] as? Bool { return v }
+        if let v = args["send"] as? Int { return v != 0 }
+        return ["true", "yes", "1"].contains(((args["send"] as? String) ?? "").lowercased())
+    }
 
     private static func confirmPending() async -> [String: Any] {
         guard AgentControlMode.current != .observeOnly else {
@@ -71,15 +77,27 @@ extension AgentTools {
         guard let pending = AgentPendingAction.take() else {
             return ["error": "nothing pending to confirm — a confirmation must come from the user's next request, not from the same turn"]
         }
-        if pending.name == "messages_send_confirmed" {
-            let to = (pending.args["to"] as? String) ?? ""
-            let text = (pending.args["text"] as? String) ?? ""
-            return await MainActor.run { messagesSend(to: to, text: text) }
+        let arg = { (key: String) -> String in (pending.args[key] as? String) ?? "" }
+        switch pending.name {
+        case "messages_send_confirmed":
+            return await MainActor.run { messagesSend(to: arg("to"), text: arg("text")) }
+        case "mail_send_confirmed":
+            return await MainActor.run {
+                mailCompose(to: arg("to"), subject: arg("subject"), body: arg("body"), send: true)
+            }
+        case "gmail_send_confirmed":
+            return await gmailSend(to: arg("to"), subject: arg("subject"), body: arg("body"))
+        case "slack_send_confirmed":
+            return await MainActor.run { slackSend(to: arg("to"), text: arg("text"), send: true) }
+        default:
+            break
         }
         let result = await executeUngated(name: pending.name, args: pending.args)
         if result["error"] == nil { AgentMacros.record(tool: pending.name, args: pending.args) }
         return result
     }
+
+    private static let untruncatedArgKeys: Set<String> = ["command", "script", "js", "template", "text", "to", "body", "url", "path", "from"]
 
     private static func summarize(_ args: [String: Any]) -> String {
         let parts = args.map { key, value -> String in
@@ -95,7 +113,10 @@ extension AgentTools {
                 }
                 return "actions=[\(stepSummaries.joined(separator: "; "))]"
             }
-            return "\(key)=\(String(describing: value).prefix(60))"
+            // The user confirms based on this text: never hide the tail of what will run.
+            let full = String(describing: value)
+            let cap = Self.untruncatedArgKeys.contains(key) ? 2000 : 60
+            return full.count > cap ? "\(key)=\(full.prefix(cap))…(+\(full.count - cap) chars)" : "\(key)=\(full)"
         }.sorted()
         return parts.isEmpty ? "no arguments" : parts.joined(separator: ", ")
     }
@@ -261,7 +282,7 @@ extension AgentTools {
         // MARK: Sequencing
         case "wait":
             let seconds = min(30, max(0, n("seconds") ?? 1))
-            try? await Task.sleep(nanoseconds: UInt64(seconds * 1_000_000_000))
+            do { try await Task.sleep(nanoseconds: UInt64(seconds * 1_000_000_000)) } catch { return ["error": "cancelled"] }
             return ["ok": true, "waited_seconds": seconds]
 
         case "wait_for_text":
@@ -275,7 +296,7 @@ extension AgentTools {
                 {
                     return ["found": true, "text": s("text")]
                 }
-                try? await Task.sleep(nanoseconds: 800_000_000)
+                do { try await Task.sleep(nanoseconds: 800_000_000) } catch { return ["error": "cancelled"] }
             }
             return ["found": false, "text": s("text"), "timeout_seconds": timeout]
 
@@ -301,6 +322,7 @@ extension AgentTools {
                     failed = true
                     if stopOnError { break }
                 }
+                if Task.isCancelled { return ["error": "cancelled"] }
                 try? await Task.sleep(nanoseconds: 300_000_000)
             }
             return ["ok": !failed, "dry_run": dryRun, "steps_run": results.count, "results": results]
@@ -308,6 +330,12 @@ extension AgentTools {
         // MARK: Apps & windows
         case "frontmost_app":
             return await MainActor.run { AgentWindows.frontmostApp() }
+        case "element_under_cursor":
+            let point = await MainActor.run { AgentPointerElement.pointerLocation() }
+            guard let info = AgentPointerElement.capture(at: point) else {
+                return ["error": "nothing resolvable under the pointer (or Accessibility permission is missing)"]
+            }
+            return info.toolResult
         case "list_apps":
             return await MainActor.run { ["apps": AgentWindows.listApps()] }
         case "activate_app":
@@ -387,6 +415,7 @@ extension AgentTools {
                 } else if result["error"] != nil {
                     failures.append(["step": index + 1, "tool": step.tool, "error": result["error"] ?? ""])
                 }
+                if Task.isCancelled { return ["error": "cancelled"] }
                 try? await Task.sleep(nanoseconds: 400_000_000)
             }
             return ["ok": failures.isEmpty, "macro": macro.name, "steps_run": macro.steps.count, "failed_steps": failures]
@@ -418,6 +447,15 @@ extension AgentTools {
             default: mode = nil
             }
             guard let mode else { return ["error": "mode must be one of takeover, ask_before_action, observe_only"] }
+            // Tightening is always free. Loosening (observe → ask → takeover) must be confirmed by
+            // the user on the next request, otherwise injected page/screen text could unlock itself.
+            if mode.rank > AgentControlMode.current.rank, !(args["_confirmed"] as? Bool ?? false) {
+                AgentPendingAction.set(name: "set_control_mode", args: ["mode": mode.rawValue, "_confirmed": true])
+                return [
+                    "confirm_required":
+                        "Switching to \(mode.rawValue) gives the agent more freedom (\(mode.summary)). Ask the user to say 'confirm' or 'cancel'."
+                ]
+            }
             AgentControlMode.current = mode
             return ["ok": true, "mode": mode.rawValue, "note": mode.summary]
 

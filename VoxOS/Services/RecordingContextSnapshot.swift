@@ -6,6 +6,8 @@ struct RecordingContextSnapshot {
     var selectedText: String?
     var clipboardText: String?
     var screenText: String?
+    /// What the mouse pointer was over when recording started ("click this", "reply to that").
+    var pointerElement: String?
 }
 
 @MainActor
@@ -22,6 +24,10 @@ final class RecordingContextSnapshotStore {
 
     func updateScreenText(_ text: String?) {
         snapshot.screenText = Self.normalized(text)
+    }
+
+    func updatePointerElement(_ text: String?) {
+        snapshot.pointerElement = Self.normalized(text)
     }
 
     private static func normalized(_ text: String?) -> String? {
@@ -43,6 +49,15 @@ enum RecordingContextCaptureService {
                 let selectedText = await SelectedTextService.fetchSelectedText()
                 guard !Task.isCancelled else { return }
                 store.updateSelectedText(selectedText)
+            },
+            Task { @MainActor in
+                guard AXIsProcessTrusted(), !Task.isCancelled else { return }
+                let point = AgentPointerElement.pointerLocation()
+                let info = await Task.detached(priority: .userInitiated) {
+                    AgentPointerElement.capture(at: point)
+                }.value
+                guard !Task.isCancelled else { return }
+                store.updatePointerElement(info?.promptDescription)
             },
             Task { @MainActor in
                 guard CGPreflightScreenCaptureAccess(), !Task.isCancelled else { return }

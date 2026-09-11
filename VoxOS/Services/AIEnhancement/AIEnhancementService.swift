@@ -189,7 +189,21 @@ class AIEnhancementService: ObservableObject {
                 ""
             }
 
-        let contextBlocks = [selectedTextContext, clipboardContext, screenCaptureContext]
+        let pointerElementContext =
+            if useScreenCapture || useSelectedText,
+                let pointerElement = contextSnapshot?.pointerElement,
+                !pointerElement.isEmpty
+            {
+                """
+                <ELEMENT_UNDER_CURSOR>
+                \(pointerElement)
+                </ELEMENT_UNDER_CURSOR>
+                """
+            } else {
+                ""
+            }
+
+        let contextBlocks = [selectedTextContext, clipboardContext, screenCaptureContext, pointerElementContext]
             .filter { !$0.isEmpty }
 
         let contextSection =

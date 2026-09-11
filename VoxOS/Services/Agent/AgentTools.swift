@@ -36,8 +36,14 @@ enum AgentTools {
         @Sendable func s(_ key: String) -> String { (args[key] as? String) ?? "" }
         @Sendable func i(_ key: String, _ def: Int) -> Int {
             if let v = args[key] as? Int { return v }
-            if let v = args[key] as? Double { return Int(v) }
+            // Model-supplied numbers are untrusted: Int(1e300) traps.
+            if let v = args[key] as? Double, v.isFinite, abs(v) < 1e9 { return Int(v) }
             return Int(s(key)) ?? def
+        }
+        @Sendable func b(_ key: String) -> Bool {
+            if let v = args[key] as? Bool { return v }
+            if let v = args[key] as? Int { return v != 0 }
+            return ["true", "yes", "1"].contains(s(key).lowercased())
         }
 
         switch name {
@@ -76,6 +82,16 @@ enum AgentTools {
             return await MainActor.run { notesCreate(title: s("title"), body: s("body")) }
 
         case "mail_compose":
+            if b("send") {
+                guard !s("to").isEmpty else { return ["error": "to is required to send"] }
+                AgentPendingAction.set(
+                    name: "mail_send_confirmed",
+                    args: ["to": s("to"), "subject": s("subject"), "body": s("body")])
+                return [
+                    "confirm_required":
+                        "Ready to send an email via Mail to \(s("to")) — subject \"\(s("subject"))\". Read the body to the user if short, then ask them to say 'confirm' to send or 'cancel'."
+                ]
+            }
             return await MainActor.run {
                 mailCompose(to: s("to"), subject: s("subject"), body: s("body"))
             }
@@ -117,8 +133,9 @@ enum AgentTools {
         case "type_text":
             let text = s("text")
             guard !text.isEmpty else { return ["error": "text is required"] }
-            await MainActor.run { _ = CursorPaster.startPasteAtCursor(text) }
-            return ["result": "typed text at cursor"]
+            let pasteTask = await MainActor.run { CursorPaster.startPasteAtCursor(text) }
+            let pasted = await pasteTask.value.didPostPasteCommand
+            return pasted ? ["result": "typed text at cursor"] : ["error": "could not paste at the cursor (no text field focused, or Accessibility permission missing)"]
 
         case "clipboard_write":
             let text = s("text")
@@ -166,6 +183,16 @@ enum AgentTools {
             }
 
         case "gmail_compose":
+            if b("send") {
+                guard !s("to").isEmpty else { return ["error": "to is required to send"] }
+                AgentPendingAction.set(
+                    name: "gmail_send_confirmed",
+                    args: ["to": s("to"), "subject": s("subject"), "body": s("body")])
+                return [
+                    "confirm_required":
+                        "Ready to send a Gmail message to \(s("to")) — subject \"\(s("subject"))\". Ask the user to say 'confirm' to send or 'cancel'."
+                ]
+            }
             var params: [String] = ["view=cm", "fs=1"]
             func q(_ v: String) -> String {
                 v.addingPercentEncoding(withAllowedCharacters: .urlQueryAllowed) ?? v
@@ -214,7 +241,7 @@ enum AgentTools {
                 let task = Process()
                 task.launchPath = "/usr/bin/pmset"
                 task.arguments = ["displaysleepnow"]
-                try? task.run()
+                do { try task.run() } catch { return ["error": "could not run pmset: \(error.localizedDescription)"] }
                 return ["result": "locking screen"]
             }
 
@@ -227,6 +254,13 @@ enum AgentTools {
             guard NSWorkspace.shared.urlForApplication(withBundleIdentifier: "com.tinyspeck.slackmacgap") != nil
             else {
                 return ["error": "Slack app is not installed"]
+            }
+            if b("send") {
+                AgentPendingAction.set(name: "slack_send_confirmed", args: ["to": to, "text": text])
+                return [
+                    "confirm_required":
+                        "Ready to send on Slack to \(to): \"\(text)\". Ask the user to say 'confirm' to send or 'cancel'."
+                ]
             }
             return await MainActor.run { slackSend(to: to, text: text) }
 
@@ -269,6 +303,7 @@ enum AgentTools {
         else { return nil }
         return """
             set \(varName) to current date
+            set day of \(varName) to 1
             set year of \(varName) to \(y)
             set month of \(varName) to \(mo)
             set day of \(varName) to \(d)
@@ -374,18 +409,57 @@ enum AgentTools {
     // MARK: - Mail (draft only — never auto-sends)
 
     @MainActor
-    private static func mailCompose(to: String, subject: String, body: String) -> [String: Any] {
+    static func mailCompose(to: String, subject: String, body: String, send: Bool = false) -> [String: Any] {
         let script = """
             tell application "Mail"
-              set msg to make new outgoing message with properties {subject:"\(esc(subject))", content:"\(esc(body))", visible:true}
+              set msg to make new outgoing message with properties {subject:"\(esc(subject))", content:"\(esc(body))", visible:\(send ? "false" : "true")}
               tell msg
                 make new to recipient at end of to recipients with properties {address:"\(esc(to))"}
               end tell
-              activate
-              return "draft created"
+              \(send ? "send msg\n  return \"sent\"" : "activate\n  return \"draft created\"")
             end tell
             """
-        return AgentAppleScript.run(script)
+        let result = AgentAppleScript.run(script)
+        if send, result["error"] == nil {
+            return ["result": "email sent to \(to) via Mail"]
+        }
+        return result
+    }
+
+    /// Gmail has no send API without OAuth, so: open the compose deep link, wait for the
+    /// compose window to appear, then press its Send button through Accessibility
+    /// (⌘Return as a fallback). Only ever runs after the user has confirmed by voice.
+    static func gmailSend(to: String, subject: String, body: String) async -> [String: Any] {
+        var params: [String] = ["view=cm", "fs=1"]
+        func q(_ v: String) -> String { v.addingPercentEncoding(withAllowedCharacters: .urlQueryAllowed) ?? v }
+        if !to.isEmpty { params.append("to=\(q(to))") }
+        if !subject.isEmpty { params.append("su=\(q(subject))") }
+        if !body.isEmpty { params.append("body=\(q(body))") }
+        guard let url = URL(string: "https://mail.google.com/mail/?" + params.joined(separator: "&")) else {
+            return ["error": "could not build Gmail URL"]
+        }
+        _ = await MainActor.run { NSWorkspace.shared.open(url) }
+
+        let deadline = Date().addingTimeInterval(15)
+        while Date() < deadline {
+            do { try await Task.sleep(nanoseconds: 700_000_000) } catch { return ["error": "cancelled"] }
+            let elements = AgentAXTree.enumerateFrontmost(maxDepth: 30, maxElements: 600)
+            // Gmail's button is titled "Send ‪(⌘Enter)‬" in most locales; match the prefix.
+            if let sendButton = elements.first(where: {
+                $0.role == "AXButton" && $0.title.lowercased().hasPrefix("send")
+            }) {
+                if AgentAXTree.tryPress(sendButton.element) {
+                    return ["result": "email sent to \(to) via Gmail"]
+                }
+                AgentInputSynth.click(at: CGPoint(x: sendButton.frame.midX, y: sendButton.frame.midY))
+                return ["result": "email sent to \(to) via Gmail (clicked Send)"]
+            }
+        }
+        // Compose window never exposed a Send button (browser AX off, slow login…): try ⌘Return.
+        if AgentInputSynth.pressKey("return", modifiers: ["cmd"]) {
+            return ["result": "pressed ⌘Return in the Gmail compose window; ask the user to check it went out"]
+        }
+        return ["error": "Gmail compose window did not appear; the draft is open in the browser for the user to send"]
     }
 
     // MARK: - Files
@@ -600,7 +674,7 @@ extension AgentTools {
     // MARK: - Slack (UI automation via System Events; draft-safe, user presses Return to send)
 
     @MainActor
-    static func slackSend(to: String, text: String) -> [String: Any] {
+    static func slackSend(to: String, text: String, send: Bool = false) -> [String: Any] {
         let script = """
             tell application "Slack" to activate
             delay 0.6
@@ -613,13 +687,16 @@ extension AgentTools {
                 key code 36
                 delay 0.6
                 keystroke "\(esc(text))"
+                \(send ? "delay 0.3\n    key code 36" : "")
               end tell
             end tell
             return "ok"
             """
         let result = AgentAppleScript.run(script)
         if result["error"] == nil {
-            return ["result": "opened Slack DM/channel for \(to) with the message typed — press Return to send"]
+            return send
+                ? ["result": "sent on Slack to \(to)"]
+                : ["result": "opened Slack DM/channel for \(to) with the message typed — press Return to send"]
         }
         return result
     }

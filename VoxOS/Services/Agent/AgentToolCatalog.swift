@@ -14,6 +14,7 @@ enum AgentToolCatalog {
         - read_screen {} -> all visible text on the user's display (OCR) plus the frontmost app. Use this to answer "what's on my screen" or before acting on unfamiliar UI.
         - find_text {"query": str} -> where a piece of text is on screen (centre x/y). Empty query lists everything.
         - list_ui_elements {} -> buttons, fields, links, menu items of the frontmost app with titles and centre points.
+        - element_under_cursor {} -> the UI element the mouse pointer is over right now (app, role, title, value, centre x/y, clickable parent). The request context may already carry this as ELEMENT_UNDER_CURSOR: when the user says "this", "that", "here" or "it" they mean that element — act on it (mouse_click at its centre, click_element by its title, or read its value) instead of asking which one.
         - mark_screen {} -> draws numbered badges on every clickable region ON THE USER'S SCREEN for 30s and returns each number's label. Use when nothing has a clear name: tell the user the numbers are showing and ask which one, or pick by label. Then click_mark.
 
         ## Click, type, keys
@@ -57,6 +58,10 @@ enum AgentToolCatalog {
         ## Macros — teach it a skill
         - macro_record_start {"name": str} -> from now on every action is captured. Then the user performs the steps by voice.
         - macro_record_stop {} -> saves it. macro_run {"name": str} replays it. macro_list {} · macro_delete {"name": str}
+
+        ## Sending for real (email, Slack, iMessage)
+        - mail_compose, gmail_compose and slack_send accept "send": true. Without it they only leave a draft for the user to send. With it they return confirm_required first — tell the user exactly what will be sent and to whom, then wait; on the next request, if they say confirm/yes/send, call confirm_action {} and the message goes out (Mail sends the message, Slack presses Return, Gmail presses its Send button). If they decline, call cancel_action {}.
+        - Use "send": true when the user clearly asked to send ("send an email to…", "message Sam that…"). Use a draft when they said draft/prepare/write.
 
         ## Plugins — extend yourself
         - plugin_list {} -> user-installed tools; they appear in this prompt as plugin_*.

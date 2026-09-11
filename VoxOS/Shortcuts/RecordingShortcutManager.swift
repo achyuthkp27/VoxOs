@@ -1,4 +1,5 @@
 import AppKit
+import Carbon.HIToolbox
 import Foundation
 
 @MainActor
@@ -89,8 +90,12 @@ class RecordingShortcutManager: ObservableObject {
         recordingState != .transcribing && recordingState != .enhancing && recordingState != .busy
     }
 
+    /// VoiceOS-style default: hold fn to talk, tap fn for hands-free, double-tap fn for Agent.
+    static let fnShortcut = Shortcut.modifierOnly(keyCode: UInt16(kVK_Function), modifierFlags: [.function])
+
     init(engine: VoxOSEngine, recorderUIManager: RecorderUIManager) {
         ShortcutMigration.migrateLegacyShortcutsIfNeeded()
+        ShortcutStore.seedShortcut(Self.fnShortcut, for: .primaryRecording)
 
         self.primaryRecordingShortcut = ShortcutMigration.migrateShortcutSelection(
             action: .primaryRecording,
@@ -127,6 +132,9 @@ class RecordingShortcutManager: ObservableObject {
             },
             cancelRecording: {
                 await recorderUIManager.cancelRecording()
+            },
+            toggleAgentMode: {
+                Self.toggleAgentMode()
             }
         )
 
@@ -311,6 +319,63 @@ class RecordingShortcutManager: ObservableObject {
         shortcutModeHandler.reset()
     }
 
+    /// Switches the live recording between the Agent starter mode and the mode that was
+    /// active before it. Returns false when there is no enabled Agent mode to switch to.
+    @discardableResult
+    static func toggleAgentMode() -> Bool {
+        let manager = ModeManager.shared
+        guard let agent = manager.getConfiguration(with: StarterModeCatalog.agentId), agent.isEnabled else {
+            return false
+        }
+
+        if manager.currentEffectiveConfiguration?.id == agent.id {
+            let previous = previousModeBeforeAgent.flatMap { manager.getConfiguration(with: $0) }
+            let target = (previous?.isEnabled == true ? previous : nil) ?? manager.getDefaultConfiguration()
+            previousModeBeforeAgent = nil
+            manager.setActiveConfiguration(target)
+            NotificationManager.shared.showNotification(
+                title: target.map { String(format: String(localized: "%@ mode"), $0.name) }
+                    ?? String(localized: "Dictation mode"),
+                type: .info,
+                duration: 1.2
+            )
+        } else {
+            previousModeBeforeAgent = manager.currentEffectiveConfiguration?.id
+            manager.setActiveConfiguration(agent)
+            NotificationManager.shared.showNotification(
+                title: String(localized: "Agent mode — say what to do"),
+                type: .info,
+                duration: 1.5
+            )
+        }
+        return true
+    }
+
+    private static var previousModeBeforeAgent: UUID?
+
+    /// Sets the primary shortcut to the fn key in hybrid mode (hold = push-to-talk, tap = hands-free).
+    func useFnKeyPreset() {
+        ShortcutStore.setShortcut(Self.fnShortcut, for: .primaryRecording)
+        primaryRecordingShortcut = .custom
+        primaryRecordingShortcutMode = .hybrid
+        updateShortcutStatus()
+    }
+
+    var isPrimaryShortcutFnKey: Bool {
+        primaryRecordingShortcut == .custom && ShortcutStore.shortcut(for: .primaryRecording) == Self.fnShortcut
+    }
+
+    /// macOS "Press 🌐 key to" setting (com.apple.HIToolbox AppleFnUsageType). 0 = Do Nothing.
+    /// Anything else steals a bare fn tap (emoji picker, input source, Apple Dictation).
+    static var systemFnKeyActionIsOff: Bool {
+        guard let defaults = UserDefaults(suiteName: "com.apple.HIToolbox"),
+            defaults.object(forKey: "AppleFnUsageType") != nil
+        else {
+            return false
+        }
+        return defaults.integer(forKey: "AppleFnUsageType") == 0
+    }
+
     var isShortcutConfigured: Bool {
         let isPrimaryShortcutConfigured =
             primaryRecordingShortcut != .none && ShortcutStore.shortcut(for: .primaryRecording) != nil
@@ -351,30 +416,38 @@ final class RecordingShortcutModeHandler {
     private let recordingState: @MainActor () -> RecordingState
     private let toggleRecorderPanel: @MainActor (UUID?) async -> Void
     private let cancelRecording: @MainActor () async -> Void
+    private let toggleAgentMode: @MainActor () -> Bool
 
     private var shortcutPressStartTime: TimeInterval?
+    private var lastKeyUpTime: TimeInterval?
+    private var lastKeyUpAction: ShortcutAction?
     private var isHandsFreeRecording = false
     private var isShortcutPressed = false
     private var activeRecordingShortcutAction: ShortcutAction?
     private var interruptedRecordingActions = Set<ShortcutAction>()
     private var activeShortcutCanCancelAccidentalStart = false
-    private var lastShortcutPressTime: Date?
+    private var lastShortcutPressTime: TimeInterval?
 
     private let shortcutPressCooldown: TimeInterval = 0.5
     private let hybridPressThreshold: TimeInterval = 0.5
+    /// A second press of the same recording shortcut within this window, while a hands-free
+    /// recording is running, flips the recording into Agent mode instead of stopping it.
+    static let doubleTapWindow: TimeInterval = 0.45
 
     init(
         canHandleShortcutAction: @escaping @MainActor () -> Bool,
         isRecorderVisible: @escaping @MainActor () -> Bool,
         recordingState: @escaping @MainActor () -> RecordingState,
         toggleRecorderPanel: @escaping @MainActor (UUID?) async -> Void,
-        cancelRecording: @escaping @MainActor () async -> Void
+        cancelRecording: @escaping @MainActor () async -> Void,
+        toggleAgentMode: @escaping @MainActor () -> Bool = { false }
     ) {
         self.canHandleShortcutAction = canHandleShortcutAction
         self.isRecorderVisible = isRecorderVisible
         self.recordingState = recordingState
         self.toggleRecorderPanel = toggleRecorderPanel
         self.cancelRecording = cancelRecording
+        self.toggleAgentMode = toggleAgentMode
     }
 
     func reset() {
@@ -384,6 +457,18 @@ final class RecordingShortcutModeHandler {
         activeRecordingShortcutAction = nil
         interruptedRecordingActions.removeAll()
         activeShortcutCanCancelAccidentalStart = false
+        lastKeyUpTime = nil
+        lastKeyUpAction = nil
+    }
+
+    /// True when this key-down is the second tap of a double-tap on the same recording
+    /// shortcut while the first tap's hands-free recording is still running.
+    private func isDoubleTap(action: ShortcutAction, eventTime: TimeInterval) -> Bool {
+        guard let lastKeyUpTime, lastKeyUpAction == action else { return false }
+        return eventTime - lastKeyUpTime <= Self.doubleTapWindow
+            && isHandsFreeRecording
+            && isRecorderVisible()
+            && recordingState() == .recording
     }
 
     func handleKeyDown(
@@ -396,8 +481,17 @@ final class RecordingShortcutModeHandler {
             return
         }
 
+        // Double-tap (primary/secondary shortcut only): keep recording, switch to Agent mode.
+        if modeId == nil, isDoubleTap(action: action, eventTime: eventTime) {
+            lastKeyUpTime = nil
+            lastKeyUpAction = nil
+            if toggleAgentMode() {
+                return
+            }
+        }
+
         if let lastTrigger = lastShortcutPressTime,
-            Date().timeIntervalSince(lastTrigger) < shortcutPressCooldown
+            eventTime - lastTrigger < shortcutPressCooldown
         {
             return
         }
@@ -408,7 +502,7 @@ final class RecordingShortcutModeHandler {
         isShortcutPressed = true
         activeRecordingShortcutAction = action
         activeShortcutCanCancelAccidentalStart = canCurrentShortcutPressCancelAccidentalStart
-        lastShortcutPressTime = Date()
+        lastShortcutPressTime = eventTime
         shortcutPressStartTime = eventTime
 
         switch mode {
@@ -443,6 +537,8 @@ final class RecordingShortcutModeHandler {
         isShortcutPressed = false
         activeRecordingShortcutAction = nil
         activeShortcutCanCancelAccidentalStart = false
+        lastKeyUpTime = eventTime
+        lastKeyUpAction = action
 
         switch mode {
         case .toggle:

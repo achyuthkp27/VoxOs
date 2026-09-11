@@ -19,6 +19,10 @@ private final class LocationFetcher: NSObject, CLLocationManagerDelegate {
         await withCheckedContinuation { continuation in
             self.continuation = continuation
             manager.delegate = self
+            // An unanswered permission dialog (or one macOS never shows) must not hang the agent turn.
+            DispatchQueue.main.asyncAfter(deadline: .now() + 20) { [weak self] in
+                self?.finish(["error": "location request timed out (permission prompt unanswered or Location Services off)"])
+            }
 
             switch manager.authorizationStatus {
             case .denied, .restricted:

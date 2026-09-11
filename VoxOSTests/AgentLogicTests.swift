@@ -211,4 +211,41 @@ struct AgentLogicTests {
             #expect(catalogue.contains("- \(tool)") || catalogue.contains(" \(tool) "), "catalogue is missing \(tool)")
         }
     }
+
+    // MARK: Send-with-confirm
+
+    @Test func sendFlagQueuesConfirmationInsteadOfSending() async {
+        AgentControlMode.current = .takeover
+        AgentPendingAction.beginRun()
+        let result = await AgentTools.execute(
+            name: "gmail_compose", args: ["to": "a@b.c", "subject": "Hi", "body": "x", "send": true])
+        #expect(result["confirm_required"] != nil, "send: true must ask first")
+        #expect(result["result"] == nil)
+        // Same turn: the model cannot confirm its own request.
+        let sameTurn = await AgentTools.execute(name: "confirm_action", args: [:])
+        #expect(sameTurn["error"] != nil)
+        AgentPendingAction.clear()
+    }
+
+    @Test func slackSendWithoutFlagStaysDraftPath() async {
+        AgentControlMode.current = .observeOnly
+        let result = await AgentTools.execute(name: "slack_send", args: ["to": "sam", "text": "hi", "send": true])
+        #expect(result["error"] != nil, "observe-only blocks sending before anything is queued")
+        #expect(AgentPendingAction.take() == nil)
+        AgentControlMode.current = .takeover
+    }
+
+    @Test func looseningControlModeNeedsConfirmation() async {
+        AgentControlMode.current = .observeOnly
+        AgentPendingAction.beginRun()
+        let loosen = await AgentTools.execute(name: "set_control_mode", args: ["mode": "takeover"])
+        #expect(loosen["confirm_required"] != nil)
+        #expect(AgentControlMode.current == .observeOnly, "mode must not change until confirmed")
+        AgentPendingAction.clear()
+
+        let tighten = await AgentTools.execute(name: "set_control_mode", args: ["mode": "observe_only"])
+        #expect(tighten["ok"] as? Bool == true)
+        AgentControlMode.current = .takeover
+    }
+
 }

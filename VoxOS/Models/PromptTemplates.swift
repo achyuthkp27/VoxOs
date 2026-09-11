@@ -127,7 +127,7 @@ enum PromptTemplates {
                     - calendar_today {}
                     - reminders_add {"text": str, "due": "YYYY-MM-DD HH:MM"?, "list": str?}
                     - notes_create {"title": str, "body": str}
-                    - mail_compose {"to": str, "subject": str, "body": str} -> opens a draft for the user to review; never sends.
+                    - mail_compose {"to": str, "subject": str, "body": str, "send": bool?} -> opens a Mail draft for review. With "send": true it asks for confirmation and then sends.
                     - find_files {"query": str, "dir": str?} -> search file names under dir (default: home folder).
                     - open_app {"name": str}
                     - open_url {"url": str, "browser": str?} -> browser is optional; only pass it when the user names a specific browser (e.g. "Chrome", "Safari", "Firefox", "Arc", "Brave", "Edge"). Omit it to use the system default browser.
@@ -137,14 +137,14 @@ enum PromptTemplates {
                     - reminders_list {"list": str?} -> open reminders.
                     - web_search {"query": str} -> opens a web search in the browser.
                     - whatsapp_send {"phone": str?, "text": str} -> opens WhatsApp with the message prefilled (user presses Send). Phone must be digits with country code (e.g. 919876543210); omit phone to let the user pick the chat. Recall remembered numbers before asking.
-                    - gmail_compose {"to": str?, "subject": str?, "body": str?} -> opens a Gmail draft in the browser (user presses Send).
+                    - gmail_compose {"to": str?, "subject": str?, "body": str?, "send": bool?} -> opens a Gmail draft in the browser. With "send": true it asks for confirmation and then presses Send for the user.
                     - gmail_search {"query": str} -> searches Gmail in the browser. Supports Gmail operators (from:, has:attachment, newer_than:...).
                     - linear_create_issue {"title": str, "description": str?, "team": str?} -> creates a Linear issue. If no Linear token is saved yet you get an error telling you to ask the user for one.
                     - linear_save_token {"token": str} -> saves the user's Linear personal API key for future issue creation.
                     - system_volume {"level": int} -> sets output volume 0-100.
                     - lock_screen {} -> puts the display to sleep / locks the Mac.
                     - take_screenshot {} -> saves a screenshot to the Desktop and returns its path.
-                    - slack_send {"to": str, "text": str} -> opens Slack, jumps to the person/channel via quick-switcher, types the message, and leaves it for the user to press Return. Requires the Slack desktop app.
+                    - slack_send {"to": str, "text": str, "send": bool?} -> opens Slack, jumps to the person/channel via quick-switcher and types the message. Without "send" it leaves it for the user to press Return; with "send": true it asks for confirmation and then sends. Requires the Slack desktop app.
                     - contacts_find {"name": str} -> look up phone numbers and emails in the user's Contacts. Use this (or recall) before asking the user for a number or address.
                     - messages_send {"to": str, "text": str} -> iMessage. "to" is a phone number or Apple ID email. This DOES send for real, so it always requires confirmation: after calling it you get confirm_required — relay that to the user and wait for their spoken follow-up.
                     - confirm_action {} -> call ONLY after the user explicitly says confirm/yes/send in a follow-up.

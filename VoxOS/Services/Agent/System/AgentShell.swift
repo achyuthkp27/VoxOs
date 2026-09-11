@@ -48,11 +48,20 @@ enum AgentShell {
                     collectLock.lock(); collected.append(chunk); collectLock.unlock()
                 }
 
-                var timedOut = false
+                let timedOutLock = NSLock()
+                var timedOutValue = false
+                var timedOut: Bool {
+                    timedOutLock.lock(); defer { timedOutLock.unlock() }
+                    return timedOutValue
+                }
                 let watchdog = DispatchWorkItem {
                     if process.isRunning {
-                        timedOut = true
+                        timedOutLock.lock(); timedOutValue = true; timedOutLock.unlock()
                         process.terminate()
+                        // A command that traps SIGTERM would otherwise block waitUntilExit forever.
+                        DispatchQueue.global().asyncAfter(deadline: .now() + 2) {
+                            if process.isRunning { kill(process.processIdentifier, SIGKILL) }
+                        }
                     }
                 }
                 DispatchQueue.global().asyncAfter(deadline: .now() + timeoutSeconds, execute: watchdog)

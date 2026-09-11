@@ -142,6 +142,9 @@ enum StarterModeCatalog {
         ),
     ]
 
+    /// The Agent starter mode; double-tapping the recording shortcut switches to it.
+    static let agentId = UUID(uuidString: "10000000-0000-0000-0000-000000000006")!
+
     static var ids: Set<UUID> {
         Set(templates.map(\.id))
     }

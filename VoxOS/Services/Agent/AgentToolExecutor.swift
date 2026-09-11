@@ -54,7 +54,7 @@ enum AgentToolExecutor {
         var steps = 0
         var executed: [String] = []
 
-        while let call = parseToolCall(reply), steps < maxSteps {
+        while !Task.isCancelled, let call = parseToolCall(reply), steps < maxSteps {
             steps += 1
             let result = await AgentTools.execute(name: call.name, args: call.args)
             executed.append(call.name)
