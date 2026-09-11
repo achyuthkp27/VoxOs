@@ -126,6 +126,11 @@ enum AppTheme {
     /// The notch panel: dark glass rather than flat black, so what's behind blurs through.
     /// The notch panel is plain Liquid Glass — no black fill — so it reads as frosted glass
     /// over whatever is behind it and follows the system appearance.
+    enum Recorder {
+        /// Agent mode is violet everywhere in the recorder so it never reads as plain dictation.
+        static let agentAccent = Color(red: 0.55, green: 0.36, blue: 0.96)
+    }
+
     enum Notch {
         static let tint: Color? = nil
         static let bubble = Color.primary.opacity(0.08)

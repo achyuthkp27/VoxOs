@@ -4,6 +4,7 @@ struct NotchRecorderView<S: RecorderStateProvider & ObservableObject>: View {
     @ObservedObject var stateProvider: S
     @ObservedObject var recorder: Recorder
     @ObservedObject var assistantSession: AssistantSession
+    @ObservedObject private var modeManager = ModeManager.shared
     let onRecordButtonTapped: () -> Void
     let onCloseTapped: () -> Void
     let onAssistantFollowUp: (String) -> Void
@@ -71,9 +72,9 @@ struct NotchRecorderView<S: RecorderStateProvider & ObservableObject>: View {
 
     // MARK: - Layout Constants
 
-    private let recordingSideExpansion: CGFloat = 118
-    private let transcriptSideExpansion: CGFloat = 130
-    private let assistantSideExpansion: CGFloat = 130
+    private let recordingSideExpansion: CGFloat = 156
+    private let transcriptSideExpansion: CGFloat = 164
+    private let assistantSideExpansion: CGFloat = 164
     private let activeHeightBonus: CGFloat = 14
     private let transcriptPanelHeight: CGFloat = 64
     private let assistantPanelHeight: CGFloat = 300
@@ -156,7 +157,7 @@ struct NotchRecorderView<S: RecorderStateProvider & ObservableObject>: View {
             assistantPanel
         }
         .frame(width: pillWidth, height: pillHeight)
-        .liquidGlass(in: notchShape, tint: isRecording ? AppTheme.Accent.primary.opacity(0.10) : nil)
+        .liquidGlass(in: notchShape, tint: isRecording ? recordingAccent.opacity(0.12) : nil)
         .overlay(
             // Glass rim: brighter along the top edge, fading down the sides.
             notchShape.stroke(
@@ -169,11 +170,16 @@ struct NotchRecorderView<S: RecorderStateProvider & ObservableObject>: View {
                 .clipShape(notchShape)
                 .allowsHitTesting(false)
         )
-        .shadow(color: isRecording ? AppTheme.Accent.primary.opacity(0.45) : Color.black.opacity(0.25), radius: isRecording ? 22 : 14, y: 6)
+        .shadow(color: isRecording ? recordingAccent.opacity(0.45) : Color.black.opacity(0.25), radius: isRecording ? 22 : 14, y: 6)
         .animation(.easeInOut(duration: 0.35), value: isRecording)
+        .animation(.easeInOut(duration: 0.35), value: isAgentMode)
     }
 
     private var isRecording: Bool { stateProvider.recordingState == .recording }
+
+    private var isAgentMode: Bool { modeManager.currentEffectiveConfiguration?.id == StarterModeCatalog.agentId }
+
+    private var recordingAccent: Color { isAgentMode ? AppTheme.Recorder.agentAccent : AppTheme.Accent.primary }
 
     private var notchShape: NotchShape {
         NotchShape(
@@ -192,7 +198,7 @@ struct NotchRecorderView<S: RecorderStateProvider & ObservableObject>: View {
                 if shouldShowCloseButton {
                     RecorderCloseButton(action: onCloseTapped)
                 }
-                RecorderModeButton(buttonSize: 20, padding: EdgeInsets())
+                RecorderModeChip()
                 Spacer(minLength: 0)
             }
             .padding(.leading, sideEdgePadding)
@@ -209,7 +215,8 @@ struct NotchRecorderView<S: RecorderStateProvider & ObservableObject>: View {
                 RecorderStatusDisplay(
                     currentState: stateProvider.recordingState,
                     audioMeterProvider: recorder.audioMeterSnapshot,
-                    menuBarHeight: notchHeight
+                    menuBarHeight: notchHeight,
+                    accent: recordingAccent
                 )
             }
             .padding(.trailing, sideEdgePadding)

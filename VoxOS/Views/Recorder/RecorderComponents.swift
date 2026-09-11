@@ -300,6 +300,76 @@ struct RecorderModeButton: View {
     }
 }
 
+// MARK: - Recorder Mode Chip
+
+/// Named mode capsule for the notch: icon + mode name, accent-tinted for the Agent mode so a
+/// double-tap switch is visible at a glance. Hover opens the same mode popover as the icon button.
+struct RecorderModeChip: View {
+    @ObservedObject private var modeManager = ModeManager.shared
+
+    @State private var isPopoverPresented = false
+    @State private var isHoveringButton = false
+    @State private var isHoveringPopover = false
+    @State private var dismissWorkItem: DispatchWorkItem?
+
+    private var config: ModeConfig? { modeManager.currentEffectiveConfiguration }
+    private var isAgent: Bool { config?.id == StarterModeCatalog.agentId }
+    private var isDisabled: Bool { modeManager.enabledConfigurations.isEmpty }
+
+    var body: some View {
+        Button {
+            isPopoverPresented.toggle()
+        } label: {
+            HStack(spacing: 6) {
+                Image(systemName: config?.icon.value ?? "square.grid.2x2")
+                    .font(.app(size: 11, weight: .semibold))
+                Text(config?.name ?? String(localized: "No mode"))
+                    .font(.app(size: 12, weight: .semibold))
+                    .lineLimit(1)
+                    .fixedSize()
+            }
+            .foregroundStyle(isAgent ? Color.white : AppTheme.Notch.text)
+            .padding(.horizontal, 10)
+            .frame(height: 24)
+            .background(
+                Capsule().fill(isAgent ? AppTheme.Recorder.agentAccent : AppTheme.Notch.chip)
+            )
+            .overlay(Capsule().stroke(Color.primary.opacity(isAgent ? 0 : 0.10), lineWidth: 1))
+            .shadow(color: isAgent ? AppTheme.Recorder.agentAccent.opacity(0.55) : .clear, radius: 8)
+            .contentTransition(.numericText())
+            .animation(.spring(response: 0.35, dampingFraction: 0.8), value: config?.id)
+        }
+        .buttonStyle(.plain)
+        .disabled(isDisabled)
+        .onHover {
+            isHoveringButton = $0
+            syncPopoverVisibility()
+        }
+        .popover(isPresented: $isPopoverPresented, arrowEdge: .bottom) {
+            ModePopover()
+                .onHover {
+                    isHoveringPopover = $0
+                    syncPopoverVisibility()
+                }
+        }
+    }
+
+    private func syncPopoverVisibility() {
+        if isHoveringButton || isHoveringPopover {
+            dismissWorkItem?.cancel()
+            dismissWorkItem = nil
+            isPopoverPresented = true
+        } else {
+            dismissWorkItem?.cancel()
+            let work = DispatchWorkItem { [isPopoverPresentedBinding = $isPopoverPresented] in
+                isPopoverPresentedBinding.wrappedValue = false
+            }
+            dismissWorkItem = work
+            DispatchQueue.main.asyncAfter(deadline: .now() + 0.25, execute: work)
+        }
+    }
+}
+
 // MARK: - Live Transcript View
 
 struct LiveTranscriptView: View {
@@ -342,15 +412,18 @@ struct RecorderStatusDisplay: View {
     let currentState: RecordingState
     let audioMeterProvider: () -> AudioMeter
     let menuBarHeight: CGFloat?
+    let accent: Color
 
     init(
         currentState: RecordingState,
         audioMeterProvider: @escaping () -> AudioMeter,
-        menuBarHeight: CGFloat? = nil
+        menuBarHeight: CGFloat? = nil,
+        accent: Color = AppTheme.Accent.primary
     ) {
         self.currentState = currentState
         self.audioMeterProvider = audioMeterProvider
         self.menuBarHeight = menuBarHeight
+        self.accent = accent
     }
 
     var body: some View {
@@ -362,7 +435,7 @@ struct RecorderStatusDisplay: View {
             } else if currentState == .recording {
                 AudioVisualizer(
                     audioMeterProvider: audioMeterProvider,
-                    color: AppTheme.Accent.primary,
+                    color: accent,
                     isActive: true
                 )
                     .scaleEffect(y: menuBarHeight != nil ? min(1.0, (menuBarHeight! - 8) / 25) : 1.0, anchor: .center)
