@@ -15,7 +15,7 @@ enum RecorderPanelStyle: String, CaseIterable, Identifiable {
         case .notch:
             return String(localized: "Notch")
         case .mini:
-            return String(localized: "Mini")
+            return String(localized: "HUD")
         }
     }
 

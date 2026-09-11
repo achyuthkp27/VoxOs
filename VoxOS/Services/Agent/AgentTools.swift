@@ -576,6 +576,13 @@ enum AgentPendingAction {
         lock.lock(); defer { lock.unlock() }
         pending = nil
     }
+
+    /// Non-consuming look for the UI: is something waiting for the user's "confirm"?
+    static var isWaitingForConfirmation: Bool {
+        lock.lock(); defer { lock.unlock() }
+        guard let value = pending else { return false }
+        return Date().timeIntervalSince(value.createdAt) < expiry
+    }
 }
 
 extension AgentTools {

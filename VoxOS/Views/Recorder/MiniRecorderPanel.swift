@@ -37,13 +37,13 @@ class MiniRecorderPanel: NSPanel {
     /// Returns `nil` when there is no screen at all, so callers can skip showing the panel
     /// instead of placing it at the global origin.
     static func calculateWindowMetrics() -> NSRect? {
-        let width: CGFloat = 540
-        let height: CGFloat = 430
+        let width: CGFloat = 620
+        let height: CGFloat = 470
 
         guard let screen = RecorderScreenResolver.resolve() else { return nil }
 
         // Host stays large enough for assistant output; SwiftUI controls the visible mini width.
-        let padding: CGFloat = 24
+        let padding: CGFloat = 36
 
         let visibleFrame = screen.visibleFrame
         let centerX = visibleFrame.midX

@@ -511,6 +511,14 @@ struct AssistantPanelView: View {
                             .id(message.id)
                     }
 
+                    if AgentPendingAction.isWaitingForConfirmation, statusText == nil, session.canSendFollowUp {
+                        ConfirmActionCard(
+                            onConfirm: { onSend("confirm") },
+                            onCancel: { onSend("cancel") }
+                        )
+                        .id("confirm")
+                    }
+
                     if let statusText {
                         Text(statusText)
                             .font(.app(size: 14, weight: .regular))
@@ -730,6 +738,45 @@ private struct TimeAnswerWidget: View {
             }
         }
         .padding(.top, 2)
+    }
+}
+
+/// Shown while an action (send a message, loosen the control mode…) waits for the user's word.
+private struct ConfirmActionCard: View {
+    let onConfirm: () -> Void
+    let onCancel: () -> Void
+
+    var body: some View {
+        HStack(spacing: 12) {
+            Image(systemName: "paperplane.circle.fill")
+                .font(.app(size: 22, weight: .semibold))
+                .foregroundStyle(AppTheme.Recorder.agentAccent)
+            VStack(alignment: .leading, spacing: 2) {
+                Text("Ready to send")
+                    .font(.app(size: 14, weight: .semibold))
+                    .foregroundStyle(AppTheme.Notch.text)
+                Text("Say “confirm” or “cancel”, or use the buttons.")
+                    .font(.app(size: 12, weight: .regular))
+                    .foregroundStyle(AppTheme.Notch.textMuted)
+            }
+            Spacer(minLength: 8)
+            Button("Cancel", action: onCancel)
+                .buttonStyle(.plain)
+                .font(.app(size: 12, weight: .semibold))
+                .foregroundStyle(AppTheme.Notch.text)
+                .padding(.horizontal, 12).frame(height: 28)
+                .background(Capsule().fill(AppTheme.Notch.chip))
+            Button("Confirm", action: onConfirm)
+                .buttonStyle(.plain)
+                .font(.app(size: 12, weight: .semibold))
+                .foregroundStyle(.white)
+                .padding(.horizontal, 14).frame(height: 28)
+                .background(Capsule().fill(AppTheme.Recorder.agentAccent))
+        }
+        .padding(.horizontal, 14)
+        .padding(.vertical, 12)
+        .background(RoundedRectangle(cornerRadius: 16, style: .continuous).fill(AppTheme.Recorder.agentAccent.opacity(0.12)))
+        .overlay(RoundedRectangle(cornerRadius: 16, style: .continuous).stroke(AppTheme.Recorder.agentAccent.opacity(0.35), lineWidth: 1))
     }
 }
 
