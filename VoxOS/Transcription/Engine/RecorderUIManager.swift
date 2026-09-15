@@ -15,13 +15,14 @@ enum RecorderPanelStyle: String, CaseIterable, Identifiable {
         case .notch:
             return String(localized: "Notch")
         case .mini:
-            return String(localized: "HUD")
+            return String(localized: "Bottom")
         }
     }
 
     static var stored: RecorderPanelStyle {
-        let rawValue = UserDefaults.standard.string(forKey: "RecorderType") ?? RecorderPanelStyle.mini.rawValue
-        return RecorderPanelStyle(rawValue: rawValue) ?? .mini
+        // The notch is the default everywhere; on Macs without one it draws at the menu bar.
+        let rawValue = UserDefaults.standard.string(forKey: "RecorderType") ?? RecorderPanelStyle.notch.rawValue
+        return RecorderPanelStyle(rawValue: rawValue) ?? .notch
     }
 }
 
@@ -43,7 +44,7 @@ class RecorderUIManager: ObservableObject, RecorderPanelPresenting {
 
     var recorderType: String {
         get { recorderPanelStyle.rawValue }
-        set { recorderPanelStyle = RecorderPanelStyle(rawValue: newValue) ?? .mini }
+        set { recorderPanelStyle = RecorderPanelStyle(rawValue: newValue) ?? .notch }
     }
 
     @Published var isRecorderPanelVisible = false {

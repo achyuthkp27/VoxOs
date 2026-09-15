@@ -18,7 +18,7 @@ struct DashboardShortcutStrip: View {
                 chip(keys: [primary.displayString], title: "Hold to dictate", detail: "Release to paste")
                 chip(keys: [primary.displayString], title: "Tap for hands-free", detail: "Tap again to stop")
             }
-            if let agentTap, hasAgentMode {
+            if let agentTap {
                 chip(
                     keys: [agentTap.displayString, agentTap.displayString],
                     title: "Double-tap for Agent",

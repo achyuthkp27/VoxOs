@@ -239,7 +239,13 @@ class AIEnhancementService: ObservableObject {
             ? [AgentToolCatalog.promptSection, AgentToolCatalog.runtimeSection()]
             : []
 
-        return ([prompt.finalPromptText] + agentSections + [customVocabularySection, contextSection])
+        // Dictation adapts to where it lands; the Agent answers in the recorder, so it does not.
+        let destinationSection =
+            !isAgent && WritingDestination.isEnabled
+            ? (contextSnapshot?.destination?.promptGuidance ?? "")
+            : ""
+
+        return ([prompt.finalPromptText] + agentSections + [destinationSection, customVocabularySection, contextSection])
             .filter { !$0.isEmpty }
             .joined(separator: "\n\n")
     }

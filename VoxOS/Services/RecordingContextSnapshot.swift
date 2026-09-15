@@ -8,6 +8,8 @@ struct RecordingContextSnapshot {
     var screenText: String?
     /// What the mouse pointer was over when recording started ("click this", "reply to that").
     var pointerElement: String?
+    /// The app (and browser site) the text will be pasted into.
+    var destination: WritingDestination?
 }
 
 @MainActor
@@ -26,6 +28,10 @@ final class RecordingContextSnapshotStore {
         snapshot.screenText = Self.normalized(text)
     }
 
+    func updateDestination(_ destination: WritingDestination?) {
+        snapshot.destination = destination
+    }
+
     func updatePointerElement(_ text: String?) {
         snapshot.pointerElement = Self.normalized(text)
     }
@@ -40,7 +46,15 @@ final class RecordingContextSnapshotStore {
 @MainActor
 enum RecordingContextCaptureService {
     static func startCapture(into store: RecordingContextSnapshotStore) -> [Task<Void, Never>] {
-        [
+        WritingDestinationStore.set(nil)
+        return [
+            Task { @MainActor in
+                guard WritingDestination.isEnabled, !Task.isCancelled else { return }
+                let destination = await WritingDestination.captureFrontmost()
+                guard !Task.isCancelled else { return }
+                store.updateDestination(destination)
+                WritingDestinationStore.set(destination)
+            },
             Task { @MainActor in
                 store.updateClipboardText(NSPasteboard.general.string(forType: .string))
             },

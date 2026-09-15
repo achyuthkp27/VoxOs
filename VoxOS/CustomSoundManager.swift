@@ -165,8 +165,9 @@ class CustomSoundManager: ObservableObject {
         case "custom":
             return customFilename.map(SoundSelection.custom) ?? .builtIn(builtInSound)
         case nil:
+            // Silent by default; start and stop sounds are opt-in from Settings → Audio.
             guard let legacySoundFeedbackEnabled else {
-                return .builtIn(builtInSound)
+                return .none
             }
             return legacySoundFeedbackEnabled ? .builtIn(builtInSound) : .none
         default:

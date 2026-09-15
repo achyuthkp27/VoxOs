@@ -485,6 +485,7 @@ final class OnboardingFlowController {
 
         removeModeShortcutStorageForPrimaryRecordingSteps(installedSteps)
         applyDefaultMode(for: coordinator.activeExperienceSteps[index])
+        AgentModeGuard.ensure(enhancementService: enhancementService, transcriptionModelManager: nil)
     }
 
     func installCurrentExperienceMode(enhancementService: AIEnhancementService) {

@@ -656,7 +656,7 @@ struct ModeConfigFormView: View {
     private var footer: some View {
         VStack(spacing: 0) {
             HStack {
-                if case .edit = mode {
+                if case .edit = mode, !AgentModeGuard.isAgent(draft.id) {
                     Button("Delete", role: .destructive) {
                         if isDeletingDefaultMode {
                             isShowingDefaultModeDeleteAlert = true

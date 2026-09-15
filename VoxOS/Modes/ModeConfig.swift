@@ -335,7 +335,7 @@ class ModeManager: ObservableObject {
         guard let configuration = getConfiguration(with: id) else {
             return .notFound
         }
-        guard !configuration.isDefault else {
+        guard !configuration.isDefault, !AgentModeGuard.isAgent(id) else {
             return .blockedDefault
         }
 

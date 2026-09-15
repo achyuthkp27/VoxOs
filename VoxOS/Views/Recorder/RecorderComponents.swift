@@ -370,6 +370,17 @@ struct RecorderModeChip: View {
     }
 }
 
+// MARK: - Mode accent
+
+enum RecorderModeAccent {
+    /// White for plain dictation, blue for AI-enhanced dictation, violet for the Agent.
+    static func color(for config: ModeConfig?) -> Color {
+        guard let config else { return AppTheme.Notch.text }
+        if config.id == StarterModeCatalog.agentId { return AppTheme.Recorder.agentAccent }
+        return config.isAIEnhancementEnabled ? AppTheme.Accent.primary : AppTheme.Notch.text
+    }
+}
+
 // MARK: - Notch Wave (minimal)
 
 /// The whole notch UI while recording: four small bars at the left edge. Colour says which

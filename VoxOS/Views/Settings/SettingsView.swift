@@ -41,6 +41,7 @@ struct SettingsView: View {
     @AppStorage(AgentControlMode.userDefaultsKey) private var agentControlModeRaw = AgentControlMode.takeover.rawValue
     @AppStorage(AgentShell.allowRiskyKey) private var agentAllowRiskyShell = false
     @State private var isRestoreClipboardExpanded = false
+    @AppStorage(WritingDestination.isEnabledKey) private var matchWritingStyleToApp = true
 
     var body: some View {
         Form {
@@ -301,6 +302,15 @@ struct SettingsView: View {
             MCPServersSection()
 
             Section("Pasting") {
+                Toggle(isOn: $matchWritingStyleToApp) {
+                    HStack(spacing: 2) {
+                        Text("Match Writing Style to the App")
+                        InfoTip(
+                            "Dictation adapts to where it is pasted: full sentences in Mail, short and casual in Slack or Messages, lists in Notes, code-form names in editors. Modes with a custom prompt still take priority."
+                        )
+                    }
+                }
+
                 ExpandableSettingsRow(
                     isExpanded: $isRestoreClipboardExpanded,
                     isEnabled: $restoreClipboardAfterPaste,
@@ -369,7 +379,7 @@ struct SettingsView: View {
                     showLanguageRestartAlert = true
                 }
 
-                Picker("Recorder Style", selection: $recorderUIManager.recorderPanelStyle) {
+                Picker("Recorder Position", selection: $recorderUIManager.recorderPanelStyle) {
                     ForEach(RecorderPanelStyle.allCases) { style in
                         Text(style.displayName).tag(style)
                     }

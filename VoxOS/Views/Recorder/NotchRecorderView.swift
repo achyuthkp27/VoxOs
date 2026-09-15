@@ -210,9 +210,7 @@ struct NotchRecorderView<S: RecorderStateProvider & ObservableObject>: View {
 
     /// Mode colour for the wave: dictation white, AI-enhanced dictation blue, Agent violet.
     private var modeAccent: Color {
-        guard let config = modeManager.currentEffectiveConfiguration else { return AppTheme.Notch.text }
-        if config.id == StarterModeCatalog.agentId { return AppTheme.Recorder.agentAccent }
-        return config.isAIEnhancementEnabled ? AppTheme.Accent.primary : AppTheme.Notch.text
+        RecorderModeAccent.color(for: modeManager.currentEffectiveConfiguration)
     }
 
     // MARK: - Live Text Panel

@@ -39,7 +39,7 @@ enum AppDefaults {
             "IsVADEnabled": true,
             "SelectedLanguage": "en",
             "AppendTrailingSpace": true,
-            "RecorderType": "mini",
+            "RecorderType": "notch",
             RecorderDisplaySettingsKeys.showLiveTranscript: true,
 
             // Cleanup

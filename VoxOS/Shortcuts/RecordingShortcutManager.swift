@@ -322,7 +322,7 @@ class RecordingShortcutManager: ObservableObject {
     /// recording from idle. Either way the request auto-sends after the user stops talking.
     func triggerAgent() async {
         let manager = ModeManager.shared
-        guard let agent = manager.getConfiguration(with: StarterModeCatalog.agentId), agent.isEnabled else { return }
+        guard let agent = ensureAgentModeAvailable() else { return }
 
         if recorderUIManager.isRecorderPanelVisible, engine.recordingState == .recording {
             if manager.currentEffectiveConfiguration?.id != agent.id {
@@ -337,6 +337,13 @@ class RecordingShortcutManager: ObservableObject {
         manager.setActiveConfiguration(agent)
         await recorderUIManager.toggleRecorderPanel(modeId: agent.id)
         autoSend.startWhenRecording()
+    }
+
+    /// ⌃⌃ is the Agent's front door, so it repairs or recreates the built-in mode first.
+    private func ensureAgentModeAvailable() -> ModeConfig? {
+        AgentModeGuard.ensure(
+            enhancementService: engine.enhancementService,
+            transcriptionModelManager: engine.transcriptionModelManager)
     }
 
     private func recordingMode(for action: ShortcutAction) -> Mode? {

@@ -155,7 +155,10 @@ final class TranscriptionDelivery {
     }
 
     private func paste(_ text: String, output: OutputRuntimeConfiguration, actions: Actions) async {
-        let textToPaste = deliverableText(from: text)
+        var textToPaste = deliverableText(from: text)
+        if WritingDestination.isEnabled {
+            textToPaste = WritingStyleFormatter.apply(textToPaste, category: WritingDestinationStore.categoryForPaste())
+        }
         let appendSpace = UserDefaults.standard.bool(forKey: "AppendTrailingSpace")
         let pastedText = textToPaste + (appendSpace ? " " : "")
         SoundManager.shared.playStopSound()

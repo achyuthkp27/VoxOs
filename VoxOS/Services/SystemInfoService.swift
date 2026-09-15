@@ -47,7 +47,7 @@ final class SystemInfoService {
 
             UI SETTINGS:
             Hide Dock Icon: \(UserDefaults.standard.bool(forKey: "IsMenuBarOnly"))
-            Recorder Style: \(UserDefaults.standard.string(forKey: "RecorderType") ?? "mini")
+            Recorder Style: \(UserDefaults.standard.string(forKey: "RecorderType") ?? "notch")
 
             RECORDING FEEDBACK:
             Sound Feedback: \(CustomSoundManager.shared.hasAnyRecordingSoundEnabled)
