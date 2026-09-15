@@ -106,6 +106,10 @@ class RecordingShortcutManager: ObservableObject {
 
     private var agentTapDownAt: TimeInterval?
     private var agentLastTapUpAt: TimeInterval?
+    /// When fn+⌃ or fn was last released. Letting go of fn a moment before ⌃ leaves ⌃ alone
+    /// for a few milliseconds, which must not count as a ⌃ tap.
+    private var lastComboReleaseAt: TimeInterval?
+    static let comboReleaseGuard: TimeInterval = 0.35
 
     init(engine: VoxOSEngine, recorderUIManager: RecorderUIManager) {
         ShortcutMigration.migrateLegacyShortcutsIfNeeded()
@@ -269,6 +273,13 @@ class RecordingShortcutManager: ObservableObject {
                     guard let self else { return }
                     Self.logger.notice("shortcut down: \(action.storageName, privacy: .public) state=\(String(describing: self.engine.recordingState), privacy: .public)")
                     if action == .agentDoubleTap {
+                        if let released = self.lastComboReleaseAt,
+                            Self.isComboLeftover(tapDownAt: eventTime, comboReleasedAt: released)
+                        {
+                            self.agentTapDownAt = nil
+                            self.agentLastTapUpAt = nil
+                            return
+                        }
                         self.agentTapDownAt = eventTime
                         return
                     }
@@ -292,6 +303,9 @@ class RecordingShortcutManager: ObservableObject {
                     if action == .agentDoubleTap {
                         await self.handleAgentTapUp(eventTime: eventTime)
                         return
+                    }
+                    if action == .dictateAndSend || action == .primaryRecording || action == .secondaryRecording {
+                        self.lastComboReleaseAt = eventTime
                     }
                     if let mode = self.recordingMode(for: action) {
                         await self.shortcutModeHandler.handleKeyUp(
@@ -318,6 +332,10 @@ class RecordingShortcutManager: ObservableObject {
                 }
             }
         )
+    }
+
+    nonisolated static func isComboLeftover(tapDownAt: TimeInterval, comboReleasedAt: TimeInterval) -> Bool {
+        tapDownAt - comboReleasedAt >= 0 && tapDownAt - comboReleasedAt < comboReleaseGuard
     }
 
     private func handleAgentTapUp(eventTime: TimeInterval) async {

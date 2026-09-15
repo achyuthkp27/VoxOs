@@ -36,11 +36,25 @@ enum AgentModeGuard {
         }
 
         guard var agent = manager.getConfiguration(with: agentId) else { return nil }
-        let repaired = repair(&agent, connected: aiService.connectedProviders) { aiService.selectedModel(for: $0) }
+        var repaired = repair(&agent, connected: aiService.connectedProviders) { aiService.selectedModel(for: $0) }
+        // Auto-detect misreads short commands ("open Chrome" came out in Cyrillic): speak the
+        // same language as the default dictation mode when that one is set.
+        if let language = inheritedLanguage(agent: agent, defaultMode: manager.getDefaultConfiguration()) {
+            agent.selectedLanguage = language
+            repaired = true
+        }
         if repaired {
             manager.updateConfiguration(agent)
         }
         return manager.getConfiguration(with: agentId)
+    }
+
+    /// The default mode's language, when the Agent is on auto-detect and the default is not.
+    nonisolated static func inheritedLanguage(agent: ModeConfig, defaultMode: ModeConfig?) -> String? {
+        let agentLanguage = agent.selectedLanguage ?? "auto"
+        guard agentLanguage == "auto", let language = defaultMode?.selectedLanguage, language != "auto", !language.isEmpty
+        else { return nil }
+        return language
     }
 
     /// Pure repair step, separated for tests. Returns true when anything changed.

@@ -176,4 +176,27 @@ struct ShortcutDoubleTapTests {
         await h.handler.handleKeyUp(action: .primaryRecording, eventTime: 3.1, mode: .hybrid)
         #expect(h.state == .idle, "releasing fn after a long hold must stop the dictation")
     }
+
+    /// Recorded from a real fn+⌃ release: fn up, then ⌃ alone for ~50ms, then ⌃ up.
+    @Test func controlLeftAfterComboIsNotATap() async {
+        let monitor = ShortcutMonitor()
+        let events = EventLog()
+        monitor.configureForTesting(
+            shortcuts: [
+                .primaryRecording: RecordingShortcutManager.fnShortcut,
+                .dictateAndSend: RecordingShortcutManager.dictateAndSendShortcut,
+                .agentDoubleTap: RecordingShortcutManager.agentTapShortcut,
+            ],
+            onKeyDown: { action, time in events.append("down \(action.storageName) \(time)") },
+            onKeyUp: { action, time in events.append("up \(action.storageName) \(time)") })
+        monitor.feed(.flagsChanged, keyCode: 63, flags: [.function], at: 1.0)
+        monitor.feed(.flagsChanged, keyCode: 59, flags: [.function, .control], at: 1.04)
+        monitor.feed(.flagsChanged, keyCode: 63, flags: [.control], at: 5.40)
+        monitor.feed(.flagsChanged, keyCode: 59, flags: [], at: 5.45)
+        try? await Task.sleep(nanoseconds: 200_000_000)
+        #expect(events.items.contains("down agentDoubleTap 5.4"), "macOS really does report ⌃ alone here")
+
+        #expect(RecordingShortcutManager.isComboLeftover(tapDownAt: 5.40, comboReleasedAt: 5.40))
+        #expect(!RecordingShortcutManager.isComboLeftover(tapDownAt: 6.2, comboReleasedAt: 5.40), "a real tap later still counts")
+    }
 }
