@@ -59,6 +59,10 @@ enum AgentToolCatalog {
         - macro_record_start {"name": str} -> from now on every action is captured. Then the user performs the steps by voice.
         - macro_record_stop {} -> saves it. macro_run {"name": str} replays it. macro_list {} · macro_delete {"name": str}
 
+        ## Search everywhere & MCP
+        - search_everywhere {"query": str} -> one search across Finder and every connected MCP source (Notion, Drive, Gmail… when connected). Use for "find the Figma invoice" when the user does not say where it is.
+        - mcp_servers {} -> which MCP servers are connected, their state and tool names.
+
         ## More apps (deep links)
         - obsidian_note {"name": str, "content": str?, "vault": str?, "append": bool?} -> creates (or appends to) a note in Obsidian.
         - open_in_editor {"path": str, "editor": "vscode"|"cursor"?, "line": int?} -> opens a file or folder in VS Code or Cursor. Use find_files first if the user names a file loosely.
@@ -128,6 +132,10 @@ enum AgentToolCatalog {
             lines.append("")
             lines.append("# Installed plugin tools")
             lines.append(contentsOf: plugins)
+        }
+        if let mcp = AgentMCP.promptSection() {
+            lines.append("")
+            lines.append(mcp)
         }
         return lines.joined(separator: "\n")
     }

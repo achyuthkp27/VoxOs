@@ -298,6 +298,8 @@ struct SettingsView: View {
                     .foregroundStyle(.secondary)
             }
 
+            MCPServersSection()
+
             Section("Pasting") {
                 ExpandableSettingsRow(
                     isExpanded: $isRestoreClipboardExpanded,

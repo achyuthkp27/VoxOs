@@ -44,6 +44,17 @@ extension AgentTools {
 
     /// Runs a tool with no control-mode gate. Used for confirmed actions and macro replay.
     static func executeUngated(name: String, args: [String: Any]) async -> [String: Any] {
+        switch name {
+        case "mcp_servers":
+            return AgentMCP.serversToolResult()
+        case "search_everywhere":
+            return await AgentSearch.run(query: (args["query"] as? String) ?? "")
+        default:
+            break
+        }
+        if AgentMCP.isMCPTool(name) {
+            return await AgentMCP.call(name: name, args: args)
+        }
         if AgentPlugins.isPlugin(name), !Self.builtinPluginTools.contains(name) {
             var result = await AgentPlugins.run(name: name, args: args)
             let exit = (result["exit"] as? Int) ?? 0

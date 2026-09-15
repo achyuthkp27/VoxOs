@@ -98,5 +98,6 @@ enum AgentControlMode: String, CaseIterable, Identifiable {
 
     static func isMutating(_ tool: String) -> Bool {
         mutatingTools.contains(tool) || (AgentPlugins.isPlugin(tool) && tool != "plugin_list")
+            || (AgentMCP.isMCPTool(tool) && !AgentMCP.isReadOnly(tool))
     }
 }

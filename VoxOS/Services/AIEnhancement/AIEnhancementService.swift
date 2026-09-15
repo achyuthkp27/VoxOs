@@ -230,8 +230,12 @@ class AIEnhancementService: ObservableObject {
         // The Agent prompt is seeded into the database, so the computer-control tool
         // catalogue is injected here at request time: it stays in sync with the code and
         // reaches installs whose stored prompt predates those tools.
+        if isAgent {
+            // First request after launch: give MCP servers a moment so their tools are listed.
+            await AgentMCP.ensureStarted(maxWait: 3)
+        }
         let agentSections: [String] =
-            AgentToolExecutor.isAgentConversation(systemPrompt: prompt.finalPromptText)
+            isAgent
             ? [AgentToolCatalog.promptSection, AgentToolCatalog.runtimeSection()]
             : []
 

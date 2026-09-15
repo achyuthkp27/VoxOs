@@ -28,6 +28,9 @@ enum AgentCard: Equatable, Identifiable {
         case "find_files":
             let matches = (result["matches"] as? [String]) ?? []
             return matches.isEmpty ? nil : .files(Array(matches.prefix(8)))
+        case "search_everywhere":
+            let files = (result["files"] as? [String]) ?? []
+            return files.isEmpty ? nil : .files(Array(files.prefix(8)))
         case "web_results":
             let raw = (result["results"] as? [[String: Any]]) ?? []
             let links = raw.compactMap { item -> Link? in
