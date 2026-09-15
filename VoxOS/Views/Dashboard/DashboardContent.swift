@@ -143,6 +143,8 @@ struct DashboardContent: View {
                 DashboardShortcutStrip()
             }
 
+            DashboardBackgroundTasks()
+
             if !isAccessibilityEnabled {
                 nameEditorDismissArea {
                     accessibilityReminder

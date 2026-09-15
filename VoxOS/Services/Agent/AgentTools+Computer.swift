@@ -10,6 +10,9 @@ import SwiftData
 extension AgentTools {
 
     static func execute(name: String, args: [String: Any]) async -> [String: Any] {
+        if AgentRunScope.isBackground, let reason = AgentRunScope.backgroundBlockReason(tool: name, args: args) {
+            return ["error": "blocked in background: \(reason)"]
+        }
         // Confirmation flow is exempt from gating — it IS the gate.
         if name == "confirm_action" { return await confirmPending() }
         if name == "cancel_action" {
@@ -49,6 +52,23 @@ extension AgentTools {
             return AgentMCP.serversToolResult()
         case "search_everywhere":
             return await AgentSearch.run(query: (args["query"] as? String) ?? "")
+        case "background_task":
+            return await MainActor.run {
+                switch AgentTaskCenter.shared.start(instruction: (args["task"] as? String) ?? "", title: args["title"] as? String) {
+                case .success(let task):
+                    return ["result": "started in the background: \(task.title). The user gets a notification when it finishes."]
+                case .failure(let error):
+                    return ["error": error.message]
+                }
+            }
+        case "background_tasks":
+            return await MainActor.run { AgentTaskCenter.shared.toolList() }
+        case "background_cancel":
+            let query = (args["id"] as? String) ?? (args["title"] as? String) ?? ""
+            return await MainActor.run {
+                AgentTaskCenter.shared.cancel(matching: query).map { ["result": "cancelled \($0.title)"] }
+                    ?? ["error": "no running task matches \(query)"]
+            }
         default:
             break
         }

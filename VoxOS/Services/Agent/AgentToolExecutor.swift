@@ -42,14 +42,19 @@ enum AgentToolExecutor {
     ) async -> String {
         guard let provider else { return firstReply }
 
-        // A confirmation must come from a later request than the one that asked for it.
-        AgentPendingAction.beginRun()
-        AgentCardStore.clear()
-        defer { AgentProgress.set(nil) }
+        // Background tasks share tools with the notch but none of its per-request state.
+        let background = AgentRunScope.isBackground
+        if !background {
+            AgentRunContext.record(systemPrompt: systemPrompt, provider: provider, modelName: modelName, aiService: aiService)
+            // A confirmation must come from a later request than the one that asked for it.
+            AgentPendingAction.beginRun()
+            AgentCardStore.clear()
+        }
+        defer { if !background { AgentProgress.set(nil) } }
         // The task that was paused before this request is being resumed by it; a task this
         // run pauses must survive to the next one.
-        let resumedTask = AgentPausedTask.peek()?.id
-        defer { AgentPausedTask.clear(resumed: resumedTask) }
+        let resumedTask = background ? nil : AgentPausedTask.peek()?.id
+        defer { if !background { AgentPausedTask.clear(resumed: resumedTask) } }
 
         var messages = priorMessages
         var reply = firstReply
@@ -58,10 +63,10 @@ enum AgentToolExecutor {
 
         while !Task.isCancelled, let call = parseToolCall(reply), steps < maxSteps {
             steps += 1
-            AgentProgress.set(AgentProgress.label(forTool: call.name))
+            if !background { AgentProgress.set(AgentProgress.label(forTool: call.name)) }
             let result = await AgentTools.execute(name: call.name, args: call.args)
             executed.append(call.name)
-            if let card = AgentCard.from(tool: call.name, result: result) { AgentCardStore.add(card) }
+            if !background, let card = AgentCard.from(tool: call.name, result: result) { AgentCardStore.add(card) }
 
             let resultJSON =
                 (try? JSONSerialization.data(withJSONObject: result))
@@ -74,7 +79,7 @@ enum AgentToolExecutor {
                         + "If the task needs another tool, reply with the next tool-call JSON only. "
                         + "Otherwise reply with one short plain-text sentence saying what was done."))
 
-            AgentProgress.set("Thinking…")
+            if !background { AgentProgress.set("Thinking…") }
             do {
                 reply = try await aiService.completeChat(
                     provider: provider,

@@ -9,6 +9,7 @@ class AppDelegate: NSObject, NSApplicationDelegate {
         menuBarManager?.applyActivationPolicy()
         // Start configured MCP servers now so their tools are ready by the first Agent request.
         AgentMCP.warmUp()
+        AgentNudges.shared.start()
     }
 
     func applicationShouldHandleReopen(_ sender: NSApplication, hasVisibleWindows flag: Bool) -> Bool {

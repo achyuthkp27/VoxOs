@@ -116,7 +116,7 @@ enum AgentQuickIntents {
         }
     }
 
-    private static func installedAppNames() -> [String] {
+    static func installedAppNames() -> [String] {
         let dirs = ["/Applications", "/Applications/Utilities", "/System/Applications", "/System/Applications/Utilities",
                     NSHomeDirectory() + "/Applications"]
         var names: [String] = []

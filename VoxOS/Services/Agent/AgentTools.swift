@@ -142,6 +142,63 @@ enum AgentTools {
                     appName: "Maps", success: "opened directions to \(to) in Maps")
             }
 
+        case "nudge_add":
+            let atRaw = s("at")
+            let due = atRaw.isEmpty ? nil : AgentNudges.parseDue(atRaw)
+            if !atRaw.isEmpty, due == nil { return ["error": "at must be YYYY-MM-DD HH:MM"] }
+            let whenApp = s("when_app")
+            return await MainActor.run {
+                switch AgentNudges.shared.add(text: s("text"), appName: whenApp.isEmpty ? nil : whenApp, due: due) {
+                case .success(let nudge):
+                    var parts: [String] = []
+                    if let app = nudge.appName { parts.append("when \(app) opens") }
+                    if !atRaw.isEmpty { parts.append("at \(atRaw)") }
+                    return ["result": "will nudge \(parts.joined(separator: " and ")): \(nudge.text)"]
+                case .failure(let error):
+                    return ["error": error.message]
+                }
+            }
+
+        case "nudge_list":
+            return await MainActor.run { AgentNudges.shared.toolList() }
+
+        case "nudge_done":
+            let query = s("id").isEmpty ? s("text") : s("id")
+            guard !query.isEmpty else { return ["error": "id or text is required"] }
+            return await MainActor.run {
+                AgentNudges.shared.complete(matching: query).map { ["result": "done: \($0.text)"] }
+                    ?? ["error": "no nudge matches \(query)"]
+            }
+
+        case "ask_assistant":
+            let prompt = s("prompt")
+            guard !prompt.isEmpty else { return ["error": "prompt is required"] }
+            let assistant = s("assistant").isEmpty ? "chatgpt" : s("assistant")
+            guard let url = AgentAppLinks.assistantURL(assistant, prompt: prompt) else {
+                return ["error": "assistant must be chatgpt or claude"]
+            }
+            return await MainActor.run {
+                NSWorkspace.shared.open(url)
+                    ? ["result": "opened \(assistant) with the question asked; the answer appears in the browser"]
+                    : ["error": "could not open the browser"]
+            }
+
+        case "messenger_open":
+            guard let url = AgentAppLinks.messengerURL(to: s("to")) else {
+                return ["error": "to must be a Messenger username (letters, numbers, dots)"]
+            }
+            let text = s("text")
+            return await MainActor.run {
+                if !text.isEmpty {
+                    NSPasteboard.general.clearContents()
+                    NSPasteboard.general.setString(text, forType: .string)
+                }
+                guard NSWorkspace.shared.open(url) else { return ["error": "could not open Messenger"] }
+                return ["result": text.isEmpty
+                    ? "opened the Messenger chat"
+                    : "opened the Messenger chat; the message is on the clipboard — the user pastes and sends it"]
+            }
+
         case "telegram_send":
             let text = s("text")
             guard !text.isEmpty else { return ["error": "text is required"] }

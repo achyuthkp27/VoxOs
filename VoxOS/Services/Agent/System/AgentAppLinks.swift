@@ -71,6 +71,32 @@ enum AgentAppLinks {
         return components.url
     }
 
+    /// Opens a new ChatGPT or Claude conversation with the prompt already sent.
+    static func assistantURL(_ assistant: String, prompt: String) -> URL? {
+        var components = URLComponents()
+        components.scheme = "https"
+        switch assistant.lowercased() {
+        case "chatgpt", "openai", "gpt":
+            components.host = "chatgpt.com"
+            components.path = "/"
+        case "claude", "anthropic":
+            components.host = "claude.ai"
+            components.path = "/new"
+        default:
+            return nil
+        }
+        components.queryItems = [URLQueryItem(name: "q", value: prompt)]
+        return components.url
+    }
+
+    /// `m.me/<username>` opens a Messenger conversation (app or web).
+    static func messengerURL(to username: String) -> URL? {
+        let handle = username.trimmingCharacters(in: .whitespacesAndNewlines)
+            .trimmingCharacters(in: CharacterSet(charactersIn: "@/"))
+        guard !handle.isEmpty, handle.allSatisfy({ $0.isLetter || $0.isNumber || $0 == "." }) else { return nil }
+        return URL(string: "https://m.me/\(handle)")
+    }
+
     // MARK: - Opening
 
     @MainActor

@@ -15,11 +15,13 @@ enum AgentToolCatalog {
         System: - run_shell {"command": str} (zsh, 30s; risky blocked unless allowed) · - run_applescript {"script": str} · - read_file {"path": str} · read_pdf {"path"} · move_file {"from","to"} (no delete) · read_clipboard {}
         Browser: browser_snapshot {} · browser_click_text {"text"} · browser_run_js {"js"} · list_browser_tabs {} · switch_browser_tab {"index"} · - fetch_url {"url": str} (read a page without the browser) · web_results {"query"} (web_search opens the browser)
         Find: search_everywhere {"query"} -> Finder + connected MCP sources; use when the user doesn't say where · mcp_servers {}
-        Apps by link: obsidian_note {"name","content"?,"vault"?,"append"?} · open_in_editor {"path","editor": "vscode"|"cursor"?,"line"?} · maps_search {"query"} · maps_directions {"to","from"?,"mode"?} · telegram_send {"to"?,"text"} (user presses Send)
+        Apps by link: obsidian_note {"name","content"?,"vault"?,"append"?} · open_in_editor {"path","editor": "vscode"|"cursor"?,"line"?} · maps_search {"query"} · maps_directions {"to","from"?,"mode"?} · telegram_send {"to"?,"text"} (user presses Send) · ask_assistant {"prompt","assistant": "chatgpt"|"claude"?} (opens a new chat with it asked) · messenger_open {"to": username,"text"?} (text goes to the clipboard)
         Sending: mail_compose, gmail_compose, slack_send take "send": true only when the user said send; that returns confirm_required — say what goes to whom and stop. Next request: confirm → confirm_action {}, declined → cancel_action {}. Otherwise leave a draft.
         Macros: macro_record_start {"name"} · macro_record_stop {} · - macro_run {"name": str} · macro_list {} · macro_delete {"name"}
         Plugins: plugin_list {} · - plugin_create {"name","description","run_type": "shell"|"applescript"|"open_url","template" ({{arg}}),"parameters"} · plugin_delete {"name"}
         Audio (speaker output, never mic): - system_audio_start {} · system_audio_stop {} -> transcript · - system_audio_recall {"seconds"?} · watch_for_audio {"text","timeout_seconds"?}
+        Background: background_task {"task","title"?} -> hand off long jobs (research, many steps, multi-app) so the user isn't kept waiting; reply that it's running · background_tasks {} · background_cancel {"id"|"title"}
+        Nudges: nudge_add {"text","when_app"?,"at": "YYYY-MM-DD HH:MM"?} -> toast when that app opens and/or at that time, until done; use for "remind me when I open X" or "later today" · nudge_list {} · nudge_done {"id"|"text"}
         Ask: - wait_for_user {"question": str, "context": str?} -> then end your reply with the question
         Language: - set_learning_language {"language"|"off"} · mark_vocabulary_known {"word"}
         Ambient: - watch_for {"text": str, "timeout_seconds": int?} · watch_list {} · watch_cancel {"watch_id"?} · - set_control_mode {"mode": "takeover"|"ask_before_action"|"observe_only"} · get_control_mode {}

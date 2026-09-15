@@ -316,4 +316,92 @@ struct AgentLogicTests {
     @Test func compactCatalogueStaysSmall() {
         #expect(AgentToolCatalog.promptSection.count < 5000, "every Agent step re-sends this; keep it lean for rate limits")
     }
+
+    @Test func assistantAndMessengerLinks() {
+        let gpt = AgentAppLinks.assistantURL("ChatGPT", prompt: "plan a trip to Osaka & Kyoto")
+        #expect(gpt?.host == "chatgpt.com")
+        #expect(gpt?.query == "q=plan%20a%20trip%20to%20Osaka%20%26%20Kyoto")
+        #expect(AgentAppLinks.assistantURL("claude", prompt: "hi")?.absoluteString == "https://claude.ai/new?q=hi")
+        #expect(AgentAppLinks.assistantURL("bard", prompt: "hi") == nil)
+
+        #expect(AgentAppLinks.messengerURL(to: "@sam.lee")?.absoluteString == "https://m.me/sam.lee")
+        #expect(AgentAppLinks.messengerURL(to: "sam lee") == nil, "spaces would break out of the path")
+    }
+
+    // MARK: Nudges
+
+    @Test func nudgesFireOnTheirAppOrTimeAndBackOff() {
+        let now = Date()
+        let appNudge = AgentNudge(id: UUID(), text: "send invoice", appName: "Slack", bundleID: "com.tinyspeck.slackmacgap",
+                                  due: nil, createdAt: now, lastShownAt: nil)
+        #expect(appNudge.shouldFire(activatedBundleID: "com.tinyspeck.slackmacgap", now: now))
+        #expect(!appNudge.shouldFire(activatedBundleID: "com.apple.mail", now: now))
+        #expect(!appNudge.shouldFire(activatedBundleID: nil, now: now), "the timer alone never fires app nudges")
+
+        var shown = appNudge
+        shown.lastShownAt = now
+        #expect(!shown.shouldFire(activatedBundleID: "com.tinyspeck.slackmacgap", now: now.addingTimeInterval(60)))
+        #expect(shown.shouldFire(activatedBundleID: "com.tinyspeck.slackmacgap", now: now.addingTimeInterval(AgentNudge.refireInterval + 1)))
+
+        let timed = AgentNudge(id: UUID(), text: "stand up", appName: nil, bundleID: nil,
+                               due: now.addingTimeInterval(300), createdAt: now, lastShownAt: nil)
+        #expect(!timed.shouldFire(activatedBundleID: nil, now: now))
+        #expect(timed.shouldFire(activatedBundleID: nil, now: now.addingTimeInterval(301)))
+
+        let both = AgentNudge(id: UUID(), text: "reply", appName: "Slack", bundleID: "com.tinyspeck.slackmacgap",
+                              due: now.addingTimeInterval(300), createdAt: now, lastShownAt: nil)
+        #expect(!both.shouldFire(activatedBundleID: "com.tinyspeck.slackmacgap", now: now), "app nudge with a time waits for it")
+    }
+
+    @MainActor
+    @Test func nudgeStoreAddsCompletesAndPersists() {
+        let file = FileManager.default.temporaryDirectory.appendingPathComponent("nudges-\(UUID().uuidString).json")
+        let store = AgentNudges(fileURL: file)
+        #expect(store.add(text: "   ", appName: nil, due: Date()) == .failure(.missingText))
+        #expect(store.add(text: "call mum", appName: nil, due: nil) == .failure(.missingTrigger))
+
+        guard case .success = store.add(text: "call mum", appName: nil, due: Date().addingTimeInterval(60)) else {
+            Issue.record("a timed nudge should be accepted")
+            return
+        }
+        #expect(AgentNudges(fileURL: file).nudges.count == 1, "nudges survive a relaunch")
+        #expect(store.complete(matching: "mum")?.text == "call mum")
+        #expect(AgentNudges(fileURL: file).nudges.isEmpty)
+        #expect(AgentNudges.parseDue("2026-09-16 09:30") != nil)
+        #expect(AgentNudges.parseDue("tomorrow") == nil)
+    }
+
+    // MARK: Background tasks
+
+    @Test func backgroundRunsCannotConfirmAskOrSend() async {
+        AgentControlMode.current = .takeover
+        AgentPendingAction.clear()
+        await AgentRunScope.$isBackground.withValue(true) {
+            for (tool, args) in [
+                ("confirm_action", [String: Any]()),
+                ("wait_for_user", ["question": "which file?"]),
+                ("background_task", ["task": "nested"]),
+                ("messages_send", ["to": "+15550100", "text": "hi"]),
+                ("gmail_compose", ["to": "a@b.c", "body": "x", "send": true]),
+                ("set_control_mode", ["mode": "takeover"]),
+            ] {
+                let result = await AgentTools.execute(name: tool, args: args)
+                #expect((result["error"] as? String)?.hasPrefix("blocked in background") == true, "\(tool) must be blocked")
+            }
+        }
+        #expect(!AgentPendingAction.isWaitingForConfirmation, "nothing may be left for the foreground to confirm unseen")
+
+        #expect(AgentRunScope.backgroundBlockReason(tool: "gmail_compose", args: ["to": "a@b.c"]) == nil, "drafts are fine")
+        #expect(AgentRunScope.backgroundBlockReason(tool: "read_screen", args: [:]) == nil)
+
+        AgentControlMode.current = .askBeforeAction
+        #expect(AgentRunScope.backgroundBlockReason(tool: "click_element", args: ["name": "OK"]) != nil)
+        #expect(AgentRunScope.backgroundBlockReason(tool: "read_screen", args: [:]) == nil)
+        AgentControlMode.current = .takeover
+    }
+
+    @MainActor
+    @Test func backgroundTaskNeedsAContextAndATask() {
+        #expect(AgentTaskCenter.shared.start(instruction: "  ", title: nil) == .failure(.missingTask))
+    }
 }
