@@ -9,10 +9,44 @@ struct MCPServerConfig: Equatable {
     let args: [String]
     let env: [String: String]
     let disabled: Bool
-    /// Remote (HTTP) servers need OAuth flows VoxOS does not implement yet.
+    /// Remote servers speak Streamable HTTP. Auth goes in `headers`; browser sign-in (OAuth)
+    /// is not supported.
     let remoteURL: String?
+    var headers: [String: String] = [:]
 
-    var isSupported: Bool { remoteURL == nil && !command.isEmpty }
+    var isRemote: Bool { remoteURL != nil }
+    var isSupported: Bool { isRemote ? URL(string: remoteURL ?? "")?.scheme?.hasPrefix("http") == true : !command.isEmpty }
+}
+
+/// What the registry needs from a connection, whatever its transport.
+protocol MCPClient: AnyObject, Sendable {
+    var config: MCPServerConfig { get }
+    var state: MCPConnection.State { get }
+    var rawTools: [(name: String, description: String, schema: [String: Any], readOnly: Bool)] { get }
+    var onChange: (@Sendable () -> Void)? { get set }
+    func start(path: String) async throws
+    func stop()
+    func callTool(name: String, arguments: [String: Any], timeout: TimeInterval) async throws -> [String: Any]
+}
+
+extension MCPClient {
+    func callTool(name: String, arguments: [String: Any]) async throws -> [String: Any] {
+        try await callTool(name: name, arguments: arguments, timeout: 90)
+    }
+
+    /// Shared by both transports: the tool list inside a `tools/list` result.
+    static func parseTools(_ result: [String: Any]) -> [(name: String, description: String, schema: [String: Any], readOnly: Bool)] {
+        ((result["tools"] as? [[String: Any]]) ?? []).compactMap { tool in
+            guard let name = tool["name"] as? String, !name.isEmpty else { return nil }
+            let annotations = tool["annotations"] as? [String: Any]
+            return (
+                name: name,
+                description: (tool["description"] as? String) ?? "",
+                schema: (tool["inputSchema"] as? [String: Any]) ?? [:],
+                readOnly: (annotations?["readOnlyHint"] as? Bool) ?? false
+            )
+        }
+    }
 }
 
 /// A tool advertised by an MCP server.
@@ -87,7 +121,7 @@ struct MCPJSON: @unchecked Sendable {
 /// A stdio MCP connection: spawns the server, speaks newline-delimited JSON-RPC 2.0 over its
 /// stdin/stdout, and exposes `initialize`, `tools/list` and `tools/call`.
 /// All mutable state sits behind one lock; pipe callbacks arrive on arbitrary queues.
-final class MCPConnection: @unchecked Sendable {
+final class MCPConnection: MCPClient, @unchecked Sendable {
 
     enum State: Equatable {
         case idle
@@ -256,7 +290,7 @@ final class MCPConnection: @unchecked Sendable {
         onChange?()
     }
 
-    func callTool(name: String, arguments: [String: Any], timeout: TimeInterval = 90) async throws -> [String: Any] {
+    func callTool(name: String, arguments: [String: Any], timeout: TimeInterval) async throws -> [String: Any] {
         try await request("tools/call", params: ["name": name, "arguments": arguments], timeout: timeout)
     }
 

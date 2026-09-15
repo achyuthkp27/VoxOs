@@ -64,7 +64,7 @@ struct MCPServersSection: View {
         } header: {
             Text("MCP Servers")
         } footer: {
-            Text("Each server's tools become Agent tools. Tools a server marks read-only run freely; everything else follows the Control Mode above. Remote (URL) servers are not supported yet.")
+            Text("Each server's tools become Agent tools. Tools a server marks read-only run freely; everything else follows the Control Mode above. Remote servers use \"url\" plus \"headers\"; put tokens in the Keychain with secret_save and write {{secret:name}}. Servers that need a browser sign-in are not supported.")
                 .font(.app(.caption))
                 .foregroundStyle(.secondary)
         }

@@ -22,7 +22,7 @@ enum AgentMCP {
     static let statusDidChange = Notification.Name("AgentMCPStatusDidChange")
 
     private static let lock = NSLock()
-    private static var connections: [String: MCPConnection] = [:]
+    private static var connections: [String: any MCPClient] = [:]
     private static var unsupported: [String: String] = [:]
     private static var toolIndex: [String: MCPTool] = [:]
     private static var startTask: Task<Void, Never>?
@@ -58,8 +58,12 @@ enum AgentMCP {
             let env: [String: String] = rawEnv.mapValues { String(describing: $0) }
             let disabled: Bool = (entry["disabled"] as? Bool) ?? false
             let remoteURL: String? = (entry["url"] as? String) ?? (entry["serverUrl"] as? String)
+            let rawHeaders: [String: Any] = (entry["headers"] as? [String: Any]) ?? [:]
+            let headers: [String: String] = rawHeaders.mapValues { String(describing: $0) }
             configs.append(
-                MCPServerConfig(name: name, command: command, args: args, env: env, disabled: disabled, remoteURL: remoteURL))
+                MCPServerConfig(
+                    name: name, command: command, args: args, env: env, disabled: disabled, remoteURL: remoteURL,
+                    headers: headers))
         }
         return configs
     }
@@ -134,7 +138,7 @@ enum AgentMCP {
     }
 
     static func reload() {
-        let old = lock.withLock { () -> [MCPConnection] in
+        let old = lock.withLock { () -> [any MCPClient] in
             let values = Array(connections.values)
             connections = [:]
             unsupported = [:]
@@ -148,7 +152,7 @@ enum AgentMCP {
     }
 
     private static func startIfNeeded() -> Task<Void, Never> {
-        let stale = lock.withLock { () -> [MCPConnection] in
+        let stale = lock.withLock { () -> [any MCPClient] in
             guard startTask != nil, Date().timeIntervalSince(lastStartAt) >= retryInterval else { return [] }
             let failed = connections.filter { if case .failed = $0.value.state { return true } else { return false } }
             guard !failed.isEmpty else { return [] }
@@ -171,16 +175,16 @@ enum AgentMCP {
         let configs = loadConfig().filter { !$0.disabled }
         let path = await ShellPath.value()
 
-        var fresh: [MCPConnection] = []
+        var fresh: [any MCPClient] = []
         lock.withLock {
             for config in configs {
                 if !config.isSupported {
-                    unsupported[config.name] =
-                        config.remoteURL != nil ? "Remote servers are not supported yet" : "Missing command"
+                    unsupported[config.name] = config.isRemote ? "The url must start with http or https" : "Missing command"
                     continue
                 }
                 guard connections[config.name] == nil else { continue }
-                let connection = MCPConnection(config: config)
+                let connection: any MCPClient =
+                    config.isRemote ? MCPHTTPConnection(config: config) : MCPConnection(config: config)
                 connection.onChange = {
                     rebuildIndex()
                     postStatus()
@@ -311,7 +315,7 @@ enum AgentMCP {
     // MARK: - Calling
 
     static func call(name: String, args: [String: Any]) async -> [String: Any] {
-        let found = lock.withLock { () -> (MCPTool, MCPConnection)? in
+        let found = lock.withLock { () -> (MCPTool, any MCPClient)? in
             guard let tool = toolIndex[name], let connection = connections[tool.server] else { return nil }
             return (tool, connection)
         }
@@ -368,7 +372,7 @@ enum AgentMCP {
                 if config.disabled {
                     return ServerStatus(name: config.name, state: .idle, toolCount: 0, unsupportedReason: "Disabled")
                 }
-                if let reason = unsupported[config.name] ?? (config.isSupported ? nil : "Remote servers are not supported yet") {
+                if let reason = unsupported[config.name] ?? (config.isSupported ? nil : "Invalid server entry") {
                     return ServerStatus(name: config.name, state: .idle, toolCount: 0, unsupportedReason: reason)
                 }
                 let connection = connections[config.name]

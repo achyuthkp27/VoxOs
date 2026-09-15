@@ -30,7 +30,8 @@ struct AgentMCPTests {
 
         #expect(configs[1].disabled)
         #expect(configs[2].remoteURL == "https://mcp.example.com/sse")
-        #expect(!configs[2].isSupported, "remote servers need OAuth and are not started")
+        #expect(configs[2].isSupported, "http(s) remote servers are started over Streamable HTTP")
+        #expect(configs[2].isRemote)
 
         #expect(AgentMCP.parseConfig(Data("not json".utf8)).isEmpty)
     }
@@ -230,5 +231,127 @@ struct AgentMCPTests {
         let tool = names.contains("read_text_file") ? "read_text_file" : "read_file"
         let read = AgentMCP.render(result: try await connection.callTool(name: tool, arguments: ["path": root + "/note.txt"]))
         #expect((read["output"] as? String)?.contains("hello from voxos") == true, "got \(read)")
+    }
+
+    // MARK: Streamable HTTP
+
+    private static let fakeHTTPServer = #"""
+        import json, sys, threading
+        from http.server import BaseHTTPRequestHandler, ThreadingHTTPServer
+        state = {"sessions": {"sess-1"}, "next": 1, "inits": 0}
+        class H(BaseHTTPRequestHandler):
+            def log_message(self, *a): pass
+            def send_json(self, code, obj, headers=None):
+                body = json.dumps(obj).encode()
+                self.send_response(code)
+                self.send_header("Content-Type", "application/json")
+                for k, v in (headers or {}).items(): self.send_header(k, v)
+                self.send_header("Content-Length", str(len(body)))
+                self.end_headers(); self.wfile.write(body)
+            def do_DELETE(self):
+                self.send_response(200); self.send_header("Content-Length", "0"); self.end_headers()
+            def do_POST(self):
+                if self.headers.get("Authorization") != "Bearer tok-123":
+                    self.send_response(401); self.send_header("Content-Length", "0"); self.end_headers(); return
+                msg = json.loads(self.rfile.read(int(self.headers["Content-Length"])))
+                meth, mid = msg.get("method"), msg.get("id")
+                if meth == "initialize":
+                    state["inits"] += 1
+                    sid = "sess-%d" % state["inits"]
+                    state["sessions"].add(sid)
+                    self.send_json(200, {"jsonrpc": "2.0", "id": mid, "result": {"protocolVersion": "2025-06-18", "capabilities": {"tools": {}}}}, {"Mcp-Session-Id": sid})
+                    return
+                if self.headers.get("Mcp-Session-Id") not in state["sessions"]:
+                    self.send_response(404); self.send_header("Content-Length", "0"); self.end_headers(); return
+                if mid is None:
+                    self.send_response(202); self.send_header("Content-Length", "0"); self.end_headers(); return
+                if meth == "tools/list":
+                    events = [
+                        {"jsonrpc": "2.0", "id": "srv-ping", "method": "ping"},
+                        {"jsonrpc": "2.0", "id": mid, "result": {"tools": [
+                            {"name": "echo", "description": "Echo", "inputSchema": {"type": "object", "properties": {"text": {"type": "string"}}}, "annotations": {"readOnlyHint": True}},
+                            {"name": "forget", "description": "Drop sessions", "inputSchema": {"type": "object"}}]}},
+                    ]
+                    body = "".join("event: message\ndata: %s\n\n" % json.dumps(e) for e in events).encode()
+                    self.send_response(200)
+                    self.send_header("Content-Type", "text/event-stream")
+                    self.send_header("Content-Length", str(len(body)))
+                    self.end_headers(); self.wfile.write(body); return
+                if meth == "tools/call":
+                    name = msg["params"]["name"]
+                    if name == "forget":
+                        state["sessions"].clear()
+                        self.send_json(200, {"jsonrpc": "2.0", "id": mid, "result": {"content": [{"type": "text", "text": "forgotten"}]}}); return
+                    text = msg["params"].get("arguments", {}).get("text", "")
+                    self.send_json(200, {"jsonrpc": "2.0", "id": mid, "result": {"content": [{"type": "text", "text": "http echo: " + text}]}}); return
+                if mid is not None and meth is None:
+                    self.send_response(202); self.send_header("Content-Length", "0"); self.end_headers(); return
+                self.send_json(200, {"jsonrpc": "2.0", "id": mid, "error": {"code": -32601, "message": "nope"}})
+        server = ThreadingHTTPServer(("127.0.0.1", 0), H)
+        print(server.server_address[1], flush=True)
+        server.serve_forever()
+        """#
+
+    private func launchHTTPServer() throws -> (Process, Int) {
+        let script = FileManager.default.temporaryDirectory.appendingPathComponent("voxos-fake-http-mcp-\(UUID().uuidString).py")
+        try Self.fakeHTTPServer.write(to: script, atomically: true, encoding: .utf8)
+        let process = Process()
+        process.executableURL = URL(fileURLWithPath: Self.python)
+        process.arguments = ["-u", script.path]
+        let pipe = Pipe()
+        process.standardOutput = pipe
+        try process.run()
+        var line = Data()
+        while true {
+            let byte = pipe.fileHandleForReading.readData(ofLength: 1)
+            if byte.isEmpty || byte == Data([0x0A]) { break }
+            line.append(byte)
+        }
+        guard let port = Int(String(decoding: line, as: UTF8.self)) else {
+            process.terminate()
+            throw MCPError.badMessage
+        }
+        return (process, port)
+    }
+
+    @Test(.enabled(if: FileManager.default.isExecutableFile(atPath: "/usr/bin/python3")))
+    func streamableHTTPRoundTrip() async throws {
+        let (server, port) = try launchHTTPServer()
+        defer { server.terminate() }
+
+        let unauthorised = MCPHTTPConnection(config: MCPServerConfig(
+            name: "remote", command: "", args: [], env: [:], disabled: false, remoteURL: "http://127.0.0.1:\(port)/mcp"))
+        await #expect(throws: MCPError.self) { try await unauthorised.start(path: "") }
+        if case .failed(let reason) = unauthorised.state {
+            #expect(reason.contains("not authorised"))
+        } else {
+            Issue.record("a 401 should fail the connection with an auth hint")
+        }
+
+        let connection = MCPHTTPConnection(config: MCPServerConfig(
+            name: "remote", command: "", args: [], env: [:], disabled: false, remoteURL: "http://127.0.0.1:\(port)/mcp",
+            headers: ["Authorization": "Bearer ${VOXOS_TEST_TOKEN_UNSET}tok-123"]))
+        defer { connection.stop() }
+
+        try await connection.start(path: "")
+        #expect(connection.state == .ready)
+        #expect(connection.rawTools.map(\.name) == ["echo", "forget"], "tools arrive over SSE after a server ping")
+        #expect(connection.rawTools.first?.readOnly == true)
+
+        let echoed = AgentMCP.render(result: try await connection.callTool(name: "echo", arguments: ["text": "hi"]))
+        #expect(echoed["output"] as? String == "http echo: hi")
+
+        // The server drops every session: the next call gets 404, re-initialises once, and succeeds.
+        _ = try await connection.callTool(name: "forget", arguments: [:])
+        let again = AgentMCP.render(result: try await connection.callTool(name: "echo", arguments: ["text": "after expiry"]))
+        #expect(again["output"] as? String == "http echo: after expiry")
+    }
+
+    @Test func headerValuesExpandSecretsAndEnvironment() {
+        let expanded = MCPHTTPConnection.expand(
+            "Bearer {{secret:GitHub}} / ${TEAM} / ${MISSING}",
+            secret: { $0 == "github" ? "ghp_x" : nil },
+            environment: ["TEAM": "voxos"])
+        #expect(expanded == "Bearer ghp_x / voxos / ")
     }
 }
