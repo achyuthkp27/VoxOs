@@ -636,6 +636,7 @@ struct RecorderStatusDisplay: View {
 
 struct AssistantPanelView: View {
     @ObservedObject var session: AssistantSession
+    @ObservedObject private var progress = AgentProgress.shared
     let liveFollowUpText: String
     let onSend: (String) -> Void
 
@@ -648,7 +649,7 @@ struct AssistantPanelView: View {
     private var statusText: String? {
         switch session.phase {
         case .responding, .sendingFollowUp:
-            return String(localized: "Thinking")
+            return progress.status ?? String(localized: "Thinking…")
         case .failed(let message):
             return message
         case .inactive, .ready:

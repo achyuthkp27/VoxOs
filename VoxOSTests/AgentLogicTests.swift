@@ -289,4 +289,31 @@ struct AgentLogicTests {
         #expect(AgentCardStore.drain().count == 1, "duplicates collapse")
         #expect(AgentCardStore.drain().isEmpty, "drain empties the store")
     }
+
+    // MARK: Quick intents
+
+    @Test func openAppRequestsResolveOrFailFast() {
+        let apps = ["Google Chrome", "Slack", "Calendar", "Claude", "Cursor", "Notes", "System Settings"]
+        #expect(AgentQuickIntents.appRequest(in: "open chrome", installed: apps) == .found("Google Chrome"))
+        #expect(AgentQuickIntents.appRequest(in: "can you open slak", installed: apps) == .found("Slack"))
+        #expect(AgentQuickIntents.appRequest(in: "open system settings", installed: apps) == .found("System Settings"))
+
+        guard case .notFound(let query, let suggestions) = AgentQuickIntents.appRequest(in: "can you open crew", installed: apps) else {
+            Issue.record("a missing single-word app should be answered locally")
+            return
+        }
+        #expect(query == "crew")
+        #expect(!suggestions.isEmpty && suggestions.count <= 3)
+
+        // These must still reach the model.
+        #expect(AgentQuickIntents.appRequest(in: "start a timer", installed: apps) == nil)
+        #expect(AgentQuickIntents.appRequest(in: "open my downloads folder", installed: apps) == nil)
+        #expect(AgentQuickIntents.appRequest(in: "open the pdf", installed: apps) == nil)
+        #expect(AgentQuickIntents.appRequest(in: "go to example.com", installed: apps) == nil)
+        #expect(AgentQuickIntents.appRequest(in: "what is on my screen", installed: apps) == nil)
+    }
+
+    @Test func compactCatalogueStaysSmall() {
+        #expect(AgentToolCatalog.promptSection.count < 5000, "every Agent step re-sends this; keep it lean for rate limits")
+    }
 }

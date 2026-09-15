@@ -151,12 +151,12 @@ class AIEnhancementService: ObservableObject {
             return String(text.prefix(limit)) + "\n…(truncated; call read_screen for the full text)"
         }
 
-        lastCapturedClipboard = capped(contextSnapshot?.clipboardText, 1200)
-        screenCaptureService.lastCapturedText = capped(contextSnapshot?.screenText, 1800)
+        lastCapturedClipboard = capped(contextSnapshot?.clipboardText, 600)
+        screenCaptureService.lastCapturedText = capped(contextSnapshot?.screenText, 1200)
 
         let selectedTextContext: String
         if useSelectedText,
-            let selectedText = capped(contextSnapshot?.selectedText, 1500),
+            let selectedText = capped(contextSnapshot?.selectedText, 1000),
             !selectedText.isEmpty
         {
             selectedTextContext = "<CURRENTLY_SELECTED_TEXT>\n\(selectedText)\n</CURRENTLY_SELECTED_TEXT>"
@@ -490,6 +490,11 @@ class AIEnhancementService: ObservableObject {
                 case .networkError, .serverError, .rateLimitExceeded:
                     retries += 1
                     if retries < maxRetries {
+                        if case .rateLimitExceeded = error {
+                            AgentProgress.set("Model is rate-limited, retrying in \(Int(currentDelay))s…")
+                        } else {
+                            AgentProgress.set("Connection hiccup, retrying…")
+                        }
                         logger.warning(
                             "Request failed, retrying in \(currentDelay, privacy: .public)s... (Attempt \(retries, privacy: .public)/\(maxRetries, privacy: .public))"
                         )

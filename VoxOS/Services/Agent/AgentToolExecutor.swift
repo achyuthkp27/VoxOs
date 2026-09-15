@@ -45,6 +45,7 @@ enum AgentToolExecutor {
         // A confirmation must come from a later request than the one that asked for it.
         AgentPendingAction.beginRun()
         AgentCardStore.clear()
+        defer { AgentProgress.set(nil) }
         // The task that was paused before this request is being resumed by it; a task this
         // run pauses must survive to the next one.
         let resumedTask = AgentPausedTask.peek()?.id
@@ -57,6 +58,7 @@ enum AgentToolExecutor {
 
         while !Task.isCancelled, let call = parseToolCall(reply), steps < maxSteps {
             steps += 1
+            AgentProgress.set(AgentProgress.label(forTool: call.name))
             let result = await AgentTools.execute(name: call.name, args: call.args)
             executed.append(call.name)
             if let card = AgentCard.from(tool: call.name, result: result) { AgentCardStore.add(card) }
@@ -72,6 +74,7 @@ enum AgentToolExecutor {
                         + "If the task needs another tool, reply with the next tool-call JSON only. "
                         + "Otherwise reply with one short plain-text sentence saying what was done."))
 
+            AgentProgress.set("Thinking…")
             do {
                 reply = try await aiService.completeChat(
                     provider: provider,

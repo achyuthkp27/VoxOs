@@ -24,7 +24,13 @@ extension AIService {
                 guard attempt < 3, let wait = Self.retryDelay(for: error, fallback: delay) else {
                     throw Self.friendlyChatError(error, modelName: modelName)
                 }
+                if case .httpError(429, _) = error {
+                    AgentProgress.set("Model is rate-limited, retrying in \(Int(wait.rounded(.up)))s…")
+                } else {
+                    AgentProgress.set("Connection hiccup, retrying…")
+                }
                 try await Task.sleep(nanoseconds: UInt64(wait * 1_000_000_000))
+                AgentProgress.set("Thinking…")
                 delay *= 2
             }
         }

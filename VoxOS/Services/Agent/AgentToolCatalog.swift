@@ -6,109 +6,30 @@ import Foundation
 enum AgentToolCatalog {
 
     static let promptSection = """
-        # Computer control tools
-        Coordinates everywhere are GLOBAL screen points with a top-left origin — a value from list_ui_elements, find_text or list_windows can be passed straight to mouse_click.
-        Prefer the cheapest reliable path: click_element (Accessibility, no pixels) → click_text (OCR) → mark_screen + click_mark → mouse_click at coordinates as a last resort.
+        # Computer tools
+        Coordinates are global screen points, top-left origin; values from list_ui_elements, find_text, list_windows pass straight to mouse_click. Cheapest reliable path first: click_element → click_text → mark_screen+click_mark → mouse_click.
+        Screen: - read_screen {} -> visible text + frontmost app · - find_text {"query": str} -> text centre x/y · - list_ui_elements {} -> buttons/fields/links with centres · - element_under_cursor {} -> element under the pointer (also given as ELEMENT_UNDER_CURSOR; "this"/"that"/"it" means it) · - mark_screen {} -> numbered badges on clickables for 30s
+        Act: - click_element {"name": str, "role": str?, "count": int?} · - click_text {"query": str, "match_index": int?} · - click_mark {"mark": int} · - mouse_click {"x": num, "y": num, "button": "left"|"right"?, "count": int?} · mouse_move {"x","y"} · mouse_drag {"from_x","from_y","to_x","to_y","duration_ms"?} · scroll {"delta_y": int, "delta_x": int?, "x"?, "y"?} (negative = down) · - press_key {"key": str, "modifiers": [cmd|shift|option|control]?} · - hotkey {"keys": [str]} · undo_last_action {} (⌘Z) · type_text pastes at the cursor
+        Flow: wait {"seconds": num≤30} · - wait_for_text {"text": str, "timeout_seconds": int?} · - batch_actions {"actions": [{"tool", "args"}], "stop_on_error": bool?, "dry_run": bool?}
+        Apps: frontmost_app {} · list_apps {} · activate_app {"name"} (open_app launches) · list_windows {} · set_window_bounds {"app","x","y","width","height"}
+        System: - run_shell {"command": str} (zsh, 30s; risky blocked unless allowed) · - run_applescript {"script": str} · - read_file {"path": str} · read_pdf {"path"} · move_file {"from","to"} (no delete) · read_clipboard {}
+        Browser: browser_snapshot {} · browser_click_text {"text"} · browser_run_js {"js"} · list_browser_tabs {} · switch_browser_tab {"index"} · - fetch_url {"url": str} (read a page without the browser) · web_results {"query"} (web_search opens the browser)
+        Find: search_everywhere {"query"} -> Finder + connected MCP sources; use when the user doesn't say where · mcp_servers {}
+        Apps by link: obsidian_note {"name","content"?,"vault"?,"append"?} · open_in_editor {"path","editor": "vscode"|"cursor"?,"line"?} · maps_search {"query"} · maps_directions {"to","from"?,"mode"?} · telegram_send {"to"?,"text"} (user presses Send)
+        Sending: mail_compose, gmail_compose, slack_send take "send": true only when the user said send; that returns confirm_required — say what goes to whom and stop. Next request: confirm → confirm_action {}, declined → cancel_action {}. Otherwise leave a draft.
+        Macros: macro_record_start {"name"} · macro_record_stop {} · - macro_run {"name": str} · macro_list {} · macro_delete {"name"}
+        Plugins: plugin_list {} · - plugin_create {"name","description","run_type": "shell"|"applescript"|"open_url","template" ({{arg}}),"parameters"} · plugin_delete {"name"}
+        Audio (speaker output, never mic): - system_audio_start {} · system_audio_stop {} -> transcript · - system_audio_recall {"seconds"?} · watch_for_audio {"text","timeout_seconds"?}
+        Ask: - wait_for_user {"question": str, "context": str?} -> then end your reply with the question
+        Language: - set_learning_language {"language"|"off"} · mark_vocabulary_known {"word"}
+        Ambient: - watch_for {"text": str, "timeout_seconds": int?} · watch_list {} · watch_cancel {"watch_id"?} · - set_control_mode {"mode": "takeover"|"ask_before_action"|"observe_only"} · get_control_mode {}
+        Diagnostics: permissions_diagnostics {} (call when clicks/screen fail) · system_status {} · secret_save {"name","value"} · secret_exists {"name"}
 
-        ## See the screen
-        - read_screen {} -> all visible text on the user's display (OCR) plus the frontmost app. Use this to answer "what's on my screen" or before acting on unfamiliar UI.
-        - find_text {"query": str} -> where a piece of text is on screen (centre x/y). Empty query lists everything.
-        - list_ui_elements {} -> buttons, fields, links, menu items of the frontmost app with titles and centre points.
-        - element_under_cursor {} -> the UI element the mouse pointer is over right now (app, role, title, value, centre x/y, clickable parent). The request context may already carry this as ELEMENT_UNDER_CURSOR: when the user says "this", "that", "here" or "it" they mean that element — act on it (mouse_click at its centre, click_element by its title, or read its value) instead of asking which one.
-        - mark_screen {} -> draws numbered badges on every clickable region ON THE USER'S SCREEN for 30s and returns each number's label. Use when nothing has a clear name: tell the user the numbers are showing and ask which one, or pick by label. Then click_mark.
-
-        ## Click, type, keys
-        - click_element {"name": str, "role": str?, "count": int?} -> presses the UI element whose title best matches name (via Accessibility). Best for buttons, menu items, checkboxes, links.
-        - click_text {"query": str, "match_index": int?} -> clicks visible text found by OCR.
-        - click_mark {"mark": int} -> clicks a numbered badge from mark_screen.
-        - mouse_click {"x": num, "y": num, "button": "left"|"right"?, "count": int?}
-        - mouse_move {"x": num, "y": num} · mouse_drag {"from_x", "from_y", "to_x", "to_y", "duration_ms"?}
-        - scroll {"delta_y": int, "delta_x": int?, "x": num?, "y": num?} -> negative delta_y scrolls down. Move to x/y first if given.
-        - press_key {"key": str, "modifiers": [str]?} -> key is return, tab, escape, space, delete, up/down/left/right, home, end, pageup, pagedown, f1–f12, or a single character. modifiers: cmd, shift, option, control.
-        - hotkey {"keys": [str]} -> e.g. ["cmd","shift","4"].
-        - undo_last_action {} -> sends ⌘Z to the frontmost app. Use when the user says "undo that" or "that wasn't me".
-        - type_text is the existing tool; it pastes at the cursor.
-
-        ## Sequencing
-        - wait {"seconds": num} -> pause up to 30s for the UI to settle.
-        - wait_for_text {"text": str, "timeout_seconds": int?} -> block until text appears on screen (max 60s). Use after opening apps or pages.
-        - batch_actions {"actions": [{"tool": str, "args": {...}}], "stop_on_error": bool?, "dry_run": bool?} -> run several steps in one call. dry_run only reports what would run.
-
-        ## Apps & windows
-        - frontmost_app {} · list_apps {} · activate_app {"name": str} -> bring a running app to the front (open_app launches it if not running).
-        - list_windows {} -> on-screen windows with app, title and bounds.
-        - set_window_bounds {"app": str, "x": num, "y": num, "width": num, "height": num}
-
-        ## Shell, scripts, files
-        - run_shell {"command": str} -> runs in zsh, 30s limit. Risky commands are blocked unless the user enabled them in Settings → Agent. Use this for anything with no dedicated tool.
-        - run_applescript {"script": str}
-        - read_file {"path": str} -> text files, code, directories (lists entries). ~ is expanded.
-        - read_pdf {"path": str} -> extracts PDF text.
-        - move_file {"from": str, "to": str} -> move or rename. There is deliberately no delete.
-        - read_clipboard {} -> what the user last copied.
-
-        ## Browser
-        - browser_snapshot {} -> the frontmost tab's URL, title and clickable elements. Requires "Allow JavaScript from Apple Events" in the browser's Develop menu.
-        - browser_click_text {"text": str} -> clicks the page element whose text matches, directly in the DOM.
-        - browser_run_js {"js": str} -> runs JavaScript in the frontmost tab and returns the result.
-        - list_browser_tabs {} · switch_browser_tab {"index": int}
-        - fetch_url {"url": str} -> the page's text, without opening a browser. Prefer this for reading.
-        - web_results {"query": str} -> search results (title, url, snippet) as text. web_search opens the browser instead.
-
-        ## Macros — teach it a skill
-        - macro_record_start {"name": str} -> from now on every action is captured. Then the user performs the steps by voice.
-        - macro_record_stop {} -> saves it. macro_run {"name": str} replays it. macro_list {} · macro_delete {"name": str}
-
-        ## Search everywhere & MCP
-        - search_everywhere {"query": str} -> one search across Finder and every connected MCP source (Notion, Drive, Gmail… when connected). Use for "find the Figma invoice" when the user does not say where it is.
-        - mcp_servers {} -> which MCP servers are connected, their state and tool names.
-
-        ## More apps (deep links)
-        - obsidian_note {"name": str, "content": str?, "vault": str?, "append": bool?} -> creates (or appends to) a note in Obsidian.
-        - open_in_editor {"path": str, "editor": "vscode"|"cursor"?, "line": int?} -> opens a file or folder in VS Code or Cursor. Use find_files first if the user names a file loosely.
-        - maps_search {"query": str} · maps_directions {"to": str, "from": str?, "mode": "driving"|"walking"|"transit"?} -> Apple Maps.
-        - telegram_send {"to": str?, "text": str} -> opens Telegram with the message prefilled (user presses Send). "to" is a username.
-
-        ## Sending for real (email, Slack, iMessage)
-        - mail_compose, gmail_compose and slack_send accept "send": true. Without it they only leave a draft for the user to send. With it they return confirm_required first — tell the user exactly what will be sent and to whom, then wait; on the next request, if they say confirm/yes/send, call confirm_action {} and the message goes out (Mail sends the message, Slack presses Return, Gmail presses its Send button). If they decline, call cancel_action {}.
-        - Use "send": true when the user clearly asked to send ("send an email to…", "message Sam that…"). Use a draft when they said draft/prepare/write.
-
-        ## Plugins — extend yourself
-        - plugin_list {} -> user-installed tools; they appear in this prompt as plugin_*.
-        - plugin_create {"name": str, "description": str, "run_type": "shell"|"applescript"|"open_url", "template": str, "parameters": {"arg": "description"}} -> writes a new tool. Use {{arg}} placeholders in template. It becomes callable on the next request.
-        - plugin_delete {"name": str}
-
-        ## System audio (what the Mac is playing — never the mic)
-        - system_audio_start {} -> start capturing speaker output (a video, a call, music). system_audio_stop {} -> stop and get the transcript. Use when the user says "listen to this", "record what's playing", "transcribe this video".
-        - system_audio_recall {"seconds": int?} -> transcript of the last N seconds from the rolling buffer (needs "Keep Recent System Audio" on). Use for "what did they just say?".
-        - watch_for_audio {"text": str, "timeout_seconds": int?} -> notify the user when that phrase is heard in system audio.
-
-        ## Pause for the user
-        - wait_for_user {"question": str, "context": str?} -> when you cannot continue without an answer (which file, which contact, confirm a choice). Then end your reply with the question. The next request is the answer and the context comes back to you.
-
-        ## Learning a language
-        - set_learning_language {"language": str} -> the user is learning this language; explain words and phrases they hear or read in it. "off" to stop.
-        - mark_vocabulary_known {"word": str} -> the user knows this word; it is added to their custom vocabulary so dictation spells it right.
-
-        ## Ambient & modes
-        - watch_for {"text": str, "timeout_seconds": int?} -> notify the user when text appears on screen (checks every few seconds, up to an hour). watch_list {} · watch_cancel {"watch_id": str?}
-        - set_control_mode {"mode": "takeover"|"ask_before_action"|"observe_only"} -> how freely you may act. In ask_before_action every mutating tool returns confirm_required first. get_control_mode {}
-
-        ## Diagnostics & secrets
-        - permissions_diagnostics {} -> which macOS permissions are granted. Call this when a click or screen tool fails.
-        - system_status {} -> battery, free disk, memory, uptime, thermal state.
-        - secret_save {"name": str, "value": str} -> store a token in the Keychain. secret_exists {"name": str}
-
-        # Computer-control rules
-        - After activating an app or opening a page, wait_for_text (or wait) before clicking into it.
-        - When an action fails, look before retrying: read_screen or list_ui_elements, then choose a different path down the fallback chain.
-        - Never guess coordinates. Get them from list_ui_elements, find_text or list_windows.
-        - Say what you did in the final sentence, including anything that was blocked or needs a permission.
-
-        # Answering rules
-        - Answer the question, never narrate your tools. "What is this?" means: describe the thing under the cursor or on screen (what app, what it says, what it is for) in one or two sentences — not "I read the screen".
-        - "What can you do?" → a short list of concrete examples for THIS Mac (send a message, add an event, click something, read a page), not a tool inventory.
-        - Prefer acting over asking when the request is unambiguous.
+        # Rules
+        - After opening an app or page, wait_for_text before clicking. On failure, look (read_screen/list_ui_elements) and take a different path; never guess coordinates.
+        - Answer the question; never narrate tools. "What is this?" = describe what's under the cursor or on screen in 1–2 sentences. "What can you do?" = a few concrete examples.
+        - Act when the request is clear. If an app isn't found, say so and suggest the closest names instead of retrying.
+        - Final reply: one or two plain sentences on what you did, including anything blocked.
         """
 
     /// Live state appended after the catalogue: control mode, plugins, active macro recording.
