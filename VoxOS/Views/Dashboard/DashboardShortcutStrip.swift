@@ -8,6 +8,7 @@ struct DashboardShortcutStrip: View {
     private var primary: Shortcut? { ShortcutStore.shortcut(for: .primaryRecording) }
     private var agentShortcut: Shortcut? { ShortcutStore.shortcut(for: .mode(StarterModeCatalog.agentId)) }
     private var agentTap: Shortcut? { ShortcutStore.shortcut(for: .agentDoubleTap) }
+    private var dictateAndSend: Shortcut? { ShortcutStore.shortcut(for: .dictateAndSend) }
     private var hasAgentMode: Bool {
         modeManager.getConfiguration(with: StarterModeCatalog.agentId)?.isEnabled == true
     }
@@ -17,6 +18,9 @@ struct DashboardShortcutStrip: View {
             if let primary {
                 chip(keys: [primary.displayString], title: "Hold to dictate", detail: "Release to paste")
                 chip(keys: [primary.displayString], title: "Tap for hands-free", detail: "Tap again to stop")
+            }
+            if let dictateAndSend {
+                chip(keys: [dictateAndSend.displayString], title: "Hold to dictate & send", detail: "Presses Return after pasting")
             }
             if let agentTap {
                 chip(

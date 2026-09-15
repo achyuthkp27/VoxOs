@@ -271,7 +271,7 @@ enum ShortcutMigration {
             return ["quickAddToDictionary"]
         case .mode(let id):
             return ["mode_\(id.uuidString)", "powerMode_\(id.uuidString)"]
-        case .recorderPanelEscape, .recorderPanelMode, .captureSystemAudio, .recallSystemAudio, .agentDoubleTap:
+        case .recorderPanelEscape, .recorderPanelMode, .captureSystemAudio, .recallSystemAudio, .agentDoubleTap, .dictateAndSend:
             // Introduced after the legacy KeyboardShortcuts storage; nothing to migrate.
             return []
         }

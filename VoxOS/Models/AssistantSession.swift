@@ -81,6 +81,11 @@ final class AssistantSession: ObservableObject {
 
         let trimmedResponse = response.trimmingCharacters(in: .whitespacesAndNewlines)
         let cards = AgentCardStore.drain()
+        guard !trimmedResponse.isEmpty || !cards.isEmpty else {
+            // A blank reply used to leave an empty panel that looked frozen.
+            phase = .failed(Self.emptyReplyMessage)
+            return
+        }
         if !trimmedResponse.isEmpty || !cards.isEmpty {
             appendOrReplace(
                 message: AssistantDisplayMessage(
@@ -108,14 +113,19 @@ final class AssistantSession: ObservableObject {
         return userMessage
     }
 
+    static let emptyReplyMessage = String(
+        localized: "The model sent back an empty reply. Ask again, or pick another model for the Agent in Modes.")
+
     @discardableResult
     func finishFollowUp(_ text: String) -> AssistantDisplayMessage {
+        let cards = AgentCardStore.drain()
+        let trimmed = text.trimmingCharacters(in: .whitespacesAndNewlines)
         let assistantMessage = AssistantDisplayMessage(
             id: UUID(),
             role: .assistant,
-            content: text,
+            content: trimmed.isEmpty && cards.isEmpty ? Self.emptyReplyMessage : text,
             createdAt: Date(),
-            cards: AgentCardStore.drain()
+            cards: cards
         )
         appendOrReplace(message: assistantMessage)
         phase = .ready

@@ -267,6 +267,7 @@ class RecorderUIManager: ObservableObject, RecorderPanelPresenting {
     }
 
     func cancelRecording() async {
+        DictationSend.clearOnce()
         guard let engine = engine else { return }
         await engine.cancelRecording()
         await dismissRecorderPanel()

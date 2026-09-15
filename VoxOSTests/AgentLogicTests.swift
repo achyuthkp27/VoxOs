@@ -404,4 +404,18 @@ struct AgentLogicTests {
     @Test func backgroundTaskNeedsAContextAndATask() {
         #expect(AgentTaskCenter.shared.start(instruction: "  ", title: nil) == .failure(.missingTask))
     }
+
+    @MainActor
+    @Test func emptyAgentReplyShowsAnError() {
+        let session = AssistantSession()
+        session.beginInitialResponse(transcript: "what time is it", provider: .groq, modelName: "m", modeName: "Agent", modeEmoji: nil, promptName: nil)
+        session.finishInitialResponse("   \n", systemPrompt: nil)
+        #expect(session.phase == .failed(AssistantSession.emptyReplyMessage), "a blank reply must not leave an empty panel")
+
+        session.beginInitialResponse(transcript: "hi", provider: .groq, modelName: "m", modeName: "Agent", modeEmoji: nil, promptName: nil)
+        session.finishInitialResponse("hello", systemPrompt: nil)
+        session.beginFollowUp("and?")
+        let reply = session.finishFollowUp("")
+        #expect(reply.content == AssistantSession.emptyReplyMessage)
+    }
 }

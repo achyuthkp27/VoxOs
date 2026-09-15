@@ -12,6 +12,7 @@ enum ShortcutAction: Hashable {
     case captureSystemAudio
     case recallSystemAudio
     case agentDoubleTap
+    case dictateAndSend
     case mode(UUID)
     case recorderPanelEscape
     case recorderPanelMode(Int)
@@ -53,6 +54,8 @@ enum ShortcutAction: Hashable {
             return "recallSystemAudio"
         case .agentDoubleTap:
             return "agentDoubleTap"
+        case .dictateAndSend:
+            return "dictateAndSend"
         case .mode(let id):
             return "mode_\(id.uuidString)"
         case .recorderPanelEscape:
@@ -86,6 +89,8 @@ enum ShortcutAction: Hashable {
             return String(localized: "Transcribe Recent System Audio")
         case .agentDoubleTap:
             return String(localized: "Agent (double-tap)")
+        case .dictateAndSend:
+            return String(localized: "Dictate and Send")
         case .mode(let id):
             if let config = ModeManager.shared.getConfiguration(with: id) {
                 return String(format: String(localized: "%@ Mode"), config.name)

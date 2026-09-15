@@ -40,6 +40,10 @@ struct SettingsView: View {
     @State private var agentHasScreenRecording = CGPreflightScreenCaptureAccess()
     @AppStorage(AgentControlMode.userDefaultsKey) private var agentControlModeRaw = AgentControlMode.takeover.rawValue
     @AppStorage(AgentShell.allowRiskyKey) private var agentAllowRiskyShell = false
+    @AppStorage(AgentAutoSend.enabledKey) private var agentAutoSendEnabled = true
+    @AppStorage(DictationSend.stopWhenQuietKey) private var dictationStopWhenQuiet = false
+    @AppStorage(DictationSend.pressReturnKey) private var dictationPressReturn = false
+    @AppStorage(AgentAutoSend.pauseKey) private var agentAutoSendPause = AgentAutoSend.Pause.normal.rawValue
     @State private var isRestoreClipboardExpanded = false
     @AppStorage(WritingDestination.isEnabledKey) private var matchWritingStyleToApp = true
 
@@ -87,7 +91,7 @@ struct SettingsView: View {
 
                 if recordingShortcutManager.isPrimaryShortcutFnKey {
                     VStack(alignment: .leading, spacing: 6) {
-                        Text("Hold fn to talk, tap fn to record hands-free. Double-tap ⌃ for the Agent — it sends when you stop talking.")
+                        Text("Hold fn to talk, tap fn to record hands-free, hold fn+⌃ to dictate and press Return. Double-tap ⌃ for the Agent — it sends when you stop talking.")
                             .font(.callout)
                             .foregroundStyle(.secondary)
                         if !RecordingShortcutManager.systemFnKeyActionIsOff {
@@ -106,7 +110,22 @@ struct SettingsView: View {
                             }
                         }
                     }
-                } else {
+                }
+
+                Toggle(isOn: $dictationStopWhenQuiet) {
+                    HStack(spacing: 2) {
+                        Text("Stop Dictation When You Stop Talking")
+                        InfoTip("For dictation started with a tap: VoxOS stops and pastes once you pause, a little longer than the Agent's pause.")
+                    }
+                }
+                Toggle(isOn: $dictationPressReturn) {
+                    HStack(spacing: 2) {
+                        Text("Press Return After Pasting")
+                        InfoTip("Sends what you dictated in chat boxes. Without this, hold fn+⌃ to dictate and send just once. A mode's own auto-send key still wins.")
+                    }
+                }
+
+                if !recordingShortcutManager.isPrimaryShortcutFnKey {
                     Button("Use the fn key (hold to talk, double-tap for Agent)") {
                         recordingShortcutManager.useFnKeyPreset()
                     }
@@ -258,6 +277,24 @@ struct SettingsView: View {
                 Text((AgentControlMode(rawValue: agentControlModeRaw) ?? .takeover).summary)
                     .font(.app(.caption))
                     .foregroundStyle(.secondary)
+
+                Toggle(isOn: $agentAutoSendEnabled) {
+                    HStack(spacing: 2) {
+                        Text("Send When You Stop Talking")
+                        InfoTip(
+                            "After ⌃⌃, the Agent sends your request once you pause, so there is no second tap. It learns how quiet your room is each time, and in a noisy room it waits for the live transcript to settle instead."
+                        )
+                    }
+                }
+
+                if agentAutoSendEnabled {
+                    Picker("Pause Before Sending", selection: $agentAutoSendPause) {
+                        ForEach(AgentAutoSend.Pause.allCases) { pause in
+                            Text("\(pause.label) (\(String(format: "%.1f", pause.rawValue))s)").tag(pause.rawValue)
+                        }
+                    }
+                    .pickerStyle(.menu)
+                }
 
                 Toggle(isOn: $agentAllowRiskyShell) {
                     HStack(spacing: 2) {

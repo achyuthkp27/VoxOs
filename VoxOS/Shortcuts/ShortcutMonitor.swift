@@ -4,7 +4,7 @@ import Foundation
 import os
 
 final class ShortcutMonitor {
-    fileprivate enum EventKind {
+    enum EventKind {
         case keyDown
         case keyUp
         case flagsChanged
@@ -74,6 +74,25 @@ final class ShortcutMonitor {
         onKeyDown = nil
         onKeyUp = nil
         onShortcutInterrupted = nil
+    }
+
+    /// Test hook: registers shortcuts without an event tap, then `feed` drives events directly.
+    func configureForTesting(
+        shortcuts: [ShortcutAction: Shortcut],
+        interruptibleActions: Set<ShortcutAction> = [],
+        onKeyDown: @escaping (ShortcutAction, TimeInterval) -> Void,
+        onKeyUp: @escaping (ShortcutAction, TimeInterval) -> Void
+    ) {
+        stop()
+        for (action, shortcut) in shortcuts { self.shortcuts[action] = ShortcutState(shortcut: shortcut) }
+        self.interruptibleActions = interruptibleActions
+        self.onKeyDown = onKeyDown
+        self.onKeyUp = onKeyUp
+    }
+
+    @discardableResult
+    func feed(_ kind: EventKind, keyCode: UInt16, flags: NSEvent.ModifierFlags, at time: TimeInterval) -> Bool {
+        handleEvent(kind: kind, keyCode: keyCode, modifierFlags: flags, eventTime: time)
     }
 
     private func installEventTap() -> Bool {
@@ -341,7 +360,7 @@ final class ShortcutMonitor {
     }
 }
 
-private extension ShortcutMonitor.EventKind {
+extension ShortcutMonitor.EventKind {
     init?(_ type: CGEventType) {
         switch type {
         case .keyDown:

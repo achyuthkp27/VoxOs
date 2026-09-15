@@ -1,6 +1,7 @@
 import AppKit
 import Carbon.HIToolbox
 import Foundation
+import os
 
 @MainActor
 class RecordingShortcutManager: ObservableObject {
@@ -92,10 +93,14 @@ class RecordingShortcutManager: ObservableObject {
     }
 
     /// VoiceOS-style default: hold fn to talk, tap fn for hands-free, double-tap fn for Agent.
+    fileprivate static let logger = Logger(subsystem: "com.achyuthkp.voxos", category: "Shortcuts")
+
     static let fnShortcut = Shortcut.modifierOnly(keyCode: UInt16(kVK_Function), modifierFlags: [.function])
     /// Double-tapping this modifier (default: either Control key) opens the Agent, or switches a
     /// running recording into Agent mode.
     static let agentTapShortcut = Shortcut.modifierOnly(keyCode: nil, modifierFlags: [.control])
+    /// Hold fn+⌃ to dictate and press Return after pasting (or press it to finish and send).
+    static let dictateAndSendShortcut = Shortcut.modifierOnly(keyCode: nil, modifierFlags: [.function, .control])
     static let agentDoubleTapWindow: TimeInterval = 0.4
     static let agentTapMaxHold: TimeInterval = 0.35
 
@@ -106,6 +111,7 @@ class RecordingShortcutManager: ObservableObject {
         ShortcutMigration.migrateLegacyShortcutsIfNeeded()
         ShortcutStore.seedShortcut(Self.fnShortcut, for: .primaryRecording)
         ShortcutStore.seedShortcut(Self.agentTapShortcut, for: .agentDoubleTap)
+        ShortcutStore.seedShortcut(Self.dictateAndSendShortcut, for: .dictateAndSend)
 
         self.primaryRecordingShortcut = ShortcutMigration.migrateShortcutSelection(
             action: .primaryRecording,
@@ -152,7 +158,7 @@ class RecordingShortcutManager: ObservableObject {
                 return switched
             },
             onHandsFreeRecordingStarted: { [weak autoSend] in
-                autoSend?.startIfAgentMode()
+                autoSend?.startIfEnabled()
             }
         )
 
@@ -240,6 +246,10 @@ class RecordingShortcutManager: ObservableObject {
             shortcuts[.agentDoubleTap] = agentTap
             interruptibleRecordingActions.insert(.agentDoubleTap)
         }
+        if let dictateAndSend = ShortcutStore.shortcut(for: .dictateAndSend) {
+            shortcuts[.dictateAndSend] = dictateAndSend
+            interruptibleRecordingActions.insert(.dictateAndSend)
+        }
 
         if let primaryShortcut {
             shortcuts[.primaryRecording] = primaryShortcut
@@ -257,9 +267,15 @@ class RecordingShortcutManager: ObservableObject {
             onKeyDown: { [weak self] action, eventTime in
                 Task { @MainActor in
                     guard let self else { return }
+                    Self.logger.notice("shortcut down: \(action.storageName, privacy: .public) state=\(String(describing: self.engine.recordingState), privacy: .public)")
                     if action == .agentDoubleTap {
                         self.agentTapDownAt = eventTime
                         return
+                    }
+                    if action == .dictateAndSend {
+                        // Armed first: when fn already started (or just stopped) a dictation, the
+                        // handler ignores this press, but the paste must still press Return.
+                        DictationSend.armOnce()
                     }
                     guard let mode = self.recordingMode(for: action) else { return }
                     await self.shortcutModeHandler.handleKeyDown(
@@ -272,6 +288,7 @@ class RecordingShortcutManager: ObservableObject {
             onKeyUp: { [weak self] action, eventTime in
                 Task { @MainActor in
                     guard let self else { return }
+                    Self.logger.notice("shortcut up: \(action.storageName, privacy: .public) state=\(String(describing: self.engine.recordingState), privacy: .public)")
                     if action == .agentDoubleTap {
                         await self.handleAgentTapUp(eventTime: eventTime)
                         return
@@ -352,6 +369,8 @@ class RecordingShortcutManager: ObservableObject {
             return primaryRecordingShortcutMode
         case .secondaryRecording:
             return secondaryRecordingShortcutMode
+        case .dictateAndSend:
+            return .pushToTalk
         default:
             return nil
         }

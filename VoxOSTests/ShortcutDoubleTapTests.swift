@@ -5,6 +5,13 @@ import Testing
 
 /// The recording-shortcut state machine around the fn double-tap: a second tap while the
 /// first tap's hands-free recording is running must switch to Agent mode, not stop recording.
+final class EventLog: @unchecked Sendable {
+    private let lock = NSLock()
+    private var storage: [String] = []
+    func append(_ item: String) { lock.withLock { storage.append(item) } }
+    var items: [String] { lock.withLock { storage } }
+}
+
 @MainActor
 struct ShortcutDoubleTapTests {
 
@@ -81,5 +88,92 @@ struct ShortcutDoubleTapTests {
         await h.handler.handleKeyUp(action: .mode(id), eventTime: 10.1, mode: .toggle, modeId: id)
         await h.handler.handleKeyDown(action: .mode(id), eventTime: 10.3, mode: .toggle, modeId: id)
         #expect(h.agentSwitches == 0)
+    }
+
+    @MainActor
+    @Test func dictationSendKeyRules() {
+        DictationSend.clearOnce()
+        let saved = UserDefaults.standard.object(forKey: DictationSend.pressReturnKey)
+        defer { saved.map { UserDefaults.standard.set($0, forKey: DictationSend.pressReturnKey) } ?? UserDefaults.standard.removeObject(forKey: DictationSend.pressReturnKey) }
+        UserDefaults.standard.set(false, forKey: DictationSend.pressReturnKey)
+
+        #expect(DictationSend.keyForPaste(modeKey: .none) == .none)
+
+        DictationSend.armOnce()
+        #expect(DictationSend.keyForPaste(modeKey: .none) == .enter, "fn+⌃ sends once")
+        #expect(DictationSend.keyForPaste(modeKey: .none) == .none, "…and only once")
+
+        DictationSend.armOnce(now: Date().addingTimeInterval(-DictationSend.onceLifetime - 1))
+        #expect(DictationSend.keyForPaste(modeKey: .none) == .none, "a stale arm from an abandoned recording expires")
+
+        DictationSend.armOnce()
+        #expect(DictationSend.keyForPaste(modeKey: .commandEnter) == .commandEnter, "a mode's own key wins")
+
+        UserDefaults.standard.set(true, forKey: DictationSend.pressReturnKey)
+        #expect(DictationSend.keyForPaste(modeKey: .none) == .enter)
+    }
+
+    @Test func dictateAndSendStartsAndStopsLikePushToTalk() async {
+        let h = Harness()
+        await h.handler.handleKeyDown(action: .dictateAndSend, eventTime: 20.0, mode: .pushToTalk)
+        #expect(h.toggles == 1 && h.state == .recording)
+        await h.handler.handleKeyUp(action: .dictateAndSend, eventTime: 22.0, mode: .pushToTalk)
+        #expect(h.toggles == 2 && h.state == .idle)
+    }
+
+    /// fn then ⌃ pressed, ⌃ then fn released — the order a hand actually makes on a MacBook.
+    @Test func fnControlComboDispatchOrder() async {
+        let monitor = ShortcutMonitor()
+        let events = EventLog()
+        monitor.configureForTesting(
+            shortcuts: [
+                .primaryRecording: RecordingShortcutManager.fnShortcut,
+                .dictateAndSend: RecordingShortcutManager.dictateAndSendShortcut,
+                .agentDoubleTap: RecordingShortcutManager.agentTapShortcut,
+            ],
+            onKeyDown: { action, _ in events.append("down \(action.storageName)") },
+            onKeyUp: { action, _ in events.append("up \(action.storageName)") })
+
+        monitor.feed(.flagsChanged, keyCode: 63, flags: [.function], at: 1.0)
+        monitor.feed(.flagsChanged, keyCode: 59, flags: [.function, .control], at: 1.1)
+        monitor.feed(.flagsChanged, keyCode: 59, flags: [.function], at: 3.0)
+        monitor.feed(.flagsChanged, keyCode: 63, flags: [], at: 3.1)
+        try? await Task.sleep(nanoseconds: 200_000_000)
+
+        #expect(events.items == ["down primaryRecording", "down dictateAndSend", "up dictateAndSend", "up primaryRecording"])
+    }
+
+    /// ⌃ first, then fn: only the combo starts, and releasing either key ends it.
+    @Test func controlFnComboDispatchOrder() async {
+        let monitor = ShortcutMonitor()
+        let events = EventLog()
+        monitor.configureForTesting(
+            shortcuts: [
+                .primaryRecording: RecordingShortcutManager.fnShortcut,
+                .dictateAndSend: RecordingShortcutManager.dictateAndSendShortcut,
+                .agentDoubleTap: RecordingShortcutManager.agentTapShortcut,
+            ],
+            onKeyDown: { action, _ in events.append("down \(action.storageName)") },
+            onKeyUp: { action, _ in events.append("up \(action.storageName)") })
+
+        monitor.feed(.flagsChanged, keyCode: 59, flags: [.control], at: 1.0)
+        monitor.feed(.flagsChanged, keyCode: 63, flags: [.control, .function], at: 1.1)
+        monitor.feed(.flagsChanged, keyCode: 63, flags: [.control], at: 3.0)
+        monitor.feed(.flagsChanged, keyCode: 59, flags: [], at: 3.1)
+        try? await Task.sleep(nanoseconds: 200_000_000)
+
+        #expect(events.items.contains("down dictateAndSend"))
+        #expect(events.items.contains("up dictateAndSend"))
+        #expect(!events.items.contains("down primaryRecording"))
+    }
+
+    /// Handler level: fn (hybrid) starts, fn+⌃ joins, both released — the recording must stop.
+    @Test func fnHeldThenComboReleasedStopsRecording() async {
+        let h = Harness()
+        await h.handler.handleKeyDown(action: .primaryRecording, eventTime: 1.0, mode: .hybrid)
+        await h.handler.handleKeyDown(action: .dictateAndSend, eventTime: 1.1, mode: .pushToTalk)
+        await h.handler.handleKeyUp(action: .dictateAndSend, eventTime: 3.0, mode: .pushToTalk)
+        await h.handler.handleKeyUp(action: .primaryRecording, eventTime: 3.1, mode: .hybrid)
+        #expect(h.state == .idle, "releasing fn after a long hold must stop the dictation")
     }
 }

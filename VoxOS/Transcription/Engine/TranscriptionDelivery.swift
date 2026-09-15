@@ -166,7 +166,7 @@ final class TranscriptionDelivery {
 
         let pasteTask = CursorPaster.startPasteAtCursor(pastedText)
 
-        let autoSendKey = output.outputMode == .paste ? output.autoSendKey : .none
+        let autoSendKey = output.outputMode == .paste ? DictationSend.keyForPaste(modeKey: output.autoSendKey) : .none
         Task { @MainActor in
             _ = await pasteTask.value
 
