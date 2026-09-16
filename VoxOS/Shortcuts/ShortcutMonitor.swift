@@ -26,6 +26,21 @@ final class ShortcutMonitor {
     private var eventTapRunLoopSource: CFRunLoopSource?
     private let logger = Logger(subsystem: "com.achyuthkp.voxos", category: "ShortcutMonitor")
 
+    /// The tap runs here rather than on the main run loop.
+    ///
+    /// This is an active, head-inserted session tap on every keyDown, keyUp and flagsChanged, so
+    /// the whole system's keyboard input passes through this callback before reaching any app.
+    /// On the main run loop that made keyboard delivery depend on VoxOS's main thread being free:
+    /// any hitch — SwiftUI layout, a SwiftData fetch, loading a model — stalled typing everywhere
+    /// until it cleared, while the trackpad carried on because pointer events are not in the
+    /// mask. A dedicated thread keeps keystrokes flowing no matter what the UI is doing.
+    private var tapThread: Thread?
+    private var tapRunLoop: CFRunLoop?
+    private let tapReady = DispatchSemaphore(value: 0)
+
+    /// Guards the state below, which the tap thread now touches alongside start/stop callers.
+    private let stateLock = NSLock()
+
     private static let shortcutInterruptionWindow: TimeInterval = 1.0
 
     deinit {
@@ -42,38 +57,52 @@ final class ShortcutMonitor {
     ) -> Bool {
         stop()
 
-        for (action, shortcut) in shortcuts {
-            self.shortcuts[action] = ShortcutState(shortcut: shortcut)
-        }
+        // One atomic setup: the tap is installed last, so it can never observe a partly
+        // configured monitor.
+        let hasShortcuts = stateLock.withLock { () -> Bool in
+            for (action, shortcut) in shortcuts {
+                self.shortcuts[action] = ShortcutState(shortcut: shortcut)
+            }
+            guard !self.shortcuts.isEmpty else { return false }
 
-        guard !self.shortcuts.isEmpty else {
+            self.interruptibleActions = interruptibleActions
+            self.onKeyDown = onKeyDown
+            self.onKeyUp = onKeyUp
+            self.onShortcutInterrupted = onShortcutInterrupted
             return true
         }
 
-        self.interruptibleActions = interruptibleActions
-        self.onKeyDown = onKeyDown
-        self.onKeyUp = onKeyUp
-        self.onShortcutInterrupted = onShortcutInterrupted
+        guard hasShortcuts else { return true }
 
         return installEventTap()
     }
 
     func stop() {
-        if let eventTapRunLoopSource {
-            CFRunLoopRemoveSource(CFRunLoopGetMain(), eventTapRunLoopSource, .commonModes)
-            self.eventTapRunLoopSource = nil
+        if let eventTapRunLoopSource, let tapRunLoop {
+            CFRunLoopRemoveSource(tapRunLoop, eventTapRunLoopSource, .commonModes)
         }
+        eventTapRunLoopSource = nil
 
         if let eventTap {
             CFMachPortInvalidate(eventTap)
             self.eventTap = nil
         }
 
-        shortcuts = [:]
-        interruptibleActions = []
-        onKeyDown = nil
-        onKeyUp = nil
-        onShortcutInterrupted = nil
+        tapThread?.cancel()
+        if let tapRunLoop {
+            // Wake the loop so it notices the cancellation instead of sitting out its timeout.
+            CFRunLoopStop(tapRunLoop)
+        }
+        tapThread = nil
+        tapRunLoop = nil
+
+        stateLock.withLock {
+            shortcuts = [:]
+            interruptibleActions = []
+            onKeyDown = nil
+            onKeyUp = nil
+            onShortcutInterrupted = nil
+        }
     }
 
     /// Test hook: registers shortcuts without an event tap, then `feed` drives events directly.
@@ -137,8 +166,29 @@ final class ShortcutMonitor {
 
         self.eventTap = eventTap
         eventTapRunLoopSource = source
-        CFRunLoopAddSource(CFRunLoopGetMain(), source, .commonModes)
-        CGEvent.tapEnable(tap: eventTap, enable: true)
+
+        // Spin up the thread that owns the tap's run loop and wait for it to exist, so a
+        // keystroke arriving immediately after start() has somewhere to be delivered.
+        let thread = Thread { [weak self] in
+            guard let self else { return }
+            self.tapRunLoop = CFRunLoopGetCurrent()
+            CFRunLoopAddSource(CFRunLoopGetCurrent(), source, .commonModes)
+            CGEvent.tapEnable(tap: eventTap, enable: true)
+            self.tapReady.signal()
+            // A run loop with no other input source returns immediately, so this would spin;
+            // run it in a loop and let stop() break it by invalidating the port.
+            while !Thread.current.isCancelled {
+                CFRunLoopRunInMode(.defaultMode, 0.5, false)
+            }
+        }
+        thread.name = "com.achyuthkp.voxos.shortcut-tap"
+        // Keyboard delivery for the entire system waits on this thread; it must not be starved.
+        thread.qualityOfService = .userInteractive
+        tapThread = thread
+        thread.start()
+
+        // Bounded: if the thread cannot start, fall through rather than hanging the caller.
+        _ = tapReady.wait(timeout: .now() + 2)
         return true
     }
 
@@ -149,15 +199,23 @@ final class ShortcutMonitor {
 
         let keyCode = UInt16(event.getIntegerValueField(.keyboardEventKeycode))
         let modifierFlags = NSEvent.ModifierFlags(rawValue: UInt(event.flags.rawValue))
-        return handleEvent(
-            kind: eventKind,
-            keyCode: keyCode,
-            modifierFlags: modifierFlags,
-            eventTime: ProcessInfo.processInfo.systemUptime
-        )
+        // Runs on the tap thread. The whole transition is taken under one lock so a keystroke
+        // never sees state half-written by start() or stop() on another thread. The handlers it
+        // fires already hop to main, so nothing inside waits on the main thread — which is the
+        // property that keeps system-wide typing responsive.
+        return stateLock.withLock {
+            handleEvent(
+                kind: eventKind,
+                keyCode: keyCode,
+                modifierFlags: modifierFlags,
+                eventTime: ProcessInfo.processInfo.systemUptime
+            )
+        }
     }
 
     private func resetPressedShortcutsAfterTapInterruption() {
+        stateLock.lock()
+        defer { stateLock.unlock() }
         let eventTime = ProcessInfo.processInfo.systemUptime
         let pressedActions = shortcuts.compactMap { action, state in
             state.isDown ? action : nil
