@@ -585,6 +585,16 @@ struct ModeConfigFormView: View {
                 applyOutputRules()
             }
 
+            if draft.outputMode == .rewrite {
+                // The one way to use this wrong is to trigger it with nothing selected, so say
+                // so where the mode is chosen rather than only when it fails.
+                Text(
+                    "Select text in any app, then speak an instruction — what you say rewrites the selection instead of being typed out."
+                )
+                .font(.app(.caption))
+                .foregroundStyle(.secondary)
+            }
+
             if draft.outputMode != .respond {
                 Toggle(isOn: $draft.isDefault) {
                     HStack(spacing: 6) {
