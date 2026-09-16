@@ -1,5 +1,8 @@
 import Foundation
+import OSLog
 import SwiftData
+
+private let logger = Logger(subsystem: "com.achyuthkp.voxos", category: "AudioCleanupManager")
 
 /// A utility class that manages automatic cleanup of audio files while preserving transcript data
 class AudioCleanupManager {
@@ -90,6 +93,9 @@ class AudioCleanupManager {
                 return (fileCount, totalSize, eligibleTranscriptions)
             }
         } catch {
+            // Returning empty here shows the user "nothing to clean up", which is
+            // indistinguishable from a healthy empty result — so say so in the log.
+            logger.error("Could not gather audio cleanup info: \(error, privacy: .public)")
             return (0, 0, [])
         }
     }
@@ -132,7 +138,9 @@ class AudioCleanupManager {
                             transcription.audioFileURL = nil
                             deletedCount += 1
                         } catch {
-                            // Skip this file - don't update audioFileURL if deletion failed
+                            // Leave audioFileURL set: the file is still there.
+                            logger.error(
+                                "Could not delete audio file during automatic cleanup: \(error, privacy: .public)")
                         }
                     }
                 }
@@ -142,7 +150,10 @@ class AudioCleanupManager {
                 }
             }
         } catch {
-            // Silently fail - cleanup is non-critical
+            // Cleanup is non-critical, so this stays non-fatal — but it ran on a timer with
+            // nobody watching, and swallowing it meant a permanently failing cleanup was
+            // invisible while the audio directory grew.
+            logger.error("Automatic audio cleanup failed: \(error, privacy: .public)")
         }
     }
 
@@ -166,35 +177,41 @@ class AudioCleanupManager {
     func runCleanupForTranscriptions(modelContext: ModelContext, transcriptions: [Transcription]) async -> (
         deletedCount: Int, errorCount: Int
     ) {
-        do {
-            // Execute SwiftData operations on the main thread
-            return try await MainActor.run {
-                var deletedCount = 0
-                var errorCount = 0
+        // Execute SwiftData operations on the main thread. Nothing in here throws — the
+        // previous `try await` wrapped it in a `catch` that returned (0, 0), which would
+        // have reported a wholesale failure as "deleted nothing, nothing went wrong".
+        return await MainActor.run {
+            var deletedCount = 0
+            var errorCount = 0
 
-                for transcription in transcriptions {
-                    if let urlString = transcription.audioFileURL,
-                        let url = URL(string: urlString),
-                        FileManager.default.fileExists(atPath: url.path)
-                    {
-                        do {
-                            try FileManager.default.removeItem(at: url)
-                            transcription.audioFileURL = nil
-                            deletedCount += 1
-                        } catch {
-                            errorCount += 1
-                        }
+            for transcription in transcriptions {
+                if let urlString = transcription.audioFileURL,
+                    let url = URL(string: urlString),
+                    FileManager.default.fileExists(atPath: url.path)
+                {
+                    do {
+                        try FileManager.default.removeItem(at: url)
+                        transcription.audioFileURL = nil
+                        deletedCount += 1
+                    } catch {
+                        logger.error("Could not delete audio file: \(error, privacy: .public)")
+                        errorCount += 1
                     }
                 }
-
-                if deletedCount > 0 || errorCount > 0 {
-                    try? modelContext.save()
-                }
-
-                return (deletedCount, errorCount)
             }
-        } catch {
-            return (0, 0)
+
+            if deletedCount > 0 || errorCount > 0 {
+                do {
+                    try modelContext.save()
+                } catch {
+                    // The files are already gone from disk, so swallowing this left the
+                    // rows still pointing at them and the user told everything was fine.
+                    logger.error("Could not save after audio cleanup: \(error, privacy: .public)")
+                    errorCount += 1
+                }
+            }
+
+            return (deletedCount, errorCount)
         }
     }
 

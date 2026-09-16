@@ -33,7 +33,9 @@ final class WhisperModelWarmupCoordinator: ObservableObject {
             }
 
             await MainActor.run {
-                self.warmingModels.remove(model.name)
+                // Set.remove returns the removed element, which made the closure — and so
+                // MainActor.run — return a value nobody reads.
+                _ = self.warmingModels.remove(model.name)
             }
         }
     }
