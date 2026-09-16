@@ -166,19 +166,24 @@ struct WritingDestination: Equatable {
         let register: String
         switch category {
         case .email:
-            register = "an email. Write complete, well-punctuated sentences, with a paragraph break where the topic changes. Keep a greeting or sign-off only if the speaker dictated one; never invent one."
+            register =
+                "an email. Write complete, well-punctuated sentences, with a paragraph break where the topic changes. Keep a greeting or sign-off only if the speaker dictated one; never invent one."
         case .chat:
-            register = "a chat message. Keep it short and conversational; contractions are fine. No greeting or sign-off unless dictated, and no trailing period after a single short sentence."
+            register =
+                "a chat message. Keep it short and conversational; contractions are fine. No greeting or sign-off unless dictated, and no trailing period after a single short sentence."
         case .aiChat:
-            register = "a request to an AI assistant. Keep every detail of the request, structured clearly; drop pleasantries and filler."
+            register =
+                "a request to an AI assistant. Keep every detail of the request, structured clearly; drop pleasantries and filler."
         case .notes:
             register = "notes. Prefer short lines, and turn spoken lists into bulleted lists."
         case .document:
             register = "a document. Use complete sentences and paragraphs, and turn spoken lists into lists."
         case .code:
-            register = "a code editor or coding assistant. Write identifiers, file names, paths and symbols in code form (camelCase, snake_case, dots and slashes) exactly as meant, with no added prose."
+            register =
+                "a code editor or coding assistant. Write identifiers, file names, paths and symbols in code form (camelCase, snake_case, dots and slashes) exactly as meant, with no added prose."
         case .terminal:
-            register = "a terminal. Output only the command or text as meant, with no capitalisation of commands and no trailing period."
+            register =
+                "a terminal. Output only the command or text as meant, with no capitalisation of commands and no trailing period."
         case .other:
             return nil
         }
@@ -216,7 +221,9 @@ enum WritingStyleFormatter {
         guard !innerBoundary else { return text }
 
         let lastWord = body.split(separator: " ").last.map { $0.lowercased() } ?? ""
-        let abbreviations: Set<String> = ["etc", "vs", "e.g", "i.e", "approx", "dept", "inc", "ltd", "jr", "sr", "dr", "mr", "mrs", "ms"]
+        let abbreviations: Set<String> = [
+            "etc", "vs", "e.g", "i.e", "approx", "dept", "inc", "ltd", "jr", "sr", "dr", "mr", "mrs", "ms",
+        ]
         guard !abbreviations.contains(lastWord) else { return text }
 
         let leading = text.prefix { $0.isWhitespace || $0.isNewline }

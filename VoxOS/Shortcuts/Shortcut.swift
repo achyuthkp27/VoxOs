@@ -378,14 +378,14 @@ struct Shortcut: Codable, Equatable {
     ]
 }
 
-private extension NSEvent.ModifierFlags {
-    static let shortcutRelevant: NSEvent.ModifierFlags = [.control, .option, .shift, .command, .function]
+extension NSEvent.ModifierFlags {
+    fileprivate static let shortcutRelevant: NSEvent.ModifierFlags = [.control, .option, .shift, .command, .function]
 
-    var shortcutNormalized: NSEvent.ModifierFlags {
+    fileprivate var shortcutNormalized: NSEvent.ModifierFlags {
         intersection(Self.shortcutRelevant)
     }
 
-    var shortcutDisplayTokens: [String] {
+    fileprivate var shortcutDisplayTokens: [String] {
         var tokens: [String] = []
 
         if contains(.control) {
@@ -411,7 +411,7 @@ private extension NSEvent.ModifierFlags {
         return tokens
     }
 
-    var shortcutSingleModifierCount: Int {
+    fileprivate var shortcutSingleModifierCount: Int {
         [
             NSEvent.ModifierFlags.control,
             .option,
@@ -421,7 +421,7 @@ private extension NSEvent.ModifierFlags {
         ].filter { contains($0) }.count
     }
 
-    static func shortcutFlags(fromCarbonModifiers carbonModifiers: Int) -> NSEvent.ModifierFlags {
+    fileprivate static func shortcutFlags(fromCarbonModifiers carbonModifiers: Int) -> NSEvent.ModifierFlags {
         var flags: NSEvent.ModifierFlags = []
 
         if carbonModifiers & Int(controlKey) != 0 {

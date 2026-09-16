@@ -1,5 +1,5 @@
-import AppKit
 import AVFoundation
+import AppKit
 import Foundation
 import Speech
 import SwiftData
@@ -26,12 +26,14 @@ extension AgentTools {
             switch AgentControlMode.current {
             case .observeOnly:
                 return [
-                    "error": "blocked: the agent is in observe-only mode and cannot \(name). The user can switch modes in Settings → Agent or by saying “act freely”.",
+                    "error":
+                        "blocked: the agent is in observe-only mode and cannot \(name). The user can switch modes in Settings → Agent or by saying “act freely”."
                 ]
             case .askBeforeAction where !alwaysConfirms(name, args):
                 AgentPendingAction.set(name: name, args: args)
                 return [
-                    "confirm_required": "Ask-before-acting is on. Ready to run \(name) with \(summarize(args)). Tell the user what will happen and ask them to say 'confirm' or 'cancel'.",
+                    "confirm_required":
+                        "Ask-before-acting is on. Ready to run \(name) with \(summarize(args)). Tell the user what will happen and ask them to say 'confirm' or 'cancel'."
                 ]
             default:
                 break
@@ -54,9 +56,14 @@ extension AgentTools {
             return await AgentSearch.run(query: (args["query"] as? String) ?? "")
         case "background_task":
             return await MainActor.run {
-                switch AgentTaskCenter.shared.start(instruction: (args["task"] as? String) ?? "", title: args["title"] as? String) {
+                switch AgentTaskCenter.shared.start(
+                    instruction: (args["task"] as? String) ?? "", title: args["title"] as? String)
+                {
                 case .success(let task):
-                    return ["result": "started in the background: \(task.title). The user gets a notification when it finishes."]
+                    return [
+                        "result":
+                            "started in the background: \(task.title). The user gets a notification when it finishes."
+                    ]
                 case .failure(let error):
                     return ["error": error.message]
                 }
@@ -80,7 +87,8 @@ extension AgentTools {
             let exit = (result["exit"] as? Int) ?? 0
             if result["error"] != nil || exit != 0 {
                 // Self-repair: the model can rewrite the manifest under the same name.
-                result["repair_hint"] = "This plugin failed. Read the output, fix the template, and call plugin_create with the same name to replace it, then run it again."
+                result["repair_hint"] =
+                    "This plugin failed. Read the output, fix the template, and call plugin_create with the same name to replace it, then run it again."
             }
             return result
         }
@@ -106,7 +114,10 @@ extension AgentTools {
             return ["error": "observe-only mode: nothing can be confirmed"]
         }
         guard let pending = AgentPendingAction.take() else {
-            return ["error": "nothing pending to confirm — a confirmation must come from the user's next request, not from the same turn"]
+            return [
+                "error":
+                    "nothing pending to confirm — a confirmation must come from the user's next request, not from the same turn"
+            ]
         }
         let arg = { (key: String) -> String in (pending.args[key] as? String) ?? "" }
         switch pending.name {
@@ -128,7 +139,9 @@ extension AgentTools {
         return result
     }
 
-    private static let untruncatedArgKeys: Set<String> = ["command", "script", "js", "template", "text", "to", "body", "url", "path", "from"]
+    private static let untruncatedArgKeys: Set<String> = [
+        "command", "script", "js", "template", "text", "to", "body", "url", "path", "from",
+    ]
 
     private static func summarize(_ args: [String: Any]) -> String {
         let parts = args.map { key, value -> String in
@@ -138,8 +151,10 @@ extension AgentTools {
             if key == "actions", let steps = value as? [[String: Any]] {
                 let stepSummaries = steps.enumerated().map { index, step -> String in
                     let tool = (step["tool"] as? String) ?? (step["type"] as? String) ?? "?"
-                    let stepArgs = (step["args"] as? [String: Any]) ?? step.filter { $0.key != "tool" && $0.key != "type" }
-                    let argsText = stepArgs.map { "\($0.key)=\(String(describing: $0.value).prefix(60))" }.sorted().joined(separator: ", ")
+                    let stepArgs =
+                        (step["args"] as? [String: Any]) ?? step.filter { $0.key != "tool" && $0.key != "type" }
+                    let argsText = stepArgs.map { "\($0.key)=\(String(describing: $0.value).prefix(60))" }.sorted()
+                        .joined(separator: ", ")
                     return "\(index + 1). \(tool)(\(argsText))"
                 }
                 return "actions=[\(stepSummaries.joined(separator: "; "))]"
@@ -160,11 +175,17 @@ extension AgentTools {
         // Model-supplied numbers are untrusted: NaN, ±inf or absurd magnitudes must not trap.
         @Sendable func n(_ key: String) -> Double? {
             let raw: Double?
-            if let d = args[key] as? Double { raw = d }
-            else if let i = args[key] as? Int { raw = Double(i) }
-            else if let v = args[key] as? NSNumber { raw = v.doubleValue }
-            else if let str = args[key] as? String { raw = Double(str) }
-            else { raw = nil }
+            if let d = args[key] as? Double {
+                raw = d
+            } else if let i = args[key] as? Int {
+                raw = Double(i)
+            } else if let v = args[key] as? NSNumber {
+                raw = v.doubleValue
+            } else if let str = args[key] as? String {
+                raw = Double(str)
+            } else {
+                raw = nil
+            }
             guard let raw, raw.isFinite, abs(raw) < 1_000_000_000 else { return nil }
             return raw
         }
@@ -177,7 +198,10 @@ extension AgentTools {
         func needsAccessibility() -> [String: Any]? {
             guard !AgentInputSynth.isAccessibilityGranted else { return nil }
             AgentInputSynth.requestAccessibility()
-            return ["error": "Accessibility permission is required for this. macOS just prompted the user — ask them to enable VoxOS under Privacy & Security → Accessibility, then try again."]
+            return [
+                "error":
+                    "Accessibility permission is required for this. macOS just prompted the user — ask them to enable VoxOS under Privacy & Security → Accessibility, then try again."
+            ]
         }
 
         switch name {
@@ -187,12 +211,17 @@ extension AgentTools {
             return await AgentScreen.readScreenText()
 
         case "find_text":
-            guard let shot = await AgentScreen.capture() else { return ["error": "screen capture failed — Screen Recording permission may be missing"] }
+            guard let shot = await AgentScreen.capture() else {
+                return ["error": "screen capture failed — Screen Recording permission may be missing"]
+            }
             let matches = AgentScreen.filter(await AgentScreen.recognizeText(in: shot), query: s("query"))
             return [
                 "frontmost": shot.frontmostApp, "count": matches.count,
                 "matches": matches.prefix(40).map {
-                    ["text": $0.text, "x": Int($0.frame.midX), "y": Int($0.frame.midY), "confidence": Double($0.confidence)]
+                    [
+                        "text": $0.text, "x": Int($0.frame.midX), "y": Int($0.frame.midY),
+                        "confidence": Double($0.confidence),
+                    ]
                 },
             ]
 
@@ -203,7 +232,10 @@ extension AgentTools {
             return [
                 "frontmost": frontmost, "count": elements.count,
                 "elements": elements.map {
-                    ["role": $0.role, "title": String($0.title.prefix(60)), "x": Int($0.frame.midX), "y": Int($0.frame.midY)]
+                    [
+                        "role": $0.role, "title": String($0.title.prefix(60)), "x": Int($0.frame.midX),
+                        "y": Int($0.frame.midY),
+                    ]
                 },
             ]
 
@@ -220,17 +252,24 @@ extension AgentTools {
             var match: AgentAXTree.Element?
             for attempt in 0..<4 {
                 if attempt > 0 { try? await Task.sleep(nanoseconds: 180_000_000) }
-                match = AgentAXTree.bestMatch(in: AgentAXTree.enumerateFrontmost(), name: query, role: args["role"] as? String)
+                match = AgentAXTree.bestMatch(
+                    in: AgentAXTree.enumerateFrontmost(), name: query, role: args["role"] as? String)
                 if match != nil { break }
             }
             guard let match else {
-                return ["error": "no element matching \"\(query)\"", "hint": "call list_ui_elements to see what's available, or click_text to click visible text"]
+                return [
+                    "error": "no element matching \"\(query)\"",
+                    "hint": "call list_ui_elements to see what's available, or click_text to click visible text",
+                ]
             }
             let count = min(3, max(1, i("count", 1)))
             let pressed = count == 1 && AgentAXTree.tryPress(match.element)
             if !pressed { AgentInputSynth.click(at: CGPoint(x: match.frame.midX, y: match.frame.midY), count: count) }
             try? await Task.sleep(nanoseconds: 250_000_000)
-            return ["ok": true, "via": pressed ? "AXPress" : "click", "clicked": ["role": match.role, "title": match.title]]
+            return [
+                "ok": true, "via": pressed ? "AXPress" : "click",
+                "clicked": ["role": match.role, "title": match.title],
+            ]
 
         case "click_text":
             if let e = needsAccessibility() { return e }
@@ -261,13 +300,17 @@ extension AgentTools {
         // MARK: Raw input
         case "mouse_move":
             if let e = needsAccessibility() { return e }
-            guard let x = n("x"), let y = n("y") else { return ["error": "x and y are required — get them from list_ui_elements or find_text"] }
+            guard let x = n("x"), let y = n("y") else {
+                return ["error": "x and y are required — get them from list_ui_elements or find_text"]
+            }
             AgentInputSynth.move(to: CGPoint(x: x, y: y))
             return ["ok": true]
 
         case "mouse_click":
             if let e = needsAccessibility() { return e }
-            guard let x = n("x"), let y = n("y") else { return ["error": "x and y are required — get them from list_ui_elements or find_text"] }
+            guard let x = n("x"), let y = n("y") else {
+                return ["error": "x and y are required — get them from list_ui_elements or find_text"]
+            }
             let button: CGMouseButton = s("button").lowercased() == "right" ? .right : .left
             AgentInputSynth.click(at: CGPoint(x: x, y: y), button: button, count: min(3, max(1, i("count", 1))))
             try? await Task.sleep(nanoseconds: 200_000_000)
@@ -278,7 +321,9 @@ extension AgentTools {
             guard let fx = n("from_x"), let fy = n("from_y"), let tx = n("to_x"), let ty = n("to_y") else {
                 return ["error": "from_x, from_y, to_x and to_y are all required"]
             }
-            AgentInputSynth.drag(from: CGPoint(x: fx, y: fy), to: CGPoint(x: tx, y: ty), durationMs: min(5000, max(50, i("duration_ms", 350))))
+            AgentInputSynth.drag(
+                from: CGPoint(x: fx, y: fy), to: CGPoint(x: tx, y: ty),
+                durationMs: min(5000, max(50, i("duration_ms", 350))))
             return ["ok": true]
 
         case "scroll":
@@ -291,7 +336,9 @@ extension AgentTools {
             if let e = needsAccessibility() { return e }
             let key = s("key")
             let modifiers = (args["modifiers"] as? [String]) ?? []
-            guard AgentInputSynth.pressKey(key, modifiers: modifiers) else { return ["error": "unknown key \"\(key)\""] }
+            guard AgentInputSynth.pressKey(key, modifiers: modifiers) else {
+                return ["error": "unknown key \"\(key)\""]
+            }
             return ["ok": true, "key": key, "modifiers": modifiers]
 
         case "hotkey":
@@ -302,7 +349,9 @@ extension AgentTools {
             guard let main = keys.last(where: { !AgentInputSynth.modifierNames.contains($0.lowercased()) }) else {
                 return ["error": "no main key in \(keys)"]
             }
-            guard AgentInputSynth.pressKey(main, modifiers: modifiers) else { return ["error": "unknown key \"\(main)\""] }
+            guard AgentInputSynth.pressKey(main, modifiers: modifiers) else {
+                return ["error": "unknown key \"\(main)\""]
+            }
             return ["ok": true, "keys": keys]
 
         case "undo_last_action":
@@ -313,7 +362,9 @@ extension AgentTools {
         // MARK: Sequencing
         case "wait":
             let seconds = min(30, max(0, n("seconds") ?? 1))
-            do { try await Task.sleep(nanoseconds: UInt64(seconds * 1_000_000_000)) } catch { return ["error": "cancelled"] }
+            do { try await Task.sleep(nanoseconds: UInt64(seconds * 1_000_000_000)) } catch {
+                return ["error": "cancelled"]
+            }
             return ["ok": true, "waited_seconds": seconds]
 
         case "wait_for_text":
@@ -323,7 +374,9 @@ extension AgentTools {
             let deadline = Date().addingTimeInterval(TimeInterval(timeout))
             while Date() < deadline {
                 if let shot = await AgentScreen.capture(lowResolution: true),
-                    await AgentScreen.recognizeText(in: shot, accurate: false).contains(where: { $0.text.lowercased().contains(target) })
+                    await AgentScreen.recognizeText(in: shot, accurate: false).contains(where: {
+                        $0.text.lowercased().contains(target)
+                    })
                 {
                     return ["found": true, "text": s("text")]
                 }
@@ -333,7 +386,9 @@ extension AgentTools {
 
         case "batch_actions":
             let steps = (args["actions"] as? [[String: Any]]) ?? []
-            guard !steps.isEmpty else { return ["error": "actions is required: a list of {\"tool\": ..., \"args\": {...}}"] }
+            guard !steps.isEmpty else {
+                return ["error": "actions is required: a list of {\"tool\": ..., \"args\": {...}}"]
+            }
             let stopOnError = b("stop_on_error", true)
             let dryRun = b("dry_run", false)
             var results: [[String: Any]] = []
@@ -375,7 +430,9 @@ extension AgentTools {
             return ["windows": AgentWindows.listWindows()]
         case "set_window_bounds":
             return await MainActor.run {
-                AgentWindows.setWindowBounds(appQuery: s("app"), x: n("x") ?? 0, y: n("y") ?? 0, width: n("width") ?? 800, height: n("height") ?? 600)
+                AgentWindows.setWindowBounds(
+                    appQuery: s("app"), x: n("x") ?? 0, y: n("y") ?? 0, width: n("width") ?? 800,
+                    height: n("height") ?? 600)
             }
 
         // MARK: Shell, files, clipboard
@@ -385,7 +442,11 @@ extension AgentTools {
             let script = s("script")
             guard !script.isEmpty else { return ["error": "script is required"] }
             if let risk = AgentShell.riskReason(script), !UserDefaults.standard.bool(forKey: AgentShell.allowRiskyKey) {
-                return ["blocked": true, "risk": risk, "error": "blocked: this script looks risky (\(risk)) and was NOT run. The user can enable “Allow risky shell commands” in Settings → Agent."]
+                return [
+                    "blocked": true, "risk": risk,
+                    "error":
+                        "blocked: this script looks risky (\(risk)) and was NOT run. The user can enable “Allow risky shell commands” in Settings → Agent.",
+                ]
             }
             return await MainActor.run { AgentAppleScript.run(script) }
         case "read_file":
@@ -402,7 +463,10 @@ extension AgentTools {
                 {
                     return ["text": text.count > 4000 ? String(text.prefix(4000)) + "…" : text, "length": text.count]
                 }
-                return ["text": "", "note": "no readable text on the clipboard", "available_types": (pasteboard.types ?? []).map(\.rawValue)]
+                return [
+                    "text": "", "note": "no readable text on the clipboard",
+                    "available_types": (pasteboard.types ?? []).map(\.rawValue),
+                ]
             }
 
         // MARK: Browser
@@ -429,7 +493,8 @@ extension AgentTools {
         case "macro_list":
             return ["macros": AgentMacros.list().map { ["name": $0.name, "steps": $0.steps.count] }]
         case "macro_delete":
-            return AgentMacros.delete(s("name")) ? ["ok": true, "deleted": s("name")] : ["error": "no macro named \(s("name"))"]
+            return AgentMacros.delete(s("name"))
+                ? ["ok": true, "deleted": s("name")] : ["error": "no macro named \(s("name"))"]
         case "macro_run":
             guard let macro = AgentMacros.load(s("name")) else {
                 return ["error": "no macro named \(s("name"))", "available": AgentMacros.list().map(\.name)]
@@ -442,34 +507,48 @@ extension AgentTools {
                     // actually runs during replay — there's no live turn to say "confirm".
                     // Reporting this as success would silently mislead the user.
                     AgentPendingAction.clear()
-                    failures.append(["step": index + 1, "tool": step.tool, "error": "requires live confirmation, so it did not run during replay: \(confirmMessage)"])
+                    failures.append([
+                        "step": index + 1, "tool": step.tool,
+                        "error": "requires live confirmation, so it did not run during replay: \(confirmMessage)",
+                    ])
                 } else if result["error"] != nil {
                     failures.append(["step": index + 1, "tool": step.tool, "error": result["error"] ?? ""])
                 }
                 if Task.isCancelled { return ["error": "cancelled"] }
                 try? await Task.sleep(nanoseconds: 400_000_000)
             }
-            return ["ok": failures.isEmpty, "macro": macro.name, "steps_run": macro.steps.count, "failed_steps": failures]
+            return [
+                "ok": failures.isEmpty, "macro": macro.name, "steps_run": macro.steps.count, "failed_steps": failures,
+            ]
 
         // MARK: Plugins
         case "plugin_list":
-            return ["plugins": AgentPlugins.load().map { ["tool": $0.name, "description": $0.description, "args": Array($0.parameters.keys)] }]
+            return [
+                "plugins": AgentPlugins.load().map {
+                    ["tool": $0.name, "description": $0.description, "args": Array($0.parameters.keys)]
+                }
+            ]
         case "plugin_create":
             let parameters = (args["parameters"] as? [String: String]) ?? [:]
-            return AgentPlugins.create(name: s("name"), description: s("description"), runType: s("run_type"), template: s("template"), parameters: parameters)
+            return AgentPlugins.create(
+                name: s("name"), description: s("description"), runType: s("run_type"), template: s("template"),
+                parameters: parameters)
         case "plugin_delete":
             return AgentPlugins.delete(name: s("name"))
 
         // MARK: Ambient + modes
         case "watch_for":
-            return await MainActor.run { AgentWatcher.watch(forText: s("text"), timeoutSeconds: i("timeout_seconds", 600)) }
+            return await MainActor.run {
+                AgentWatcher.watch(forText: s("text"), timeoutSeconds: i("timeout_seconds", 600))
+            }
         case "watch_list":
             return await MainActor.run { AgentWatcher.list() }
         case "watch_cancel":
             return await MainActor.run { AgentWatcher.cancel(id: args["watch_id"] as? String) }
 
         case "set_control_mode":
-            let raw = s("mode").lowercased().replacingOccurrences(of: " ", with: "_").replacingOccurrences(of: "-", with: "_")
+            let raw = s("mode").lowercased().replacingOccurrences(of: " ", with: "_").replacingOccurrences(
+                of: "-", with: "_")
             let mode: AgentControlMode?
             switch raw {
             case "takeover", "act_freely", "free", "act": mode = .takeover
@@ -501,14 +580,20 @@ extension AgentTools {
         case "system_audio_recall":
             return await SystemAudioCaptureController.shared.agentRecall(seconds: n("seconds") ?? 30)
         case "watch_for_audio":
-            return await MainActor.run { AgentWatcher.watchAudio(forText: s("text"), timeoutSeconds: i("timeout_seconds", 600)) }
+            return await MainActor.run {
+                AgentWatcher.watchAudio(forText: s("text"), timeoutSeconds: i("timeout_seconds", 600))
+            }
 
         // MARK: Pause & resume
         case "wait_for_user":
             let question = s("question")
             guard !question.isEmpty else { return ["error": "question is required"] }
             AgentPausedTask.set(question: question, context: s("context"))
-            return ["ok": true, "note": "Task paused. Finish this reply with exactly that question in plain text; the user's next request will be treated as the answer and you will be reminded of the context."]
+            return [
+                "ok": true,
+                "note":
+                    "Task paused. Finish this reply with exactly that question in plain text; the user's next request will be treated as the answer and you will be reminded of the context.",
+            ]
 
         // MARK: Learning language
         case "set_learning_language":
@@ -518,17 +603,26 @@ extension AgentTools {
                 return ["ok": true, "learning_language": "off"]
             }
             UserDefaults.standard.set(language, forKey: "agentLearningLanguage")
-            return ["ok": true, "learning_language": language, "note": "From now on explain new words and phrases in \(language) context; call mark_vocabulary_known when the user says they know a word."]
+            return [
+                "ok": true, "learning_language": language,
+                "note":
+                    "From now on explain new words and phrases in \(language) context; call mark_vocabulary_known when the user says they know a word.",
+            ]
         case "mark_vocabulary_known":
             let word = s("word").trimmingCharacters(in: .whitespacesAndNewlines)
             guard !word.isEmpty else { return ["error": "word is required"] }
             return await MainActor.run {
-                guard let context = AgentEnvironment.engine?.modelContext else { return ["error": "vocabulary store unavailable"] }
+                guard let context = AgentEnvironment.engine?.modelContext else {
+                    return ["error": "vocabulary store unavailable"]
+                }
                 let existing = (try? context.fetch(FetchDescriptor<VocabularyWord>())) ?? []
                 if let message = DictionaryService.addVocabularyWords(word, existing: existing, context: context) {
                     return ["ok": true, "word": word, "note": message]
                 }
-                return ["ok": true, "word": word, "note": "added to the custom vocabulary so it is spelled correctly from now on"]
+                return [
+                    "ok": true, "word": word,
+                    "note": "added to the custom vocabulary so it is spelled correctly from now on",
+                ]
             }
 
         // MARK: Diagnostics + secrets
@@ -538,21 +632,27 @@ extension AgentTools {
                 "speech_recognition": speechAuthStatus(SFSpeechRecognizer.authorizationStatus()),
                 "screen_recording": AgentScreen.hasPermission ? "authorized" : "not_authorized",
                 "accessibility": AgentInputSynth.isAccessibilityGranted ? "authorized" : "not_authorized",
-                "hint": "Screen Recording powers read_screen/find_text/mark_screen; Accessibility powers every click and keystroke.",
+                "hint":
+                    "Screen Recording powers read_screen/find_text/mark_screen; Accessibility powers every click and keystroke.",
             ]
 
         case "system_status":
             return await systemStatus()
 
         case "secret_save":
-            let key = s("name"), value = s("value")
+            let key = s("name")
+            let value = s("value")
             guard !key.isEmpty, !value.isEmpty else { return ["error": "name and value are required"] }
             KeychainService.shared.save(value, forKey: "AgentSecret.\(key.lowercased())")
-            return ["ok": true, "saved": key, "note": "stored in the Keychain; read back with secret_exists or by name in plugins as {{secret:name}}"]
+            return [
+                "ok": true, "saved": key,
+                "note": "stored in the Keychain; read back with secret_exists or by name in plugins as {{secret:name}}",
+            ]
 
         case "secret_exists":
             let key = s("name")
-            let exists = (KeychainService.shared.getString(forKey: "AgentSecret.\(key.lowercased())") ?? "").isEmpty == false
+            let exists =
+                (KeychainService.shared.getString(forKey: "AgentSecret.\(key.lowercased())") ?? "").isEmpty == false
             return ["name": key, "exists": exists]
 
         default:
@@ -596,7 +696,8 @@ extension AgentTools {
             status["free_disk_gb"] = Int(free / 1_073_741_824)
         }
         let battery = await AgentShell.run("pmset -g batt | grep -oE '[0-9]+%' | head -1")
-        if let output = (battery["output"] as? String)?.trimmingCharacters(in: .whitespacesAndNewlines), !output.isEmpty {
+        if let output = (battery["output"] as? String)?.trimmingCharacters(in: .whitespacesAndNewlines), !output.isEmpty
+        {
             status["battery"] = output
         }
         status["frontmost"] = await MainActor.run { NSWorkspace.shared.frontmostApplication?.localizedName ?? "" }

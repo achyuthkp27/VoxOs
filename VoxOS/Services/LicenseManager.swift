@@ -60,12 +60,14 @@ final class LicenseManager: LicenseStoring {
             return false
         }
 
-        guard keychain.save(
-            key,
-            forKey: licenseKeyIdentifier,
-            syncable: false,
-            accessibility: accessibility
-        ) else {
+        guard
+            keychain.save(
+                key,
+                forKey: licenseKeyIdentifier,
+                syncable: false,
+                accessibility: accessibility
+            )
+        else {
             return false
         }
 

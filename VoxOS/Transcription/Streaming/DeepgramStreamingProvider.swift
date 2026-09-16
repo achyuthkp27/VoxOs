@@ -31,7 +31,8 @@ final class DeepgramStreamingProvider: StreamingTranscriptionProvider {
         }
 
         let vocabulary = getCustomVocabularyTerms()
-        let deepgramLanguage = model.name == "nova-3" && (language == nil || language == "auto")
+        let deepgramLanguage =
+            model.name == "nova-3" && (language == nil || language == "auto")
             ? "multi"
             : language
 

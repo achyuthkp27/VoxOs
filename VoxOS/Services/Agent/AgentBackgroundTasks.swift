@@ -19,14 +19,17 @@ enum AgentRunScope {
         case "confirm_action", "cancel_action":
             return "background tasks cannot confirm anything"
         case "wait_for_user":
-            return "background tasks cannot ask questions; finish with what you have and put the question in the final reply"
+            return
+                "background tasks cannot ask questions; finish with what you have and put the question in the final reply"
         case "background_task":
             return "background tasks cannot start other background tasks"
         case "messages_send", "set_control_mode":
             return "this needs the user's confirmation; say in the final reply what to ask for"
         // Written as one condition: a `where` on a multi-pattern case guards only its last pattern.
         case "mail_compose", "gmail_compose", "slack_send":
-            return sends ? "sending needs the user's confirmation; leave a draft instead and say so in the final reply" : askBeforeActingReason(tool)
+            return sends
+                ? "sending needs the user's confirmation; leave a draft instead and say so in the final reply"
+                : askBeforeActingReason(tool)
         default:
             return askBeforeActingReason(tool)
         }
@@ -53,7 +56,9 @@ enum AgentRunContext {
     private static var last: Snapshot?
 
     static func record(systemPrompt: String?, provider: AIProvider, modelName: String?, aiService: AIService) {
-        lock.withLock { last = Snapshot(systemPrompt: systemPrompt, provider: provider, modelName: modelName, aiService: aiService) }
+        lock.withLock {
+            last = Snapshot(systemPrompt: systemPrompt, provider: provider, modelName: modelName, aiService: aiService)
+        }
     }
 
     static var latest: Snapshot? { lock.withLock { last } }
@@ -97,10 +102,12 @@ final class AgentTaskCenter: ObservableObject {
             return .failure(.noAgentContext)
         }
 
-        let taskTitle = (title?.trimmingCharacters(in: .whitespacesAndNewlines)).flatMap { $0.isEmpty ? nil : $0 }
+        let taskTitle =
+            (title?.trimmingCharacters(in: .whitespacesAndNewlines)).flatMap { $0.isEmpty ? nil : $0 }
             ?? String(trimmed.prefix(60))
         let task = AgentBackgroundTask(
-            id: UUID(), title: taskTitle, instruction: trimmed, startedAt: Date(), finishedAt: nil, status: .running, result: "")
+            id: UUID(), title: taskTitle, instruction: trimmed, startedAt: Date(), finishedAt: nil, status: .running,
+            result: "")
         tasks.insert(task, at: 0)
         trim()
 
@@ -109,7 +116,8 @@ final class AgentTaskCenter: ObservableObject {
             let outcome: (AgentBackgroundTask.Status, String) = await AgentRunScope.$isBackground.withValue(true) {
                 let messages = [
                     ChatMessage.user(
-                        "BACKGROUND TASK — the user is not watching and cannot answer. Do the whole job with tools, never ask questions or wait for confirmation, then reply with a short report of the result.\n\nTask: \(trimmed)")
+                        "BACKGROUND TASK — the user is not watching and cannot answer. Do the whole job with tools, never ask questions or wait for confirmation, then reply with a short report of the result.\n\nTask: \(trimmed)"
+                    )
                 ]
                 do {
                     let first = try await aiService.completeChat(
@@ -130,9 +138,12 @@ final class AgentTaskCenter: ObservableObject {
 
     func cancel(matching query: String) -> AgentBackgroundTask? {
         let q = query.lowercased()
-        guard let task = tasks.first(where: {
-            $0.status == .running && ($0.id.uuidString.lowercased().hasPrefix(q) || $0.title.lowercased().contains(q))
-        }) else { return nil }
+        guard
+            let task = tasks.first(where: {
+                $0.status == .running
+                    && ($0.id.uuidString.lowercased().hasPrefix(q) || $0.title.lowercased().contains(q))
+            })
+        else { return nil }
         handles[task.id]?.cancel()
         finish(id: task.id, status: .cancelled, result: "Cancelled.")
         return task
@@ -160,10 +171,14 @@ final class AgentTaskCenter: ObservableObject {
             title: status == .done ? "Done: \(title)" : "Couldn't finish: \(title)",
             type: status == .done ? .info : .warning,
             duration: 8,
-            actionButton: (label: String(localized: "Show"), action: {
-                _ = WindowManager.shared.showMainWindow()
-                NotificationCenter.default.post(name: .navigateToDestination, object: nil, userInfo: ["destination": "Dashboard"])
-            })
+            actionButton: (
+                label: String(localized: "Show"),
+                action: {
+                    _ = WindowManager.shared.showMainWindow()
+                    NotificationCenter.default.post(
+                        name: .navigateToDestination, object: nil, userInfo: ["destination": "Dashboard"])
+                }
+            )
         )
     }
 
@@ -174,13 +189,15 @@ final class AgentTaskCenter: ObservableObject {
     }
 
     func toolList() -> [String: Any] {
-        ["tasks": tasks.map { task -> [String: Any] in
-            var entry: [String: Any] = [
-                "id": String(task.id.uuidString.prefix(8)), "title": task.title, "status": "\(task.status)",
-            ]
-            if !task.result.isEmpty { entry["result"] = String(task.result.prefix(600)) }
-            return entry
-        }]
+        [
+            "tasks": tasks.map { task -> [String: Any] in
+                var entry: [String: Any] = [
+                    "id": String(task.id.uuidString.prefix(8)), "title": task.title, "status": "\(task.status)",
+                ]
+                if !task.result.isEmpty { entry["result"] = String(task.result.prefix(600)) }
+                return entry
+            }
+        ]
     }
 
     enum TaskError: Error, Equatable {

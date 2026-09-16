@@ -50,13 +50,15 @@ enum AgentScreen {
 
     // Locking lives in synchronous helpers so no lock is held across an await.
     private static func cachedContentIfFresh() -> SCShareableContent? {
-        contentLock.lock(); defer { contentLock.unlock() }
+        contentLock.lock()
+        defer { contentLock.unlock() }
         guard let cached = cachedContent, Date().timeIntervalSince(cached.at) < 5 else { return nil }
         return cached.content
     }
 
     private static func storeContent(_ content: SCShareableContent) {
-        contentLock.lock(); defer { contentLock.unlock() }
+        contentLock.lock()
+        defer { contentLock.unlock() }
         cachedContent = (content, Date())
     }
 
@@ -116,7 +118,8 @@ enum AgentScreen {
                     let px = CGRect(
                         x: box.minX * w, y: (1 - box.minY - box.height) * h,
                         width: box.width * w, height: box.height * h)
-                    return TextMatch(text: candidate.string, frame: capture.toPoints(px), confidence: candidate.confidence)
+                    return TextMatch(
+                        text: candidate.string, frame: capture.toPoints(px), confidence: candidate.confidence)
                 }
                 continuation.resume(returning: Array(matches.prefix(maxResults)))
             }
@@ -148,8 +151,10 @@ enum AgentScreen {
         if text.count > maxChars { text = String(text.prefix(maxChars)) + "\n…(truncated)" }
         return [
             "frontmost": shot.frontmostApp,
-            "display": ["x": Int(shot.displayBounds.minX), "y": Int(shot.displayBounds.minY),
-                        "width": Int(shot.displayBounds.width), "height": Int(shot.displayBounds.height)],
+            "display": [
+                "x": Int(shot.displayBounds.minX), "y": Int(shot.displayBounds.minY),
+                "width": Int(shot.displayBounds.width), "height": Int(shot.displayBounds.height),
+            ],
             "text_lines": matches.count,
             "text": text,
         ]
@@ -159,7 +164,8 @@ enum AgentScreen {
     /// The agent acts on the frontmost app, which is not necessarily where the pointer is.
     private static func pickDisplay(_ content: SCShareableContent) -> SCDisplay? {
         if let pid = NSWorkspace.shared.frontmostApplication?.processIdentifier,
-            let windows = CGWindowListCopyWindowInfo([.optionOnScreenOnly, .excludeDesktopElements], kCGNullWindowID) as? [[String: Any]],
+            let windows = CGWindowListCopyWindowInfo([.optionOnScreenOnly, .excludeDesktopElements], kCGNullWindowID)
+                as? [[String: Any]],
             let window = windows.first(where: {
                 ($0[kCGWindowOwnerPID as String] as? Int32) == pid && (($0[kCGWindowLayer as String] as? Int) ?? 1) == 0
             }),

@@ -91,18 +91,24 @@ struct SettingsView: View {
 
                 if recordingShortcutManager.isPrimaryShortcutFnKey {
                     VStack(alignment: .leading, spacing: 6) {
-                        Text("Hold fn to talk, tap fn to record hands-free, hold fn+⌃ to dictate and press Return. Double-tap ⌃ for the Agent — it sends when you stop talking.")
-                            .font(.callout)
-                            .foregroundStyle(.secondary)
+                        Text(
+                            "Hold fn to talk, tap fn to record hands-free, hold fn+⌃ to dictate and press Return. Double-tap ⌃ for the Agent — it sends when you stop talking."
+                        )
+                        .font(.callout)
+                        .foregroundStyle(.secondary)
                         if !RecordingShortcutManager.systemFnKeyActionIsOff {
                             HStack(spacing: 8) {
                                 Image(systemName: "exclamationmark.triangle.fill")
                                     .foregroundStyle(.orange)
-                                Text("macOS also reacts to a bare fn tap. Set “Press 🌐 key to” to “Do Nothing” in System Settings → Keyboard.")
-                                    .font(.callout)
+                                Text(
+                                    "macOS also reacts to a bare fn tap. Set “Press 🌐 key to” to “Do Nothing” in System Settings → Keyboard."
+                                )
+                                .font(.callout)
                                 Spacer()
                                 Button("Open Keyboard Settings") {
-                                    if let url = URL(string: "x-apple.systempreferences:com.apple.Keyboard-Settings.extension") {
+                                    if let url = URL(
+                                        string: "x-apple.systempreferences:com.apple.Keyboard-Settings.extension")
+                                    {
                                         NSWorkspace.shared.open(url)
                                     }
                                 }
@@ -115,13 +121,17 @@ struct SettingsView: View {
                 Toggle(isOn: $dictationStopWhenQuiet) {
                     HStack(spacing: 2) {
                         Text("Stop Dictation When You Stop Talking")
-                        InfoTip("For dictation started with a tap: VoxOS stops and pastes once you pause, a little longer than the Agent's pause.")
+                        InfoTip(
+                            "For dictation started with a tap: VoxOS stops and pastes once you pause, a little longer than the Agent's pause."
+                        )
                     }
                 }
                 Toggle(isOn: $dictationPressReturn) {
                     HStack(spacing: 2) {
                         Text("Press Return After Pasting")
-                        InfoTip("Sends what you dictated in chat boxes. Without this, hold fn+⌃ to dictate and send just once. A mode's own auto-send key still wins.")
+                        InfoTip(
+                            "Sends what you dictated in chat boxes. Without this, hold fn+⌃ to dictate and send just once. A mode's own auto-send key still wins."
+                        )
                     }
                 }
 
@@ -331,9 +341,11 @@ struct SettingsView: View {
             } header: {
                 Text("Agent")
             } footer: {
-                Text("Clicking, typing and reading the screen need Accessibility and Screen Recording. Plugins are JSON files that become voice tools; the agent can also write them itself.")
-                    .font(.app(.caption))
-                    .foregroundStyle(.secondary)
+                Text(
+                    "Clicking, typing and reading the screen need Accessibility and Screen Recording. Plugins are JSON files that become voice tools; the agent can also write them itself."
+                )
+                .font(.app(.caption))
+                .foregroundStyle(.secondary)
             }
 
             MCPServersSection()

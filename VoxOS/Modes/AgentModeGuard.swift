@@ -52,7 +52,8 @@ enum AgentModeGuard {
     /// The default mode's language, when the Agent is on auto-detect and the default is not.
     nonisolated static func inheritedLanguage(agent: ModeConfig, defaultMode: ModeConfig?) -> String? {
         let agentLanguage = agent.selectedLanguage ?? "auto"
-        guard agentLanguage == "auto", let language = defaultMode?.selectedLanguage, language != "auto", !language.isEmpty
+        guard agentLanguage == "auto", let language = defaultMode?.selectedLanguage, language != "auto",
+            !language.isEmpty
         else { return nil }
         return language
     }

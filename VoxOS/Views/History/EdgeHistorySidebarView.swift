@@ -24,7 +24,8 @@ struct EdgeHistorySidebarView: View {
             return Array(transcriptions.prefix(Self.rowLimit))
         }
         let query = searchText.lowercased()
-        return transcriptions
+        return
+            transcriptions
             .filter { $0.text.lowercased().contains(query) || ($0.enhancedText?.lowercased().contains(query) ?? false) }
             .prefix(Self.rowLimit)
             .map { $0 }
@@ -89,7 +90,9 @@ struct EdgeHistorySidebarView: View {
             .frame(maxWidth: .infinity)
             .background(Capsule().fill(Self.pill))
 
-            Button { withAnimation(.snappy(duration: 0.2)) { isPinned.toggle() } } label: {
+            Button {
+                withAnimation(.snappy(duration: 0.2)) { isPinned.toggle() }
+            } label: {
                 Image(systemName: isPinned ? "lock.fill" : "lock.open")
                     .font(.app(size: 15, weight: .medium))
                     .foregroundStyle(isPinned ? Color.white : Self.title.opacity(0.85))
@@ -133,7 +136,10 @@ struct EdgeHistorySidebarView: View {
         .mask(
             // Content fades out under the rounded bottom edge, as in the reference.
             LinearGradient(
-                stops: [.init(color: .black, location: 0), .init(color: .black, location: 0.94), .init(color: .clear, location: 1)],
+                stops: [
+                    .init(color: .black, location: 0), .init(color: .black, location: 0.94),
+                    .init(color: .clear, location: 1),
+                ],
                 startPoint: .top, endPoint: .bottom)
         )
     }
@@ -192,12 +198,17 @@ private struct EdgeHistoryAvatar: View {
                         center: .center)
                 )
                 .overlay(
-                    RadialGradient(colors: [Color.white.opacity(0.55), .clear], center: .init(x: 0.3, y: 0.28), startRadius: 0, endRadius: 16)
-                        .clipShape(Circle())
+                    RadialGradient(
+                        colors: [Color.white.opacity(0.55), .clear], center: .init(x: 0.3, y: 0.28), startRadius: 0,
+                        endRadius: 16
+                    )
+                    .clipShape(Circle())
                 )
                 .overlay(Circle().strokeBorder(Color.white.opacity(0.12), lineWidth: 0.5))
 
-            if let emoji, !emoji.isEmpty, emoji.unicodeScalars.contains(where: { $0.properties.isEmoji && $0.value > 0x7F }) {
+            if let emoji, !emoji.isEmpty,
+                emoji.unicodeScalars.contains(where: { $0.properties.isEmoji && $0.value > 0x7F })
+            {
                 Text(emoji).font(.system(size: 15))
             }
         }

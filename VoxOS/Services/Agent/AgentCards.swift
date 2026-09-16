@@ -53,19 +53,22 @@ enum AgentCardStore {
     private static var pending: [AgentCard] = []
 
     static func add(_ card: AgentCard) {
-        lock.lock(); defer { lock.unlock() }
+        lock.lock()
+        defer { lock.unlock() }
         if !pending.contains(card) { pending.append(card) }
     }
 
     static func drain() -> [AgentCard] {
-        lock.lock(); defer { lock.unlock() }
+        lock.lock()
+        defer { lock.unlock() }
         let cards = pending
         pending = []
         return cards
     }
 
     static func clear() {
-        lock.lock(); defer { lock.unlock() }
+        lock.lock()
+        defer { lock.unlock() }
         pending = []
     }
 }

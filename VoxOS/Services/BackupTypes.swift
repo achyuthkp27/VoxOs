@@ -102,10 +102,6 @@ struct GeneralBackup: Codable {
 
 struct WordBackup: Codable {
     let word: String
-
-    init(word: String) {
-        self.word = word
-    }
 }
 
 struct BackupFile: Codable {

@@ -403,7 +403,7 @@ private struct RecommendedProviderPill: View {
     }
 }
 
-fileprivate func providerDescriptor(for provider: AIProvider) -> ProviderDescriptor {
+private func providerDescriptor(for provider: AIProvider) -> ProviderDescriptor {
     ProviderDescriptor(
         displayName: provider.rawValue,
         providerKey: provider.rawValue,
@@ -412,8 +412,8 @@ fileprivate func providerDescriptor(for provider: AIProvider) -> ProviderDescrip
     )
 }
 
-fileprivate extension AIProvider {
-    var apiKeyURL: URL? {
+extension AIProvider {
+    fileprivate var apiKeyURL: URL? {
         switch self {
         case .groq:
             return URL(string: "https://console.groq.com/keys")

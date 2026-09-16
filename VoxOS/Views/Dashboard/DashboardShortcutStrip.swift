@@ -20,7 +20,9 @@ struct DashboardShortcutStrip: View {
                 chip(keys: [primary.displayString], title: "Tap for hands-free", detail: "Tap again to stop")
             }
             if let dictateAndSend {
-                chip(keys: [dictateAndSend.displayString], title: "Hold to dictate & send", detail: "Presses Return after pasting")
+                chip(
+                    keys: [dictateAndSend.displayString], title: "Hold to dictate & send",
+                    detail: "Presses Return after pasting")
             }
             if let agentTap {
                 chip(

@@ -115,8 +115,9 @@ final class EdgeHistoryWindowManager {
 
     private func handleMouseMoved() {
         let mouseLocation = NSEvent.mouseLocation
-        guard let screen = NSScreen.screens.first(where: { NSMouseInRect(mouseLocation, $0.frame, false) })
-            ?? NSScreen.main
+        guard
+            let screen = NSScreen.screens.first(where: { NSMouseInRect(mouseLocation, $0.frame, false) })
+                ?? NSScreen.main
         else { return }
 
         switch state {

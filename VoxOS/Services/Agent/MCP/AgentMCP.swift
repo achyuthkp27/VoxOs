@@ -103,7 +103,8 @@ enum AgentMCP {
         else {
             return ([], "No Claude Desktop MCP servers found.")
         }
-        var root = (try? Data(contentsOf: configURL))
+        var root =
+            (try? Data(contentsOf: configURL))
             .flatMap { try? JSONSerialization.jsonObject(with: $0) as? [String: Any] } ?? [:]
         var servers = (root["mcpServers"] as? [String: Any]) ?? [:]
         var imported: [String] = []
@@ -113,7 +114,8 @@ enum AgentMCP {
         }
         root["mcpServers"] = servers
         do {
-            let data = try JSONSerialization.data(withJSONObject: root, options: [.prettyPrinted, .sortedKeys, .withoutEscapingSlashes])
+            let data = try JSONSerialization.data(
+                withJSONObject: root, options: [.prettyPrinted, .sortedKeys, .withoutEscapingSlashes])
             try data.write(to: configURL, options: .atomic)
         } catch {
             return ([], error.localizedDescription)
@@ -179,7 +181,8 @@ enum AgentMCP {
         lock.withLock {
             for config in configs {
                 if !config.isSupported {
-                    unsupported[config.name] = config.isRemote ? "The url must start with http or https" : "Missing command"
+                    unsupported[config.name] =
+                        config.isRemote ? "The url must start with http or https" : "Missing command"
                     continue
                 }
                 guard connections[config.name] == nil else { continue }
@@ -202,7 +205,9 @@ enum AgentMCP {
                         try await connection.start(path: path)
                         logger.notice("MCP server \(connection.config.name, privacy: .public) ready")
                     } catch {
-                        logger.error("MCP server \(connection.config.name, privacy: .public) failed: \(error.localizedDescription, privacy: .public)")
+                        logger.error(
+                            "MCP server \(connection.config.name, privacy: .public) failed: \(error.localizedDescription, privacy: .public)"
+                        )
                     }
                 }
             }
@@ -236,7 +241,9 @@ enum AgentMCP {
 
     private static func rebuildIndex() {
         lock.withLock {
-            var raw: [(server: String, tool: (name: String, description: String, schema: [String: Any], readOnly: Bool))] = []
+            var raw:
+                [(server: String, tool: (name: String, description: String, schema: [String: Any], readOnly: Bool))] =
+                    []
             for name in connections.keys.sorted() {
                 guard let connection = connections[name], connection.state == .ready else { continue }
                 for tool in connection.rawTools { raw.append((name, tool)) }
@@ -273,7 +280,8 @@ enum AgentMCP {
             let schema = (properties[key] as? [String: Any]) ?? [:]
             return "\"\(key)\": \(typeLabel(schema))\(required.contains(key) ? "" : "?")"
         }
-        let summary = tool.description
+        let summary =
+            tool.description
             .split(whereSeparator: \.isNewline).first.map(String.init)?
             .trimmingCharacters(in: .whitespaces) ?? ""
         let capped = summary.count > 160 ? String(summary.prefix(157)) + "…" : summary

@@ -163,7 +163,8 @@ final class SystemAudioCaptureController: ObservableObject {
         if isCapturing { return ["ok": true, "note": "already capturing system audio"] }
         if isTranscribing { return ["error": "still transcribing the previous capture — try again in a moment"] }
         await beginCapture()
-        return isCapturing ? ["ok": true, "note": "capturing what the Mac plays; call system_audio_stop to get the transcript"]
+        return isCapturing
+            ? ["ok": true, "note": "capturing what the Mac plays; call system_audio_stop to get the transcript"]
             : ["error": "could not start system audio capture — Screen Recording permission may be missing"]
     }
 
@@ -184,7 +185,8 @@ final class SystemAudioCaptureController: ObservableObject {
         }
         // Same bookkeeping as the shortcut flow, so agent captures show up in History too.
         if shouldSaveToHistory, let engine,
-            let configuration = ModeRuntimeResolver.transcriptionConfiguration(transcriptionModelManager: engine.transcriptionModelManager)
+            let configuration = ModeRuntimeResolver.transcriptionConfiguration(
+                transcriptionModelManager: engine.transcriptionModelManager)
         {
             save(text: text, duration: duration, audioURL: url, modelName: configuration.model.displayName)
         } else {
@@ -195,14 +197,20 @@ final class SystemAudioCaptureController: ObservableObject {
 
     func agentRecall(seconds: Double) async -> [String: Any] {
         guard capture.isBufferingRecentAudio else {
-            return ["error": "system audio buffering is off; the user can enable “Keep Recent System Audio” in Settings → System Audio"]
+            return [
+                "error":
+                    "system audio buffering is off; the user can enable “Keep Recent System Audio” in Settings → System Audio"
+            ]
         }
-        let url = FileManager.default.temporaryDirectory.appendingPathComponent("voxos-agent-recall-\(UUID().uuidString).wav")
+        let url = FileManager.default.temporaryDirectory.appendingPathComponent(
+            "voxos-agent-recall-\(UUID().uuidString).wav")
         do {
             let written = try capture.writeRecentAudio(seconds: min(seconds, bufferSeconds), to: url)
             let text = await transcribeText(url: url) ?? ""
             try? FileManager.default.removeItem(at: url)
-            return text.isEmpty ? ["error": "no speech in the last \(Int(written))s"] : ["ok": true, "seconds": Int(written), "transcript": text]
+            return text.isEmpty
+                ? ["error": "no speech in the last \(Int(written))s"]
+                : ["ok": true, "seconds": Int(written), "transcript": text]
         } catch {
             return ["error": error.localizedDescription]
         }
@@ -212,9 +220,11 @@ final class SystemAudioCaptureController: ObservableObject {
     /// agent tools and the audio watcher.
     func transcribeText(url: URL) async -> String? {
         guard let engine,
-            let configuration = ModeRuntimeResolver.transcriptionConfiguration(transcriptionModelManager: engine.transcriptionModelManager)
+            let configuration = ModeRuntimeResolver.transcriptionConfiguration(
+                transcriptionModelManager: engine.transcriptionModelManager)
         else { return nil }
-        let text = try? await engine.serviceRegistry.transcribe(audioURL: url, model: configuration.model, context: configuration.requestContext)
+        let text = try? await engine.serviceRegistry.transcribe(
+            audioURL: url, model: configuration.model, context: configuration.requestContext)
         return text?.trimmingCharacters(in: .whitespacesAndNewlines)
     }
 

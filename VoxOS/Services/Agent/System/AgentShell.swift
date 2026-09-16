@@ -18,7 +18,8 @@ enum AgentShell {
             return [
                 "blocked": true,
                 "risk": risk,
-                "error": "blocked: this command looks risky (\(risk)) and was NOT run. The user can enable “Allow risky shell commands” in Settings → Agent and ask again.",
+                "error":
+                    "blocked: this command looks risky (\(risk)) and was NOT run. The user can enable “Allow risky shell commands” in Settings → Agent and ask again.",
             ]
         }
 
@@ -45,18 +46,23 @@ enum AgentShell {
                 pipe.fileHandleForReading.readabilityHandler = { handle in
                     let chunk = handle.availableData
                     guard !chunk.isEmpty else { return }
-                    collectLock.lock(); collected.append(chunk); collectLock.unlock()
+                    collectLock.lock()
+                    collected.append(chunk)
+                    collectLock.unlock()
                 }
 
                 let timedOutLock = NSLock()
                 var timedOutValue = false
                 var timedOut: Bool {
-                    timedOutLock.lock(); defer { timedOutLock.unlock() }
+                    timedOutLock.lock()
+                    defer { timedOutLock.unlock() }
                     return timedOutValue
                 }
                 let watchdog = DispatchWorkItem {
                     if process.isRunning {
-                        timedOutLock.lock(); timedOutValue = true; timedOutLock.unlock()
+                        timedOutLock.lock()
+                        timedOutValue = true
+                        timedOutLock.unlock()
                         process.terminate()
                         // A command that traps SIGTERM would otherwise block waitUntilExit forever.
                         DispatchQueue.global().asyncAfter(deadline: .now() + 2) {
@@ -110,10 +116,14 @@ enum AgentShell {
             (#"\bkillall\s+-9\b"#, "force-kills processes"),
             (#"administrator privileges"#, "runs as root"),
         ]
-        for (pattern, reason) in patterns where collapsed.range(of: pattern, options: .regularExpression) != nil { return reason }
+        for (pattern, reason) in patterns where collapsed.range(of: pattern, options: .regularExpression) != nil {
+            return reason
+        }
 
         let downloads = collapsed.contains("curl ") || collapsed.contains("wget ")
-        let pipedToShell = collapsed.contains("| sh") || collapsed.contains("| bash") || collapsed.contains("|sh") || collapsed.contains("|bash")
+        let pipedToShell =
+            collapsed.contains("| sh") || collapsed.contains("| bash") || collapsed.contains("|sh")
+            || collapsed.contains("|bash")
         if downloads, pipedToShell { return "pipes a download straight into a shell" }
         return nil
     }

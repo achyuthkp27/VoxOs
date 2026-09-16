@@ -330,7 +330,7 @@ private struct DashboardProductivityCurrentValueMarker: View {
                 .frame(width: 14, height: 14)
         }
         .shadow(color: tint.opacity(0.12), radius: 2, y: 1)
-            .accessibilityHidden(true)
+        .accessibilityHidden(true)
     }
 }
 private struct DashboardProductivityXAxisGuide: View {

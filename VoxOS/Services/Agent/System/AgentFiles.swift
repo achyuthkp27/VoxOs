@@ -13,7 +13,8 @@ enum AgentFiles {
         let home = FileManager.default.homeDirectoryForCurrentUser.standardizedFileURL.resolvingSymlinksInPath().path
         if resolved == home || resolved.hasPrefix(home + "/") {
             // Never hand out credentials.
-            return !resolved.hasPrefix(home + "/Library/Keychains") && !resolved.contains("/.ssh/") && !resolved.hasSuffix("/.ssh")
+            return !resolved.hasPrefix(home + "/Library/Keychains") && !resolved.contains("/.ssh/")
+                && !resolved.hasSuffix("/.ssh")
         }
         guard !forWriting else { return false }
         return ["/tmp", "/private/tmp", "/Applications"].contains { resolved == $0 || resolved.hasPrefix($0 + "/") }
@@ -44,7 +45,9 @@ enum AgentFiles {
 
     static func readPDF(path: String) -> [String: Any] {
         let p = expand(path)
-        guard isAllowed(p, forWriting: false) else { return ["error": "read_pdf only works inside your home folder, /tmp or /Applications"] }
+        guard isAllowed(p, forWriting: false) else {
+            return ["error": "read_pdf only works inside your home folder, /tmp or /Applications"]
+        }
         guard FileManager.default.fileExists(atPath: p) else { return ["error": "file not found: \(p)"] }
         guard let document = PDFDocument(url: URL(fileURLWithPath: p)) else {
             return ["error": "couldn't open as PDF (corrupt or not a PDF): \(p)"]
@@ -62,7 +65,9 @@ enum AgentFiles {
     static func readFile(path: String) -> [String: Any] {
         let p = expand(path)
         let fm = FileManager.default
-        guard isAllowed(p, forWriting: false) else { return ["error": "read_file only works inside your home folder, /tmp or /Applications"] }
+        guard isAllowed(p, forWriting: false) else {
+            return ["error": "read_file only works inside your home folder, /tmp or /Applications"]
+        }
         var isDirectory: ObjCBool = false
         guard fm.fileExists(atPath: p, isDirectory: &isDirectory) else { return ["error": "file not found: \(p)"] }
         if isDirectory.boolValue {

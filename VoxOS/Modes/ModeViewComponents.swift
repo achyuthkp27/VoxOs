@@ -390,7 +390,7 @@ struct ConfigurationRow: View {
                                 ? VoxOSRefineService.providerName
                                 : selectedPrompt?.title ?? "AI"
                         )
-                            .font(.app(.caption))
+                        .font(.app(.caption))
                     }
                     .padding(.horizontal, 6)
                     .padding(.vertical, 2)

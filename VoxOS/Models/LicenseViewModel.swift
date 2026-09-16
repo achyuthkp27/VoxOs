@@ -115,7 +115,8 @@ final class LicenseViewModel: ObservableObject {
         case .unavailable:
             setStorageError(
                 String(
-                    localized: "VoxOS couldn't start the trial because the macOS Keychain is unavailable. Quit and reopen VoxOS. If the problem continues, restart your Mac."
+                    localized:
+                        "VoxOS couldn't start the trial because the macOS Keychain is unavailable. Quit and reopen VoxOS. If the problem continues, restart your Mac."
                 )
             )
             return false
@@ -525,11 +526,13 @@ final class LicenseViewModel: ObservableObject {
         )
         let nextDay = min(elapsedDays + 1, trialPeriodDays)
 
-        guard let nextRefreshDate = Calendar.current.date(
-            byAdding: .day,
-            value: nextDay,
-            to: trialStartDate
-        ) else {
+        guard
+            let nextRefreshDate = Calendar.current.date(
+                byAdding: .day,
+                value: nextDay,
+                to: trialStartDate
+            )
+        else {
             return
         }
 

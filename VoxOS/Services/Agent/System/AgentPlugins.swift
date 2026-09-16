@@ -43,7 +43,8 @@ enum AgentPlugins {
     }
 
     static func load() -> [Tool] {
-        guard let files = try? FileManager.default.contentsOfDirectory(at: directory, includingPropertiesForKeys: nil) else { return [] }
+        guard let files = try? FileManager.default.contentsOfDirectory(at: directory, includingPropertiesForKeys: nil)
+        else { return [] }
         var tools: [Tool] = []
         for file in files where file.pathExtension == "json" {
             guard let data = try? Data(contentsOf: file),
@@ -68,7 +69,10 @@ enum AgentPlugins {
                     parameters[key] = ((value as? [String: Any])?["description"] as? String) ?? "string"
                 }
             }
-            tools.append(Tool(name: "plugin_\(sanitized)", description: description, parameters: parameters, runType: runType, template: template, file: file))
+            tools.append(
+                Tool(
+                    name: "plugin_\(sanitized)", description: description, parameters: parameters, runType: runType,
+                    template: template, file: file))
         }
         return tools.sorted { $0.name < $1.name }
     }
@@ -82,7 +86,9 @@ enum AgentPlugins {
     }
 
     static func run(name: String, args: [String: Any]) async -> [String: Any] {
-        guard let tool = load().first(where: { $0.name == name }) else { return ["error": "unknown plugin tool \(name)"] }
+        guard let tool = load().first(where: { $0.name == name }) else {
+            return ["error": "unknown plugin tool \(name)"]
+        }
         let command = substitute(tool.template, args: args, runType: tool.runType)
         switch tool.runType {
         case "open_url":
@@ -93,11 +99,13 @@ enum AgentPlugins {
             // AgentAppleScript.run has no risk gate of its own (it's also used for safe
             // built-ins like volume control), so plugins must gate themselves here — the
             // template alone was scanned at plugin_create, but substituted args weren't.
-            if let risk = AgentShell.riskReason(command), !UserDefaults.standard.bool(forKey: AgentShell.allowRiskyKey) {
+            if let risk = AgentShell.riskReason(command), !UserDefaults.standard.bool(forKey: AgentShell.allowRiskyKey)
+            {
                 return [
                     "blocked": true,
                     "risk": risk,
-                    "error": "blocked: this command looks risky (\(risk)) and was NOT run. The user can enable “Allow risky shell commands” in Settings → Agent and ask again.",
+                    "error":
+                        "blocked: this command looks risky (\(risk)) and was NOT run. The user can enable “Allow risky shell commands” in Settings → Agent and ask again.",
                 ]
             }
             return await MainActor.run { AgentAppleScript.run(command) }
@@ -109,10 +117,14 @@ enum AgentPlugins {
     }
 
     /// Lets the agent extend itself: write a manifest from a spoken description.
-    static func create(name: String, description: String, runType: String, template: String, parameters: [String: String]) -> [String: Any] {
+    static func create(
+        name: String, description: String, runType: String, template: String, parameters: [String: String]
+    ) -> [String: Any] {
         let sanitized = sanitize(name)
         guard !sanitized.isEmpty else { return ["error": "name is required"] }
-        guard runTypes.contains(runType) else { return ["error": "run_type must be one of shell, applescript, open_url"] }
+        guard runTypes.contains(runType) else {
+            return ["error": "run_type must be one of shell, applescript, open_url"]
+        }
         guard !template.isEmpty else { return ["error": "template is required"] }
         if runType != "open_url", let risk = AgentShell.riskReason(template) {
             return ["error": "refusing to save a plugin whose command looks risky (\(risk))"]
@@ -128,7 +140,10 @@ enum AgentPlugins {
         } catch {
             return ["error": "could not save plugin: \(error.localizedDescription)"]
         }
-        return ["ok": true, "tool": "plugin_\(sanitized)", "file": file.path, "note": "Saved. It is callable from the next request onward."]
+        return [
+            "ok": true, "tool": "plugin_\(sanitized)", "file": file.path,
+            "note": "Saved. It is callable from the next request onward.",
+        ]
     }
 
     static func delete(name: String) -> [String: Any] {
@@ -155,7 +170,8 @@ enum AgentPlugins {
             switch runType {
             case "shell": safe = "'" + raw.replacingOccurrences(of: "'", with: "'\\''") + "'"
             case "open_url": safe = raw.addingPercentEncoding(withAllowedCharacters: .urlQueryAllowed) ?? raw
-            case "applescript": safe = raw.replacingOccurrences(of: "\\", with: "\\\\").replacingOccurrences(of: "\"", with: "\\\"")
+            case "applescript":
+                safe = raw.replacingOccurrences(of: "\\", with: "\\\\").replacingOccurrences(of: "\"", with: "\\\"")
             default: safe = raw
             }
             s = s.replacingOccurrences(of: "{{\(key)}}", with: safe)

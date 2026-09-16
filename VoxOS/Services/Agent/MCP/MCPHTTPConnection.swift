@@ -104,7 +104,8 @@ final class MCPHTTPConnection: MCPClient, @unchecked Sendable {
         try await send(method: method, params: params, timeout: timeout, allowReinitialize: true)
     }
 
-    private func send(method: String, params: [String: Any]?, timeout: TimeInterval, allowReinitialize: Bool) async throws
+    private func send(method: String, params: [String: Any]?, timeout: TimeInterval, allowReinitialize: Bool)
+        async throws
         -> [String: Any]
     {
         let id = lock.withLock { () -> Int in
@@ -123,11 +124,13 @@ final class MCPHTTPConnection: MCPClient, @unchecked Sendable {
             return try await send(method: method, params: params, timeout: timeout, allowReinitialize: false)
         }
         if http.statusCode == 401 || http.statusCode == 403 {
-            throw MCPError.rpc(http.statusCode, "not authorised — add an Authorization header (browser sign-in is not supported)")
+            throw MCPError.rpc(
+                http.statusCode, "not authorised — add an Authorization header (browser sign-in is not supported)")
         }
         guard (200..<300).contains(http.statusCode) else {
             let body = try await Self.collect(bytes, limit: 400)
-            throw MCPError.rpc(http.statusCode, body.isEmpty ? HTTPURLResponse.localizedString(forStatusCode: http.statusCode) : body)
+            throw MCPError.rpc(
+                http.statusCode, body.isEmpty ? HTTPURLResponse.localizedString(forStatusCode: http.statusCode) : body)
         }
 
         if let issued = http.value(forHTTPHeaderField: "Mcp-Session-Id"), !issued.isEmpty {
@@ -153,7 +156,9 @@ final class MCPHTTPConnection: MCPClient, @unchecked Sendable {
         }
     }
 
-    private func post(_ message: [String: Any], timeout: TimeInterval) async throws -> (URLSession.AsyncBytes, URLResponse) {
+    private func post(_ message: [String: Any], timeout: TimeInterval) async throws -> (
+        URLSession.AsyncBytes, URLResponse
+    ) {
         guard let endpoint = URL(string: config.remoteURL ?? "") else { throw MCPError.badMessage }
         guard JSONSerialization.isValidJSONObject(message) else { throw MCPError.badMessage }
         var request = URLRequest(url: endpoint, timeoutInterval: timeout)
@@ -192,7 +197,9 @@ final class MCPHTTPConnection: MCPClient, @unchecked Sendable {
     }
 
     private func handleEvent(_ payload: String, awaiting id: Int) throws -> [String: Any]? {
-        guard let object = try? JSONSerialization.jsonObject(with: Data(payload.utf8)) as? [String: Any] else { return nil }
+        guard let object = try? JSONSerialization.jsonObject(with: Data(payload.utf8)) as? [String: Any] else {
+            return nil
+        }
         if object["method"] == nil, Self.id(of: object) == id {
             return try Self.unwrap(object)
         }
@@ -225,7 +232,9 @@ final class MCPHTTPConnection: MCPClient, @unchecked Sendable {
         secret: (String) -> String? = { KeychainService.shared.getString(forKey: "AgentSecret.\($0)") },
         environment: [String: String] = ProcessInfo.processInfo.environment
     ) -> String {
-        let secretsReplaced = replace(in: value, pattern: #"\{\{secret:([a-zA-Z0-9_.-]+)\}\}"#) { secret($0.lowercased()) ?? "" }
+        let secretsReplaced = replace(in: value, pattern: #"\{\{secret:([a-zA-Z0-9_.-]+)\}\}"#) {
+            secret($0.lowercased()) ?? ""
+        }
         return replace(in: secretsReplaced, pattern: #"\$\{([A-Za-z_][A-Za-z0-9_]*)\}"#) { environment[$0] ?? "" }
     }
 

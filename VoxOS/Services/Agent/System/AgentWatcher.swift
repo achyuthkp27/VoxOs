@@ -44,7 +44,10 @@ enum AgentWatcher {
             watches[id] = nil
         }
         watches[id] = watch
-        return ["ok": true, "watch_id": id, "text": target, "timeout_seconds": Int(timeout), "note": "Watching the screen in the background. The user will be notified when the text appears."]
+        return [
+            "ok": true, "watch_id": id, "text": target, "timeout_seconds": Int(timeout),
+            "note": "Watching the screen in the background. The user will be notified when the text appears.",
+        ]
     }
 
     /// "Tell me when you hear X" — needs the system-audio rolling buffer to be on.
@@ -53,7 +56,10 @@ enum AgentWatcher {
         guard !target.isEmpty else { return ["error": "text is required"] }
         let controller = SystemAudioCaptureController.shared
         guard controller.isBufferRunning else {
-            return ["error": "system audio buffering is off; the user can enable “Keep Recent System Audio” in Settings → System Audio"]
+            return [
+                "error":
+                    "system audio buffering is off; the user can enable “Keep Recent System Audio” in Settings → System Audio"
+            ]
         }
         let timeout = min(maxTimeoutSeconds, max(10, TimeInterval(timeoutSeconds)))
         let id = "a" + UUID().uuidString.prefix(6).lowercased()
@@ -63,7 +69,9 @@ enum AgentWatcher {
             let window: Double = 10
             while Date() < deadline, !Task.isCancelled {
                 let result = await controller.agentRecall(seconds: window)
-                if let transcript = result["transcript"] as? String, transcript.lowercased().contains(target.lowercased()) {
+                if let transcript = result["transcript"] as? String,
+                    transcript.lowercased().contains(target.lowercased())
+                {
                     NotificationManager.shared.showNotification(
                         title: String(format: String(localized: "Heard “%@”"), target), type: .info, duration: 6)
                     watches[id] = nil
@@ -74,11 +82,21 @@ enum AgentWatcher {
             watches[id] = nil
         }
         watches[id] = watch
-        return ["ok": true, "watch_id": id, "text": target, "timeout_seconds": Int(timeout), "note": "Listening to system audio in the background; the user will be notified when it is heard."]
+        return [
+            "ok": true, "watch_id": id, "text": target, "timeout_seconds": Int(timeout),
+            "note": "Listening to system audio in the background; the user will be notified when it is heard.",
+        ]
     }
 
     static func list() -> [String: Any] {
-        ["watches": watches.values.map { ["id": $0.id, "text": $0.text, "seconds_left": Int($0.timeout - Date().timeIntervalSince($0.startedAt))] }]
+        [
+            "watches": watches.values.map {
+                [
+                    "id": $0.id, "text": $0.text,
+                    "seconds_left": Int($0.timeout - Date().timeIntervalSince($0.startedAt)),
+                ]
+            }
+        ]
     }
 
     static func cancel(id: String?) -> [String: Any] {

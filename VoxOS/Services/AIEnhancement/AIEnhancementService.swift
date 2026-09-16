@@ -245,7 +245,8 @@ class AIEnhancementService: ObservableObject {
             ? (contextSnapshot?.destination?.promptGuidance ?? "")
             : ""
 
-        return ([prompt.finalPromptText] + agentSections + [destinationSection, customVocabularySection, contextSection])
+        return
+            ([prompt.finalPromptText] + agentSections + [destinationSection, customVocabularySection, contextSection])
             .filter { !$0.isEmpty }
             .joined(separator: "\n\n")
     }

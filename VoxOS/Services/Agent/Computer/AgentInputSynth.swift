@@ -47,7 +47,9 @@ enum AgentInputSynth {
         let interval = TimeInterval(durationMs) / TimeInterval(steps) / 1000
         for i in 1...steps {
             let t = CGFloat(i) / CGFloat(steps)
-            post(.leftMouseDragged, at: CGPoint(x: from.x + (to.x - from.x) * t, y: from.y + (to.y - from.y) * t), button: .left)
+            post(
+                .leftMouseDragged, at: CGPoint(x: from.x + (to.x - from.x) * t, y: from.y + (to.y - from.y) * t),
+                button: .left)
             Thread.sleep(forTimeInterval: interval)
         }
         postClick(.leftMouseUp, at: to, button: .left, clickState: 1)

@@ -57,7 +57,8 @@ extension AudioDeviceManager {
     ) -> RecordingDeviceResolution {
         let preferredCandidates = preferredRecordingDeviceIDs()
         let preferredAvailableDevice = preferredCandidates.first(where: isOperationalInputDevice)
-        let internalMicrophoneBlockedByClosedLid = isClamshellClosed
+        let internalMicrophoneBlockedByClosedLid =
+            isClamshellClosed
             && preferredAvailableDevice.map(isInternalMicrophone) == true
 
         var seen = Set<AudioDeviceID>()

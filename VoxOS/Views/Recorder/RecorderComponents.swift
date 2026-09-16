@@ -28,7 +28,8 @@ struct RecorderToggleButton: View {
                     Image(systemName: icon).font(.app(size: 13, weight: .regular))
                 }
             }
-            .foregroundColor(disabled ? Color.primary.opacity(0.3) : (isEnabled ? Color.primary : Color.primary.opacity(0.6)))
+            .foregroundColor(
+                disabled ? Color.primary.opacity(0.3) : (isEnabled ? Color.primary : Color.primary.opacity(0.6)))
         }
         .buttonStyle(PlainButtonStyle())
         .disabled(disabled)
@@ -413,7 +414,8 @@ struct NotchWave: View {
                             .frame(width: 3.5, height: isProcessing && breathe ? (index % 2 == 0 ? 16 : 9) : 5)
                             .animation(
                                 isProcessing
-                                    ? .easeInOut(duration: 0.55).repeatForever(autoreverses: true).delay(Double(index) * 0.1)
+                                    ? .easeInOut(duration: 0.55).repeatForever(autoreverses: true).delay(
+                                        Double(index) * 0.1)
                                     : .easeOut(duration: 0.2),
                                 value: breathe)
                     }
@@ -635,8 +637,8 @@ struct RecorderStatusDisplay: View {
                     color: accent,
                     isActive: true
                 )
-                    .scaleEffect(y: menuBarHeight != nil ? min(1.0, (menuBarHeight! - 8) / 25) : 1.0, anchor: .center)
-                    .transition(.opacity)
+                .scaleEffect(y: menuBarHeight != nil ? min(1.0, (menuBarHeight! - 8) / 25) : 1.0, anchor: .center)
+                .transition(.opacity)
             } else {
                 StaticVisualizer(color: Color.primary)
                     .scaleEffect(y: menuBarHeight != nil ? min(1.0, (menuBarHeight! - 8) / 25) : 1.0, anchor: .center)
@@ -792,12 +794,18 @@ struct AssistantPanelView: View {
             .padding(.vertical, 9)
             .frame(minHeight: 46)
             .background(Capsule().fill(AppTheme.Notch.field))
-            .overlay(Capsule().strokeBorder(LinearGradient(colors: [Color.primary.opacity(0.22), AppTheme.Notch.fieldBorder], startPoint: .top, endPoint: .bottom), lineWidth: 1))
+            .overlay(
+                Capsule().strokeBorder(
+                    LinearGradient(
+                        colors: [Color.primary.opacity(0.22), AppTheme.Notch.fieldBorder], startPoint: .top,
+                        endPoint: .bottom), lineWidth: 1))
 
             Button(action: sendDraftMessage) {
                 Image(systemName: "arrow.up")
                     .font(.app(size: 13, weight: .bold))
-                    .foregroundColor(canSendDraft ? Color(nsColor: .windowBackgroundColor) : Color.primary.opacity(0.35))
+                    .foregroundColor(
+                        canSendDraft ? Color(nsColor: .windowBackgroundColor) : Color.primary.opacity(0.35)
+                    )
                     .frame(width: 32, height: 32)
                     .background(canSendDraft ? Color.primary.opacity(0.92) : Color.primary.opacity(0.10))
                     .clipShape(Circle())
@@ -928,7 +936,10 @@ private enum TimeAnswerParser {
             meridiem = trimmed[meridiemRange].uppercased()
         }
 
-        return TimeAnswer(time: String(trimmed[timeRange]), meridiem: meridiem, timeZoneLabel: TimeZone.current.identifier.components(separatedBy: "/").last?.replacingOccurrences(of: "_", with: " "))
+        return TimeAnswer(
+            time: String(trimmed[timeRange]), meridiem: meridiem,
+            timeZoneLabel: TimeZone.current.identifier.components(separatedBy: "/").last?.replacingOccurrences(
+                of: "_", with: " "))
     }
 }
 
@@ -967,8 +978,11 @@ private struct AgentCardView: View {
             case .files(let paths):
                 VStack(alignment: .leading, spacing: 0) {
                     ForEach(paths, id: \.self) { path in
-                        row(icon: "doc.fill", title: (path as NSString).lastPathComponent,
-                            subtitle: ((path as NSString).deletingLastPathComponent as NSString).abbreviatingWithTildeInPath) {
+                        row(
+                            icon: "doc.fill", title: (path as NSString).lastPathComponent,
+                            subtitle: ((path as NSString).deletingLastPathComponent as NSString)
+                                .abbreviatingWithTildeInPath
+                        ) {
                             NSWorkspace.shared.activateFileViewerSelecting([URL(fileURLWithPath: path)])
                         }
                     }
@@ -994,7 +1008,8 @@ private struct AgentCardView: View {
         }
         .padding(6)
         .background(RoundedRectangle(cornerRadius: 14, style: .continuous).fill(AppTheme.Notch.bubble))
-        .overlay(RoundedRectangle(cornerRadius: 14, style: .continuous).stroke(Color.primary.opacity(0.08), lineWidth: 1))
+        .overlay(
+            RoundedRectangle(cornerRadius: 14, style: .continuous).stroke(Color.primary.opacity(0.08), lineWidth: 1))
     }
 
     private func row(icon: String, title: String, subtitle: String, action: @escaping () -> Void) -> some View {
@@ -1055,8 +1070,12 @@ private struct ConfirmActionCard: View {
         }
         .padding(.horizontal, 14)
         .padding(.vertical, 12)
-        .background(RoundedRectangle(cornerRadius: 16, style: .continuous).fill(AppTheme.Recorder.agentAccent.opacity(0.12)))
-        .overlay(RoundedRectangle(cornerRadius: 16, style: .continuous).stroke(AppTheme.Recorder.agentAccent.opacity(0.35), lineWidth: 1))
+        .background(
+            RoundedRectangle(cornerRadius: 16, style: .continuous).fill(AppTheme.Recorder.agentAccent.opacity(0.12))
+        )
+        .overlay(
+            RoundedRectangle(cornerRadius: 16, style: .continuous).stroke(
+                AppTheme.Recorder.agentAccent.opacity(0.35), lineWidth: 1))
     }
 }
 
@@ -1072,7 +1091,6 @@ private struct ModifierKeyHintBadge: View {
             .background(Capsule().fill(AppTheme.Notch.chip))
     }
 }
-
 
 /// Applies rounded glass only when `enabled` — the user's bubble gets it, the reply does not.
 private struct GlassIf: ViewModifier {

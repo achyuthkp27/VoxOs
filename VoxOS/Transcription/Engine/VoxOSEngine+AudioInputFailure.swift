@@ -9,7 +9,8 @@ struct AudioInputFailurePresentation {
     static func noUsableMicrophone(
         internalMicrophoneBlockedByClosedLid: Bool
     ) -> AudioInputFailurePresentation {
-        let title = internalMicrophoneBlockedByClosedLid
+        let title =
+            internalMicrophoneBlockedByClosedLid
             ? String(
                 localized:
                     "No usable microphone is available. Open the lid or connect an external microphone."

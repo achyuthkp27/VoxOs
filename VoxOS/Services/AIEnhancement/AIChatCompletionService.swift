@@ -42,14 +42,19 @@ extension AIService {
         case .httpError(let status, let message):
             if status == 429 {
                 // "Please try again in 7.5s" / "in 1m2.3s"
-                if let match = message.range(of: #"try again in ([0-9.]+)(m)?([0-9.]+)?s"#, options: .regularExpression) {
+                if let match = message.range(of: #"try again in ([0-9.]+)(m)?([0-9.]+)?s"#, options: .regularExpression)
+                {
                     let text = String(message[match])
                     let numbers = text.components(separatedBy: CharacterSet(charactersIn: "0123456789.").inverted)
                         .compactMap { Double($0) }
                     let seconds: Double
-                    if text.contains("m"), numbers.count >= 2 { seconds = numbers[0] * 60 + numbers[1] }
-                    else if text.contains("m"), numbers.count == 1 { seconds = numbers[0] * 60 }
-                    else { seconds = numbers.first ?? fallback }
+                    if text.contains("m"), numbers.count >= 2 {
+                        seconds = numbers[0] * 60 + numbers[1]
+                    } else if text.contains("m"), numbers.count == 1 {
+                        seconds = numbers[0] * 60
+                    } else {
+                        seconds = numbers.first ?? fallback
+                    }
                     return min(max(seconds + 0.5, fallback), 8)
                 }
                 return fallback
@@ -65,8 +70,12 @@ extension AIService {
     private static func friendlyChatError(_ error: LLMKitError, modelName: String?) -> Error {
         if case .httpError(let status, _) = error, status == 429 {
             return EnhancementError.customError(
-                String(format: String(localized: "%@ hit its per-minute token limit. Wait a moment, or pick a model with a higher limit in Modes → Agent."),
-                       modelName ?? "The model"))
+                String(
+                    format: String(
+                        localized:
+                            "%@ hit its per-minute token limit. Wait a moment, or pick a model with a higher limit in Modes → Agent."
+                    ),
+                    modelName ?? "The model"))
         }
         return error
     }

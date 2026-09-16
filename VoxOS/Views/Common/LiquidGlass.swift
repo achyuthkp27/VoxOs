@@ -29,7 +29,8 @@ extension View {
 
     /// Convenience: rounded-rectangle glass.
     func liquidGlass(cornerRadius: CGFloat, tint: Color? = nil, interactive: Bool = false) -> some View {
-        liquidGlass(in: RoundedRectangle(cornerRadius: cornerRadius, style: .continuous), tint: tint, interactive: interactive)
+        liquidGlass(
+            in: RoundedRectangle(cornerRadius: cornerRadius, style: .continuous), tint: tint, interactive: interactive)
     }
 
     /// Convenience: capsule glass, the shape of every Tahoe control.
@@ -76,19 +77,29 @@ struct AmbientMesh: View {
                     .opacity(scheme == .dark ? 0.55 : 0.35)
                     .blur(radius: 40)
             } else {
-                LinearGradient(colors: [palette[1], palette[3], palette[5]], startPoint: .topLeading, endPoint: .bottomTrailing)
-                    .opacity(0.3)
+                LinearGradient(
+                    colors: [palette[1], palette[3], palette[5]], startPoint: .topLeading, endPoint: .bottomTrailing
+                )
+                .opacity(0.3)
             }
         }
         .allowsHitTesting(false)
-        .onReceive(NotificationCenter.default.publisher(for: NSWindow.didChangeOcclusionStateNotification)) { _ in refreshVisibility() }
-        .onReceive(NotificationCenter.default.publisher(for: NSApplication.didHideNotification)) { _ in refreshVisibility() }
-        .onReceive(NotificationCenter.default.publisher(for: NSApplication.didUnhideNotification)) { _ in refreshVisibility() }
+        .onReceive(NotificationCenter.default.publisher(for: NSWindow.didChangeOcclusionStateNotification)) { _ in
+            refreshVisibility()
+        }
+        .onReceive(NotificationCenter.default.publisher(for: NSApplication.didHideNotification)) { _ in
+            refreshVisibility()
+        }
+        .onReceive(NotificationCenter.default.publisher(for: NSApplication.didUnhideNotification)) { _ in
+            refreshVisibility()
+        }
         .onAppear(perform: refreshVisibility)
     }
 
     private func refreshVisibility() {
-        isVisible = NSApp.windows.contains { $0.level == .normal && $0.isVisible && $0.occlusionState.contains(.visible) }
+        isVisible = NSApp.windows.contains {
+            $0.level == .normal && $0.isVisible && $0.occlusionState.contains(.visible)
+        }
     }
 
     private static func points(at t: Double) -> [SIMD2<Float>] {

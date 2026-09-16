@@ -17,7 +17,8 @@ enum AgentToolExecutor {
     static func parseToolCall(_ reply: String) -> (name: String, args: [String: Any])? {
         var text = reply.trimmingCharacters(in: .whitespacesAndNewlines)
         if text.hasPrefix("```") {
-            text = text
+            text =
+                text
                 .replacingOccurrences(of: "```json", with: "")
                 .replacingOccurrences(of: "```", with: "")
                 .trimmingCharacters(in: .whitespacesAndNewlines)
@@ -45,7 +46,8 @@ enum AgentToolExecutor {
         // Background tasks share tools with the notch but none of its per-request state.
         let background = AgentRunScope.isBackground
         if !background {
-            AgentRunContext.record(systemPrompt: systemPrompt, provider: provider, modelName: modelName, aiService: aiService)
+            AgentRunContext.record(
+                systemPrompt: systemPrompt, provider: provider, modelName: modelName, aiService: aiService)
             // A confirmation must come from a later request than the one that asked for it.
             AgentPendingAction.beginRun()
             AgentCardStore.clear()

@@ -36,15 +36,23 @@ enum AgentToolCatalog {
 
     /// Live state appended after the catalogue: control mode, plugins, active macro recording.
     static func runtimeSection() -> String {
-        var lines: [String] = ["# Agent state", "- control mode: \(AgentControlMode.current.rawValue) — \(AgentControlMode.current.summary)"]
+        var lines: [String] = [
+            "# Agent state",
+            "- control mode: \(AgentControlMode.current.rawValue) — \(AgentControlMode.current.summary)",
+        ]
         if let paused = AgentPausedTask.peek() {
-            lines.append("- RESUMING a paused task. You asked the user: \"\(paused.question)\". Treat <TRANSCRIPT> as their answer and continue the task." + (paused.context.isEmpty ? "" : " Context: \(paused.context)"))
+            lines.append(
+                "- RESUMING a paused task. You asked the user: \"\(paused.question)\". Treat <TRANSCRIPT> as their answer and continue the task."
+                    + (paused.context.isEmpty ? "" : " Context: \(paused.context)"))
         }
         if let language = UserDefaults.standard.string(forKey: "agentLearningLanguage"), !language.isEmpty {
-            lines.append("- learning language: \(language). When the user asks about a word or phrase, explain it in that language's context (meaning, usage, one example). Call mark_vocabulary_known when they say they know it.")
+            lines.append(
+                "- learning language: \(language). When the user asks about a word or phrase, explain it in that language's context (meaning, usage, one example). Call mark_vocabulary_known when they say they know it."
+            )
         }
         if let name = AgentMacros.recordingName {
-            lines.append("- RECORDING macro \"\(name)\": every mutating tool call is being captured until macro_record_stop.")
+            lines.append(
+                "- RECORDING macro \"\(name)\": every mutating tool call is being captured until macro_record_stop.")
         }
         let macros = AgentMacros.list()
         if !macros.isEmpty {

@@ -147,7 +147,9 @@ class RecorderUIManager: ObservableObject, RecorderPanelPresenting {
             // Only reachable with no screens at all. Recording still works, so the session is
             // left running rather than cancelled, but it runs without any UI — say so loudly,
             // because this is exactly the symptom users report.
-            logger.error("Recorder panel could not be shown style=\(self.recorderPanelStyle.rawValue, privacy: .public) screens=\(NSScreen.screens.count, privacy: .public)")
+            logger.error(
+                "Recorder panel could not be shown style=\(self.recorderPanelStyle.rawValue, privacy: .public) screens=\(NSScreen.screens.count, privacy: .public)"
+            )
         }
     }
 

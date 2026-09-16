@@ -18,8 +18,9 @@ struct AudioInputChannelSelection: Equatable {
 
         let fallback = (0..<min(deviceChannelCount, 2)).map(Int32.init)
         guard let preferredStereoChannels,
-              !preferredStereoChannels.isEmpty,
-              preferredStereoChannels.allSatisfy({ (1...deviceChannelCount).contains($0) }) else {
+            !preferredStereoChannels.isEmpty,
+            preferredStereoChannels.allSatisfy({ (1...deviceChannelCount).contains($0) })
+        else {
             return AudioInputChannelSelection(deviceChannelIndices: fallback)
         }
 

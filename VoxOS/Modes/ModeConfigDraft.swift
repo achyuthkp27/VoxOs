@@ -112,7 +112,7 @@ struct ModeConfigDraft {
         let availableModels = snapshot.availableModels(for: provider)
         if let selectedAIModel,
             !selectedAIModel.isEmpty,
-            (availableModels.isEmpty || availableModels.contains(selectedAIModel))
+            availableModels.isEmpty || availableModels.contains(selectedAIModel)
         {
             return
         }

@@ -240,8 +240,8 @@ private struct ModelPerformanceDetailRowData: Identifiable {
     }
 }
 
-private extension Array where Element == ModelPerformanceDetailRowData {
-    func sortedForPerformanceDetails() -> [ModelPerformanceDetailRowData] {
+extension Array where Element == ModelPerformanceDetailRowData {
+    fileprivate func sortedForPerformanceDetails() -> [ModelPerformanceDetailRowData] {
         sorted { lhs, rhs in
             if lhs.averageProcessingTime != rhs.averageProcessingTime {
                 return lhs.averageProcessingTime < rhs.averageProcessingTime

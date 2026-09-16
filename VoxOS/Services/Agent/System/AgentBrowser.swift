@@ -15,7 +15,8 @@ enum AgentBrowser {
         case arc = "Arc"
 
         func script(forJS js: String) -> String {
-            let escaped = js
+            let escaped =
+                js
                 .replacingOccurrences(of: "\\", with: "\\\\")
                 .replacingOccurrences(of: "\"", with: "\\\"")
                 .replacingOccurrences(of: "\n", with: " ")
@@ -47,11 +48,17 @@ enum AgentBrowser {
     static func runJS(_ js: String) -> [String: Any] {
         guard !js.isEmpty else { return ["error": "js is required"] }
         guard let browser = frontmostBrowser() else {
-            return ["error": "frontmost app is not a supported browser (Safari, Chrome, Brave, Edge, Arc) — activate one first"]
+            return [
+                "error":
+                    "frontmost app is not a supported browser (Safari, Chrome, Brave, Edge, Arc) — activate one first"
+            ]
         }
         let out = AgentAppleScript.run(browser.script(forJS: js))
         if let error = out["error"] as? String, !error.isEmpty {
-            return ["error": error, "hint": "Enable “Allow JavaScript from Apple Events” in \(browser.rawValue)'s Develop/Developer menu."]
+            return [
+                "error": error,
+                "hint": "Enable “Allow JavaScript from Apple Events” in \(browser.rawValue)'s Develop/Developer menu.",
+            ]
         }
         return ["browser": browser.rawValue, "result": out["result"] ?? ""]
     }
@@ -62,7 +69,8 @@ enum AgentBrowser {
         // Backslashes must be escaped before quotes, or a trailing backslash in the query
         // (e.g. from a prompt-injected page) escapes the closing quote and lets arbitrary
         // JS run in the page's context.
-        let q = query
+        let q =
+            query
             .replacingOccurrences(of: "\\", with: "\\\\")
             .replacingOccurrences(of: "'", with: "\\'")
             .replacingOccurrences(of: "\n", with: " ")
@@ -80,7 +88,10 @@ enum AgentBrowser {
             """
         let result = runJS(js)
         if let r = result["result"] as? String, r == "NOT_FOUND" {
-            return ["error": "no clickable element matching \"\(query)\"", "hint": "call browser_snapshot to see what's on the page"]
+            return [
+                "error": "no clickable element matching \"\(query)\"",
+                "hint": "call browser_snapshot to see what's on the page",
+            ]
         }
         return result
     }
@@ -142,7 +153,10 @@ enum AgentBrowser {
         guard let text = out["result"] as? String else { return out }
         let tabs = text.split(separator: "\n").map { line -> [String: Any] in
             let parts = line.split(separator: "|", maxSplits: 2).map { $0.trimmingCharacters(in: .whitespaces) }
-            return ["index": Int(parts.first ?? "") ?? 0, "title": parts.count > 1 ? parts[1] : "", "url": parts.count > 2 ? parts[2] : ""]
+            return [
+                "index": Int(parts.first ?? "") ?? 0, "title": parts.count > 1 ? parts[1] : "",
+                "url": parts.count > 2 ? parts[2] : "",
+            ]
         }
         return ["browser": browser.rawValue, "tabs": tabs, "count": tabs.count]
     }

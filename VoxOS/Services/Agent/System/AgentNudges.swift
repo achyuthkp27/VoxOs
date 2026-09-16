@@ -88,9 +88,11 @@ final class AgentNudges {
     @discardableResult
     func complete(matching query: String) -> AgentNudge? {
         let q = query.lowercased().trimmingCharacters(in: .whitespaces)
-        guard let index = nudges.firstIndex(where: {
-            $0.id.uuidString.lowercased().hasPrefix(q) || (!q.isEmpty && $0.text.lowercased().contains(q))
-        }) else { return nil }
+        guard
+            let index = nudges.firstIndex(where: {
+                $0.id.uuidString.lowercased().hasPrefix(q) || (!q.isEmpty && $0.text.lowercased().contains(q))
+            })
+        else { return nil }
         let removed = nudges.remove(at: index)
         save()
         return removed
@@ -104,7 +106,8 @@ final class AgentNudges {
     // MARK: - Firing
 
     func check(activatedBundleID: String?, now: Date = Date()) {
-        guard let index = nudges.firstIndex(where: { $0.shouldFire(activatedBundleID: activatedBundleID, now: now) }) else {
+        guard let index = nudges.firstIndex(where: { $0.shouldFire(activatedBundleID: activatedBundleID, now: now) })
+        else {
             return
         }
         nudges[index].lastShownAt = now
@@ -153,8 +156,10 @@ final class AgentNudges {
     nonisolated static func resolveApp(_ name: String) -> (name: String, bundleID: String)? {
         let names = AgentQuickIntents.installedAppNames()
         guard let match = AgentQuickIntents.bestMatch(for: name.lowercased(), in: names) else { return nil }
-        for directory in ["/Applications", "/Applications/Utilities", "/System/Applications", "/System/Applications/Utilities",
-                          NSHomeDirectory() + "/Applications"] {
+        for directory in [
+            "/Applications", "/Applications/Utilities", "/System/Applications", "/System/Applications/Utilities",
+            NSHomeDirectory() + "/Applications",
+        ] {
             let url = URL(fileURLWithPath: directory).appendingPathComponent(match + ".app")
             if let bundleID = Bundle(url: url)?.bundleIdentifier { return (match, bundleID) }
         }
@@ -171,11 +176,13 @@ final class AgentNudges {
     func toolList() -> [String: Any] {
         let formatter = DateFormatter()
         formatter.dateFormat = "yyyy-MM-dd HH:mm"
-        return ["nudges": nudges.map { nudge -> [String: Any] in
-            var entry: [String: Any] = ["id": String(nudge.id.uuidString.prefix(8)), "text": nudge.text]
-            if let app = nudge.appName { entry["when_app"] = app }
-            if let due = nudge.due { entry["at"] = formatter.string(from: due) }
-            return entry
-        }]
+        return [
+            "nudges": nudges.map { nudge -> [String: Any] in
+                var entry: [String: Any] = ["id": String(nudge.id.uuidString.prefix(8)), "text": nudge.text]
+                if let app = nudge.appName { entry["when_app"] = app }
+                if let due = nudge.due { entry["at"] = formatter.string(from: due) }
+                return entry
+            }
+        ]
     }
 }

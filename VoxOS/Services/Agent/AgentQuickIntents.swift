@@ -25,7 +25,9 @@ enum AgentQuickIntents {
             break
         }
 
-        if ["what time is it", "what's the time", "whats the time", "current time", "time now"].contains(where: lower.hasSuffix) {
+        if ["what time is it", "what's the time", "whats the time", "current time", "time now"].contains(
+            where: lower.hasSuffix)
+        {
             let formatter = DateFormatter()
             formatter.dateFormat = "h:mm a"
             return "It's \(formatter.string(from: Date()))."
@@ -34,9 +36,13 @@ enum AgentQuickIntents {
         return nil
     }
 
-    private static let openVerbs = ["can you open", "could you open", "please open", "open up", "open", "launch", "start", "switch to", "go to"]
+    private static let openVerbs = [
+        "can you open", "could you open", "please open", "open up", "open", "launch", "start", "switch to", "go to",
+    ]
     /// Only these verbs are sure enough about "it's an app" to answer "not found" themselves.
-    private static let appOnlyVerbs: Set<String> = ["can you open", "could you open", "please open", "open up", "open", "launch"]
+    private static let appOnlyVerbs: Set<String> = [
+        "can you open", "could you open", "please open", "open up", "open", "launch",
+    ]
     private static let stopWords: Set<String> = ["the", "app", "application", "please", "for", "me", "up"]
     /// Things people open that are not apps; these always go to the model.
     private static let nonAppWords: Set<String> = [
@@ -71,9 +77,13 @@ enum AgentQuickIntents {
     static func bestMatch(for query: String, in names: [String]) -> String? {
         let q = query.lowercased()
         if let exact = names.first(where: { $0.lowercased() == q }) { return exact }
-        if let prefix = names.filter({ $0.lowercased().hasPrefix(q) }).min(by: { $0.count < $1.count }) { return prefix }
+        if let prefix = names.filter({ $0.lowercased().hasPrefix(q) }).min(by: { $0.count < $1.count }) {
+            return prefix
+        }
         // "chrome" → "Google Chrome"
-        if let word = names.first(where: { $0.lowercased().split(separator: " ").contains(Substring(q)) }) { return word }
+        if let word = names.first(where: { $0.lowercased().split(separator: " ").contains(Substring(q)) }) {
+            return word
+        }
         // One slip of the ear on a longer name: "slak" → "Slack".
         if q.count >= 4, let near = names.first(where: { editDistance($0.lowercased(), q) <= 1 }) { return near }
         return nil
@@ -93,7 +103,8 @@ enum AgentQuickIntents {
     }
 
     static func editDistance(_ a: String, _ b: String) -> Int {
-        let a = Array(a), b = Array(b)
+        let a = Array(a)
+        let b = Array(b)
         guard !a.isEmpty else { return b.count }
         guard !b.isEmpty else { return a.count }
         var previous = Array(0...b.count)
@@ -117,8 +128,10 @@ enum AgentQuickIntents {
     }
 
     static func installedAppNames() -> [String] {
-        let dirs = ["/Applications", "/Applications/Utilities", "/System/Applications", "/System/Applications/Utilities",
-                    NSHomeDirectory() + "/Applications"]
+        let dirs = [
+            "/Applications", "/Applications/Utilities", "/System/Applications", "/System/Applications/Utilities",
+            NSHomeDirectory() + "/Applications",
+        ]
         var names: [String] = []
         for dir in dirs {
             if let items = try? FileManager.default.contentsOfDirectory(atPath: dir) {

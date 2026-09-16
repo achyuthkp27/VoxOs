@@ -54,10 +54,16 @@ struct AgentLogicTests {
     // MARK: Control modes
 
     @Test func stateChangingToolsAreGated() {
-        for tool in ["run_shell", "click_element", "set_control_mode", "messages_send", "plugin_create", "plugin_anything", "system_audio_start", "remember"] {
+        for tool in [
+            "run_shell", "click_element", "set_control_mode", "messages_send", "plugin_create", "plugin_anything",
+            "system_audio_start", "remember",
+        ] {
             #expect(AgentControlMode.isMutating(tool), "\(tool) must be gated")
         }
-        for tool in ["read_screen", "list_ui_elements", "find_text", "recall", "plugin_list", "get_control_mode", "permissions_diagnostics"] {
+        for tool in [
+            "read_screen", "list_ui_elements", "find_text", "recall", "plugin_list", "get_control_mode",
+            "permissions_diagnostics",
+        ] {
             #expect(!AgentControlMode.isMutating(tool), "\(tool) is read-only")
         }
     }
@@ -153,19 +159,25 @@ struct AgentLogicTests {
     // MARK: Web text extraction
 
     @Test func htmlIsStrippedToText() {
-        let html = "<html><head><style>p{}</style><script>x()</script></head><body><h1>Hi &amp; bye</h1><p>two  words</p></body></html>"
+        let html =
+            "<html><head><style>p{}</style><script>x()</script></head><body><h1>Hi &amp; bye</h1><p>two  words</p></body></html>"
         #expect(AgentWeb.stripHTML(html) == "Hi & bye two words")
     }
 
     @Test func pluginRoundTrip() async {
         let name = "unit test echo \(Int(Date().timeIntervalSince1970) % 10_000)"
-        let created = AgentPlugins.create(name: name, description: "echoes", runType: "shell", template: "echo unit-{{word}}", parameters: ["word": "a word"])
+        let created = AgentPlugins.create(
+            name: name, description: "echoes", runType: "shell", template: "echo unit-{{word}}",
+            parameters: ["word": "a word"])
         let tool = created["tool"] as? String ?? ""
         #expect(tool.hasPrefix("plugin_unit_test_echo"))
         #expect(AgentPlugins.load().contains { $0.name == tool })
         let ran = await AgentPlugins.run(name: tool, args: ["word": "it's fine"])
         #expect((ran["output"] as? String)?.contains("unit-it's fine") == true, "quoting must survive the shell")
-        #expect(AgentPlugins.create(name: "unit risky", description: "x", runType: "shell", template: "sudo rm -rf {{p}}", parameters: [:])["error"] != nil)
+        #expect(
+            AgentPlugins.create(
+                name: "unit risky", description: "x", runType: "shell", template: "sudo rm -rf {{p}}", parameters: [:])[
+                    "error"] != nil)
         #expect(AgentPlugins.delete(name: tool)["ok"] as? Bool == true)
         #expect(!AgentPlugins.load().contains { $0.name == tool })
     }
@@ -174,7 +186,8 @@ struct AgentLogicTests {
 
     @Test func readingOrderIsRowsThenColumns() {
         let frames = [
-            CGRect(x: 300, y: 10, width: 50, height: 10), CGRect(x: 20, y: 12, width: 50, height: 10),  // same row, out of order
+            // same row, out of order
+            CGRect(x: 300, y: 10, width: 50, height: 10), CGRect(x: 20, y: 12, width: 50, height: 10),
             CGRect(x: 10, y: 60, width: 50, height: 10), CGRect(x: 200, y: 30, width: 50, height: 10),
         ]
         let sorted = frames.sorted { AgentScreen.readingOrderKey($0) < AgentScreen.readingOrderKey($1) }
@@ -248,7 +261,6 @@ struct AgentLogicTests {
         AgentControlMode.current = .takeover
     }
 
-
     // MARK: App deep links
 
     @Test func appLinksAreWellFormed() {
@@ -275,8 +287,9 @@ struct AgentLogicTests {
     // MARK: Result cards
 
     @Test func cardsComeFromKnownToolResults() {
-        #expect(AgentCard.from(tool: "find_files", result: ["matches": ["/a/b.txt", "/c.md"], "count": 2])
-            == .files(["/a/b.txt", "/c.md"]))
+        #expect(
+            AgentCard.from(tool: "find_files", result: ["matches": ["/a/b.txt", "/c.md"], "count": 2])
+                == .files(["/a/b.txt", "/c.md"]))
         #expect(AgentCard.from(tool: "find_files", result: ["matches": [], "count": 0]) == nil)
         #expect(AgentCard.from(tool: "find_files", result: ["error": "nope"]) == nil)
         let links = AgentCard.from(tool: "web_results", result: ["results": [["title": "T", "url": "https://x.y/z"]]])
@@ -298,7 +311,10 @@ struct AgentLogicTests {
         #expect(AgentQuickIntents.appRequest(in: "can you open slak", installed: apps) == .found("Slack"))
         #expect(AgentQuickIntents.appRequest(in: "open system settings", installed: apps) == .found("System Settings"))
 
-        guard case .notFound(let query, let suggestions) = AgentQuickIntents.appRequest(in: "can you open crew", installed: apps) else {
+        guard
+            case .notFound(let query, let suggestions) = AgentQuickIntents.appRequest(
+                in: "can you open crew", installed: apps)
+        else {
             Issue.record("a missing single-word app should be answered locally")
             return
         }
@@ -314,7 +330,8 @@ struct AgentLogicTests {
     }
 
     @Test func compactCatalogueStaysSmall() {
-        #expect(AgentToolCatalog.promptSection.count < 5000, "every Agent step re-sends this; keep it lean for rate limits")
+        #expect(
+            AgentToolCatalog.promptSection.count < 5000, "every Agent step re-sends this; keep it lean for rate limits")
     }
 
     @Test func assistantAndMessengerLinks() {
@@ -332,8 +349,9 @@ struct AgentLogicTests {
 
     @Test func nudgesFireOnTheirAppOrTimeAndBackOff() {
         let now = Date()
-        let appNudge = AgentNudge(id: UUID(), text: "send invoice", appName: "Slack", bundleID: "com.tinyspeck.slackmacgap",
-                                  due: nil, createdAt: now, lastShownAt: nil)
+        let appNudge = AgentNudge(
+            id: UUID(), text: "send invoice", appName: "Slack", bundleID: "com.tinyspeck.slackmacgap",
+            due: nil, createdAt: now, lastShownAt: nil)
         #expect(appNudge.shouldFire(activatedBundleID: "com.tinyspeck.slackmacgap", now: now))
         #expect(!appNudge.shouldFire(activatedBundleID: "com.apple.mail", now: now))
         #expect(!appNudge.shouldFire(activatedBundleID: nil, now: now), "the timer alone never fires app nudges")
@@ -341,16 +359,23 @@ struct AgentLogicTests {
         var shown = appNudge
         shown.lastShownAt = now
         #expect(!shown.shouldFire(activatedBundleID: "com.tinyspeck.slackmacgap", now: now.addingTimeInterval(60)))
-        #expect(shown.shouldFire(activatedBundleID: "com.tinyspeck.slackmacgap", now: now.addingTimeInterval(AgentNudge.refireInterval + 1)))
+        #expect(
+            shown.shouldFire(
+                activatedBundleID: "com.tinyspeck.slackmacgap",
+                now: now.addingTimeInterval(AgentNudge.refireInterval + 1)))
 
-        let timed = AgentNudge(id: UUID(), text: "stand up", appName: nil, bundleID: nil,
-                               due: now.addingTimeInterval(300), createdAt: now, lastShownAt: nil)
+        let timed = AgentNudge(
+            id: UUID(), text: "stand up", appName: nil, bundleID: nil,
+            due: now.addingTimeInterval(300), createdAt: now, lastShownAt: nil)
         #expect(!timed.shouldFire(activatedBundleID: nil, now: now))
         #expect(timed.shouldFire(activatedBundleID: nil, now: now.addingTimeInterval(301)))
 
-        let both = AgentNudge(id: UUID(), text: "reply", appName: "Slack", bundleID: "com.tinyspeck.slackmacgap",
-                              due: now.addingTimeInterval(300), createdAt: now, lastShownAt: nil)
-        #expect(!both.shouldFire(activatedBundleID: "com.tinyspeck.slackmacgap", now: now), "app nudge with a time waits for it")
+        let both = AgentNudge(
+            id: UUID(), text: "reply", appName: "Slack", bundleID: "com.tinyspeck.slackmacgap",
+            due: now.addingTimeInterval(300), createdAt: now, lastShownAt: nil)
+        #expect(
+            !both.shouldFire(activatedBundleID: "com.tinyspeck.slackmacgap", now: now),
+            "app nudge with a time waits for it")
     }
 
     @MainActor
@@ -386,12 +411,15 @@ struct AgentLogicTests {
                 ("set_control_mode", ["mode": "takeover"]),
             ] {
                 let result = await AgentTools.execute(name: tool, args: args)
-                #expect((result["error"] as? String)?.hasPrefix("blocked in background") == true, "\(tool) must be blocked")
+                #expect(
+                    (result["error"] as? String)?.hasPrefix("blocked in background") == true, "\(tool) must be blocked")
             }
         }
-        #expect(!AgentPendingAction.isWaitingForConfirmation, "nothing may be left for the foreground to confirm unseen")
+        #expect(
+            !AgentPendingAction.isWaitingForConfirmation, "nothing may be left for the foreground to confirm unseen")
 
-        #expect(AgentRunScope.backgroundBlockReason(tool: "gmail_compose", args: ["to": "a@b.c"]) == nil, "drafts are fine")
+        #expect(
+            AgentRunScope.backgroundBlockReason(tool: "gmail_compose", args: ["to": "a@b.c"]) == nil, "drafts are fine")
         #expect(AgentRunScope.backgroundBlockReason(tool: "read_screen", args: [:]) == nil)
 
         AgentControlMode.current = .askBeforeAction
@@ -408,11 +436,15 @@ struct AgentLogicTests {
     @MainActor
     @Test func emptyAgentReplyShowsAnError() {
         let session = AssistantSession()
-        session.beginInitialResponse(transcript: "what time is it", provider: .groq, modelName: "m", modeName: "Agent", modeEmoji: nil, promptName: nil)
+        session.beginInitialResponse(
+            transcript: "what time is it", provider: .groq, modelName: "m", modeName: "Agent", modeEmoji: nil,
+            promptName: nil)
         session.finishInitialResponse("   \n", systemPrompt: nil)
-        #expect(session.phase == .failed(AssistantSession.emptyReplyMessage), "a blank reply must not leave an empty panel")
+        #expect(
+            session.phase == .failed(AssistantSession.emptyReplyMessage), "a blank reply must not leave an empty panel")
 
-        session.beginInitialResponse(transcript: "hi", provider: .groq, modelName: "m", modeName: "Agent", modeEmoji: nil, promptName: nil)
+        session.beginInitialResponse(
+            transcript: "hi", provider: .groq, modelName: "m", modeName: "Agent", modeEmoji: nil, promptName: nil)
         session.finishInitialResponse("hello", systemPrompt: nil)
         session.beginFollowUp("and?")
         let reply = session.finishFollowUp("")

@@ -17,19 +17,19 @@ enum VoxOSRefineDownloadError: LocalizedError {
 
     var errorDescription: String? {
         switch self {
-        case let .invalidDownloadURL(path):
+        case .invalidDownloadURL(let path):
             return String(localized: "Could not create the download URL for \(path).")
-        case let .invalidResponse(path):
+        case .invalidResponse(let path):
             return String(localized: "The model server returned an invalid response for \(path).")
-        case let .unexpectedStatusCode(statusCode, path):
+        case .unexpectedStatusCode(let statusCode, let path):
             return String(localized: "The model server returned status \(statusCode) for \(path).")
-        case let .invalidContentRange(path):
+        case .invalidContentRange(let path):
             return String(localized: "The model server returned an invalid byte range for \(path).")
-        case let .invalidFileSize(path, expected, actual):
+        case .invalidFileSize(let path, let expected, let actual):
             return String(
                 localized: "The downloaded size for \(path) was \(actual) bytes instead of \(expected) bytes."
             )
-        case let .invalidChecksum(path):
+        case .invalidChecksum(let path):
             return String(localized: "The downloaded file for \(path) failed integrity verification.")
         }
     }
@@ -139,10 +139,12 @@ final class VoxOSRefineModelDownloader: @unchecked Sendable {
         at snapshotDirectory: URL,
         files: [ModelFile]
     ) -> Bool {
-        guard let currentRecord = verificationRecord(
-            at: snapshotDirectory,
-            files: files
-        ) else {
+        guard
+            let currentRecord = verificationRecord(
+                at: snapshotDirectory,
+                files: files
+            )
+        else {
             return false
         }
 
@@ -185,7 +187,8 @@ final class VoxOSRefineModelDownloader: @unchecked Sendable {
             repositoryID: repositoryID,
             revision: revision
         )
-        partialsDirectory = modelRootDirectory
+        partialsDirectory =
+            modelRootDirectory
             .appendingPathComponent(".voxos-download-\(revision)", isDirectory: true)
     }
 
@@ -320,9 +323,8 @@ final class VoxOSRefineModelDownloader: @unchecked Sendable {
         request.setValue("VoxOS", forHTTPHeaderField: "User-Agent")
 
         var resumeOffset: Int64 = 0
-        let validator = (
-            try? String(contentsOf: validatorURL, encoding: .utf8)
-        )?.trimmingCharacters(in: .whitespacesAndNewlines)
+        let validator = (try? String(contentsOf: validatorURL, encoding: .utf8))?.trimmingCharacters(
+            in: .whitespacesAndNewlines)
 
         if partialSize > 0, let validator, !validator.isEmpty {
             request.setValue("bytes=\(partialSize)-", forHTTPHeaderField: "Range")
@@ -460,10 +462,12 @@ final class VoxOSRefineModelDownloader: @unchecked Sendable {
             )
         }
 
-        guard let record = Self.verificationRecord(
-            at: snapshotDirectory,
-            files: Self.files
-        ) else {
+        guard
+            let record = Self.verificationRecord(
+                at: snapshotDirectory,
+                files: Self.files
+            )
+        else {
             throw VoxOSRefineDownloadError.invalidResponse(
                 Self.verificationRecordFilename
             )
@@ -501,7 +505,7 @@ final class VoxOSRefineModelDownloader: @unchecked Sendable {
     ) {
         let validator: String?
         if let etag = response.value(forHTTPHeaderField: "ETag"),
-           !etag.hasPrefix("W/")
+            !etag.hasPrefix("W/")
         {
             validator = etag
         } else {
@@ -550,7 +554,7 @@ final class VoxOSRefineModelDownloader: @unchecked Sendable {
 
         var hasher = SHA256()
         while let data = try handle.read(upToCount: 4 * 1_024 * 1_024),
-              !data.isEmpty
+            !data.isEmpty
         {
             try Task.checkCancellation()
             hasher.update(data: data)
@@ -617,8 +621,8 @@ final class VoxOSRefineModelDownloader: @unchecked Sendable {
 
     private static func fileSize(at url: URL) -> Int64? {
         guard FileManager.default.fileExists(atPath: url.path),
-              let attributes = try? FileManager.default.attributesOfItem(atPath: url.path),
-              let size = attributes[.size] as? NSNumber
+            let attributes = try? FileManager.default.attributesOfItem(atPath: url.path),
+            let size = attributes[.size] as? NSNumber
         else {
             return nil
         }
@@ -642,10 +646,10 @@ final class VoxOSRefineModelDownloader: @unchecked Sendable {
 
         switch error {
         case VoxOSRefineDownloadError.invalidContentRange,
-             VoxOSRefineDownloadError.invalidFileSize,
-             VoxOSRefineDownloadError.invalidChecksum:
+            VoxOSRefineDownloadError.invalidFileSize,
+            VoxOSRefineDownloadError.invalidChecksum:
             return true
-        case let VoxOSRefineDownloadError.unexpectedStatusCode(statusCode, _):
+        case VoxOSRefineDownloadError.unexpectedStatusCode(let statusCode, _):
             return statusCode == 408 || statusCode == 429 || (500...599).contains(statusCode)
         default:
             return false
@@ -794,7 +798,7 @@ final class VoxOSRefineModelDownloader: @unchecked Sendable {
         ) {
             let downloadedBytes: Int64? = withState {
                 guard let handle = $0.handle,
-                      $0.writeError == nil
+                    $0.writeError == nil
                 else {
                     return nil
                 }
@@ -824,7 +828,7 @@ final class VoxOSRefineModelDownloader: @unchecked Sendable {
             let response = task.response as? HTTPURLResponse
             let completion: (() -> Void)? = withState {
                 guard !$0.finished,
-                      let continuation = $0.continuation
+                    let continuation = $0.continuation
                 else {
                     return nil
                 }
@@ -865,11 +869,11 @@ final class VoxOSRefineModelDownloader: @unchecked Sendable {
             }
 
             guard resumeOffset > 0,
-                  let contentRange = response.value(forHTTPHeaderField: "Content-Range"),
-                  let range = Self.parseContentRange(contentRange),
-                  range.start == resumeOffset,
-                  range.end < file.size,
-                  range.total == file.size
+                let contentRange = response.value(forHTTPHeaderField: "Content-Range"),
+                let range = Self.parseContentRange(contentRange),
+                range.start == resumeOffset,
+                range.end < file.size,
+                range.total == file.size
             else {
                 throw VoxOSRefineDownloadError.invalidContentRange(file.path)
             }
@@ -885,15 +889,15 @@ final class VoxOSRefineModelDownloader: @unchecked Sendable {
 
             let components = normalized.dropFirst("bytes ".count).split(separator: "/")
             guard components.count == 2,
-                  let total = Int64(components[1])
+                let total = Int64(components[1])
             else {
                 return nil
             }
 
             let rangeComponents = components[0].split(separator: "-")
             guard rangeComponents.count == 2,
-                  let start = Int64(rangeComponents[0]),
-                  let end = Int64(rangeComponents[1])
+                let start = Int64(rangeComponents[0]),
+                let end = Int64(rangeComponents[1])
             else {
                 return nil
             }

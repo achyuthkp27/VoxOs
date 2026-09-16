@@ -105,13 +105,15 @@ enum AgentTools {
             return await MainActor.run { AgentWindows.openApp(name: appName) }
 
         case "obsidian_note":
-            let name = s("name"), content = s("content")
+            let name = s("name")
+            let content = s("content")
             guard !name.isEmpty || !content.isEmpty else { return ["error": "name or content is required"] }
             return await MainActor.run {
                 AgentAppLinks.open(
                     AgentAppLinks.obsidianURL(vault: s("vault"), name: name, content: content, append: b("append")),
                     appName: "Obsidian",
-                    success: b("append") ? "appended to the Obsidian note \(name)" : "created the Obsidian note \(name)")
+                    success: b("append") ? "appended to the Obsidian note \(name)" : "created the Obsidian note \(name)"
+                )
             }
 
         case "open_in_editor":
@@ -130,7 +132,8 @@ enum AgentTools {
             let query = s("query")
             guard !query.isEmpty else { return ["error": "query is required"] }
             return await MainActor.run {
-                AgentAppLinks.open(AgentAppLinks.mapsSearchURL(query: query), appName: "Maps", success: "searching Maps for \(query)")
+                AgentAppLinks.open(
+                    AgentAppLinks.mapsSearchURL(query: query), appName: "Maps", success: "searching Maps for \(query)")
             }
 
         case "maps_directions":
@@ -194,9 +197,11 @@ enum AgentTools {
                     NSPasteboard.general.setString(text, forType: .string)
                 }
                 guard NSWorkspace.shared.open(url) else { return ["error": "could not open Messenger"] }
-                return ["result": text.isEmpty
-                    ? "opened the Messenger chat"
-                    : "opened the Messenger chat; the message is on the clipboard — the user pastes and sends it"]
+                return [
+                    "result": text.isEmpty
+                        ? "opened the Messenger chat"
+                        : "opened the Messenger chat; the message is on the clipboard — the user pastes and sends it"
+                ]
             }
 
         case "telegram_send":
@@ -213,7 +218,10 @@ enum AgentTools {
                 let scheme = url.scheme?.lowercased(),
                 ["http", "https", "mailto", "tel", "facetime", "maps", "x-apple.systempreferences"].contains(scheme)
             else {
-                return ["error": "invalid url: supported schemes are http, https, mailto, tel, facetime, maps, x-apple.systempreferences"]
+                return [
+                    "error":
+                        "invalid url: supported schemes are http, https, mailto, tel, facetime, maps, x-apple.systempreferences"
+                ]
             }
             let browserName = s("browser")
             return await MainActor.run {
@@ -226,7 +234,10 @@ enum AgentTools {
                         return ["result": "opened \(url.absoluteString)"]
                     }
                     NSWorkspace.shared.open(url)
-                    return ["result": "opened \(url.absoluteString) (couldn't find \(browserName) installed, used default browser instead)"]
+                    return [
+                        "result":
+                            "opened \(url.absoluteString) (couldn't find \(browserName) installed, used default browser instead)"
+                    ]
                 }
 
                 NSWorkspace.shared.open(
@@ -239,7 +250,12 @@ enum AgentTools {
             guard !text.isEmpty else { return ["error": "text is required"] }
             let pasteTask = await MainActor.run { CursorPaster.startPasteAtCursor(text) }
             let pasted = await pasteTask.value.didPostPasteCommand
-            return pasted ? ["result": "typed text at cursor"] : ["error": "could not paste at the cursor (no text field focused, or Accessibility permission missing)"]
+            return pasted
+                ? ["result": "typed text at cursor"]
+                : [
+                    "error":
+                        "could not paste at the cursor (no text field focused, or Accessibility permission missing)"
+                ]
 
         case "clipboard_write":
             let text = s("text")
@@ -353,7 +369,8 @@ enum AgentTools {
             return await MainActor.run { takeScreenshot() }
 
         case "slack_send":
-            let to = s("to"), text = s("text")
+            let to = s("to")
+            let text = s("text")
             guard !to.isEmpty, !text.isEmpty else { return ["error": "to and text are required"] }
             guard NSWorkspace.shared.urlForApplication(withBundleIdentifier: "com.tinyspeck.slackmacgap") != nil
             else {
@@ -372,7 +389,8 @@ enum AgentTools {
             return await MainActor.run { contactsFind(name: s("name")) }
 
         case "messages_send":
-            let to = s("to"), text = s("text")
+            let to = s("to")
+            let text = s("text")
             guard !to.isEmpty, !text.isEmpty else { return ["error": "to and text are required"] }
             AgentPendingAction.set(name: "messages_send_confirmed", args: ["to": to, "text": text])
             return [
@@ -653,19 +671,22 @@ enum AgentPendingAction {
 
     /// Called at the start of every agent run so a confirmation cannot come from the same turn.
     static func beginRun() {
-        lock.lock(); defer { lock.unlock() }
+        lock.lock()
+        defer { lock.unlock() }
         currentRun = UUID()
     }
 
     static func set(name: String, args: [String: Any]) {
-        lock.lock(); defer { lock.unlock() }
+        lock.lock()
+        defer { lock.unlock() }
         pending = (name, args, currentRun, Date())
     }
 
     /// Consumes the pending action only when it is eligible: created in an earlier run and
     /// not yet expired. A same-run attempt leaves it in place for the user's real answer.
     static func take() -> (name: String, args: [String: Any])? {
-        lock.lock(); defer { lock.unlock() }
+        lock.lock()
+        defer { lock.unlock() }
         guard let value = pending else { return nil }
         if Date().timeIntervalSince(value.createdAt) >= expiry {
             pending = nil
@@ -677,13 +698,15 @@ enum AgentPendingAction {
     }
 
     static func clear() {
-        lock.lock(); defer { lock.unlock() }
+        lock.lock()
+        defer { lock.unlock() }
         pending = nil
     }
 
     /// Non-consuming look for the UI: is something waiting for the user's "confirm"?
     static var isWaitingForConfirmation: Bool {
-        lock.lock(); defer { lock.unlock() }
+        lock.lock()
+        defer { lock.unlock() }
         guard let value = pending else { return false }
         return Date().timeIntervalSince(value.createdAt) < expiry
     }

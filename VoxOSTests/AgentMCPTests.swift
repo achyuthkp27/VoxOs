@@ -44,7 +44,8 @@ struct AgentMCPTests {
             (server: "google_drive", tool: "search files"),
             (server: "notion", tool: "API-post-search"),
         ])
-        #expect(names == ["mcp_google_drive_search_files", "mcp_google_drive_search_files_2", "mcp_notion_api_post_search"])
+        #expect(
+            names == ["mcp_google_drive_search_files", "mcp_google_drive_search_files_2", "mcp_notion_api_post_search"])
     }
 
     // MARK: Prompt
@@ -65,17 +66,22 @@ struct AgentMCPTests {
             ],
             readOnly: true)
         let line = AgentMCP.promptLine(for: tool)
-        #expect(line == #"- mcp_notion_search {"limit": int?, "query": str, "sort": "asc"|"desc"?, "tags": [str]?} -> Search pages and databases. (notion) [read-only]"#)
+        #expect(
+            line
+                == #"- mcp_notion_search {"limit": int?, "query": str, "sort": "asc"|"desc"?, "tags": [str]?} -> Search pages and databases. (notion) [read-only]"#
+        )
     }
 
     // MARK: Results
 
     @Test func rendersCallResults() {
-        let ok = AgentMCP.render(result: ["content": [
-            ["type": "text", "text": "first"],
-            ["type": "image", "mimeType": "image/png", "data": "…"],
-            ["type": "resource_link", "name": "Q3", "uri": "https://x/q3"],
-        ]])
+        let ok = AgentMCP.render(result: [
+            "content": [
+                ["type": "text", "text": "first"],
+                ["type": "image", "mimeType": "image/png", "data": "…"],
+                ["type": "resource_link", "name": "Q3", "uri": "https://x/q3"],
+            ]
+        ])
         #expect(ok["output"] as? String == "first\n[image image/png]\n[link Q3 https://x/q3]")
 
         let failed = AgentMCP.render(result: ["content": [["type": "text", "text": "no access"]], "isError": true])
@@ -84,7 +90,8 @@ struct AgentMCPTests {
         let structured = AgentMCP.render(result: ["content": [], "structuredContent": ["count": 2]])
         #expect(structured["output"] as? String == #"{"count":2}"#)
 
-        let long = AgentMCP.render(result: ["content": [["type": "text", "text": String(repeating: "a", count: 50)]]], limit: 10)
+        let long = AgentMCP.render(
+            result: ["content": [["type": "text", "text": String(repeating: "a", count: 50)]]], limit: 10)
         #expect((long["output"] as? String)?.hasSuffix("…(truncated)") == true)
     }
 
@@ -92,12 +99,19 @@ struct AgentMCPTests {
 
     @Test func searchSourcesOnlyPickCallableSearches() {
         func tool(_ name: String, _ schema: [String: Any], readOnly: Bool = false) -> MCPTool {
-            MCPTool(server: "s", name: name, exposedName: "mcp_s_\(name)", description: "", inputSchema: schema, readOnly: readOnly)
+            MCPTool(
+                server: "s", name: name, exposedName: "mcp_s_\(name)", description: "", inputSchema: schema,
+                readOnly: readOnly)
         }
         let picked = AgentSearch.sources(from: [
             tool("search", ["properties": ["query": ["type": "string"]], "required": ["query"]]),
             tool("search_files", ["properties": ["pattern": ["type": "string"]], "required": ["pattern"]]),
-            tool("search_in_folder", ["properties": ["query": ["type": "string"], "folder": ["type": "string"]], "required": ["query", "folder"]]),
+            tool(
+                "search_in_folder",
+                [
+                    "properties": ["query": ["type": "string"], "folder": ["type": "string"]],
+                    "required": ["query", "folder"],
+                ]),
             tool("find_page", ["properties": ["q": ["type": "string"]]], readOnly: false),
             tool("create_page", ["properties": ["title": ["type": "string"]], "required": ["title"]]),
         ])
@@ -139,10 +153,13 @@ struct AgentMCPTests {
         """#
 
     private func makeServer() throws -> MCPConnection {
-        let script = FileManager.default.temporaryDirectory.appendingPathComponent("voxos-fake-mcp-\(UUID().uuidString).py")
+        let script = FileManager.default.temporaryDirectory.appendingPathComponent(
+            "voxos-fake-mcp-\(UUID().uuidString).py")
         try Self.fakeServer.write(to: script, atomically: true, encoding: .utf8)
-        return MCPConnection(config: MCPServerConfig(
-            name: "fake", command: Self.python, args: ["-u", script.path], env: [:], disabled: false, remoteURL: nil))
+        return MCPConnection(
+            config: MCPServerConfig(
+                name: "fake", command: Self.python, args: ["-u", script.path], env: [:], disabled: false, remoteURL: nil
+            ))
     }
 
     @Test(.enabled(if: FileManager.default.isExecutableFile(atPath: "/usr/bin/python3")))
@@ -158,7 +175,8 @@ struct AgentMCPTests {
         #expect(tools.first?.readOnly == true)
         #expect(tools.last?.readOnly == false)
 
-        let echoed = AgentMCP.render(result: try await connection.callTool(name: "echo", arguments: ["text": "hi \"there\"\nnext"]))
+        let echoed = AgentMCP.render(
+            result: try await connection.callTool(name: "echo", arguments: ["text": "hi \"there\"\nnext"]))
         #expect(echoed["output"] as? String == "echo: hi \"there\"\nnext")
 
         let failed = AgentMCP.render(result: try await connection.callTool(name: "boom", arguments: [:]))
@@ -180,14 +198,17 @@ struct AgentMCPTests {
             _ = try await connection.callTool(name: "exit", arguments: [:], timeout: 30)
         }
         #expect(Date().timeIntervalSince(started) < 5, "a dead server must not wait for the call timeout")
-        if case .failed = connection.state {} else {
+        if case .failed = connection.state {
+        } else {
             Issue.record("state should be failed after the server exits, got \(connection.state)")
         }
     }
 
     @Test func missingCommandFailsWithoutLaunching() async {
-        let connection = MCPConnection(config: MCPServerConfig(
-            name: "ghost", command: "definitely-not-a-real-mcp-binary", args: [], env: [:], disabled: false, remoteURL: nil))
+        let connection = MCPConnection(
+            config: MCPServerConfig(
+                name: "ghost", command: "definitely-not-a-real-mcp-binary", args: [], env: [:], disabled: false,
+                remoteURL: nil))
         await #expect(throws: MCPError.self) {
             try await connection.start(path: "/usr/bin:/bin")
         }
@@ -214,14 +235,16 @@ struct AgentMCPTests {
     /// Real server, real npm download. Opt-in: `TEST_RUNNER_VOXOS_LIVE_MCP=1 make test`.
     @Test(.enabled(if: ProcessInfo.processInfo.environment["VOXOS_LIVE_MCP"] == "1"))
     func liveFilesystemServer() async throws {
-        let folder = FileManager.default.temporaryDirectory.appendingPathComponent("voxos-live-mcp-\(UUID().uuidString)")
+        let folder = FileManager.default.temporaryDirectory.appendingPathComponent(
+            "voxos-live-mcp-\(UUID().uuidString)")
         try FileManager.default.createDirectory(at: folder, withIntermediateDirectories: true)
         try "hello from voxos".write(to: folder.appendingPathComponent("note.txt"), atomically: true, encoding: .utf8)
         let root = folder.resolvingSymlinksInPath().path
 
-        let connection = MCPConnection(config: MCPServerConfig(
-            name: "filesystem", command: "npx", args: ["-y", "@modelcontextprotocol/server-filesystem", root],
-            env: [:], disabled: false, remoteURL: nil))
+        let connection = MCPConnection(
+            config: MCPServerConfig(
+                name: "filesystem", command: "npx", args: ["-y", "@modelcontextprotocol/server-filesystem", root],
+                env: [:], disabled: false, remoteURL: nil))
         defer { connection.stop() }
 
         try await connection.start(path: await ShellPath.value())
@@ -229,7 +252,8 @@ struct AgentMCPTests {
         #expect(names.contains("read_text_file") || names.contains("read_file"))
 
         let tool = names.contains("read_text_file") ? "read_text_file" : "read_file"
-        let read = AgentMCP.render(result: try await connection.callTool(name: tool, arguments: ["path": root + "/note.txt"]))
+        let read = AgentMCP.render(
+            result: try await connection.callTool(name: tool, arguments: ["path": root + "/note.txt"]))
         #expect((read["output"] as? String)?.contains("hello from voxos") == true, "got \(read)")
     }
 
@@ -293,7 +317,8 @@ struct AgentMCPTests {
         """#
 
     private func launchHTTPServer() throws -> (Process, Int) {
-        let script = FileManager.default.temporaryDirectory.appendingPathComponent("voxos-fake-http-mcp-\(UUID().uuidString).py")
+        let script = FileManager.default.temporaryDirectory.appendingPathComponent(
+            "voxos-fake-http-mcp-\(UUID().uuidString).py")
         try Self.fakeHTTPServer.write(to: script, atomically: true, encoding: .utf8)
         let process = Process()
         process.executableURL = URL(fileURLWithPath: Self.python)
@@ -319,8 +344,10 @@ struct AgentMCPTests {
         let (server, port) = try launchHTTPServer()
         defer { server.terminate() }
 
-        let unauthorised = MCPHTTPConnection(config: MCPServerConfig(
-            name: "remote", command: "", args: [], env: [:], disabled: false, remoteURL: "http://127.0.0.1:\(port)/mcp"))
+        let unauthorised = MCPHTTPConnection(
+            config: MCPServerConfig(
+                name: "remote", command: "", args: [], env: [:], disabled: false,
+                remoteURL: "http://127.0.0.1:\(port)/mcp"))
         await #expect(throws: MCPError.self) { try await unauthorised.start(path: "") }
         if case .failed(let reason) = unauthorised.state {
             #expect(reason.contains("not authorised"))
@@ -328,9 +355,11 @@ struct AgentMCPTests {
             Issue.record("a 401 should fail the connection with an auth hint")
         }
 
-        let connection = MCPHTTPConnection(config: MCPServerConfig(
-            name: "remote", command: "", args: [], env: [:], disabled: false, remoteURL: "http://127.0.0.1:\(port)/mcp",
-            headers: ["Authorization": "Bearer ${VOXOS_TEST_TOKEN_UNSET}tok-123"]))
+        let connection = MCPHTTPConnection(
+            config: MCPServerConfig(
+                name: "remote", command: "", args: [], env: [:], disabled: false,
+                remoteURL: "http://127.0.0.1:\(port)/mcp",
+                headers: ["Authorization": "Bearer ${VOXOS_TEST_TOKEN_UNSET}tok-123"]))
         defer { connection.stop() }
 
         try await connection.start(path: "")
@@ -343,7 +372,8 @@ struct AgentMCPTests {
 
         // The server drops every session: the next call gets 404, re-initialises once, and succeeds.
         _ = try await connection.callTool(name: "forget", arguments: [:])
-        let again = AgentMCP.render(result: try await connection.callTool(name: "echo", arguments: ["text": "after expiry"]))
+        let again = AgentMCP.render(
+            result: try await connection.callTool(name: "echo", arguments: ["text": "after expiry"]))
         #expect(again["output"] as? String == "http echo: after expiry")
     }
 

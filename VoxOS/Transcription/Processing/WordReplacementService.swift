@@ -45,7 +45,8 @@ class WordReplacementService {
                     let escaped = NSRegularExpression.escapedPattern(for: original)
                     // scx (Script_Extensions) so shared marks like the prolonged sound mark
                     // U+30FC (Script=Common, scx=Hira Kana) stay exempt too.
-                    let wordChar = "[[\\p{L}\\p{M}\\p{N}]-[\\p{scx=Han}\\p{scx=Hiragana}\\p{scx=Katakana}\\p{scx=Hangul}\\p{scx=Thai}]]"
+                    let wordChar =
+                        "[[\\p{L}\\p{M}\\p{N}]-[\\p{scx=Han}\\p{scx=Hiragana}\\p{scx=Katakana}\\p{scx=Hangul}\\p{scx=Thai}]]"
                     let pattern = "(?<!\(wordChar))\(escaped)(?!\(wordChar))"
                     if let regex = try? NSRegularExpression(pattern: pattern, options: .caseInsensitive) {
                         let range = NSRange(modifiedText.startIndex..., in: modifiedText)

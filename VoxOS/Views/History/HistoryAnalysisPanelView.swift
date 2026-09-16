@@ -194,8 +194,8 @@ private struct HistoryPerformanceRowData: Identifiable {
     let detail: String?
 }
 
-private extension Array where Element == HistoryPerformanceRowData {
-    func sortedForHistoryPerformance() -> [HistoryPerformanceRowData] {
+extension Array where Element == HistoryPerformanceRowData {
+    fileprivate func sortedForHistoryPerformance() -> [HistoryPerformanceRowData] {
         sorted { lhs, rhs in
             if lhs.averageProcessingDuration != rhs.averageProcessingDuration {
                 return lhs.averageProcessingDuration < rhs.averageProcessingDuration

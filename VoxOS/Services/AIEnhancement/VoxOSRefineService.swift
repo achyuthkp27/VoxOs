@@ -93,7 +93,8 @@ final class VoxOSRefineService: ObservableObject {
             for: .applicationSupportDirectory,
             in: .userDomainMask
         )[0]
-        modelRootDirectory = appSupportDirectory
+        modelRootDirectory =
+            appSupportDirectory
             .appendingPathComponent("com.achyuthkp.VoxOS")
             .appendingPathComponent("VoxOSRefine")
 
@@ -268,7 +269,8 @@ final class VoxOSRefineService: ObservableObject {
         downloadedBytes = progress.downloadedBytes
         totalDownloadBytes = progress.totalBytes
         isFinalizingDownload = progress.isFinalizing
-        downloadProgress = progress.totalBytes > 0
+        downloadProgress =
+            progress.totalBytes > 0
             ? min(1, Double(progress.downloadedBytes) / Double(progress.totalBytes))
             : 0
     }

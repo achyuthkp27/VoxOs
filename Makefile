@@ -14,6 +14,10 @@ WHISPER_CPP_REF ?= c4ac0012a8f5a2082dfca6aad4ddfd8b2c02b337
 FRAMEWORK_PATH := $(WHISPER_CPP_DIR)/build-apple/whisper.xcframework
 LOCAL_DERIVED_DATA := $(CURDIR)/.local-build
 TEST_DERIVED_DATA := $(CURDIR)/.local-build-tests
+# The test host is the app itself. Sharing the app's bundle identifier let macOS resolve
+# the login item to whichever copy ran last, so a test run re-pointed it at this throwaway
+# build and the next login tried to start a bundle that cannot load whisper.framework.
+TEST_BUNDLE_ID_SUFFIX := .testhost
 TEST_RESULT_BUNDLE := $(TEST_DERIVED_DATA)/TestResults/latest.xcresult
 LOCAL_CODESIGN_IDENTITY ?=
 # `make local` installs straight to /Applications so no stray copies are left
@@ -189,6 +193,7 @@ test: check
 		LOCAL_CODE_SIGN_IDENTITY="$${SIGNING_IDENTITY:--}" CODE_SIGNING_REQUIRED=NO CODE_SIGNING_ALLOWED=YES DEVELOPMENT_TEAM="" \
 		CODE_SIGN_ENTITLEMENTS="$(CURDIR)/VoxOS/VoxOS.local.entitlements" \
 		SWIFT_ACTIVE_COMPILATION_CONDITIONS='$$(inherited) LOCAL_BUILD' ENABLE_TESTABILITY=YES \
+		VOXOS_BUNDLE_ID_SUFFIX=$(TEST_BUNDLE_ID_SUFFIX) \
 		> $(TEST_DERIVED_DATA)/test.log 2>&1; \
 	STATUS=$$?; \
 	grep -E "[0-9]+: error:|^error:|✘|recorded an issue|Test run|TEST (SUCCEEDED|FAILED)" $(TEST_DERIVED_DATA)/test.log || true; \
@@ -200,8 +205,10 @@ test: check
 
 # Formatting, configured by .swift-format. swift-format ships inside the Xcode
 # toolchain rather than on PATH, hence `xcrun`.
-# The tree has never been formatted, so `make lint` currently reports ~635 findings;
-# `make format` fixes all but a handful of them in one pass.
+# AlwaysUseLowerCamelCase and ReplaceForEachWithForLoop are off: the first cannot tell
+# a Codable property whose name is a wire-format JSON key (PolarService decodes
+# limit_activations / organization_id / license_key straight from the licensing API)
+# from a badly named constant, and the second is a style opinion with no behaviour change.
 SWIFT_FORMAT_PATHS := VoxOS Shared VoxOSTests VoxOSRefineXPC
 
 lint:

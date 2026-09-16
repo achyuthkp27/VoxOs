@@ -28,7 +28,7 @@ struct ElevenLabsProvider: CloudProvider {
                 isMultilingual: true,
                 supportsStreaming: true,
                 supportedLanguages: LanguageDictionary.forProvider(isMultilingual: true, provider: .elevenLabs)
-            ),
+            )
         ]
     }
 

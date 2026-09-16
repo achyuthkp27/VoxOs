@@ -233,7 +233,7 @@ enum ModeRuntimeResolver {
         let models = aiService.availableModels(for: provider)
         if let configuredModelName,
             !configuredModelName.isEmpty,
-            (models.isEmpty || models.contains(configuredModelName))
+            models.isEmpty || models.contains(configuredModelName)
         {
             return configuredModelName
         }

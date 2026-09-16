@@ -49,7 +49,8 @@ enum AgentMacros {
         lock.unlock()
         return [
             "ok": true, "recording": trimmed,
-            "note": "Recording started. Every action from now on is captured until macro_record_stop is called. Tell the user to do the steps by voice, then say 'stop recording'.",
+            "note":
+                "Recording started. Every action from now on is captured until macro_record_stop is called. Tell the user to do the steps by voice, then say 'stop recording'.",
         ]
     }
 
@@ -59,9 +60,13 @@ enum AgentMacros {
         recording = nil
         lock.unlock()
         guard let macro else { return ["error": "not recording a macro"] }
-        guard !macro.steps.isEmpty else { return ["ok": false, "note": "No actions were recorded, so nothing was saved."] }
+        guard !macro.steps.isEmpty else {
+            return ["ok": false, "note": "No actions were recorded, so nothing was saved."]
+        }
         save(macro)
-        return ["ok": true, "saved": macro.name, "steps": macro.steps.count, "note": "Saved. Replay it with macro_run."]
+        return [
+            "ok": true, "saved": macro.name, "steps": macro.steps.count, "note": "Saved. Replay it with macro_run.",
+        ]
     }
 
     /// Recording the recorder would make a macro that starts recording, replays itself, or

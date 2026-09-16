@@ -81,7 +81,7 @@ struct ModeRow: View {
                     size: config.icon.kind == .emoji ? 14 : 12,
                     color: AppTheme.Text.primary
                 )
-                    .frame(width: 16)
+                .frame(width: 16)
 
                 Text(config.name)
                     .foregroundColor(AppTheme.Text.primary)

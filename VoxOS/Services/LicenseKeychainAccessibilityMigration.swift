@@ -26,21 +26,24 @@ struct LicenseKeychainAccessibilityMigration {
         var succeeded = true
 
         if let licenseKey = state.licenseKey {
-            succeeded = migrateAccessibility(
-                licenseKey, forKey: LicenseKeychainKeys.licenseKey
-            ) && succeeded
+            succeeded =
+                migrateAccessibility(
+                    licenseKey, forKey: LicenseKeychainKeys.licenseKey
+                ) && succeeded
         }
 
         if let activationId = state.activationId {
-            succeeded = migrateAccessibility(
-                activationId, forKey: LicenseKeychainKeys.activationId
-            ) && succeeded
+            succeeded =
+                migrateAccessibility(
+                    activationId, forKey: LicenseKeychainKeys.activationId
+                ) && succeeded
         }
 
         if let trialStartDate = state.trialStartDate {
-            succeeded = migrateAccessibility(
-                String(trialStartDate.timeIntervalSince1970), forKey: LicenseKeychainKeys.trialStartDate
-            ) && succeeded
+            succeeded =
+                migrateAccessibility(
+                    String(trialStartDate.timeIntervalSince1970), forKey: LicenseKeychainKeys.trialStartDate
+                ) && succeeded
         }
 
         guard succeeded else { return false }

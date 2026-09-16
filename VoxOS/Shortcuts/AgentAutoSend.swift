@@ -182,7 +182,8 @@ final class AgentAutoSend {
                 case .keepListening:
                     if Int(now.timeIntervalSince(detector.startedAt) * 10) % 5 == 0 {
                         self.logger.info(
-                            "auto-send: t=\(now.timeIntervalSince(detector.startedAt), format: .fixed(precision: 1), privacy: .public) level=\(level, format: .fixed(precision: 2), privacy: .public) floor=\(detector.noiseFloor ?? -1, format: .fixed(precision: 2), privacy: .public) heard=\(detector.heardSpeech, privacy: .public) transcript=\(engine.partialTranscript.count, privacy: .public)")
+                            "auto-send: t=\(now.timeIntervalSince(detector.startedAt), format: .fixed(precision: 1), privacy: .public) level=\(level, format: .fixed(precision: 2), privacy: .public) floor=\(detector.noiseFloor ?? -1, format: .fixed(precision: 2), privacy: .public) heard=\(detector.heardSpeech, privacy: .public) transcript=\(engine.partialTranscript.count, privacy: .public)"
+                        )
                     }
                     continue
                 case .giveUp:
@@ -196,7 +197,8 @@ final class AgentAutoSend {
                     let quiet = now.timeIntervalSince(detector.lastLoudAt)
                     let settled = now.timeIntervalSince(detector.transcriptChangedAt)
                     self.logger.notice(
-                        "auto-send: sending after \(elapsed, format: .fixed(precision: 1), privacy: .public)s floor=\(floor, format: .fixed(precision: 2), privacy: .public) quiet=\(quiet, format: .fixed(precision: 1), privacy: .public)s transcriptSettled=\(settled, format: .fixed(precision: 1), privacy: .public)s")
+                        "auto-send: sending after \(elapsed, format: .fixed(precision: 1), privacy: .public)s floor=\(floor, format: .fixed(precision: 2), privacy: .public) quiet=\(quiet, format: .fixed(precision: 1), privacy: .public)s transcriptSettled=\(settled, format: .fixed(precision: 1), privacy: .public)s"
+                    )
                     self.task = nil
                     await self.recorderUIManager?.toggleRecorderPanel()
                     return

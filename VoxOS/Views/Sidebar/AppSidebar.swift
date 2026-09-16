@@ -63,8 +63,8 @@ struct AppSidebar: View {
     }
 }
 
-private extension ViewType {
-    var title: LocalizedStringKey {
+extension ViewType {
+    fileprivate var title: LocalizedStringKey {
         switch self {
         case .transcribeAudio:
             return "Transcribe"
@@ -73,19 +73,21 @@ private extension ViewType {
         }
     }
 
-    static let primaryItems: [ViewType] = [.dashboard, .modes, .transcribeAudio, .history, .dictionary, .models, .audio]
-    static let secondaryItems: [ViewType] = [.settings]
+    fileprivate static let primaryItems: [ViewType] = [
+        .dashboard, .modes, .transcribeAudio, .history, .dictionary, .models, .audio,
+    ]
+    fileprivate static let secondaryItems: [ViewType] = [.settings]
     /// Reachable by navigation but deliberately absent from the sidebar (personal build: no licensing).
-    static let hiddenItems: [ViewType] = [.license]
+    fileprivate static let hiddenItems: [ViewType] = [.license]
 
-    static func assertSidebarItemsCoverAllCases() {
+    fileprivate static func assertSidebarItemsCoverAllCases() {
         #if DEBUG
             let sidebarItems = primaryItems + secondaryItems + hiddenItems
             assert(Set(sidebarItems) == Set(allCases) && sidebarItems.count == allCases.count)
         #endif
     }
 
-    var icon: String {
+    fileprivate var icon: String {
         switch self {
         case .dashboard: return "house.fill"
         case .transcribeAudio: return "waveform"

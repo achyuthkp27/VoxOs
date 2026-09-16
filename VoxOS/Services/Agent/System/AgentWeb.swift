@@ -25,7 +25,9 @@ enum AgentWeb {
             let bounded = data.count > 3_000_000 ? data.prefix(3_000_000) : data
             let html = String(decoding: bounded, as: UTF8.self)
             let results = parse(html: html).prefix(maxResults)
-            return ["query": trimmed, "results": results.map { ["title": $0.title, "url": $0.url, "snippet": $0.snippet] }]
+            return [
+                "query": trimmed, "results": results.map { ["title": $0.title, "url": $0.url, "snippet": $0.snippet] },
+            ]
         } catch {
             return ["error": "search failed: \(error.localizedDescription)"]
         }
@@ -55,7 +57,8 @@ enum AgentWeb {
     // MARK: - Parsing
 
     private static func parse(html: String) -> [SearchResult] {
-        let anchors = matches(in: html, pattern: #"<a[^>]*class="[^"]*result__a[^"]*"[^>]*href="([^"]+)"[^>]*>(.*?)</a>"#)
+        let anchors = matches(
+            in: html, pattern: #"<a[^>]*class="[^"]*result__a[^"]*"[^>]*href="([^"]+)"[^>]*>(.*?)</a>"#)
         let snippets = matches(in: html, pattern: #"<a[^>]*class="[^"]*result__snippet[^"]*"[^>]*>(.*?)</a>"#)
         return anchors.enumerated().map { index, groups in
             SearchResult(
@@ -73,30 +76,41 @@ enum AgentWeb {
     }
 
     private static func matches(in string: String, pattern: String) -> [[String]] {
-        guard let regex = try? NSRegularExpression(pattern: pattern, options: [.dotMatchesLineSeparators, .caseInsensitive]) else { return [] }
+        guard
+            let regex = try? NSRegularExpression(
+                pattern: pattern, options: [.dotMatchesLineSeparators, .caseInsensitive])
+        else { return [] }
         let ns = string as NSString
         return regex.matches(in: string, range: NSRange(location: 0, length: ns.length)).map { match in
-            (0..<match.numberOfRanges).map { match.range(at: $0).location == NSNotFound ? "" : ns.substring(with: match.range(at: $0)) }
+            (0..<match.numberOfRanges).map {
+                match.range(at: $0).location == NSNotFound ? "" : ns.substring(with: match.range(at: $0))
+            }
         }
     }
 
     static func stripHTML(_ html: String) -> String {
         var s = html
         for pattern in [#"<script[^>]*>.*?</script>"#, #"<style[^>]*>.*?</style>"#, #"<noscript[^>]*>.*?</noscript>"#] {
-            if let regex = try? NSRegularExpression(pattern: pattern, options: [.dotMatchesLineSeparators, .caseInsensitive]) {
-                s = regex.stringByReplacingMatches(in: s, range: NSRange(location: 0, length: (s as NSString).length), withTemplate: " ")
+            if let regex = try? NSRegularExpression(
+                pattern: pattern, options: [.dotMatchesLineSeparators, .caseInsensitive])
+            {
+                s = regex.stringByReplacingMatches(
+                    in: s, range: NSRange(location: 0, length: (s as NSString).length), withTemplate: " ")
             }
         }
         if let regex = try? NSRegularExpression(pattern: "<[^>]+>") {
-            s = regex.stringByReplacingMatches(in: s, range: NSRange(location: 0, length: (s as NSString).length), withTemplate: " ")
+            s = regex.stringByReplacingMatches(
+                in: s, range: NSRange(location: 0, length: (s as NSString).length), withTemplate: " ")
         }
         let entities: [(String, String)] = [
             ("&amp;", "&"), ("&lt;", "<"), ("&gt;", ">"), ("&quot;", "\""), ("&#39;", "'"), ("&apos;", "'"),
-            ("&nbsp;", " "), ("&hellip;", "…"), ("&#8217;", "'"), ("&#8220;", "\""), ("&#8221;", "\""), ("&mdash;", "—"),
+            ("&nbsp;", " "), ("&hellip;", "…"), ("&#8217;", "'"), ("&#8220;", "\""), ("&#8221;", "\""),
+            ("&mdash;", "—"),
         ]
         for (entity, replacement) in entities { s = s.replacingOccurrences(of: entity, with: replacement) }
         if let regex = try? NSRegularExpression(pattern: #"\s+"#) {
-            s = regex.stringByReplacingMatches(in: s, range: NSRange(location: 0, length: (s as NSString).length), withTemplate: " ")
+            s = regex.stringByReplacingMatches(
+                in: s, range: NSRange(location: 0, length: (s as NSString).length), withTemplate: " ")
         }
         return s.trimmingCharacters(in: .whitespacesAndNewlines)
     }

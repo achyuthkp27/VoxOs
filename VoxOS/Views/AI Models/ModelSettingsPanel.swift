@@ -165,7 +165,8 @@ private struct WhisperPromptSettingsSection: View {
                     LocalizedStringKey(
                         "Only local Whisper models use this. Add example text to guide spelling and style."
                     ),
-                    learnMoreURL: "https://cookbook.openai.com/examples/whisper_prompting_guide#comparison-with-gpt-prompting"
+                    learnMoreURL:
+                        "https://cookbook.openai.com/examples/whisper_prompting_guide#comparison-with-gpt-prompting"
                 )
             }
         }

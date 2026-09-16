@@ -146,7 +146,8 @@ struct VoxOSApp: App {
 
         // 7. Create other services that depend on engine
         // The Agent is built in: recreate or repair it on every launch.
-        AgentModeGuard.ensure(enhancementService: enhancementService, transcriptionModelManager: transcriptionModelManager)
+        AgentModeGuard.ensure(
+            enhancementService: enhancementService, transcriptionModelManager: transcriptionModelManager)
 
         let recordingShortcutManager = RecordingShortcutManager(engine: engine, recorderUIManager: recorderUIManager)
         _recordingShortcutManager = StateObject(wrappedValue: recordingShortcutManager)

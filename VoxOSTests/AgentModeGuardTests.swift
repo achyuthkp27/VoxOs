@@ -50,12 +50,16 @@ struct AgentModeGuardTests {
     }
 
     @Test func agentInheritsTheDefaultModesLanguage() {
-        let agent = ModeConfig(id: StarterModeCatalog.agentId, name: "Agent", isAIEnhancementEnabled: true, selectedLanguage: "auto")
+        let agent = ModeConfig(
+            id: StarterModeCatalog.agentId, name: "Agent", isAIEnhancementEnabled: true, selectedLanguage: "auto")
         let dictation = ModeConfig(name: "Dictation", isAIEnhancementEnabled: false, selectedLanguage: "en")
         #expect(AgentModeGuard.inheritedLanguage(agent: agent, defaultMode: dictation) == "en")
 
-        let chosen = ModeConfig(id: StarterModeCatalog.agentId, name: "Agent", isAIEnhancementEnabled: true, selectedLanguage: "hi")
-        #expect(AgentModeGuard.inheritedLanguage(agent: chosen, defaultMode: dictation) == nil, "a language the user picked is kept")
+        let chosen = ModeConfig(
+            id: StarterModeCatalog.agentId, name: "Agent", isAIEnhancementEnabled: true, selectedLanguage: "hi")
+        #expect(
+            AgentModeGuard.inheritedLanguage(agent: chosen, defaultMode: dictation) == nil,
+            "a language the user picked is kept")
 
         let autoDefault = ModeConfig(name: "Dictation", isAIEnhancementEnabled: false, selectedLanguage: "auto")
         #expect(AgentModeGuard.inheritedLanguage(agent: agent, defaultMode: autoDefault) == nil)

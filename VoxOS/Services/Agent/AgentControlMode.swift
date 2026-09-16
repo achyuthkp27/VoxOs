@@ -18,18 +18,21 @@ enum AgentPausedTask {
     private static var pending: Paused?
 
     static func set(question: String, context: String) {
-        lock.lock(); defer { lock.unlock() }
+        lock.lock()
+        defer { lock.unlock() }
         pending = Paused(id: UUID(), question: question, context: context)
     }
 
     static func peek() -> Paused? {
-        lock.lock(); defer { lock.unlock() }
+        lock.lock()
+        defer { lock.unlock() }
         return pending
     }
 
     /// Clears only the task that was resumed — never one the current run just created.
     static func clear(resumed id: UUID?) {
-        lock.lock(); defer { lock.unlock() }
+        lock.lock()
+        defer { lock.unlock() }
         guard let id, pending?.id == id else { return }
         pending = nil
     }
@@ -77,10 +80,12 @@ enum AgentControlMode: String, CaseIterable, Identifiable {
         "run_shell", "run_applescript", "open_url", "open_app", "activate_app", "set_window_bounds",
         "calendar_add_event", "reminders_add", "notes_create", "mail_compose",
         "browser_click_text", "browser_run_js", "switch_browser_tab",
-        "clipboard_write", "move_file", "read_file", "read_pdf", "macro_run", "macro_delete", "plugin_create", "plugin_delete",
+        "clipboard_write", "move_file", "read_file", "read_pdf", "macro_run", "macro_delete", "plugin_create",
+        "plugin_delete",
         "whatsapp_send", "gmail_compose", "gmail_search", "web_search", "slack_send", "linear_create_issue",
         "system_volume", "lock_screen", "media_key",
-        "obsidian_note", "open_in_editor", "maps_search", "maps_directions", "telegram_send", "ask_assistant", "messenger_open", "nudge_add", "nudge_done", "background_task", "background_cancel",
+        "obsidian_note", "open_in_editor", "maps_search", "maps_directions", "telegram_send", "ask_assistant",
+        "messenger_open", "nudge_add", "nudge_done", "background_task", "background_cancel",
         "system_audio_start", "system_audio_stop",
         "set_control_mode", "messages_send", "secret_save", "linear_save_token", "remember", "take_screenshot",
         "macro_record_start", "macro_record_stop", "watch_for", "watch_for_audio", "watch_cancel",

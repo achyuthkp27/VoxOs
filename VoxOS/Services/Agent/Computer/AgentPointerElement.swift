@@ -32,7 +32,8 @@ enum AgentPointerElement {
             if !value.isEmpty { lines.append("value: \(value)") }
             if !description.isEmpty { lines.append("description: \(description)") }
             if frame.width > 0 {
-                lines.append("centre: x=\(Int(frame.midX)) y=\(Int(frame.midY)) size=\(Int(frame.width))×\(Int(frame.height))")
+                lines.append(
+                    "centre: x=\(Int(frame.midX)) y=\(Int(frame.midY)) size=\(Int(frame.width))×\(Int(frame.height))")
             }
             if let actionable {
                 lines.append(
@@ -96,7 +97,8 @@ enum AgentPointerElement {
             string(element, kAXHelpAttribute), string(element, "AXPlaceholderValue"))
         let value = String(string(element, kAXValueAttribute).prefix(400))
         let description = role == "AXStaticText" ? "" : string(element, kAXDescriptionAttribute)
-        let windowTitle = AgentAXTree.axElement(copy(element, kAXWindowAttribute)).map { string($0, kAXTitleAttribute) } ?? ""
+        let windowTitle =
+            AgentAXTree.axElement(copy(element, kAXWindowAttribute)).map { string($0, kAXTitleAttribute) } ?? ""
 
         var actionable: (String, String, CGRect)?
         if !clickableRoles.contains(role) {

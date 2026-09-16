@@ -1,5 +1,5 @@
-import FluidAudio
 import Dispatch
+import FluidAudio
 import Foundation
 import TranscribeCpp
 import os
@@ -47,7 +47,8 @@ final class OfflineTranscribeCppService: TranscriptionService, @unchecked Sendab
             }
         )
         notificationObservers.append(
-            center.addObserver(forName: .transcribeCppModelDeleted, object: nil, queue: nil) { [weak self] notification in
+            center.addObserver(forName: .transcribeCppModelDeleted, object: nil, queue: nil) {
+                [weak self] notification in
                 guard let modelName = notification.userInfo?["modelName"] as? String else {
                     self?.unloadModel()
                     return
@@ -77,9 +78,9 @@ final class OfflineTranscribeCppService: TranscriptionService, @unchecked Sendab
 
     private var backend: Backend {
         #if arch(arm64)
-        return .metal
+            return .metal
         #else
-        return .cpu
+            return .cpu
         #endif
     }
 
@@ -215,8 +216,7 @@ final class OfflineTranscribeCppService: TranscriptionService, @unchecked Sendab
             }
 
             let loadIsCurrent = stateLock.withLock {
-                if
-                    let currentState = loadedState,
+                if let currentState = loadedState,
                     currentState.modelName == model.name,
                     currentState.model === loadedModel
                 {
@@ -348,9 +348,9 @@ final class OfflineTranscribeCppService: TranscriptionService, @unchecked Sendab
     }
 }
 
-private extension Array where Element == Float {
+extension Array where Element == Float {
     /// Splits long-form audio near low-energy boundaries without overlapping samples.
-    func energyAwareChunks(
+    fileprivate func energyAwareChunks(
         maximumCount: Int,
         boundarySearchCount: Int,
         energyWindowCount: Int

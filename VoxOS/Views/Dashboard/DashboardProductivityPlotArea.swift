@@ -134,8 +134,12 @@ struct DashboardProductivityPlotArea: View {
         }
 
         let nearestIndex = visiblePoints.indices.min { lhs, rhs in
-            abs(xPosition(for: lhs, pointCount: visiblePoints.count, slotCount: horizontalSlotCount, width: width) - location.x)
-                < abs(xPosition(for: rhs, pointCount: visiblePoints.count, slotCount: horizontalSlotCount, width: width) - location.x)
+            abs(
+                xPosition(for: lhs, pointCount: visiblePoints.count, slotCount: horizontalSlotCount, width: width)
+                    - location.x)
+                < abs(
+                    xPosition(for: rhs, pointCount: visiblePoints.count, slotCount: horizontalSlotCount, width: width)
+                        - location.x)
         }
         hoveredPointID = nearestIndex.map { visiblePoints[$0].id }
     }
@@ -165,7 +169,8 @@ struct DashboardProductivityPlotArea: View {
         let gap: CGFloat = 12
 
         let canFitRight = point.x + gap + tooltipSize.width <= size.width
-        let preferredX = canFitRight
+        let preferredX =
+            canFitRight
             ? point.x + gap + tooltipSize.width / 2
             : point.x - gap - tooltipSize.width / 2
         let x = min(
@@ -174,7 +179,8 @@ struct DashboardProductivityPlotArea: View {
         )
 
         let canFitAbove = point.y - gap - tooltipSize.height >= 0
-        let preferredY = canFitAbove
+        let preferredY =
+            canFitAbove
             ? point.y - gap - tooltipSize.height / 2
             : point.y + gap + tooltipSize.height / 2
         let y = min(

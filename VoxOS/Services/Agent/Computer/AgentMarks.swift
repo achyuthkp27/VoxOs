@@ -52,7 +52,9 @@ enum AgentMarks {
         }
 
         // Read in the order a person scans: top to bottom, then left to right.
-        kept.sort { AgentScreen.readingOrderKey($0.frame, rowHeight: 14) < AgentScreen.readingOrderKey($1.frame, rowHeight: 14) }
+        kept.sort {
+            AgentScreen.readingOrderKey($0.frame, rowHeight: 14) < AgentScreen.readingOrderKey($1.frame, rowHeight: 14)
+        }
         current = kept.enumerated().map { Mark(index: $0.offset + 1, label: $0.element.label, frame: $0.element.frame) }
 
         show(on: shot.displayBounds)
@@ -60,7 +62,8 @@ enum AgentMarks {
         return [
             "count": current.count,
             "marks": current.map { ["mark": $0.index, "label": String($0.label.prefix(40))] },
-            "note": "Numbered badges are now visible on the user's screen for \(Int(displaySeconds))s. Pick the mark whose label matches the target and call click_mark, or ask the user which number they mean.",
+            "note":
+                "Numbered badges are now visible on the user's screen for \(Int(displaySeconds))s. Pick the mark whose label matches the target and call click_mark, or ask the user which number they mean.",
         ]
     }
 
@@ -107,7 +110,8 @@ enum AgentMarks {
 /// Transparent, click-through, always-on-top panel that the badges are drawn into.
 private final class MarkOverlayPanel: NSPanel {
     init(contentRect: NSRect) {
-        super.init(contentRect: contentRect, styleMask: [.borderless, .nonactivatingPanel], backing: .buffered, defer: false)
+        super.init(
+            contentRect: contentRect, styleMask: [.borderless, .nonactivatingPanel], backing: .buffered, defer: false)
         isOpaque = false
         backgroundColor = .clear
         hasShadow = false
@@ -152,7 +156,8 @@ private final class MarkOverlayView: NSView {
             let badge = "\(m.index)"
             let size = badge.size(withAttributes: attrs)
             let pad: CGFloat = 4
-            let badgeRect = NSRect(x: r.minX, y: r.minY - size.height - 2, width: size.width + pad * 2, height: size.height + 2)
+            let badgeRect = NSRect(
+                x: r.minX, y: r.minY - size.height - 2, width: size.width + pad * 2, height: size.height + 2)
             let clamped = badgeRect.minY < 0 ? badgeRect.offsetBy(dx: 0, dy: size.height + 4) : badgeRect
             fill.setFill()
             NSBezierPath(roundedRect: clamped, xRadius: 3, yRadius: 3).fill()

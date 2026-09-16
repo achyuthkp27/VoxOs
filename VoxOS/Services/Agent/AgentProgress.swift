@@ -14,7 +14,8 @@ final class AgentProgress: ObservableObject {
 
     nonisolated static func label(forTool tool: String) -> String {
         if tool.hasPrefix(AgentMCP.toolPrefix) {
-            let server = tool.dropFirst(AgentMCP.toolPrefix.count).split(separator: "_").first.map(String.init) ?? "server"
+            let server =
+                tool.dropFirst(AgentMCP.toolPrefix.count).split(separator: "_").first.map(String.init) ?? "server"
             return "Asking \(server)…"
         }
         if tool.hasPrefix("plugin_") { return "Running a plugin…" }

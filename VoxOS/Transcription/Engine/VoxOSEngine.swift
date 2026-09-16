@@ -695,7 +695,7 @@ class VoxOSEngine: NSObject, ObservableObject {
     private func requestRecordingCancellation() {
         shouldCancelRecording = true
 
-        if (recordingState == .transcribing || recordingState == .enhancing),
+        if recordingState == .transcribing || recordingState == .enhancing,
             let activePipelineTranscriptionID
         {
             canceledPipelineTranscriptionIDs.insert(activePipelineTranscriptionID)

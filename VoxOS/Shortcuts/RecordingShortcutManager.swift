@@ -271,7 +271,9 @@ class RecordingShortcutManager: ObservableObject {
             onKeyDown: { [weak self] action, eventTime in
                 Task { @MainActor in
                     guard let self else { return }
-                    Self.logger.notice("shortcut down: \(action.storageName, privacy: .public) state=\(String(describing: self.engine.recordingState), privacy: .public)")
+                    Self.logger.notice(
+                        "shortcut down: \(action.storageName, privacy: .public) state=\(String(describing: self.engine.recordingState), privacy: .public)"
+                    )
                     if action == .agentDoubleTap {
                         if let released = self.lastComboReleaseAt,
                             Self.isComboLeftover(tapDownAt: eventTime, comboReleasedAt: released)
@@ -299,7 +301,9 @@ class RecordingShortcutManager: ObservableObject {
             onKeyUp: { [weak self] action, eventTime in
                 Task { @MainActor in
                     guard let self else { return }
-                    Self.logger.notice("shortcut up: \(action.storageName, privacy: .public) state=\(String(describing: self.engine.recordingState), privacy: .public)")
+                    Self.logger.notice(
+                        "shortcut up: \(action.storageName, privacy: .public) state=\(String(describing: self.engine.recordingState), privacy: .public)"
+                    )
                     if action == .agentDoubleTap {
                         await self.handleAgentTapUp(eventTime: eventTime)
                         return

@@ -65,10 +65,6 @@ jobs:
     name: Format check
     runs-on: macos-26
     timeout-minutes: 10
-    # Advisory until the tree is formatted once: the codebase predates .swift-format
-    # and currently reports ~635 findings. Run `make format` (a ~1,200 line diff across
-    # 74 files), commit it, then delete this continue-on-error to make the check binding.
-    continue-on-error: true
     steps:
       - uses: actions/checkout@v4
       - name: swift-format lint

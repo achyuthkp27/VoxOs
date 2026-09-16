@@ -435,8 +435,7 @@ class AudioDeviceManager: ObservableObject {
         return uid as String?
     }
 
-    func findAvailableDevice(uid: String, modelUID: String?) -> (id: AudioDeviceID, uid: String, name: String)?
-    {
+    func findAvailableDevice(uid: String, modelUID: String?) -> (id: AudioDeviceID, uid: String, name: String)? {
         if !uid.isEmpty, let found = availableDevices.first(where: { $0.uid == uid }) {
             return found
         }

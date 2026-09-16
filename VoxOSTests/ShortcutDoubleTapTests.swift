@@ -94,7 +94,10 @@ struct ShortcutDoubleTapTests {
     @Test func dictationSendKeyRules() {
         DictationSend.clearOnce()
         let saved = UserDefaults.standard.object(forKey: DictationSend.pressReturnKey)
-        defer { saved.map { UserDefaults.standard.set($0, forKey: DictationSend.pressReturnKey) } ?? UserDefaults.standard.removeObject(forKey: DictationSend.pressReturnKey) }
+        defer {
+            saved.map { UserDefaults.standard.set($0, forKey: DictationSend.pressReturnKey) }
+                ?? UserDefaults.standard.removeObject(forKey: DictationSend.pressReturnKey)
+        }
         UserDefaults.standard.set(false, forKey: DictationSend.pressReturnKey)
 
         #expect(DictationSend.keyForPaste(modeKey: .none) == .none)
@@ -140,7 +143,10 @@ struct ShortcutDoubleTapTests {
         monitor.feed(.flagsChanged, keyCode: 63, flags: [], at: 3.1)
         try? await Task.sleep(nanoseconds: 200_000_000)
 
-        #expect(events.items == ["down primaryRecording", "down dictateAndSend", "up dictateAndSend", "up primaryRecording"])
+        #expect(
+            events.items == [
+                "down primaryRecording", "down dictateAndSend", "up dictateAndSend", "up primaryRecording",
+            ])
     }
 
     /// ⌃ first, then fn: only the combo starts, and releasing either key ends it.
@@ -197,6 +203,8 @@ struct ShortcutDoubleTapTests {
         #expect(events.items.contains("down agentDoubleTap 5.4"), "macOS really does report ⌃ alone here")
 
         #expect(RecordingShortcutManager.isComboLeftover(tapDownAt: 5.40, comboReleasedAt: 5.40))
-        #expect(!RecordingShortcutManager.isComboLeftover(tapDownAt: 6.2, comboReleasedAt: 5.40), "a real tap later still counts")
+        #expect(
+            !RecordingShortcutManager.isComboLeftover(tapDownAt: 6.2, comboReleasedAt: 5.40),
+            "a real tap later still counts")
     }
 }

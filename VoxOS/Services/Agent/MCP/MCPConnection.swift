@@ -15,7 +15,9 @@ struct MCPServerConfig: Equatable {
     var headers: [String: String] = [:]
 
     var isRemote: Bool { remoteURL != nil }
-    var isSupported: Bool { isRemote ? URL(string: remoteURL ?? "")?.scheme?.hasPrefix("http") == true : !command.isEmpty }
+    var isSupported: Bool {
+        isRemote ? URL(string: remoteURL ?? "")?.scheme?.hasPrefix("http") == true : !command.isEmpty
+    }
 }
 
 /// What the registry needs from a connection, whatever its transport.
@@ -35,7 +37,9 @@ extension MCPClient {
     }
 
     /// Shared by both transports: the tool list inside a `tools/list` result.
-    static func parseTools(_ result: [String: Any]) -> [(name: String, description: String, schema: [String: Any], readOnly: Bool)] {
+    static func parseTools(_ result: [String: Any]) -> [(
+        name: String, description: String, schema: [String: Any], readOnly: Bool
+    )] {
         ((result["tools"] as? [[String: Any]]) ?? []).compactMap { tool in
             guard let name = tool["name"] as? String, !name.isEmpty else { return nil }
             let annotations = tool["annotations"] as? [String: Any]
@@ -183,7 +187,9 @@ final class MCPConnection: MCPClient, @unchecked Sendable {
         process.environment = environment
         process.currentDirectoryURL = FileManager.default.homeDirectoryForCurrentUser
 
-        let stdin = Pipe(), stdout = Pipe(), stderr = Pipe()
+        let stdin = Pipe()
+        let stdout = Pipe()
+        let stderr = Pipe()
         process.standardInput = stdin
         process.standardOutput = stdout
         process.standardError = stderr
@@ -247,7 +253,8 @@ final class MCPConnection: MCPClient, @unchecked Sendable {
     }
 
     func stop() {
-        let (process, stdin, waiting) = lock.withLock { () -> (Process?, FileHandle?, [CheckedContinuation<MCPJSON, Error>]) in
+        let (process, stdin, waiting) = lock.withLock {
+            () -> (Process?, FileHandle?, [CheckedContinuation<MCPJSON, Error>]) in
             let snapshot = (self.process, self.stdinHandle, Array(self.pending.values))
             self.process = nil
             self.stdinHandle = nil
@@ -376,7 +383,8 @@ final class MCPConnection: MCPClient, @unchecked Sendable {
             else { return }
             if let error = message["error"] as? [String: Any] {
                 continuation.resume(
-                    throwing: MCPError.rpc((error["code"] as? Int) ?? -1, (error["message"] as? String) ?? "unknown error"))
+                    throwing: MCPError.rpc(
+                        (error["code"] as? Int) ?? -1, (error["message"] as? String) ?? "unknown error"))
             } else {
                 continuation.resume(returning: MCPJSON(value: (message["result"] as? [String: Any]) ?? [:]))
             }

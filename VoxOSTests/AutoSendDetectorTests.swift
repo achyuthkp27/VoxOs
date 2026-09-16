@@ -34,7 +34,8 @@ struct AutoSendDetectorTests {
     }
 
     @Test func shortPausesBetweenWordsDoNotSend() {
-        let words = repeated(0.6, 0.6) + repeated(0.27, 0.7) + repeated(0.6, 0.6) + repeated(0.27, 0.9) + repeated(0.6, 0.5)
+        let words =
+            repeated(0.6, 0.6) + repeated(0.27, 0.7) + repeated(0.6, 0.6) + repeated(0.27, 0.9) + repeated(0.6, 0.5)
         let trace = repeated(0.25, 0.4) + words + repeated(0.26, 2.5)
         let result = run(trace)
         #expect(result?.decision == .send)

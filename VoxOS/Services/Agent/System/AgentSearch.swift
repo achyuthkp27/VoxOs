@@ -54,9 +54,12 @@ enum AgentSearch {
         let remote = await withTaskGroup(of: MCPJSON.self) { group -> [[String: Any]] in
             for source in mcpSources {
                 group.addTask {
-                    let fallback = MCPJSON(value: ["source": source.tool.server, "tool": source.tool.exposedName, "error": "timed out"])
+                    let fallback = MCPJSON(value: [
+                        "source": source.tool.server, "tool": source.tool.exposedName, "error": "timed out",
+                    ])
                     return await mcpRace(seconds: sourceTimeout) {
-                        let result = await AgentMCP.call(name: source.tool.exposedName, args: [source.queryParameter: query])
+                        let result = await AgentMCP.call(
+                            name: source.tool.exposedName, args: [source.queryParameter: query])
                         var entry: [String: Any] = ["source": source.tool.server, "tool": source.tool.exposedName]
                         if let error = result["error"] as? String {
                             entry["error"] = error
@@ -77,7 +80,8 @@ enum AgentSearch {
         var result: [String: Any] = ["query": query, "files": finderMatches]
         if !remote.isEmpty { result["sources"] = remote }
         if mcpSources.isEmpty {
-            result["note"] = "Only Finder was searched. Connect MCP servers (Settings → Agent → MCP Servers) to also search Notion, Drive, Gmail and more."
+            result["note"] =
+                "Only Finder was searched. Connect MCP servers (Settings → Agent → MCP Servers) to also search Notion, Drive, Gmail and more."
         }
         return result
     }

@@ -34,7 +34,7 @@ struct GeminiProvider: CloudProvider {
                 isMultilingual: true,
                 supportsStreaming: true,
                 supportedLanguages: Self.transcribeSupportedLanguages
-            ),
+            )
         ]
     }
 
