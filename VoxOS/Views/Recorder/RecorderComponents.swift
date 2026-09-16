@@ -559,28 +559,35 @@ struct LiveTranscriptView: View {
     /// Matched to the wave's leading inset in the row above so the pill reads as one column.
     var horizontalInset: CGFloat = 22
 
+    private let panelHeight: CGFloat = 62
+
     var body: some View {
         ScrollViewReader { proxy in
             ScrollView(.vertical, showsIndicators: false) {
                 Text(text)
-                    .font(.app(size: 15, weight: .regular))
+                    // Rounded to sit with the pill's own geometry, and a step heavier than the
+                    // rest of the app because light text on black optically thins.
+                    .font(.app(size: 15, weight: .medium, design: .rounded))
                     .foregroundColor(AppTheme.Notch.text)
-                    .lineSpacing(2)
+                    .lineSpacing(3)
+                    .tracking(0.2)
                     .frame(maxWidth: .infinity, alignment: .leading)
                     .padding(.horizontal, horizontalInset)
-                    .padding(.top, 2)
                     .padding(.bottom, 10)
+                    // Grow downwards from the bottom. A line or two - which is most of a
+                    // recording - then sits clear of the fade above instead of starting at the
+                    // top of the panel where the mask would dim the line being read.
+                    .frame(minHeight: panelHeight, alignment: .bottom)
                     .id("bottom")
             }
-            .frame(height: 62)
-            // A longer, two-stage ramp replaces the divider that used to sit above this panel:
-            // the first line is still legible while its top edge dissolves into the wave row.
+            .frame(height: panelHeight)
+            // Only text that has scrolled out of the way is faded, which is all the separation
+            // the wave row above needs now that there is no divider between them.
             .mask(
                 LinearGradient(
                     stops: [
                         .init(color: .clear, location: 0.0),
-                        .init(color: .black.opacity(0.35), location: 0.16),
-                        .init(color: .black, location: 0.44),
+                        .init(color: .black, location: 0.22),
                         .init(color: .black, location: 1.0),
                     ],
                     startPoint: .top,

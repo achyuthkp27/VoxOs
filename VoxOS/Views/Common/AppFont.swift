@@ -7,8 +7,8 @@ enum AppFont {
 }
 
 extension Font {
-    static func app(size: CGFloat, weight: Font.Weight = .regular) -> Font {
-        .system(size: size, weight: weight)
+    static func app(size: CGFloat, weight: Font.Weight = .regular, design: Font.Design = .default) -> Font {
+        .system(size: size, weight: weight, design: design)
     }
 
     static func app(_ style: Font.TextStyle, weight: Font.Weight? = nil) -> Font {
