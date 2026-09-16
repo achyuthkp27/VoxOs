@@ -300,6 +300,15 @@ class AIEnhancementService: ObservableObject {
             return ("", nil, nil)
         }
 
+        // A hosted provider with no route to the internet cannot answer, and waiting for the
+        // timeout to prove it costs every recording the full delay before the text lands.
+        // Failing here is the same outcome, minus the wait — the raw transcript still pastes.
+        if NetworkReachability.shared.isDefinitelyOffline,
+            EnhancementReachability.requiresInternet(provider: provider, baseURL: provider.baseURL)
+        {
+            throw EnhancementError.offline
+        }
+
         if provider == .voxOSRefine {
             do {
                 let result = try await aiService.enhanceWithVoxOSRefine(transcript: text)
@@ -726,6 +735,7 @@ class AIEnhancementService: ObservableObject {
 
 enum EnhancementError: Error {
     case notConfigured
+    case offline
     case invalidResponse
     case enhancementFailed
     case networkError
@@ -740,6 +750,8 @@ extension EnhancementError: LocalizedError {
         switch self {
         case .notConfigured:
             return String(localized: "AI provider not configured. Please check your API key.")
+        case .offline:
+            return String(localized: "No internet connection — pasted without AI enhancement.")
         case .invalidResponse:
             return String(localized: "Invalid response from AI provider.")
         case .enhancementFailed:
