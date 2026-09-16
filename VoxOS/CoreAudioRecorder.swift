@@ -973,11 +973,29 @@ final class CoreAudioRecorder: @unchecked Sendable {
         }
     }
 
+    /// Waits for in-flight render callbacks to drain before the audio unit is reset or freed.
+    ///
+    /// Bounded, because the condition depends on hardware. This runs on the serial audio setup
+    /// queue with the caller suspended on a continuation, so a callback that never completes —
+    /// a wedged device or driver — would not just hang the stop that is waiting: it would wedge
+    /// that queue permanently, and every later audio setup and teardown behind it. A deadline
+    /// trades a rare, unlikely-unsafe reset for never losing the recorder entirely.
     private func waitForRenderCallbacksToFinish() {
+        let deadline = Date().addingTimeInterval(Self.renderDrainTimeout)
         while renderCallbacksInFlight.load(ordering: .acquiring) > 0 {
+            if Date() >= deadline {
+                logger.error(
+                    "🎙️ Render callbacks still in flight after \(Self.renderDrainTimeout, privacy: .public)s; continuing teardown"
+                )
+                return
+            }
             Thread.sleep(forTimeInterval: 0.001)
         }
     }
+
+    /// Generous next to the milliseconds a drain actually takes, so this only fires when
+    /// something is genuinely stuck rather than merely slow.
+    private static let renderDrainTimeout: TimeInterval = 2.0
 
     private func logDroppedInputBufferCounters(context: String) {
         let backpressureDrops = droppedInputBuffersBackpressure.exchange(0, ordering: .acquiringAndReleasing)
