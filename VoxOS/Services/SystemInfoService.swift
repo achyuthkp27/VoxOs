@@ -46,7 +46,7 @@ final class SystemInfoService {
             AI Model: \(getAIModel())
 
             UI SETTINGS:
-            Hide Dock Icon: \(UserDefaults.standard.bool(forKey: "IsMenuBarOnly"))
+            Hide Dock Icon: \(MenuBarOnlyPreference.isEnabled) (active: \(MenuBarOnlyPreference.isActive))
             Recorder Style: \(UserDefaults.standard.string(forKey: "RecorderType") ?? "notch")
 
             RECORDING FEEDBACK:

@@ -22,22 +22,55 @@ enum WindowDiagnostics {
     }
 }
 
+enum MenuBarOnlyPreference {
+    static let key = "IsMenuBarOnly"
+    static let onboardingCompletedKey = "hasCompletedOnboardingV2"
+
+    /// The stored preference, as the "Hide Dock Icon" toggle shows it.
+    static var isEnabled: Bool {
+        UserDefaults.standard.bool(forKey: key)
+    }
+
+    /// The value the app acts on. Menu-bar-only is suppressed until onboarding is finished so
+    /// a first launch never hides the onboarding window it is trying to present.
+    static var isActive: Bool {
+        isEnabled && UserDefaults.standard.bool(forKey: onboardingCompletedKey)
+    }
+}
+
 enum AppPresentationPolicy {
     static func activateForUserFacingWindow() {
         NSApplication.shared.setActivationPolicy(.regular)
         NSApplication.shared.activate(ignoringOtherApps: true)
     }
 
-    static func restoreAccessoryIfNeededAfterUserFacingWindowClosed() {
+    /// The single source of truth for the activation policy: accessory only when the user asked
+    /// for menu-bar-only *and* nothing user-facing is on screen. It recomputes from current state
+    /// instead of assuming which transition it is servicing, so a missed transition heals on the
+    /// next call rather than leaving a stranded Dock icon.
+    @discardableResult
+    static func reconcileActivationPolicy(excluding excludedWindow: NSWindow? = nil)
+        -> NSApplication.ActivationPolicy
+    {
+        let hasVisibleUserWindows = !WindowDiagnostics.visibleUserFacingWindows(excluding: excludedWindow).isEmpty
+        let policy: NSApplication.ActivationPolicy =
+            MenuBarOnlyPreference.isActive && !hasVisibleUserWindows ? .accessory : .regular
+
+        if NSApplication.shared.activationPolicy() != policy {
+            NSApplication.shared.setActivationPolicy(policy)
+        }
+
+        return policy
+    }
+
+    /// `NSWindow.willCloseNotification` fires while the closing window is still in `NSApp.windows`
+    /// and can still report `isVisible`, so it has to be excluded explicitly rather than relying on
+    /// the main-queue hop to have retired it.
+    static func restoreAccessoryIfNeededAfterUserFacingWindowClosed(excluding closingWindow: NSWindow?) {
         DispatchQueue.main.async {
-            let menuBarOnly = UserDefaults.standard.bool(forKey: "IsMenuBarOnly")
-            let hasVisibleUserWindows = !WindowDiagnostics.visibleUserFacingWindows().isEmpty
-
-            guard menuBarOnly else { return }
-            guard !hasVisibleUserWindows else { return }
-
-            NSApplication.shared.setActivationPolicy(.accessory)
-            NSApplication.shared.deactivate()
+            if reconcileActivationPolicy(excluding: closingWindow) == .accessory {
+                NSApplication.shared.deactivate()
+            }
         }
     }
 }
@@ -97,7 +130,7 @@ class WindowManager: NSObject {
         if shouldShowNextConfiguredMainWindow {
             shouldShowNextConfiguredMainWindow = false
             presentMainWindow(window)
-        } else if UserDefaults.standard.bool(forKey: "IsMenuBarOnly") {
+        } else if MenuBarOnlyPreference.isActive {
             window.orderOut(nil)
         }
     }

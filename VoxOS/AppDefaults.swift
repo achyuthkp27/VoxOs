@@ -49,7 +49,8 @@ enum AppDefaults {
             CleanupSettingsKeys.audioRetentionPeriod: 7,
 
             // UI & Behavior
-            "IsMenuBarOnly": false,
+            // Menu bar only by default: VoxOS is driven by fn / ⌃⌃ and lives in the background.
+            "IsMenuBarOnly": true,
             AppAppearancePreference.userDefaultsKey: AppAppearancePreference.system.rawValue,
             AppLanguagePreference.userDefaultsKey: AppLanguagePreference.systemValue,
             // Shortcuts
