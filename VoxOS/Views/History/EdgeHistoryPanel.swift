@@ -88,6 +88,9 @@ final class EdgeHistoryWindowManager {
     private var localHoverMonitor: Any?
     private var outsideDismissMonitor: Any?
     private var state: State = .hidden
+    private var lastHoverSample: TimeInterval = 0
+    /// One sample per display frame at 60 Hz; anything finer is invisible.
+    private static let hoverSampleInterval: TimeInterval = 1.0 / 60.0
     private let presentation = EdgeHistoryPresentation()
     private let logger = Logger(subsystem: "com.achyuthkp.voxos", category: "EdgeHistoryWindowManager")
 
@@ -104,16 +107,26 @@ final class EdgeHistoryWindowManager {
 
     private func installHoverMonitor() {
         guard hoverMonitor == nil else { return }
+        // NSEvent monitors are delivered on the main thread, so assuming that here rather than
+        // hopping through a Task avoids allocating one per mouse move — which, at 120 Hz, was
+        // most of what this monitor did.
         hoverMonitor = NSEvent.addGlobalMonitorForEvents(matching: [.mouseMoved]) { [weak self] _ in
-            Task { @MainActor in self?.handleMouseMoved() }
+            MainActor.assumeIsolated { self?.handleMouseMoved() }
         }
         localHoverMonitor = NSEvent.addLocalMonitorForEvents(matching: [.mouseMoved]) { [weak self] event in
-            Task { @MainActor in self?.handleMouseMoved() }
+            MainActor.assumeIsolated { self?.handleMouseMoved() }
             return event
         }
     }
 
     private func handleMouseMoved() {
+        // Pointer movement arrives faster than the display refreshes and none of the decisions
+        // below can change more often than that, so sampling keeps a moving mouse from being a
+        // steady main-thread load.
+        let now = ProcessInfo.processInfo.systemUptime
+        guard now - lastHoverSample >= Self.hoverSampleInterval else { return }
+        lastHoverSample = now
+
         let mouseLocation = NSEvent.mouseLocation
         guard
             let screen = NSScreen.screens.first(where: { NSMouseInRect(mouseLocation, $0.frame, false) })
