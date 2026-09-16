@@ -10,6 +10,9 @@ final class LaunchAtLoginManager: ObservableObject {
     @Published private(set) var isEnabled = false
     @Published private(set) var isUpdating = false
 
+    /// One-shot marker for the first-launch registration below.
+    static let didApplyDefaultKey = "didApplyDefaultLaunchAtLogin"
+
     private let logger = Logger(subsystem: "com.achyuthkp.voxos", category: "LaunchAtLogin")
     private var isRefreshing = false
     private var operationGeneration = 0
@@ -33,6 +36,21 @@ final class LaunchAtLoginManager: ObservableObject {
             guard generation == operationGeneration else { return }
             isEnabled = enabled
         }
+    }
+
+    /// Turns launch at login on the first time VoxOS runs on a machine. It is a background app
+    /// driven by fn and ⌃⌃, so it has to come back after a restart to be of any use, and a fresh
+    /// install should not need the user to go find the toggle.
+    ///
+    /// The one-shot flag is the whole point: it runs once per machine, so switching it off later
+    /// sticks instead of being re-enabled on the next launch.
+    func enableByDefaultIfNeeded() {
+        let defaults = UserDefaults.standard
+        guard !defaults.bool(forKey: Self.didApplyDefaultKey) else { return }
+        defaults.set(true, forKey: Self.didApplyDefaultKey)
+
+        logger.info("Registering launch at login for the first run on this machine.")
+        setEnabled(true)
     }
 
     func setEnabled(_ enabled: Bool) {

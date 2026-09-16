@@ -10,6 +10,9 @@ class AppDelegate: NSObject, NSApplicationDelegate {
         // Start configured MCP servers now so their tools are ready by the first Agent request.
         AgentMCP.warmUp()
         AgentNudges.shared.start()
+        Task { @MainActor in
+            LaunchAtLoginManager.shared.enableByDefaultIfNeeded()
+        }
     }
 
     func applicationShouldHandleReopen(_ sender: NSApplication, hasVisibleWindows flag: Bool) -> Bool {

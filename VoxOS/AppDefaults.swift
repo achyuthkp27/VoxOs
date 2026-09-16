@@ -51,6 +51,8 @@ enum AppDefaults {
             // UI & Behavior
             // Menu bar only by default: VoxOS is driven by fn / ⌃⌃ and lives in the background.
             "IsMenuBarOnly": true,
+            // One-shot: LaunchAtLoginManager registers the login item on a machine's first run.
+            LaunchAtLoginManager.didApplyDefaultKey: false,
             AppAppearancePreference.userDefaultsKey: AppAppearancePreference.system.rawValue,
             AppLanguagePreference.userDefaultsKey: AppLanguagePreference.systemValue,
             // Shortcuts
