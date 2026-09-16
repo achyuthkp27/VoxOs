@@ -112,7 +112,7 @@ class RecordingShortcutManager: ObservableObject {
     /// When fn+⌃ or fn was last released. Letting go of fn a moment before ⌃ leaves ⌃ alone
     /// for a few milliseconds, which must not count as a ⌃ tap.
     private var lastComboReleaseAt: TimeInterval?
-    static let comboReleaseGuard: TimeInterval = 0.35
+    nonisolated static let comboReleaseGuard: TimeInterval = 0.35
 
     init(engine: VoxOSEngine, recorderUIManager: RecorderUIManager) {
         ShortcutMigration.migrateLegacyShortcutsIfNeeded()

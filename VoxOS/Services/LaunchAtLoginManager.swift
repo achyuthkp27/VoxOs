@@ -12,7 +12,7 @@ final class LaunchAtLoginManager: ObservableObject {
     @Published private(set) var isUpdating = false
 
     /// One-shot marker for the first-launch registration below.
-    static let didApplyDefaultKey = "didApplyDefaultLaunchAtLogin"
+    nonisolated static let didApplyDefaultKey = "didApplyDefaultLaunchAtLogin"
 
     private let logger = Logger(subsystem: "com.achyuthkp.voxos", category: "LaunchAtLogin")
     private var isRefreshing = false
