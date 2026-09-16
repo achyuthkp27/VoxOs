@@ -1,0 +1,7 @@
+# Revisions to skip when running `git blame`.
+# Enable locally with:
+#   git config blame.ignoreRevsFile .git-blame-ignore-revs
+# GitHub honours this file automatically in its blame view.
+
+# Format the tree with swift-format and make the check binding
+d1f58d6e3a832acd6b96e6b6ac55d8dd8ebf59b2
