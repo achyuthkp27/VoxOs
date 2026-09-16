@@ -1,15 +1,21 @@
 {
-  "images" : [
+  "images": [
     {
-      "filename" : "menuBarIcon.png",
-      "idiom" : "universal"
+      "filename": "menuBarIcon.png",
+      "idiom": "universal",
+      "scale": "1x"
+    },
+    {
+      "filename": "menuBarIcon@2x.png",
+      "idiom": "universal",
+      "scale": "2x"
     }
   ],
-  "info" : {
-    "author" : "xcode",
-    "version" : 1
+  "info": {
+    "author": "xcode",
+    "version": 1
   },
-  "properties" : {
-    "template-rendering-intent" : "template"
+  "properties": {
+    "template-rendering-intent": "template"
   }
 }

@@ -389,14 +389,10 @@ struct VoxOSApp: App {
                 .environmentObject(aiService)
                 .environmentObject(enhancementService)
         } label: {
-            let image: NSImage = {
-                let ratio = $0.size.height / $0.size.width
-                $0.size.height = 22
-                $0.size.width = 22 / ratio
-                return $0
-            }(NSImage(named: "menuBarIcon")!)
-
-            Image(nsImage: image)
+            // menuBarIcon ships at its intended menu bar size (20x17pt, @1x/@2x/@3x) and is a
+            // template, so AppKit tints it for the current menu bar. Rescaling here would
+            // resample an already correctly sized glyph and soften it.
+            Image(nsImage: NSImage(named: "menuBarIcon")!)
                 .background(MainWindowRequestBridge(menuBarManager: menuBarManager))
         }
         .menuBarExtraStyle(.menu)
