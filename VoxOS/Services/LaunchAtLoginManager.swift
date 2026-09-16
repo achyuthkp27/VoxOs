@@ -1,3 +1,4 @@
+import AppKit
 import Combine
 import Foundation
 import ServiceManagement
@@ -45,12 +46,28 @@ final class LaunchAtLoginManager: ObservableObject {
     /// The one-shot flag is the whole point: it runs once per machine, so switching it off later
     /// sticks instead of being re-enabled on the next launch.
     func enableByDefaultIfNeeded() {
+        // `SMAppService.mainApp` registers whichever bundle is running, and the test host and
+        // every build product share this bundle identifier. Registering one of those points the
+        // login item at a throwaway path that fails to launch, so only the installed copy may
+        // arm this automatically. An explicit toggle still works from anywhere.
+        guard Self.isInstalledCopy else {
+            logger.info("Skipping the launch at login default: not running from /Applications.")
+            return
+        }
+
         let defaults = UserDefaults.standard
         guard !defaults.bool(forKey: Self.didApplyDefaultKey) else { return }
         defaults.set(true, forKey: Self.didApplyDefaultKey)
 
         logger.info("Registering launch at login for the first run on this machine.")
         setEnabled(true)
+    }
+
+    /// True only for a copy living in an Applications folder, which is the only place a login
+    /// item can point at and still be there next login.
+    private static var isInstalledCopy: Bool {
+        let path = Bundle.main.bundleURL.resolvingSymlinksInPath().path
+        return path.hasPrefix("/Applications/") || path.contains("/Applications/")
     }
 
     func setEnabled(_ enabled: Bool) {
@@ -100,11 +117,38 @@ final class LaunchAtLoginManager: ObservableObject {
                 logger.error(
                     "Failed to \(enabled ? "enable" : "disable", privacy: .public) launch at login: \(errorDescription, privacy: .public)"
                 )
+                reportFailure(whileEnabling: enabled)
             }
         }
 
         isUpdating = false
         updateTask = nil
+    }
+
+    /// A failed registration used to be log-only: the toggle snapped back to the real status and
+    /// said nothing. That is worse now that `enableByDefaultIfNeeded` runs unattended on first
+    /// launch, where the difference is whether VoxOS comes back after a restart at all.
+    private func reportFailure(whileEnabling enabled: Bool) {
+        let title =
+            enabled
+            ? String(localized: "VoxOS could not add itself to your login items")
+            : String(localized: "VoxOS could not remove itself from your login items")
+
+        NotificationManager.shared.showNotification(
+            title: title,
+            type: .error,
+            duration: 7.0,
+            actionButton: (
+                String(localized: "Open Settings"),
+                {
+                    if let url = URL(
+                        string: "x-apple.systempreferences:com.apple.LoginItems-Settings.extension")
+                    {
+                        NSWorkspace.shared.open(url)
+                    }
+                }
+            )
+        )
     }
 
     private nonisolated static func readEnabledStatus() async -> Bool {

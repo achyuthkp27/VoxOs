@@ -102,3 +102,7 @@ Network Trash Folder
 Temporary Items
 .apdisk
 .local-build-tests/
+
+# Code coverage artifacts
+*.profraw
+*.profdata

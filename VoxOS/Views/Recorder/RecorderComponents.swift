@@ -558,8 +558,9 @@ struct LiveTranscriptView: View {
     let text: String
     /// Matched to the wave's leading inset in the row above so the pill reads as one column.
     var horizontalInset: CGFloat = 22
-
-    private let panelHeight: CGFloat = 62
+    /// The height the container reserves for this panel. It is passed in rather than repeated
+    /// here because the bottom alignment below only works while the two agree.
+    var panelHeight: CGFloat = 62
 
     var body: some View {
         ScrollViewReader { proxy in
@@ -696,8 +697,9 @@ struct AssistantPanelView: View {
                                 .font(.app(size: 26, weight: .light))
                                 .foregroundStyle(AppTheme.Notch.textMuted)
                             Text(shouldShowLiveFollowUpText ? "Listening…" : "Ask anything about what's on your screen")
-                                .font(.app(size: 14))
+                                .font(.app(size: 14, weight: .medium, design: .rounded))
                                 .foregroundStyle(AppTheme.Notch.textMuted)
+                                .multilineTextAlignment(.center)
                         }
                         .frame(maxWidth: .infinity)
                         .padding(.top, 56)
@@ -718,7 +720,7 @@ struct AssistantPanelView: View {
 
                     if let statusText {
                         Text(statusText)
-                            .font(.app(size: 14, weight: .regular))
+                            .font(.app(size: 14, weight: .medium, design: .rounded))
                             .foregroundColor(AppTheme.Notch.textMuted)
                             .padding(.horizontal, 10)
                             .padding(.vertical, 4)
@@ -728,6 +730,19 @@ struct AssistantPanelView: View {
                 }
                 .padding(.vertical, 2)
             }
+            // Replaces the divider that used to sit above this panel: messages scrolling past
+            // the top dissolve into the wave row rather than being cut by a line.
+            .mask(
+                LinearGradient(
+                    stops: [
+                        .init(color: .clear, location: 0.0),
+                        .init(color: .black, location: 0.06),
+                        .init(color: .black, location: 1.0),
+                    ],
+                    startPoint: .top,
+                    endPoint: .bottom
+                )
+            )
             .onChange(of: session.messages.count) {
                 scrollToBottom(proxy)
             }

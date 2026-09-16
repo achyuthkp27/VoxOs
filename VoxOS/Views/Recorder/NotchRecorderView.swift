@@ -222,7 +222,8 @@ struct NotchRecorderView<S: RecorderStateProvider & ObservableObject>: View {
             if displayState == .liveText {
                 LiveTranscriptView(
                     text: stateProvider.partialTranscript,
-                    horizontalInset: sideEdgePadding
+                    horizontalInset: sideEdgePadding,
+                    panelHeight: transcriptPanelHeight
                 )
             }
         }
@@ -230,10 +231,10 @@ struct NotchRecorderView<S: RecorderStateProvider & ObservableObject>: View {
         .clipped()
     }
 
+    /// Like `liveTextPanel`: no rule under the wave row. The message list fades its own top edge.
     private var assistantPanel: some View {
         VStack(spacing: 0) {
             if displayState == .assistant {
-                Divider().overlay(Color.primary.opacity(0.10))
                 AssistantPanelView(
                     session: assistantSession,
                     liveFollowUpText: liveAssistantFollowUpText,
