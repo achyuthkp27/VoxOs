@@ -885,8 +885,8 @@
 			isa = XCRemoteSwiftPackageReference;
 			repositoryURL = "https://github.com/FluidInference/FluidAudio";
 			requirement = {
-				branch = main;
-				kind = branch;
+				kind = revision;
+				revision = c7b13a3942e79893f3bd76bfe3b1ed8d03e0bfc7;
 			};
 		};
 		E1C0A0002FA8000000000001 /* XCRemoteSwiftPackageReference "Transcribe-cpp-swift" */ = {
@@ -901,8 +901,8 @@
 			isa = XCRemoteSwiftPackageReference;
 			repositoryURL = "https://github.com/Beingpax/mediaremote-adapter";
 			requirement = {
-				branch = master;
-				kind = branch;
+				kind = revision;
+				revision = b97fa53f0654c8e33519e8a601b0bead3abd310a;
 			};
 		};
 		E1E9B5AE3040793C001126FE /* XCRemoteSwiftPackageReference "LLMkit" */ = {
@@ -925,8 +925,8 @@
 			isa = XCRemoteSwiftPackageReference;
 			repositoryURL = "https://github.com/Beingpax/SelectedTextKit.git";
 			requirement = {
-				branch = "performance/off-main-menu-action";
-				kind = branch;
+				kind = revision;
+				revision = 05a3e5177300d800c2785be83ba2ba7fa775e41a;
 			};
 		};
 		E1F900012FA6000000000001 /* XCRemoteSwiftPackageReference "mlx-swift-lm" */ = {
