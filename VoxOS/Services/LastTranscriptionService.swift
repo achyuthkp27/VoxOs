@@ -1,5 +1,8 @@
 import Foundation
+import OSLog
 import SwiftData
+
+private let logger = Logger(subsystem: "com.achyuthkp.voxos", category: "LastTranscriptionService")
 
 class LastTranscriptionService: ObservableObject {
 
@@ -13,7 +16,7 @@ class LastTranscriptionService: ObservableObject {
             let transcriptions = try modelContext.fetch(descriptor)
             return transcriptions.first
         } catch {
-            print("Error fetching last transcription: \(error)")
+            logger.error("Error fetching last transcription: \(error, privacy: .public)")
             return nil
         }
     }

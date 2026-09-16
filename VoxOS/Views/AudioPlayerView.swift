@@ -1,5 +1,8 @@
 import AVFoundation
+import OSLog
 import SwiftUI
+
+private let logger = Logger(subsystem: "com.achyuthkp.voxos", category: "AudioPlayerView")
 
 extension TimeInterval {
     func formatTiming() -> String {
@@ -59,7 +62,7 @@ class WaveformGenerator {
             cache.setObject(normalizedSamples as NSArray, forKey: cacheKey)
             return normalizedSamples
         } catch {
-            print("Error reading audio file: \(error)")
+            logger.error("Error reading audio file: \(error, privacy: .public)")
             return []
         }
     }
@@ -97,7 +100,7 @@ class AudioPlayerManager: ObservableObject {
                 }
             }
         } catch {
-            print("Error loading audio: \(error.localizedDescription)")
+            logger.error("Error loading audio: \(error.localizedDescription, privacy: .public)")
         }
     }
 

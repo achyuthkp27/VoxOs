@@ -1,14 +1,26 @@
+# Recipes run under bash with pipefail so a failing command in a pipeline fails the
+# target. Without it `xcodebuild test | grep ... | sort` reported the exit status of
+# `sort`, and `make test` could never fail.
+SHELL := /bin/bash
+.SHELLFLAGS := -o pipefail -c
+
 # Define a directory for dependencies in the user's home folder
 DEPS_DIR := $(HOME)/VoxOS-Dependencies
 WHISPER_CPP_DIR := $(DEPS_DIR)/whisper.cpp
+# Pinned so every machine and CI build the same whisper.xcframework. Previously this
+# tracked master, so a fresh clone got whatever upstream happened to be that day.
+# This is the commit local builds were already on; bump it deliberately.
+WHISPER_CPP_REF ?= c4ac0012a8f5a2082dfca6aad4ddfd8b2c02b337
 FRAMEWORK_PATH := $(WHISPER_CPP_DIR)/build-apple/whisper.xcframework
 LOCAL_DERIVED_DATA := $(CURDIR)/.local-build
+TEST_DERIVED_DATA := $(CURDIR)/.local-build-tests
+TEST_RESULT_BUNDLE := $(TEST_DERIVED_DATA)/TestResults/latest.xcresult
 LOCAL_CODESIGN_IDENTITY ?=
 # `make local` installs straight to /Applications so no stray copies are left
 # lying around in ~/Downloads for Spotlight to index.
 INSTALL_PATH ?= /Applications/VoxOS.app
 
-.PHONY: all clean whisper setup build local check healthcheck help dev run release release-setup test
+.PHONY: all clean whisper setup build local check healthcheck help dev run release release-setup test lint format print-whisper-ref
 
 # Default target
 all: check build
@@ -26,6 +38,10 @@ check:
 
 healthcheck: check
 
+# Used by CI to key the whisper.xcframework cache on the pinned ref.
+print-whisper-ref:
+	@echo $(WHISPER_CPP_REF)
+
 # Build process
 whisper:
 	@mkdir -p $(DEPS_DIR)
@@ -33,9 +49,8 @@ whisper:
 		echo "Building whisper.xcframework in $(DEPS_DIR)..."; \
 		if [ ! -d "$(WHISPER_CPP_DIR)" ]; then \
 			git clone https://github.com/ggerganov/whisper.cpp.git $(WHISPER_CPP_DIR); \
-		else \
-			(cd $(WHISPER_CPP_DIR) && git pull); \
 		fi; \
+		(cd $(WHISPER_CPP_DIR) && git fetch --tags origin && git checkout --quiet $(WHISPER_CPP_REF)); \
 		cd $(WHISPER_CPP_DIR) && ./build-xcframework.sh; \
 	else \
 		echo "whisper.xcframework already built in $(DEPS_DIR), skipping build"; \
@@ -133,7 +148,7 @@ clean:
 	@echo "Cleaning build artifacts..."
 	@rm -rf $(DEPS_DIR)
 	@echo "Clean complete"
-	@rm -rf "$(CURDIR)/.local-build-tests"
+	@rm -rf "$(TEST_DERIVED_DATA)"
 
 # Help
 help:
@@ -145,7 +160,9 @@ help:
 	@echo "  local              Build, sign with your Apple Development identity, install to /Applications"
 	@echo "    LOCAL_CODESIGN_IDENTITY=<SHA or name> overrides automatic Apple Development detection"
 	@echo "  run                Launch the installed VoxOS app"
-	@echo "  test               Run the unit tests (agent logic)"
+	@echo "  test               Run the unit tests"
+	@echo "  lint               Check formatting with swift-format"
+	@echo "  format             Reformat sources in place with swift-format"
 	@echo "  dev                Build and run the app (for development)"
 	@echo "  release            Build DMG and Appcast using release-notes/<version>.html"
 	@echo "  release-setup      Store notarization credentials in Keychain"
@@ -153,14 +170,42 @@ help:
 	@echo "  clean              Remove build artifacts"
 	@echo "  help               Show this help message"
 
-# Unit tests (agent logic). Uses its own derived data so it never disturbs `make local`.
+# Unit tests. Uses its own derived data so it never disturbs `make local`.
+# The full xcodebuild log lands in $(TEST_DERIVED_DATA)/test.log; the console shows
+# build errors and test failures, and the run is scored from the .xcresult bundle
+# (the console stream omits most swift-testing cases).
 test: check
-	@mkdir -p .local-build-tests && touch .local-build-tests/.metadata_never_index
+	@mkdir -p $(TEST_DERIVED_DATA) && touch $(TEST_DERIVED_DATA)/.metadata_never_index
+	@# Removed so a build failure cannot be scored against the previous green run.
+	@# Only this explicit bundle is cleared — deleting Xcode's own Logs/Test store
+	@# breaks the log importer and produces an unreadable result bundle.
+	@rm -rf $(TEST_RESULT_BUNDLE)
+	@mkdir -p $(dir $(TEST_RESULT_BUNDLE))
 	@SIGNING_IDENTITY=$$(security find-identity -v -p codesigning 2>/dev/null | awk '/"Apple Development: / { print $$2; exit }'); \
 	xcodebuild test -project VoxOS.xcodeproj -scheme VoxOS -destination 'platform=macOS' \
-		-derivedDataPath .local-build-tests -xcconfig LocalBuild.xcconfig \
+		-derivedDataPath $(TEST_DERIVED_DATA) -xcconfig LocalBuild.xcconfig \
+		-resultBundlePath $(TEST_RESULT_BUNDLE) \
 		-skipPackagePluginValidation -skipMacroValidation -only-testing:VoxOSTests \
 		LOCAL_CODE_SIGN_IDENTITY="$${SIGNING_IDENTITY:--}" CODE_SIGNING_REQUIRED=NO CODE_SIGNING_ALLOWED=YES DEVELOPMENT_TEAM="" \
 		CODE_SIGN_ENTITLEMENTS="$(CURDIR)/VoxOS/VoxOS.local.entitlements" \
 		SWIFT_ACTIVE_COMPILATION_CONDITIONS='$$(inherited) LOCAL_BUILD' ENABLE_TESTABILITY=YES \
-		2>&1 | grep -E "Test case|Executed|error:" | sed -E "s/ on 'My Mac.*//" | sort -u
+		> $(TEST_DERIVED_DATA)/test.log 2>&1; \
+	STATUS=$$?; \
+	grep -E "[0-9]+: error:|^error:|✘|recorded an issue|Test run|TEST (SUCCEEDED|FAILED)" $(TEST_DERIVED_DATA)/test.log || true; \
+	if [ $$STATUS -ne 0 ] && [ ! -d $(TEST_RESULT_BUNDLE) ]; then \
+		echo "xcodebuild failed before running any test — see $(TEST_DERIVED_DATA)/test.log"; \
+		exit $$STATUS; \
+	fi
+	@./scripts/test-summary.sh $(TEST_RESULT_BUNDLE)
+
+# Formatting, configured by .swift-format. swift-format ships inside the Xcode
+# toolchain rather than on PATH, hence `xcrun`.
+# The tree has never been formatted, so `make lint` currently reports ~635 findings;
+# `make format` fixes all but a handful of them in one pass.
+SWIFT_FORMAT_PATHS := VoxOS Shared VoxOSTests VoxOSRefineXPC
+
+lint:
+	@xcrun swift-format lint --strict --recursive --parallel $(SWIFT_FORMAT_PATHS)
+
+format:
+	@xcrun swift-format format --in-place --recursive --parallel $(SWIFT_FORMAT_PATHS)

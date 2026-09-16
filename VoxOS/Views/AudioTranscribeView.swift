@@ -1,6 +1,9 @@
+import OSLog
 import SwiftData
 import SwiftUI
 import UniformTypeIdentifiers
+
+private let logger = Logger(subsystem: "com.achyuthkp.voxos", category: "AudioTranscribeView")
 
 struct AudioTranscribeView: View {
     @Environment(\.modelContext) private var modelContext
@@ -354,7 +357,7 @@ struct AudioTranscribeView: View {
                 if provider.hasItemConformingToTypeIdentifier(typeIdentifier) {
                     provider.loadItem(forTypeIdentifier: typeIdentifier, options: nil) { item, error in
                         if let error = error {
-                            print("Error loading dropped file: \(error)")
+                            logger.error("Error loading dropped file: \(error, privacy: .public)")
                             return
                         }
 

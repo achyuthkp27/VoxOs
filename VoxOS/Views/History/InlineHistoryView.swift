@@ -1,5 +1,8 @@
+import OSLog
 import SwiftData
 import SwiftUI
+
+private let logger = Logger(subsystem: "com.achyuthkp.voxos", category: "InlineHistoryView")
 
 struct InlineHistoryView: View {
     @Environment(\.modelContext) private var modelContext
@@ -351,7 +354,7 @@ struct InlineHistoryView: View {
             lastTimestamp = items.last?.timestamp
             hasMoreContent = items.count == pageSize
         } catch {
-            print("Error loading transcriptions: \(error)")
+            logger.error("Error loading transcriptions: \(error, privacy: .public)")
         }
     }
 
@@ -368,7 +371,7 @@ struct InlineHistoryView: View {
             self.lastTimestamp = newItems.last?.timestamp
             hasMoreContent = newItems.count == pageSize
         } catch {
-            print("Error loading more transcriptions: \(error)")
+            logger.error("Error loading more transcriptions: \(error, privacy: .public)")
         }
     }
 
@@ -398,7 +401,7 @@ struct InlineHistoryView: View {
             do {
                 try FileManager.default.removeItem(at: url)
             } catch {
-                print("Error deleting audio file: \(error.localizedDescription)")
+                logger.error("Error deleting audio file: \(error.localizedDescription, privacy: .public)")
             }
         }
 
@@ -426,7 +429,7 @@ struct InlineHistoryView: View {
                 NotificationCenter.default.post(name: .transcriptionDeleted, object: nil)
                 await loadInitialContent()
             } catch {
-                print("Error saving deletion: \(error.localizedDescription)")
+                logger.error("Error saving deletion: \(error.localizedDescription, privacy: .public)")
                 await loadInitialContent()
             }
         }
@@ -457,7 +460,7 @@ struct InlineHistoryView: View {
                 }
             }
         } catch {
-            print("Error selecting all transcriptions: \(error)")
+            logger.error("Error selecting all transcriptions: \(error, privacy: .public)")
         }
     }
 }

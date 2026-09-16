@@ -1,5 +1,8 @@
+import OSLog
 import SwiftUI
 import UniformTypeIdentifiers
+
+private let logger = Logger(subsystem: "com.achyuthkp.voxos", category: "SaveIconButton")
 
 struct SaveIconButton: View {
     let textToSave: String
@@ -41,7 +44,7 @@ struct SaveIconButton: View {
                     withAnimation { saved = false }
                 }
             } catch {
-                print("Failed to save file: \(error.localizedDescription)")
+                logger.error("Failed to save file: \(error.localizedDescription, privacy: .public)")
             }
         }
     }

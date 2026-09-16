@@ -1,6 +1,9 @@
 import AppKit
 import Foundation
+import OSLog
 import SwiftData
+
+private let logger = Logger(subsystem: "com.achyuthkp.voxos", category: "CSVExport")
 
 class VoxOSCSVExportService {
 
@@ -16,7 +19,7 @@ class VoxOSCSVExportService {
                 do {
                     try csvString.write(to: url, atomically: true, encoding: .utf8)
                 } catch {
-                    print("Error writing CSV file: \(error)")
+                    logger.error("Error writing CSV file: \(error, privacy: .public)")
                 }
             }
         }

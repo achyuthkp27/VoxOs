@@ -1,0 +1,75 @@
+name: CI
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+  workflow_dispatch:
+
+concurrency:
+  group: ci-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  test:
+    name: Build & test
+    # The project builds against the macOS 26 SDK, so it needs an Xcode 26 image.
+    # If this label or Xcode version is not available, the "Toolchain" step below
+    # prints what the runner actually has — adjust from there.
+    runs-on: macos-26
+    timeout-minutes: 60
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Toolchain
+        run: |
+          sw_vers
+          xcodebuild -version
+
+      - name: Read pinned whisper.cpp ref
+        id: whisper
+        run: echo "ref=$(make -s print-whisper-ref)" >> "$GITHUB_OUTPUT"
+
+      # Building the xcframework takes ~20 minutes, so cache it against the pinned ref.
+      - name: Cache whisper.xcframework
+        id: whisper-cache
+        uses: actions/cache@v4
+        with:
+          path: ~/VoxOS-Dependencies
+          key: whisper-${{ runner.os }}-${{ steps.whisper.outputs.ref }}
+
+      - name: Cache SwiftPM checkouts
+        uses: actions/cache@v4
+        with:
+          path: .local-build-tests/SourcePackages
+          key: spm-${{ runner.os }}-${{ hashFiles('VoxOS.xcodeproj/project.xcworkspace/xcshareddata/swiftpm/Package.resolved') }}
+          restore-keys: spm-${{ runner.os }}-
+
+      - name: Build whisper.xcframework
+        if: steps.whisper-cache.outputs.cache-hit != 'true'
+        run: make whisper
+
+      - name: Run tests
+        run: make test
+
+      - name: Upload test log
+        if: failure()
+        uses: actions/upload-artifact@v4
+        with:
+          name: test-log
+          path: .local-build-tests/test.log
+          retention-days: 7
+
+  lint:
+    name: Format check
+    runs-on: macos-26
+    timeout-minutes: 10
+    # Advisory until the tree is formatted once: the codebase predates .swift-format
+    # and currently reports ~635 findings. Run `make format` (a ~1,200 line diff across
+    # 74 files), commit it, then delete this continue-on-error to make the check binding.
+    continue-on-error: true
+    steps:
+      - uses: actions/checkout@v4
+      - name: swift-format lint
+        run: make lint

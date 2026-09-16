@@ -1,5 +1,8 @@
 import Foundation
+import OSLog
 import SwiftData
+
+private let logger = Logger(subsystem: "com.achyuthkp.voxos", category: "BackupImporter")
 
 enum BackupImportError: LocalizedError {
     case saveFailed(String, Error)
@@ -43,9 +46,9 @@ enum BackupImporter {
             if let customPrompts = backup.customPrompts {
                 enhancementService.customPrompts = customPrompts
                 shouldRepairModePromptSelections = true
-                print("Successfully imported \(customPrompts.count) prompts.")
+                logger.info("Successfully imported \(customPrompts.count) prompts.")
             } else {
-                print("No custom prompts found in the imported file. Existing prompts remain unchanged.")
+                logger.info("No custom prompts found in the imported file. Existing prompts remain unchanged.")
             }
         }
 
@@ -75,9 +78,9 @@ enum BackupImporter {
                 modeManager.saveConfigurations()
                 shouldRepairModePromptSelections = true
 
-                print("Successfully imported \(modeConfigs.count) Mode configurations.")
+                logger.info("Successfully imported \(modeConfigs.count) Mode configurations.")
             } else {
-                print("No Mode configurations found in the imported file. Existing Modes remain unchanged.")
+                logger.info("No Mode configurations found in the imported file. Existing Modes remain unchanged.")
             }
 
             // Independent of modeConfigs — a backup can carry custom emojis without a full
@@ -87,7 +90,7 @@ enum BackupImporter {
                 for emoji in customEmojis {
                     _ = emojiManager.addCustomEmoji(emoji)
                 }
-                print("Successfully imported \(customEmojis.count) custom emojis.")
+                logger.info("Successfully imported \(customEmojis.count) custom emojis.")
             }
         }
 
@@ -106,7 +109,7 @@ enum BackupImporter {
         mediaController: MediaController, playbackController: PlaybackController, recorderUIManager: RecorderUIManager
     ) {
         guard let general else {
-            print("No general settings found in the imported file.")
+            logger.info("No general settings found in the imported file.")
             return
         }
 
@@ -222,7 +225,7 @@ enum BackupImporter {
             UserDefaults.standard.set(clipboardDelay, forKey: "clipboardRestoreDelay")
         }
 
-        print("Successfully imported general settings.")
+        logger.info("Successfully imported general settings.")
     }
 
     @MainActor
@@ -248,7 +251,7 @@ enum BackupImporter {
                 }
             }
         } else {
-            print("No vocabulary words found in the imported file. Existing items remain unchanged.")
+            logger.info("No vocabulary words found in the imported file. Existing items remain unchanged.")
         }
 
         if let replacements = backup.wordReplacements {
@@ -279,13 +282,13 @@ enum BackupImporter {
                 }
             }
         } else {
-            print("No word replacements found in the imported file. Existing replacements remain unchanged.")
+            logger.info("No word replacements found in the imported file. Existing replacements remain unchanged.")
         }
 
         guard insertedWords > 0 || insertedReplacements > 0 else {
-            print("No new dictionary entries were imported.")
+            logger.info("No new dictionary entries were imported.")
             if skippedInvalidReplacements > 0 {
-                print("Skipped \(skippedInvalidReplacements) invalid word replacements from the imported file.")
+                logger.info("Skipped \(skippedInvalidReplacements) invalid word replacements from the imported file.")
             }
             DictionaryService.removeExactDuplicateContent(context: modelContext, source: "settings import")
             return
@@ -293,11 +296,11 @@ enum BackupImporter {
 
         do {
             try modelContext.save()
-            print(
+            logger.info(
                 "Successfully imported \(insertedWords) vocabulary words and \(insertedReplacements) word replacements to SwiftData."
             )
             if skippedInvalidReplacements > 0 {
-                print("Skipped \(skippedInvalidReplacements) invalid word replacements from the imported file.")
+                logger.info("Skipped \(skippedInvalidReplacements) invalid word replacements from the imported file.")
             }
             DictionaryService.removeExactDuplicateContent(context: modelContext, source: "settings import")
         } catch {
@@ -311,7 +314,7 @@ enum BackupImporter {
         _ models: [CustomModelBackup]?, transcriptionModelManager: TranscriptionModelManager
     ) {
         guard let models else {
-            print("No custom models found in the imported file.")
+            logger.info("No custom models found in the imported file.")
             return
         }
 
@@ -319,7 +322,7 @@ enum BackupImporter {
         customModelManager.customModels = models.map { $0.makeModel() }
         customModelManager.saveCustomModels()
         transcriptionModelManager.refreshAllAvailableModels()
-        print("Successfully imported \(models.count) custom model definitions.")
+        logger.info("Successfully imported \(models.count) custom model definitions.")
     }
 
     private static func tokens(from text: String) -> [String] {
