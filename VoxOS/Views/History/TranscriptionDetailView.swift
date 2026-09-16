@@ -4,6 +4,15 @@ struct TranscriptionDetailView: View {
     let transcription: Transcription
     var onInfoTap: (() -> Void)?
 
+    @State private var showsDiff = false
+
+    /// Both texts are stored on every enhanced transcription, but nothing ever showed the
+    /// relationship between them — which is what tells a good prompt from a bad one.
+    private var diff: TranscriptionTextDiff? {
+        guard let enhancedText = transcription.enhancedText else { return nil }
+        return TranscriptionTextDiff.compare(original: transcription.text, enhanced: enhancedText)
+    }
+
     private var hasAudioFile: Bool {
         if let urlString = transcription.audioFileURL,
             let url = URL(string: urlString),
@@ -30,6 +39,10 @@ struct TranscriptionDetailView: View {
                             text: enhancedText,
                             isEnhanced: true
                         )
+                    }
+
+                    if let diff, diff.hasChanges {
+                        changesSection(diff)
                     }
                 }
                 .padding(16)
@@ -58,6 +71,34 @@ struct TranscriptionDetailView: View {
             }
         }
         .padding(.vertical, 12)
+    }
+
+    /// Collapsed by default: the summary alone answers "did it change much?", and the full
+    /// comparison is one click away for when the answer is surprising.
+    private func changesSection(_ diff: TranscriptionTextDiff) -> some View {
+        VStack(alignment: .leading, spacing: 10) {
+            Button {
+                withAnimation(.easeInOut(duration: 0.18)) { showsDiff.toggle() }
+            } label: {
+                HStack(spacing: 6) {
+                    Image(systemName: showsDiff ? "chevron.down" : "chevron.right")
+                        .font(.app(size: 9, weight: .semibold))
+                    Text(diff.summary)
+                        .font(.app(size: 11, weight: .medium))
+                    Spacer()
+                }
+                .foregroundColor(AppTheme.Text.secondary)
+                .contentShape(Rectangle())
+            }
+            .buttonStyle(.plain)
+            .help(String(localized: "Show what AI enhancement changed"))
+
+            if showsDiff {
+                TranscriptionDiffView(diff: diff)
+                    .transition(.opacity.combined(with: .move(edge: .top)))
+            }
+        }
+        .padding(.horizontal, 4)
     }
 }
 
