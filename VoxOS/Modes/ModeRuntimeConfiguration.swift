@@ -172,7 +172,10 @@ enum ModeRuntimeResolver {
             provider: provider,
             modelName: modelName,
             useClipboardContext: provider == .voxOSRefine ? false : mode?.useClipboardContext ?? false,
-            useSelectedTextContext: provider == .voxOSRefine ? false : mode?.useSelectedTextContext ?? true,
+            // Rewrite operates on the selection, so it is not optional there.
+            useSelectedTextContext: provider == .voxOSRefine
+                ? false
+                : (mode?.outputMode == .rewrite || mode?.useSelectedTextContext ?? true),
             useScreenCaptureContext: provider == .voxOSRefine ? false : mode?.useScreenCapture ?? false
         )
     }

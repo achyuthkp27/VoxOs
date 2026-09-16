@@ -154,11 +154,40 @@ class AIEnhancementService: ObservableObject {
         lastCapturedClipboard = capped(contextSnapshot?.clipboardText, 600)
         screenCaptureService.lastCapturedText = capped(contextSnapshot?.screenText, 1200)
 
+        // Rewrite turns the relationship around: the selection is the thing being acted on and
+        // the spoken words are the instruction, where everywhere else the selection is context
+        // and the spoken words are the material.
+        let isRewrite = configuration.mode?.outputMode == .rewrite
+        let selection = capped(contextSnapshot?.selectedText, 4000)
+
+        let rewriteSection: String
+        if isRewrite, let selection, !selection.isEmpty {
+            rewriteSection = """
+                # Rewrite the selected text
+                The text inside <TEXT_TO_REWRITE> is selected in the user's editor. What the user
+                said is an instruction describing how to change it — it is not content to insert.
+
+                Apply the instruction to the selected text and return the rewritten text only.
+                - Output the rewritten text on its own, with no preamble, quotes or explanation.
+                - It replaces the selection verbatim, so do not add a trailing newline or wrapper.
+                - Keep the original language, formatting, indentation and markup unless the
+                  instruction asks otherwise.
+                - If the instruction does not apply to the text, return the text unchanged.
+
+                <TEXT_TO_REWRITE>
+                \(selection)
+                </TEXT_TO_REWRITE>
+                """
+        } else {
+            rewriteSection = ""
+        }
+
         let selectedTextContext: String
-        if useSelectedText,
-            let selectedText = capped(contextSnapshot?.selectedText, 1000),
-            !selectedText.isEmpty
-        {
+        if isRewrite {
+            // Already carried above as the subject; repeating it as context invites the model
+            // to treat it as source material to merge in.
+            selectedTextContext = ""
+        } else if useSelectedText, let selectedText = selection, !selectedText.isEmpty {
             selectedTextContext = "<CURRENTLY_SELECTED_TEXT>\n\(selectedText)\n</CURRENTLY_SELECTED_TEXT>"
         } else {
             selectedTextContext = ""
@@ -245,8 +274,11 @@ class AIEnhancementService: ObservableObject {
             ? (contextSnapshot?.destination?.promptGuidance ?? "")
             : ""
 
+        // rewriteSection goes last so the instruction and the text it applies to are the final
+        // thing the model reads, and nothing after it can be mistaken for part of the subject.
         return
-            ([prompt.finalPromptText] + agentSections + [destinationSection, customVocabularySection, contextSection])
+            ([prompt.finalPromptText] + agentSections
+            + [destinationSection, customVocabularySection, contextSection, rewriteSection])
             .filter { !$0.isEmpty }
             .joined(separator: "\n\n")
     }

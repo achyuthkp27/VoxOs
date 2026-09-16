@@ -149,7 +149,7 @@ struct ModeConfigDraft {
     }
 
     mutating func applyOutputRules(canRespond: Bool) {
-        if outputMode == .respond && !canRespond {
+        if (outputMode == .respond || outputMode == .rewrite) && !canRespond {
             outputMode = .paste
         }
 

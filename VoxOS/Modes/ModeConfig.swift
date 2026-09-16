@@ -23,12 +23,14 @@ enum AutoSendKey: String, Codable, CaseIterable {
 enum ModeOutputMode: String, Codable, CaseIterable {
     case paste
     case respond
+    case rewrite
     case customCommand
 
     var displayName: String {
         switch self {
         case .paste: return String(localized: "Paste")
         case .respond: return String(localized: "Respond")
+        case .rewrite: return String(localized: "Rewrite Selection")
         case .customCommand: return String(localized: "Custom Command")
         }
     }
@@ -37,16 +39,23 @@ enum ModeOutputMode: String, Codable, CaseIterable {
         switch self {
         case .paste: return "doc.on.clipboard"
         case .respond: return "text.bubble"
+        case .rewrite: return "square.and.pencil"
         case .customCommand: return "terminal"
         }
     }
 
     var usesPasteOptions: Bool {
-        self == .paste
+        self == .paste || self == .rewrite
+    }
+
+    /// Rewrite feeds the selection to a model as the thing to act on, so it needs both a
+    /// configured provider and a non-empty selection at recording time.
+    var requiresSelectedText: Bool {
+        self == .rewrite
     }
 
     static func choices(canRespond: Bool) -> [ModeOutputMode] {
-        canRespond ? [.paste, .respond, .customCommand] : [.paste, .customCommand]
+        canRespond ? [.paste, .respond, .rewrite, .customCommand] : [.paste, .customCommand]
     }
 }
 

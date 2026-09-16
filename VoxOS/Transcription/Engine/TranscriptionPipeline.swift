@@ -215,6 +215,30 @@ class TranscriptionPipeline {
 
                     do {
                         let contextSnapshot = await recordingContextSnapshot()
+
+                        // Rewrite replaces a selection. With nothing selected there is nothing
+                        // to rewrite, and falling through would paste the spoken instruction into
+                        // the document as if it were dictation. Keep the recording in history, say
+                        // why, and paste nothing.
+                        if resolvedOutputConfiguration.outputMode.requiresSelectedText,
+                            (contextSnapshot?.selectedText ?? "")
+                                .trimmingCharacters(in: .whitespacesAndNewlines).isEmpty
+                        {
+                            logger.info("Rewrite requested with nothing selected; pasting nothing")
+                            await MainActor.run {
+                                NotificationManager.shared.showNotification(
+                                    title: String(
+                                        localized: "Select some text first — Rewrite replaces the selection."),
+                                    type: .warning
+                                )
+                            }
+                            transcription.transcriptionStatus = TranscriptionStatus.completed.rawValue
+                            saveTranscriptionAndPostCompletion()
+                            onStateChange(.idle)
+                            await onDismiss()
+                            return
+                        }
+
                         let enhancementResult = try await enhancementService.enhance(
                             textForAI,
                             configuration: resolvedEnhancementConfiguration,
