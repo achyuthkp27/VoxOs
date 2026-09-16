@@ -107,6 +107,8 @@ struct WordReplacementView: View {
             }
             .animation(.easeInOut(duration: 0.2), value: shouldShowAddButton)
 
+            LearnedCorrectionsSection(existingOriginals: wordReplacements.map(\.originalText))
+
             if !wordReplacements.isEmpty {
                 VStack(spacing: 0) {
                     HStack(spacing: 8) {

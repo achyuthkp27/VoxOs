@@ -79,6 +79,7 @@ enum DefaultsKeys {
     // MARK: Dictionary
     static let vocabularySortMode = "vocabularySortMode"
     static let wordReplacementSortMode = "wordReplacementSortMode"
+    static let dismissedCorrectionSuggestions = "dismissedCorrectionSuggestions"
 
     // MARK: Licensing
     static let voxOSLicenseRequiresActivation = "VoxOSLicenseRequiresActivation"
