@@ -628,10 +628,18 @@ struct AudioPlayerView: View {
                     transcription.enhancementDuration = enhancementResult.duration
                     transcription.aiRequestSystemMessage = enhancementResult.systemMessage
                     transcription.aiRequestUserMessage = enhancementResult.userMessage
-                    try? modelContext.save()
 
                     isReEnhancing = false
-                    showSuccessFeedback(.reEnhanceSuccess, title: String(localized: "Re-enhancement successful"))
+                    do {
+                        try modelContext.save()
+                        showSuccessFeedback(.reEnhanceSuccess, title: String(localized: "Re-enhancement successful"))
+                    } catch {
+                        // Claiming success here discarded the user's re-enhancement: the new
+                        // text only existed in memory and was gone on the next load.
+                        logger.error("Could not save re-enhanced transcription: \(error, privacy: .public)")
+                        showErrorNotification(
+                            String(localized: "Re-enhancement could not be saved"))
+                    }
                 }
             } catch {
                 let errorDescription = EnhancementFailureFormatter.description(for: error)

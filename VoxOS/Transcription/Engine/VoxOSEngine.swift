@@ -202,7 +202,13 @@ class VoxOSEngine: NSObject, ObservableObject {
                         transcriptionStatus: .pending
                     )
                     modelContext.insert(transcription)
-                    try? modelContext.save()
+                    do {
+                        try modelContext.save()
+                    } catch {
+                        // The pipeline below runs either way, so a discarded error here meant
+                        // the recording transcribed and then vanished with nothing said.
+                        logger.error("❌ Could not save new recording: \(error, privacy: .public)")
+                    }
                     NotificationCenter.default.post(name: .transcriptionCreated, object: transcription)
 
                     await runPipeline(
@@ -534,7 +540,12 @@ class VoxOSEngine: NSObject, ObservableObject {
         else {
             transcription.text = String(localized: "Transcription Failed: No model selected")
             transcription.transcriptionStatus = TranscriptionStatus.failed.rawValue
-            try? modelContext.save()
+            do {
+                try modelContext.save()
+            } catch {
+                // This save is what tells the user why nothing came back.
+                logger.error("❌ Could not save 'no model selected' failure: \(error, privacy: .public)")
+            }
             recordingState = .idle
             activePipelineUseCase = .newSession
             return

@@ -125,8 +125,17 @@ class TranscriptionPipeline {
             if text.isEmpty {
                 logger.info("Transcription produced no words; discarding the recording")
                 modelContext.delete(transcription)
-                try? modelContext.save()
-                try? FileManager.default.removeItem(at: audioURL)
+                do {
+                    try modelContext.save()
+                } catch {
+                    // Failing here leaves the blank row this branch exists to avoid.
+                    logger.error("Could not discard empty transcription: \(error, privacy: .public)")
+                }
+                do {
+                    try FileManager.default.removeItem(at: audioURL)
+                } catch {
+                    logger.error("Could not remove discarded audio file: \(error, privacy: .public)")
+                }
                 onStateChange(.idle)
                 await onDismiss()
                 return
