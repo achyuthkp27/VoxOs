@@ -72,6 +72,10 @@ struct SettingsView: View {
         "Pasting", "Match Writing Style to the App", "Keep Clipboard Content", "Restore Delay", "250ms", "500ms",
         "Paste Method",
     ]
+    private static let transcriptionTerms = [
+        "Transcription", "Identify Speakers", "speakers", "diarization", "meeting", "conversation",
+        "who spoke", "speaker labels",
+    ]
     private static let interfaceTerms = [
         "Interface", "Appearance", "Language", "Recorder Position", "Live Text Display",
         "Shows live text while recording with realtime models.",
@@ -90,11 +94,14 @@ struct SettingsView: View {
         agentTerms,
         mcpTerms,
         pastingTerms,
+        transcriptionTerms,
         interfaceTerms,
         generalTerms,
         backupTerms,
         diagnosticsTerms,
     ]
+
+    @AppStorage(DefaultsKeys.identifySpeakers) private var identifySpeakers = false
 
     @State private var settingsSearch = ""
 
@@ -488,6 +495,18 @@ struct SettingsView: View {
                         }
                         PasteMethod.setCurrent(method)
                     }
+                }
+            }
+
+            if search.matches(Self.transcriptionTerms) {
+                Section("Transcription") {
+                    Toggle("Identify Speakers", isOn: $identifySpeakers)
+
+                    Text(
+                        "Labels each turn in an imported recording with who spoke. Needs a Parakeet model — it is the only one that reports word timings, which speaker labels are built from. Downloads a speaker model the first time it runs."
+                    )
+                    .font(.app(.caption))
+                    .foregroundStyle(.secondary)
                 }
             }
 

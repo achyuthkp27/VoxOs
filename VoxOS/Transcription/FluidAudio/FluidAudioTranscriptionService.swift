@@ -161,13 +161,30 @@ actor FluidAudioTranscriptionService: TranscriptionService {
         -> String
     {
         try await serialized {
+            try await self.transcribeUnserialized(audioURL: audioURL, model: model, context: context).text
+        }
+    }
+
+    /// Transcribes and also hands back per-token timings when this model's path produces them.
+    ///
+    /// Only the TDT batch path reports timings; the unified and Nemotron paths return text alone,
+    /// so `tokens` is nil there and a caller wanting speaker attribution has to fall back to an
+    /// unattributed transcript rather than guess.
+    ///
+    /// The tokens are deliberately not normalised. `transcribe` runs the text through
+    /// TextNormalizer, which can rewrite it — and any rewrite desynchronises text from the
+    /// timings it was measured against, which is exactly what attribution needs to stay aligned.
+    func transcribeWithTimings(
+        audioURL: URL, model: any TranscriptionModel, context: TranscriptionRequestContext
+    ) async throws -> (text: String, tokens: [SpeakerAttribution.TimedToken]?) {
+        try await serialized {
             try await self.transcribeUnserialized(audioURL: audioURL, model: model, context: context)
         }
     }
 
     private func transcribeUnserialized(
         audioURL: URL, model: any TranscriptionModel, context: TranscriptionRequestContext
-    ) async throws -> String {
+    ) async throws -> (text: String, tokens: [SpeakerAttribution.TimedToken]?) {
         if FluidAudioModelManager.isParakeetUnifiedModel(named: model.name) {
             try await ensureUnifiedModelsLoaded()
             guard let unifiedAsrManager else {
@@ -176,7 +193,7 @@ actor FluidAudioTranscriptionService: TranscriptionService {
 
             let speechAudio = try loadAudioSamples(from: audioURL)
             let text = try await unifiedAsrManager.transcribe(speechAudio)
-            return TextNormalizer.shared.normalizeSentence(text)
+            return (TextNormalizer.shared.normalizeSentence(text), nil)
         }
 
         if FluidAudioModelManager.isNemotronModel(named: model.name) {
@@ -202,7 +219,7 @@ actor FluidAudioTranscriptionService: TranscriptionService {
 
             _ = try await nemotronAsrManager.process(samples: speechAudio)
             let text = try await nemotronAsrManager.finish()
-            return TextNormalizer.shared.normalizeSentence(text)
+            return (TextNormalizer.shared.normalizeSentence(text), nil)
         }
 
         let targetVersion = version(for: model)
@@ -223,7 +240,10 @@ actor FluidAudioTranscriptionService: TranscriptionService {
             language: languageHint
         )
 
-        return TextNormalizer.shared.normalizeSentence(result.text)
+        let tokens = result.tokenTimings?.map {
+            SpeakerAttribution.TimedToken(text: $0.token, startTime: $0.startTime, endTime: $0.endTime)
+        }
+        return (TextNormalizer.shared.normalizeSentence(result.text), tokens)
     }
 
     private func loadAudioSamples(from audioURL: URL) throws -> [Float] {

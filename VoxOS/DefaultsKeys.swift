@@ -33,6 +33,7 @@ enum DefaultsKeys {
 
     // MARK: Recording & transcription
     static let selectedLanguage = "SelectedLanguage"
+    static let identifySpeakers = "IdentifySpeakers"
     static let isVADEnabled = "IsVADEnabled"
     static let isTextFormattingEnabled = "IsTextFormattingEnabled"
     static let recorderType = "RecorderType"

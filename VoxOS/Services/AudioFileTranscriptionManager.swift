@@ -171,11 +171,36 @@ class AudioTranscriptionManager: ObservableObject {
             // Phase: Transcribing
             item.status = .processing(phase: .transcribing)
             let transcriptionStart = Date()
-            var text = try await serviceRegistry.transcribe(
-                audioURL: permanentURL,
-                model: currentModel,
-                context: transcriptionConfiguration.requestContext
-            )
+
+            // With speaker identification on, transcribe through the path that also reports token
+            // timings and join them to diarization, so a recording of a conversation reads as one
+            // rather than as a single undifferentiated block.
+            //
+            // Only FluidAudio's TDT path reports timings, and speakers cannot be attributed
+            // without them, so every other model transcribes exactly as before instead of
+            // pretending to know who spoke.
+            var speakerTranscript: String?
+            var text: String
+
+            if UserDefaults.standard.bool(forKey: DefaultsKeys.identifySpeakers),
+                currentModel.provider == .fluidAudio
+            {
+                item.status = .processing(phase: .transcribing)
+                let result = try await serviceRegistry.fluidAudioTranscriptionService.transcribeWithTimings(
+                    audioURL: permanentURL,
+                    model: currentModel,
+                    context: transcriptionConfiguration.requestContext
+                )
+                text = result.text
+                speakerTranscript = await attributedTranscript(
+                    tokens: result.tokens, samples: samples)
+            } else {
+                text = try await serviceRegistry.transcribe(
+                    audioURL: permanentURL,
+                    model: currentModel,
+                    context: transcriptionConfiguration.requestContext
+                )
+            }
             let transcriptionDuration = Date().timeIntervalSince(transcriptionStart)
             text = TranscriptionOutputFilter.filter(text)
             text = text.trimmingCharacters(in: .whitespacesAndNewlines)
@@ -183,7 +208,11 @@ class AudioTranscriptionManager: ObservableObject {
             let modeMetadata = transcriptionConfiguration.metadata
             let formattingConfiguration = ModeRuntimeResolver.transcriptionFormattingConfiguration(mode: mode)
 
-            if formattingConfiguration.isTextFormattingEnabled {
+            if let speakerTranscript {
+                // One labelled line per turn is already the paragraph structure; re-flowing it
+                // would run the speakers back together.
+                text = speakerTranscript
+            } else if formattingConfiguration.isTextFormattingEnabled {
                 text = ParagraphFormatter.format(text)
             }
 
@@ -279,6 +308,30 @@ class AudioTranscriptionManager: ObservableObject {
 
         await serviceRegistry.cleanup()
     }
+    /// Joins token timings to speaker turns, or nil when there is nothing useful to show.
+    ///
+    /// Returns nil for a single-speaker recording as well as for failure: labelling every line
+    /// "Speaker 1" is noise, and a transcript is more useful plain than decorated with an
+    /// attribution nobody asked about. Diarization failing is likewise not worth losing a good
+    /// transcript over, so it is logged and the plain text stands.
+    private func attributedTranscript(
+        tokens: [SpeakerAttribution.TimedToken]?,
+        samples: [Float]
+    ) async -> String? {
+        guard let tokens, !tokens.isEmpty else { return nil }
+        do {
+            let ranges = try await SpeakerDiarizationService.shared.speakerRanges(samples: samples)
+            guard Set(ranges.map(\.speakerId)).count > 1 else { return nil }
+
+            let turns = SpeakerAttribution.turns(tokens: tokens, speakers: ranges)
+            guard Set(turns.map(\.speakerId)).count > 1 else { return nil }
+            return SpeakerAttribution.transcript(turns)
+        } catch {
+            logger.error("Speaker identification failed: \(error, privacy: .public)")
+            return nil
+        }
+    }
+
 }
 
 enum TranscriptionError: Error, LocalizedError {
@@ -293,4 +346,5 @@ enum TranscriptionError: Error, LocalizedError {
             return String(localized: "Transcription was cancelled")
         }
     }
+
 }
