@@ -6,9 +6,13 @@ on:
   pull_request:
   workflow_dispatch:
 
+# Not cancel-in-progress: the whisper.xcframework step takes ~25 minutes when the
+# cache is cold, and a cancelled run never reaches the post-step that saves the
+# cache. Cancelling on every push meant no run ever finished the build, so the
+# cache could never warm and each run started from scratch. Let runs complete.
 concurrency:
   group: ci-${{ github.ref }}
-  cancel-in-progress: true
+  cancel-in-progress: false
 
 jobs:
   test:
