@@ -18,7 +18,6 @@ enum AppDefaults {
             // Onboarding & General
             DefaultsKeys.hasCompletedOnboardingV2: false,
             DefaultsKeys.hasPreparedOnboardingV2: false,
-            DefaultsKeys.enableAnnouncements: true,
 
             // Clipboard
             DefaultsKeys.restoreClipboardAfterPaste: true,

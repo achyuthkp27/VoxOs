@@ -14,7 +14,6 @@ struct SettingsView: View {
     @ObservedObject private var mediaController = MediaController.shared
     @ObservedObject private var playbackController = PlaybackController.shared
     @AppStorage(DefaultsKeys.hasCompletedOnboardingV2) private var hasCompletedOnboardingV2 = true
-    @AppStorage(DefaultsKeys.enableAnnouncements) private var enableAnnouncements = true
     @AppStorage(DefaultsKeys.restoreClipboardAfterPaste) private var restoreClipboardAfterPaste = true
     @AppStorage(DefaultsKeys.clipboardRestoreDelay) private var clipboardRestoreDelay = 2.0
     @AppStorage(PasteMethod.userDefaultsKey) private var pasteMethodRawValue = PasteMethod.standard.rawValue
@@ -78,7 +77,7 @@ struct SettingsView: View {
         "Shows live text while recording with realtime models.",
     ]
     private static let generalTerms = [
-        "General", "Hide Dock Icon", "Launch at Login", "Automatically Check for Updates", "Show Announcements",
+        "General", "Hide Dock Icon", "Launch at Login", "Automatically Check for Updates",
         "Check for Updates", "Reset Onboarding",
     ]
     private static let backupTerms = ["Export Settings", "Export", "Import Settings", "Import", "Backup"]
@@ -556,15 +555,6 @@ struct SettingsView: View {
                             get: { updaterViewModel.checksForUpdatesWhenDashboardAppears },
                             set: { updaterViewModel.setChecksForUpdatesWhenDashboardAppears($0) }
                         ))
-
-                    Toggle("Show Announcements", isOn: $enableAnnouncements)
-                        .onChange(of: enableAnnouncements) { _, newValue in
-                            if newValue {
-                                AnnouncementsService.shared.start()
-                            } else {
-                                AnnouncementsService.shared.stop()
-                            }
-                        }
 
                     HStack {
                         Button("Check for Updates") {

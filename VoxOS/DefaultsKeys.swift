@@ -10,7 +10,6 @@ import Foundation
 enum DefaultsKeys {
     // MARK: General
     static let hasCompletedOnboardingV2 = "hasCompletedOnboardingV2"
-    static let enableAnnouncements = "enableAnnouncements"
     static let dashboardDisplayName = "dashboardDisplayName"
     static let isExperimentalFeaturesEnabled = "isExperimentalFeaturesEnabled"
     static let modeTipDismissed = "ModeTipDismissed"
