@@ -47,481 +47,581 @@ struct SettingsView: View {
     @State private var isRestoreClipboardExpanded = false
     @AppStorage(WritingDestination.isEnabledKey) private var matchWritingStyleToApp = true
 
+    // Keywords come from the text each section actually shows, so a toggle is found by what
+    // is written next to it rather than by the heading it happens to live under.
+    private static let shortcutsTerms = [
+        "Primary Shortcut", "Secondary Shortcut", "Add Second Shortcut", "Open Keyboard Settings",
+        "Stop Dictation When You Stop Talking", "Press Return After Pasting", "Shortcuts",
+    ]
+    private static let additionalShortcutsTerms = [
+        "Additional Shortcuts", "Paste Last Transcription (Original)", "Paste Last Transcription (Enhanced)",
+        "Retry Last Transcription", "Reset to default", "Cancel Recording", "Middle-Click Recording",
+        "Activation Delay",
+    ]
+    private static let systemAudioTerms = [
+        "Capture System Audio", "Keep Recent System Audio", "Remember", "15 seconds", "30 seconds", "60 seconds",
+        "2 minutes", "Transcribe Recent Audio", "Paste at Cursor", "Save to History", "System Audio",
+        "Capturing system audio…",
+    ]
+    private static let agentTerms = [
+        "Control Mode", "Send When You Stop Talking", "Pause Before Sending", "Allow Risky Shell Commands", "Plugins",
+        "Open Plugins Folder", "Permissions", "Accessibility", "Accessibility missing", "Screen Recording",
+        "Screen Recording missing", "Agent",
+    ]
+    private static let mcpTerms = ["MCP Servers", "Model Context Protocol", "tools", "integrations"]
+    private static let pastingTerms = [
+        "Pasting", "Match Writing Style to the App", "Keep Clipboard Content", "Restore Delay", "250ms", "500ms",
+        "Paste Method",
+    ]
+    private static let interfaceTerms = [
+        "Interface", "Appearance", "Language", "Recorder Position", "Live Text Display",
+        "Shows live text while recording with realtime models.",
+    ]
+    private static let generalTerms = [
+        "General", "Hide Dock Icon", "Launch at Login", "Automatically Check for Updates", "Show Announcements",
+        "Check for Updates", "Reset Onboarding",
+    ]
+    private static let backupTerms = ["Export Settings", "Export", "Import Settings", "Import", "Backup"]
+    private static let diagnosticsTerms = ["Diagnostics"]
+
+    private static let allTerms = [
+        shortcutsTerms,
+        additionalShortcutsTerms,
+        systemAudioTerms,
+        agentTerms,
+        mcpTerms,
+        pastingTerms,
+        interfaceTerms,
+        generalTerms,
+        backupTerms,
+        diagnosticsTerms,
+    ]
+
+    @State private var settingsSearch = ""
+
+    private var search: SettingsSearchMatcher { SettingsSearchMatcher(query: settingsSearch) }
+
+    private var searchField: some View {
+        HStack(spacing: 6) {
+            Image(systemName: "magnifyingglass").foregroundStyle(.secondary)
+            TextField("", text: $settingsSearch, prompt: Text("Search settings"))
+                .textFieldStyle(.plain)
+                .labelsHidden()
+            if !settingsSearch.isEmpty {
+                Button {
+                    settingsSearch = ""
+                } label: {
+                    Image(systemName: "xmark.circle.fill").foregroundStyle(.secondary)
+                }
+                .buttonStyle(.plain)
+                .help("Clear search")
+            }
+        }
+    }
+
     var body: some View {
         Form {
-            Section {
-                LabeledContent("Primary Shortcut") {
-                    HStack(spacing: 8) {
-                        Spacer()
-                        shortcutModePicker(binding: $recordingShortcutManager.primaryRecordingShortcutMode)
-                        ShortcutRecorder(action: .primaryRecording) {
-                            recordingShortcutManager.primaryRecordingShortcut = .custom
-                            recordingShortcutManager.updateShortcutStatus()
-                        }
-                        .controlSize(.small)
-                    }
-                }
+            Section { searchField }
 
-                if recordingShortcutManager.secondaryRecordingShortcut != .none {
-                    LabeledContent("Secondary Shortcut") {
+            if search.isFiltering, !Self.allTerms.contains(where: { search.matches($0) }) {
+                Section {
+                    Text("No settings match your search").foregroundStyle(.secondary)
+                }
+            }
+
+            if search.matches(Self.shortcutsTerms) {
+                Section {
+                    LabeledContent("Primary Shortcut") {
                         HStack(spacing: 8) {
                             Spacer()
-                            shortcutModePicker(binding: $recordingShortcutManager.secondaryRecordingShortcutMode)
-                            ShortcutRecorder(action: .secondaryRecording) {
-                                recordingShortcutManager.secondaryRecordingShortcut = .custom
+                            shortcutModePicker(binding: $recordingShortcutManager.primaryRecordingShortcutMode)
+                            ShortcutRecorder(action: .primaryRecording) {
+                                recordingShortcutManager.primaryRecordingShortcut = .custom
                                 recordingShortcutManager.updateShortcutStatus()
                             }
                             .controlSize(.small)
-                            Button {
-                                withAnimation { recordingShortcutManager.secondaryRecordingShortcut = .none }
-                            } label: {
-                                Image(systemName: "minus.circle.fill")
-                                    .foregroundColor(.secondary)
-                            }
-                            .buttonStyle(.plain)
                         }
                     }
-                }
 
-                if recordingShortcutManager.secondaryRecordingShortcut == .none {
-                    Button("Add Second Shortcut") {
-                        withAnimation { recordingShortcutManager.secondaryRecordingShortcut = .custom }
-                    }
-                }
-
-                if recordingShortcutManager.isPrimaryShortcutFnKey {
-                    VStack(alignment: .leading, spacing: 6) {
-                        Text(
-                            "Hold fn to talk, tap fn to record hands-free, hold fn+⌃ to dictate and press Return. Double-tap ⌃ for the Agent — it sends when you stop talking."
-                        )
-                        .font(.callout)
-                        .foregroundStyle(.secondary)
-                        if !RecordingShortcutManager.systemFnKeyActionIsOff {
+                    if recordingShortcutManager.secondaryRecordingShortcut != .none {
+                        LabeledContent("Secondary Shortcut") {
                             HStack(spacing: 8) {
-                                Image(systemName: "exclamationmark.triangle.fill")
-                                    .foregroundStyle(.orange)
-                                Text(
-                                    "macOS also reacts to a bare fn tap. Set “Press 🌐 key to” to “Do Nothing” in System Settings → Keyboard."
-                                )
-                                .font(.callout)
                                 Spacer()
-                                Button("Open Keyboard Settings") {
-                                    if let url = URL(
-                                        string: "x-apple.systempreferences:com.apple.Keyboard-Settings.extension")
-                                    {
-                                        NSWorkspace.shared.open(url)
-                                    }
+                                shortcutModePicker(binding: $recordingShortcutManager.secondaryRecordingShortcutMode)
+                                ShortcutRecorder(action: .secondaryRecording) {
+                                    recordingShortcutManager.secondaryRecordingShortcut = .custom
+                                    recordingShortcutManager.updateShortcutStatus()
                                 }
                                 .controlSize(.small)
+                                Button {
+                                    withAnimation { recordingShortcutManager.secondaryRecordingShortcut = .none }
+                                } label: {
+                                    Image(systemName: "minus.circle.fill")
+                                        .foregroundColor(.secondary)
+                                }
+                                .buttonStyle(.plain)
                             }
                         }
                     }
-                }
 
-                Toggle(isOn: $dictationStopWhenQuiet) {
-                    HStack(spacing: 2) {
-                        Text("Stop Dictation When You Stop Talking")
-                        InfoTip(
-                            "For dictation started with a tap: VoxOS stops and pastes once you pause, a little longer than the Agent's pause."
-                        )
-                    }
-                }
-                Toggle(isOn: $dictationPressReturn) {
-                    HStack(spacing: 2) {
-                        Text("Press Return After Pasting")
-                        InfoTip(
-                            "Sends what you dictated in chat boxes. Without this, hold fn+⌃ to dictate and send just once. A mode's own auto-send key still wins."
-                        )
-                    }
-                }
-
-                if !recordingShortcutManager.isPrimaryShortcutFnKey {
-                    Button("Use the fn key (hold to talk, double-tap for Agent)") {
-                        recordingShortcutManager.useFnKeyPreset()
-                    }
-                }
-            } header: {
-                Text("Shortcuts")
-            }
-
-            Section("Additional Shortcuts") {
-                LabeledContent("Paste Last Transcription (Original)") {
-                    ShortcutRecorder(action: .pasteLastTranscription) {
-                        recordingShortcutManager.updateShortcutStatus()
-                    }
-                    .controlSize(.small)
-                }
-
-                LabeledContent("Paste Last Transcription (Enhanced)") {
-                    ShortcutRecorder(action: .pasteLastEnhancement) {
-                        recordingShortcutManager.updateShortcutStatus()
-                    }
-                    .controlSize(.small)
-                }
-
-                LabeledContent("Retry Last Transcription") {
-                    ShortcutRecorder(action: .retryLastTranscription) {
-                        recordingShortcutManager.updateShortcutStatus()
-                    }
-                    .controlSize(.small)
-                }
-
-                LabeledContent {
-                    HStack(spacing: 8) {
-                        ShortcutRecorder(
-                            action: .cancelRecorder,
-                            defaultShortcut: Self.defaultCancelRecordingShortcut
-                        )
-                        .id(cancelRecordingShortcutRecorderResetID)
-                        .controlSize(.small)
-
-                        Button {
-                            RecorderPanelShortcutManager.resetEscapeConfirmationHint()
-                            ShortcutStore.setShortcut(nil, for: .cancelRecorder)
-                            cancelRecordingShortcutRecorderResetID += 1
-                        } label: {
-                            Image(systemName: "arrow.counterclockwise")
+                    if recordingShortcutManager.secondaryRecordingShortcut == .none {
+                        Button("Add Second Shortcut") {
+                            withAnimation { recordingShortcutManager.secondaryRecordingShortcut = .custom }
                         }
-                        .buttonStyle(.plain)
-                        .help("Reset to default")
                     }
-                } label: {
-                    HStack(spacing: 2) {
-                        Text("Cancel Recording")
-                        InfoTip(
-                            "The assigned shortcut cancels the recording. Resetting restores the default double-Escape behavior."
-                        )
-                    }
-                }
 
-                ExpandableSettingsRow(
-                    isExpanded: $isMiddleClickExpanded,
-                    isEnabled: $recordingShortcutManager.isMiddleClickToggleEnabled,
-                    label: "Middle-Click Recording"
-                ) {
-                    LabeledContent("Activation Delay") {
-                        HStack {
-                            TextField(
-                                "", value: $recordingShortcutManager.middleClickActivationDelay,
-                                formatter: {
-                                    let formatter = NumberFormatter()
-                                    formatter.minimum = 0
-                                    return formatter
-                                }()
+                    if recordingShortcutManager.isPrimaryShortcutFnKey {
+                        VStack(alignment: .leading, spacing: 6) {
+                            Text(
+                                "Hold fn to talk, tap fn to record hands-free, hold fn+⌃ to dictate and press Return. Double-tap ⌃ for the Agent — it sends when you stop talking."
                             )
-                            .textFieldStyle(.roundedBorder)
-                            .frame(width: 60)
-                            Text("ms")
-                                .foregroundColor(.secondary)
+                            .font(.callout)
+                            .foregroundStyle(.secondary)
+                            if !RecordingShortcutManager.systemFnKeyActionIsOff {
+                                HStack(spacing: 8) {
+                                    Image(systemName: "exclamationmark.triangle.fill")
+                                        .foregroundStyle(.orange)
+                                    Text(
+                                        "macOS also reacts to a bare fn tap. Set “Press 🌐 key to” to “Do Nothing” in System Settings → Keyboard."
+                                    )
+                                    .font(.callout)
+                                    Spacer()
+                                    Button("Open Keyboard Settings") {
+                                        if let url = URL(
+                                            string: "x-apple.systempreferences:com.apple.Keyboard-Settings.extension")
+                                        {
+                                            NSWorkspace.shared.open(url)
+                                        }
+                                    }
+                                    .controlSize(.small)
+                                }
+                            }
                         }
                     }
+
+                    Toggle(isOn: $dictationStopWhenQuiet) {
+                        HStack(spacing: 2) {
+                            Text("Stop Dictation When You Stop Talking")
+                            InfoTip(
+                                "For dictation started with a tap: VoxOS stops and pastes once you pause, a little longer than the Agent's pause."
+                            )
+                        }
+                    }
+                    Toggle(isOn: $dictationPressReturn) {
+                        HStack(spacing: 2) {
+                            Text("Press Return After Pasting")
+                            InfoTip(
+                                "Sends what you dictated in chat boxes. Without this, hold fn+⌃ to dictate and send just once. A mode's own auto-send key still wins."
+                            )
+                        }
+                    }
+
+                    if !recordingShortcutManager.isPrimaryShortcutFnKey {
+                        Button("Use the fn key (hold to talk, double-tap for Agent)") {
+                            recordingShortcutManager.useFnKeyPreset()
+                        }
+                    }
+                } header: {
+                    Text("Shortcuts")
                 }
             }
 
-            Section {
-                LabeledContent {
-                    ShortcutRecorder(action: .captureSystemAudio) {
-                        recordingShortcutManager.updateShortcutStatus()
-                    }
-                    .controlSize(.small)
-                } label: {
-                    HStack(spacing: 2) {
-                        Text("Capture System Audio")
-                        InfoTip(
-                            "Press once to start capturing what your Mac is playing, press again to stop. The transcript is copied to the clipboard and pasted at the cursor. Your microphone is never recorded."
-                        )
-                    }
-                }
-
-                ExpandableSettingsRow(
-                    isExpanded: $isSystemAudioBufferExpanded,
-                    isEnabled: $systemAudioBufferEnabled,
-                    label: "Keep Recent System Audio",
-                    infoMessage:
-                        "Continuously keeps the last few seconds of system audio in memory (never on disk) so a shortcut can transcribe what was just said. Nothing is captured while this is off."
-                ) {
-                    Picker("Remember", selection: $systemAudioBufferSeconds) {
-                        Text("15 seconds").tag(15.0)
-                        Text("30 seconds").tag(30.0)
-                        Text("60 seconds").tag(60.0)
-                        Text("2 minutes").tag(120.0)
-                    }
-                    .pickerStyle(.menu)
-
-                    LabeledContent("Transcribe Recent Audio") {
-                        ShortcutRecorder(action: .recallSystemAudio) {
+            if search.matches(Self.additionalShortcutsTerms) {
+                Section("Additional Shortcuts") {
+                    LabeledContent("Paste Last Transcription (Original)") {
+                        ShortcutRecorder(action: .pasteLastTranscription) {
                             recordingShortcutManager.updateShortcutStatus()
                         }
                         .controlSize(.small)
                     }
-                }
 
-                Toggle("Paste at Cursor", isOn: $systemAudioPasteAtCursor)
-                Toggle("Save to History", isOn: $systemAudioSaveToHistory)
-            } header: {
-                Text("System Audio")
-            } footer: {
-                Text(
-                    systemAudioController.isCapturing
-                        ? "Capturing system audio…"
-                        : "Requires Screen Recording permission. Captures only what your Mac plays — never your microphone."
-                )
-                .font(.app(.caption))
-                .foregroundStyle(.secondary)
-            }
-            .onChange(of: systemAudioBufferEnabled) { _, _ in
-                Task { await systemAudioController.syncBufferingWithPreference() }
-            }
-            .onChange(of: systemAudioBufferSeconds) { _, _ in
-                Task { await systemAudioController.syncBufferingWithPreference() }
-            }
+                    LabeledContent("Paste Last Transcription (Enhanced)") {
+                        ShortcutRecorder(action: .pasteLastEnhancement) {
+                            recordingShortcutManager.updateShortcutStatus()
+                        }
+                        .controlSize(.small)
+                    }
 
-            Section {
-                Picker("Control Mode", selection: $agentControlModeRaw) {
-                    ForEach(AgentControlMode.allCases) { mode in
-                        Text(mode.displayName).tag(mode.rawValue)
+                    LabeledContent("Retry Last Transcription") {
+                        ShortcutRecorder(action: .retryLastTranscription) {
+                            recordingShortcutManager.updateShortcutStatus()
+                        }
+                        .controlSize(.small)
+                    }
+
+                    LabeledContent {
+                        HStack(spacing: 8) {
+                            ShortcutRecorder(
+                                action: .cancelRecorder,
+                                defaultShortcut: Self.defaultCancelRecordingShortcut
+                            )
+                            .id(cancelRecordingShortcutRecorderResetID)
+                            .controlSize(.small)
+
+                            Button {
+                                RecorderPanelShortcutManager.resetEscapeConfirmationHint()
+                                ShortcutStore.setShortcut(nil, for: .cancelRecorder)
+                                cancelRecordingShortcutRecorderResetID += 1
+                            } label: {
+                                Image(systemName: "arrow.counterclockwise")
+                            }
+                            .buttonStyle(.plain)
+                            .help("Reset to default")
+                        }
+                    } label: {
+                        HStack(spacing: 2) {
+                            Text("Cancel Recording")
+                            InfoTip(
+                                "The assigned shortcut cancels the recording. Resetting restores the default double-Escape behavior."
+                            )
+                        }
+                    }
+
+                    ExpandableSettingsRow(
+                        isExpanded: $isMiddleClickExpanded,
+                        isEnabled: $recordingShortcutManager.isMiddleClickToggleEnabled,
+                        label: "Middle-Click Recording"
+                    ) {
+                        LabeledContent("Activation Delay") {
+                            HStack {
+                                TextField(
+                                    "", value: $recordingShortcutManager.middleClickActivationDelay,
+                                    formatter: {
+                                        let formatter = NumberFormatter()
+                                        formatter.minimum = 0
+                                        return formatter
+                                    }()
+                                )
+                                .textFieldStyle(.roundedBorder)
+                                .frame(width: 60)
+                                Text("ms")
+                                    .foregroundColor(.secondary)
+                            }
+                        }
                     }
                 }
-                .pickerStyle(.menu)
+            }
 
-                Text((AgentControlMode(rawValue: agentControlModeRaw) ?? .takeover).summary)
+            if search.matches(Self.systemAudioTerms) {
+                Section {
+                    LabeledContent {
+                        ShortcutRecorder(action: .captureSystemAudio) {
+                            recordingShortcutManager.updateShortcutStatus()
+                        }
+                        .controlSize(.small)
+                    } label: {
+                        HStack(spacing: 2) {
+                            Text("Capture System Audio")
+                            InfoTip(
+                                "Press once to start capturing what your Mac is playing, press again to stop. The transcript is copied to the clipboard and pasted at the cursor. Your microphone is never recorded."
+                            )
+                        }
+                    }
+
+                    ExpandableSettingsRow(
+                        isExpanded: $isSystemAudioBufferExpanded,
+                        isEnabled: $systemAudioBufferEnabled,
+                        label: "Keep Recent System Audio",
+                        infoMessage:
+                            "Continuously keeps the last few seconds of system audio in memory (never on disk) so a shortcut can transcribe what was just said. Nothing is captured while this is off."
+                    ) {
+                        Picker("Remember", selection: $systemAudioBufferSeconds) {
+                            Text("15 seconds").tag(15.0)
+                            Text("30 seconds").tag(30.0)
+                            Text("60 seconds").tag(60.0)
+                            Text("2 minutes").tag(120.0)
+                        }
+                        .pickerStyle(.menu)
+
+                        LabeledContent("Transcribe Recent Audio") {
+                            ShortcutRecorder(action: .recallSystemAudio) {
+                                recordingShortcutManager.updateShortcutStatus()
+                            }
+                            .controlSize(.small)
+                        }
+                    }
+
+                    Toggle("Paste at Cursor", isOn: $systemAudioPasteAtCursor)
+                    Toggle("Save to History", isOn: $systemAudioSaveToHistory)
+                } header: {
+                    Text("System Audio")
+                } footer: {
+                    Text(
+                        systemAudioController.isCapturing
+                            ? "Capturing system audio…"
+                            : "Requires Screen Recording permission. Captures only what your Mac plays — never your microphone."
+                    )
                     .font(.app(.caption))
                     .foregroundStyle(.secondary)
-
-                Toggle(isOn: $agentAutoSendEnabled) {
-                    HStack(spacing: 2) {
-                        Text("Send When You Stop Talking")
-                        InfoTip(
-                            "After ⌃⌃, the Agent sends your request once you pause, so there is no second tap. It learns how quiet your room is each time, and in a noisy room it waits for the live transcript to settle instead."
-                        )
-                    }
                 }
+                .onChange(of: systemAudioBufferEnabled) { _, _ in
+                    Task { await systemAudioController.syncBufferingWithPreference() }
+                }
+                .onChange(of: systemAudioBufferSeconds) { _, _ in
+                    Task { await systemAudioController.syncBufferingWithPreference() }
+                }
+            }
 
-                if agentAutoSendEnabled {
-                    Picker("Pause Before Sending", selection: $agentAutoSendPause) {
-                        ForEach(AgentAutoSend.Pause.allCases) { pause in
-                            Text("\(pause.label) (\(String(format: "%.1f", pause.rawValue))s)").tag(pause.rawValue)
+            if search.matches(Self.agentTerms) {
+                Section {
+                    Picker("Control Mode", selection: $agentControlModeRaw) {
+                        ForEach(AgentControlMode.allCases) { mode in
+                            Text(mode.displayName).tag(mode.rawValue)
                         }
                     }
                     .pickerStyle(.menu)
-                }
 
-                Toggle(isOn: $agentAllowRiskyShell) {
-                    HStack(spacing: 2) {
-                        Text("Allow Risky Shell Commands")
-                        InfoTip(
-                            "Commands that look destructive (rm -rf, sudo, disk formatting, piping downloads into a shell…) are refused unless this is on. When on, they run and the agent tells you what it did."
-                        )
-                    }
-                }
+                    Text((AgentControlMode(rawValue: agentControlModeRaw) ?? .takeover).summary)
+                        .font(.app(.caption))
+                        .foregroundStyle(.secondary)
 
-                LabeledContent("Plugins") {
-                    Button("Open Plugins Folder") {
-                        NSWorkspace.shared.open(AgentPlugins.directory)
-                    }
-                    .controlSize(.small)
-                }
-
-                LabeledContent("Permissions") {
-                    HStack(spacing: 6) {
-                        Label(
-                            agentHasAccessibility ? "Accessibility" : "Accessibility missing",
-                            systemImage: agentHasAccessibility ? "checkmark.circle.fill" : "xmark.circle"
-                        )
-                        .foregroundStyle(agentHasAccessibility ? .green : .orange)
-                        Label(
-                            agentHasScreenRecording ? "Screen Recording" : "Screen Recording missing",
-                            systemImage: agentHasScreenRecording ? "checkmark.circle.fill" : "xmark.circle"
-                        )
-                        .foregroundStyle(agentHasScreenRecording ? .green : .orange)
-                    }
-                    .font(.app(.caption))
-                    .labelStyle(.titleAndIcon)
-                }
-            } header: {
-                Text("Agent")
-            } footer: {
-                Text(
-                    "Clicking, typing and reading the screen need Accessibility and Screen Recording. Plugins are JSON files that become voice tools; the agent can also write them itself."
-                )
-                .font(.app(.caption))
-                .foregroundStyle(.secondary)
-            }
-
-            MCPServersSection()
-
-            Section("Pasting") {
-                Toggle(isOn: $matchWritingStyleToApp) {
-                    HStack(spacing: 2) {
-                        Text("Match Writing Style to the App")
-                        InfoTip(
-                            "Dictation adapts to where it is pasted: full sentences in Mail, short and casual in Slack or Messages, lists in Notes, code-form names in editors. Modes with a custom prompt still take priority."
-                        )
-                    }
-                }
-
-                ExpandableSettingsRow(
-                    isExpanded: $isRestoreClipboardExpanded,
-                    isEnabled: $restoreClipboardAfterPaste,
-                    label: "Keep Clipboard Content",
-                    infoMessage:
-                        "VoxOS temporarily uses the clipboard to paste transcription. When enabled, it restores your previous clipboard content after the selected delay. When disabled, the pasted transcription stays on your clipboard."
-                ) {
-                    Picker("Restore Delay", selection: $clipboardRestoreDelay) {
-                        Text("250ms").tag(0.25)
-                        Text("500ms").tag(0.5)
-                        Text("1s").tag(1.0)
-                        Text("2s").tag(2.0)
-                        Text("3s").tag(3.0)
-                        Text("4s").tag(4.0)
-                        Text("5s").tag(5.0)
-                    }
-                }
-
-                Picker(selection: $pasteMethodRawValue) {
-                    ForEach(PasteMethod.allCases) { method in
-                        Text(method.displayName).tag(method.rawValue)
-                    }
-                } label: {
-                    HStack(spacing: 4) {
-                        Text("Paste Method")
-                        InfoTip(
-                            "Default uses simulated Cmd+V key events. AppleScript can help when custom keyboard layouts do not paste correctly."
-                        )
-                    }
-                }
-                .pickerStyle(.menu)
-                .onChange(of: pasteMethodRawValue) { _, newValue in
-                    guard let method = PasteMethod(rawValue: newValue) else {
-                        pasteMethodRawValue = PasteMethod.standard.rawValue
-                        return
-                    }
-                    PasteMethod.setCurrent(method)
-                }
-            }
-
-            Section("Interface") {
-                Picker("Appearance", selection: $appAppearancePreference) {
-                    ForEach(AppAppearancePreference.allCases) { preference in
-                        Text(preference.displayName).tag(preference)
-                    }
-                }
-                .pickerStyle(.menu)
-                .onChange(of: appAppearancePreference) { _, newValue in
-                    newValue.apply()
-                }
-
-                Picker("Language", selection: $appLanguagePreference) {
-                    ForEach(AppLanguagePreference.availableOptions) { option in
-                        Text(option.displayName).tag(option.id)
-                    }
-                }
-                .pickerStyle(.menu)
-                .onChange(of: appLanguagePreference) { oldValue, newValue in
-                    guard oldValue != newValue else { return }
-                    let normalizedValue = AppLanguagePreference.normalizedRawValue(newValue)
-                    if normalizedValue != newValue {
-                        appLanguagePreference = normalizedValue
-                        return
-                    }
-                    AppLanguagePreference.apply(rawValue: normalizedValue)
-                    showLanguageRestartAlert = true
-                }
-
-                Picker("Recorder Position", selection: $recorderUIManager.recorderPanelStyle) {
-                    ForEach(RecorderPanelStyle.allCases) { style in
-                        Text(style.displayName).tag(style)
-                    }
-                }
-                .pickerStyle(.menu)
-
-                Toggle(isOn: $showLiveTranscript) {
-                    HStack(spacing: 4) {
-                        Text("Live Text Display")
-                        InfoTip("Shows live text while recording with realtime models.")
-                    }
-                }
-            }
-
-            Section("General") {
-                Toggle("Hide Dock Icon", isOn: $menuBarManager.isMenuBarOnly)
-
-                Toggle(
-                    String(localized: "Launch at Login"),
-                    isOn: Binding(
-                        get: { launchAtLoginManager.isEnabled },
-                        set: { launchAtLoginManager.setEnabled($0) }
-                    )
-                )
-                .disabled(launchAtLoginManager.isUpdating)
-
-                Toggle(
-                    "Automatically Check for Updates",
-                    isOn: Binding(
-                        get: { updaterViewModel.checksForUpdatesWhenDashboardAppears },
-                        set: { updaterViewModel.setChecksForUpdatesWhenDashboardAppears($0) }
-                    ))
-
-                Toggle("Show Announcements", isOn: $enableAnnouncements)
-                    .onChange(of: enableAnnouncements) { _, newValue in
-                        if newValue {
-                            AnnouncementsService.shared.start()
-                        } else {
-                            AnnouncementsService.shared.stop()
+                    Toggle(isOn: $agentAutoSendEnabled) {
+                        HStack(spacing: 2) {
+                            Text("Send When You Stop Talking")
+                            InfoTip(
+                                "After ⌃⌃, the Agent sends your request once you pause, so there is no second tap. It learns how quiet your room is each time, and in a noisy room it waits for the live transcript to settle instead."
+                            )
                         }
                     }
 
-                HStack {
-                    Button("Check for Updates") {
-                        updaterViewModel.checkForUpdates()
+                    if agentAutoSendEnabled {
+                        Picker("Pause Before Sending", selection: $agentAutoSendPause) {
+                            ForEach(AgentAutoSend.Pause.allCases) { pause in
+                                Text("\(pause.label) (\(String(format: "%.1f", pause.rawValue))s)").tag(pause.rawValue)
+                            }
+                        }
+                        .pickerStyle(.menu)
                     }
-                    .disabled(!updaterViewModel.canCheckForUpdates)
 
-                    Button("Reset Onboarding") {
-                        showResetOnboardingAlert = true
+                    Toggle(isOn: $agentAllowRiskyShell) {
+                        HStack(spacing: 2) {
+                            Text("Allow Risky Shell Commands")
+                            InfoTip(
+                                "Commands that look destructive (rm -rf, sudo, disk formatting, piping downloads into a shell…) are refused unless this is on. When on, they run and the agent tells you what it did."
+                            )
+                        }
+                    }
+
+                    LabeledContent("Plugins") {
+                        Button("Open Plugins Folder") {
+                            NSWorkspace.shared.open(AgentPlugins.directory)
+                        }
+                        .controlSize(.small)
+                    }
+
+                    LabeledContent("Permissions") {
+                        HStack(spacing: 6) {
+                            Label(
+                                agentHasAccessibility ? "Accessibility" : "Accessibility missing",
+                                systemImage: agentHasAccessibility ? "checkmark.circle.fill" : "xmark.circle"
+                            )
+                            .foregroundStyle(agentHasAccessibility ? .green : .orange)
+                            Label(
+                                agentHasScreenRecording ? "Screen Recording" : "Screen Recording missing",
+                                systemImage: agentHasScreenRecording ? "checkmark.circle.fill" : "xmark.circle"
+                            )
+                            .foregroundStyle(agentHasScreenRecording ? .green : .orange)
+                        }
+                        .font(.app(.caption))
+                        .labelStyle(.titleAndIcon)
+                    }
+                } header: {
+                    Text("Agent")
+                } footer: {
+                    Text(
+                        "Clicking, typing and reading the screen need Accessibility and Screen Recording. Plugins are JSON files that become voice tools; the agent can also write them itself."
+                    )
+                    .font(.app(.caption))
+                    .foregroundStyle(.secondary)
+                }
+            }
+
+            if search.matches(Self.mcpTerms) {
+                MCPServersSection()
+            }
+
+            if search.matches(Self.pastingTerms) {
+                Section("Pasting") {
+                    Toggle(isOn: $matchWritingStyleToApp) {
+                        HStack(spacing: 2) {
+                            Text("Match Writing Style to the App")
+                            InfoTip(
+                                "Dictation adapts to where it is pasted: full sentences in Mail, short and casual in Slack or Messages, lists in Notes, code-form names in editors. Modes with a custom prompt still take priority."
+                            )
+                        }
+                    }
+
+                    ExpandableSettingsRow(
+                        isExpanded: $isRestoreClipboardExpanded,
+                        isEnabled: $restoreClipboardAfterPaste,
+                        label: "Keep Clipboard Content",
+                        infoMessage:
+                            "VoxOS temporarily uses the clipboard to paste transcription. When enabled, it restores your previous clipboard content after the selected delay. When disabled, the pasted transcription stays on your clipboard."
+                    ) {
+                        Picker("Restore Delay", selection: $clipboardRestoreDelay) {
+                            Text("250ms").tag(0.25)
+                            Text("500ms").tag(0.5)
+                            Text("1s").tag(1.0)
+                            Text("2s").tag(2.0)
+                            Text("3s").tag(3.0)
+                            Text("4s").tag(4.0)
+                            Text("5s").tag(5.0)
+                        }
+                    }
+
+                    Picker(selection: $pasteMethodRawValue) {
+                        ForEach(PasteMethod.allCases) { method in
+                            Text(method.displayName).tag(method.rawValue)
+                        }
+                    } label: {
+                        HStack(spacing: 4) {
+                            Text("Paste Method")
+                            InfoTip(
+                                "Default uses simulated Cmd+V key events. AppleScript can help when custom keyboard layouts do not paste correctly."
+                            )
+                        }
+                    }
+                    .pickerStyle(.menu)
+                    .onChange(of: pasteMethodRawValue) { _, newValue in
+                        guard let method = PasteMethod(rawValue: newValue) else {
+                            pasteMethodRawValue = PasteMethod.standard.rawValue
+                            return
+                        }
+                        PasteMethod.setCurrent(method)
                     }
                 }
             }
 
-            Section {
-                LabeledContent("Export Settings") {
-                    Button("Export") {
-                        Task {
-                            await ImportExportService.shared.exportSettings(
+            if search.matches(Self.interfaceTerms) {
+                Section("Interface") {
+                    Picker("Appearance", selection: $appAppearancePreference) {
+                        ForEach(AppAppearancePreference.allCases) { preference in
+                            Text(preference.displayName).tag(preference)
+                        }
+                    }
+                    .pickerStyle(.menu)
+                    .onChange(of: appAppearancePreference) { _, newValue in
+                        newValue.apply()
+                    }
+
+                    Picker("Language", selection: $appLanguagePreference) {
+                        ForEach(AppLanguagePreference.availableOptions) { option in
+                            Text(option.displayName).tag(option.id)
+                        }
+                    }
+                    .pickerStyle(.menu)
+                    .onChange(of: appLanguagePreference) { oldValue, newValue in
+                        guard oldValue != newValue else { return }
+                        let normalizedValue = AppLanguagePreference.normalizedRawValue(newValue)
+                        if normalizedValue != newValue {
+                            appLanguagePreference = normalizedValue
+                            return
+                        }
+                        AppLanguagePreference.apply(rawValue: normalizedValue)
+                        showLanguageRestartAlert = true
+                    }
+
+                    Picker("Recorder Position", selection: $recorderUIManager.recorderPanelStyle) {
+                        ForEach(RecorderPanelStyle.allCases) { style in
+                            Text(style.displayName).tag(style)
+                        }
+                    }
+                    .pickerStyle(.menu)
+
+                    Toggle(isOn: $showLiveTranscript) {
+                        HStack(spacing: 4) {
+                            Text("Live Text Display")
+                            InfoTip("Shows live text while recording with realtime models.")
+                        }
+                    }
+                }
+            }
+
+            if search.matches(Self.generalTerms) {
+                Section("General") {
+                    Toggle("Hide Dock Icon", isOn: $menuBarManager.isMenuBarOnly)
+
+                    Toggle(
+                        String(localized: "Launch at Login"),
+                        isOn: Binding(
+                            get: { launchAtLoginManager.isEnabled },
+                            set: { launchAtLoginManager.setEnabled($0) }
+                        )
+                    )
+                    .disabled(launchAtLoginManager.isUpdating)
+
+                    Toggle(
+                        "Automatically Check for Updates",
+                        isOn: Binding(
+                            get: { updaterViewModel.checksForUpdatesWhenDashboardAppears },
+                            set: { updaterViewModel.setChecksForUpdatesWhenDashboardAppears($0) }
+                        ))
+
+                    Toggle("Show Announcements", isOn: $enableAnnouncements)
+                        .onChange(of: enableAnnouncements) { _, newValue in
+                            if newValue {
+                                AnnouncementsService.shared.start()
+                            } else {
+                                AnnouncementsService.shared.stop()
+                            }
+                        }
+
+                    HStack {
+                        Button("Check for Updates") {
+                            updaterViewModel.checkForUpdates()
+                        }
+                        .disabled(!updaterViewModel.canCheckForUpdates)
+
+                        Button("Reset Onboarding") {
+                            showResetOnboardingAlert = true
+                        }
+                    }
+                }
+            }
+
+            if search.matches(Self.backupTerms) {
+                Section {
+                    LabeledContent("Export Settings") {
+                        Button("Export") {
+                            Task {
+                                await ImportExportService.shared.exportSettings(
+                                    enhancementService: enhancementService,
+                                    recordingShortcutManager: recordingShortcutManager,
+                                    menuBarManager: menuBarManager,
+                                    mediaController: mediaController,
+                                    playbackController: playbackController,
+                                    recorderUIManager: recorderUIManager,
+                                    modelContext: modelContext
+                                )
+                            }
+                        }
+                    }
+
+                    LabeledContent("Import Settings") {
+                        Button("Import") {
+                            ImportExportService.shared.importSettings(
                                 enhancementService: enhancementService,
                                 recordingShortcutManager: recordingShortcutManager,
                                 menuBarManager: menuBarManager,
                                 mediaController: mediaController,
                                 playbackController: playbackController,
                                 recorderUIManager: recorderUIManager,
-                                modelContext: modelContext
+                                modelContext: modelContext,
+                                transcriptionModelManager: transcriptionModelManager
                             )
                         }
                     }
+                } header: {
+                    Text("Backup")
+                } footer: {
+                    Text("Export all settings, or choose specific categories when importing a backup.")
                 }
-
-                LabeledContent("Import Settings") {
-                    Button("Import") {
-                        ImportExportService.shared.importSettings(
-                            enhancementService: enhancementService,
-                            recordingShortcutManager: recordingShortcutManager,
-                            menuBarManager: menuBarManager,
-                            mediaController: mediaController,
-                            playbackController: playbackController,
-                            recorderUIManager: recorderUIManager,
-                            modelContext: modelContext,
-                            transcriptionModelManager: transcriptionModelManager
-                        )
-                    }
-                }
-            } header: {
-                Text("Backup")
-            } footer: {
-                Text("Export all settings, or choose specific categories when importing a backup.")
             }
 
-            Section("Diagnostics") {
-                DiagnosticsSettingsView()
+            if search.matches(Self.diagnosticsTerms) {
+                Section("Diagnostics") {
+                    DiagnosticsSettingsView()
+                }
             }
         }
         .formStyle(.grouped)
