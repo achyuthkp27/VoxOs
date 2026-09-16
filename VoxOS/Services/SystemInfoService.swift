@@ -35,8 +35,8 @@ final class SystemInfoService {
             HOTKEY SETTINGS:
             Primary Shortcut: \(getPrimaryShortcut())
             Secondary Shortcut: \(getSecondaryShortcut())
-            Middle-Click Recording: \(UserDefaults.standard.bool(forKey: "isMiddleClickToggleEnabled"))
-            Middle-Click Activation Delay: \(UserDefaults.standard.integer(forKey: "middleClickActivationDelay")) ms
+            Middle-Click Recording: \(UserDefaults.standard.bool(forKey: DefaultsKeys.isMiddleClickToggleEnabled))
+            Middle-Click Activation Delay: \(UserDefaults.standard.integer(forKey: DefaultsKeys.middleClickActivationDelay)) ms
 
             TRANSCRIPTION SETTINGS:
             Selected Model: \(getCurrentTranscriptionModel())
@@ -47,17 +47,17 @@ final class SystemInfoService {
 
             UI SETTINGS:
             Hide Dock Icon: \(MenuBarOnlyPreference.isEnabled) (active: \(MenuBarOnlyPreference.isActive))
-            Recorder Style: \(UserDefaults.standard.string(forKey: "RecorderType") ?? "notch")
+            Recorder Style: \(UserDefaults.standard.string(forKey: DefaultsKeys.recorderType) ?? "notch")
 
             RECORDING FEEDBACK:
             Sound Feedback: \(CustomSoundManager.shared.hasAnyRecordingSoundEnabled)
-            Pause Media While Recording: \(UserDefaults.standard.bool(forKey: "isPauseMediaEnabled"))
-            Mute Audio While Recording: \(UserDefaults.standard.bool(forKey: "isSystemMuteEnabled"))
-            Audio Resumption Delay: \(UserDefaults.standard.double(forKey: "audioResumptionDelay"))s
+            Pause Media While Recording: \(UserDefaults.standard.bool(forKey: DefaultsKeys.isPauseMediaEnabled))
+            Mute Audio While Recording: \(UserDefaults.standard.bool(forKey: DefaultsKeys.isSystemMuteEnabled))
+            Audio Resumption Delay: \(UserDefaults.standard.double(forKey: DefaultsKeys.audioResumptionDelay))s
 
             CLIPBOARD & PASTE SETTINGS:
-            Restore Clipboard After Paste: \(UserDefaults.standard.bool(forKey: "restoreClipboardAfterPaste"))
-            Clipboard Restore Delay: \(UserDefaults.standard.double(forKey: "clipboardRestoreDelay"))s
+            Restore Clipboard After Paste: \(UserDefaults.standard.bool(forKey: DefaultsKeys.restoreClipboardAfterPaste))
+            Clipboard Restore Delay: \(UserDefaults.standard.double(forKey: DefaultsKeys.clipboardRestoreDelay))s
             Paste Method: \(PasteMethod.current().displayName)
 
             DATA CLEANUP SETTINGS:
@@ -210,7 +210,7 @@ final class SystemInfoService {
     }
 
     private func getCurrentLanguage() -> String {
-        return UserDefaults.standard.string(forKey: "SelectedLanguage") ?? "en"
+        return UserDefaults.standard.string(forKey: DefaultsKeys.selectedLanguage) ?? "en"
     }
 
     private static func englishTimestamp() -> String {

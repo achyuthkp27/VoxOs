@@ -87,7 +87,7 @@ class Recorder: NSObject, ObservableObject {
 
             deviceManager.recordingDidStart(deviceID: deviceID)
             showRecordingDeviceNotification(for: deviceID, resolution: resolution)
-            UserDefaults.standard.set(String(deviceID), forKey: "lastUsedMicrophoneDeviceID")
+            UserDefaults.standard.set(String(deviceID), forKey: DefaultsKeys.lastUsedMicrophoneDeviceID)
             resetAudioMeter()
         } catch {
             logger.error(

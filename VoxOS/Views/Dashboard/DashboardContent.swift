@@ -37,7 +37,7 @@ struct DashboardContent: View {
     @State private var isSystemInfoCopied = false
     @State private var isEditingDisplayName = false
     @State private var displayNameDraft = ""
-    @AppStorage("dashboardDisplayName") private var dashboardDisplayName: String = ""
+    @AppStorage(DefaultsKeys.dashboardDisplayName) private var dashboardDisplayName: String = ""
     @FocusState private var isNameFieldFocused: Bool
     @Query(Self.recentTranscriptionsDescriptor()) private var recentTranscriptionCandidates: [Transcription]
 

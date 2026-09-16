@@ -210,7 +210,7 @@ enum BackupImporter {
             mediaController.audioResumptionDelay = audioDelay
         }
         if let experimentalEnabled = general.isExperimentalFeaturesEnabled {
-            UserDefaults.standard.set(experimentalEnabled, forKey: "isExperimentalFeaturesEnabled")
+            UserDefaults.standard.set(experimentalEnabled, forKey: DefaultsKeys.isExperimentalFeaturesEnabled)
             if experimentalEnabled == false {
                 playbackController.isPauseMediaEnabled = false
             }
@@ -219,10 +219,10 @@ enum BackupImporter {
             UserDefaults.standard.set(textFormattingEnabled, forKey: keyIsTextFormattingEnabled)
         }
         if let restoreClipboard = general.restoreClipboardAfterPaste {
-            UserDefaults.standard.set(restoreClipboard, forKey: "restoreClipboardAfterPaste")
+            UserDefaults.standard.set(restoreClipboard, forKey: DefaultsKeys.restoreClipboardAfterPaste)
         }
         if let clipboardDelay = general.clipboardRestoreDelay {
-            UserDefaults.standard.set(clipboardDelay, forKey: "clipboardRestoreDelay")
+            UserDefaults.standard.set(clipboardDelay, forKey: DefaultsKeys.clipboardRestoreDelay)
         }
 
         logger.info("Successfully imported general settings.")

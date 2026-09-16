@@ -538,7 +538,7 @@ private struct ModelProviderIdentity {
     }
 
     private static func isSavedOpenRouterModel(_ modelName: String) -> Bool {
-        guard let models = UserDefaults.standard.array(forKey: "openRouterModels") as? [String] else {
+        guard let models = UserDefaults.standard.array(forKey: DefaultsKeys.openRouterModels) as? [String] else {
             return false
         }
 

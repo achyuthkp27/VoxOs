@@ -138,7 +138,7 @@ enum ModeRuntimeResolver {
         return TranscriptionFormattingConfiguration(
             mode: mode,
             isTextFormattingEnabled: mode?.isTextFormattingEnabled
-                ?? UserDefaults.standard.bool(forKey: "IsTextFormattingEnabled")
+                ?? UserDefaults.standard.bool(forKey: DefaultsKeys.isTextFormattingEnabled)
         )
     }
 

@@ -48,7 +48,7 @@ extension Recorder {
             return
         }
 
-        let lastDeviceID = UserDefaults.standard.string(forKey: "lastUsedMicrophoneDeviceID")
+        let lastDeviceID = UserDefaults.standard.string(forKey: DefaultsKeys.lastUsedMicrophoneDeviceID)
         guard String(deviceID) != lastDeviceID else { return }
         NotificationManager.shared.showNotification(
             title: String(format: String(localized: "Using: %@"), deviceName),
@@ -83,7 +83,7 @@ extension Recorder {
             deviceManager.recordingDeviceChangeFinished(activeDeviceID: fallbackDeviceID)
             UserDefaults.standard.set(
                 String(fallbackDeviceID),
-                forKey: "lastUsedMicrophoneDeviceID"
+                forKey: DefaultsKeys.lastUsedMicrophoneDeviceID
             )
             if let deviceName = deviceManager.availableDevices.first(where: { $0.id == fallbackDeviceID })?.name {
                 NotificationManager.shared.showNotification(

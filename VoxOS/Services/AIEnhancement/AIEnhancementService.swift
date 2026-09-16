@@ -30,7 +30,7 @@ class AIEnhancementService: ObservableObject {
     private let screenCaptureService: ScreenCaptureService
     private let customVocabularyService: CustomVocabularyService
     private var baseTimeout: TimeInterval {
-        let stored = UserDefaults.standard.integer(forKey: "EnhancementTimeoutSeconds")
+        let stored = UserDefaults.standard.integer(forKey: DefaultsKeys.enhancementTimeoutSeconds)
         return stored > 0 ? TimeInterval(stored) : 7
     }
     private let rateLimitInterval: TimeInterval = 1.0
@@ -45,7 +45,7 @@ class AIEnhancementService: ObservableObject {
         self.screenCaptureService = ScreenCaptureService()
         self.customVocabularyService = CustomVocabularyService.shared
 
-        if let savedPromptsData = UserDefaults.standard.data(forKey: "customPrompts"),
+        if let savedPromptsData = UserDefaults.standard.data(forKey: DefaultsKeys.customPrompts),
             let decodedPrompts = try? JSONDecoder().decode([CustomPrompt].self, from: savedPromptsData)
         {
             self.customPrompts = decodedPrompts
@@ -466,7 +466,7 @@ class AIEnhancementService: ObservableObject {
     }
 
     private var retryOnTimeout: Bool {
-        UserDefaults.standard.bool(forKey: "EnhancementRetryOnTimeout")
+        UserDefaults.standard.bool(forKey: DefaultsKeys.enhancementRetryOnTimeout)
     }
 
     private func makeRequestWithRetry(
@@ -687,7 +687,7 @@ class AIEnhancementService: ObservableObject {
 
     private func savePrompts() {
         if let encoded = try? JSONEncoder().encode(customPrompts) {
-            UserDefaults.standard.set(encoded, forKey: "customPrompts")
+            UserDefaults.standard.set(encoded, forKey: DefaultsKeys.customPrompts)
         }
     }
 }

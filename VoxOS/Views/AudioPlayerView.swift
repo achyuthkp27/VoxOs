@@ -77,11 +77,11 @@ class AudioPlayerManager: ObservableObject {
     @Published var waveformSamples: [Float] = []
     @Published var isLoadingWaveform = false
     @Published var playbackRate: Float = {
-        let saved = UserDefaults.standard.float(forKey: "audioPlaybackRate")
+        let saved = UserDefaults.standard.float(forKey: DefaultsKeys.audioPlaybackRate)
         return saved > 0 ? saved : 1.0
     }()
     {
-        didSet { UserDefaults.standard.set(playbackRate, forKey: "audioPlaybackRate") }
+        didSet { UserDefaults.standard.set(playbackRate, forKey: DefaultsKeys.audioPlaybackRate) }
     }
 
     func loadAudio(from url: URL) {

@@ -6,8 +6,10 @@ struct LocalEnhancementServiceManagementView: View {
 
     @State private var isOllamaExpanded = false
     @State private var isLocalCLIExpanded = false
-    @State private var ollamaBaseURL = UserDefaults.standard.string(forKey: "ollamaBaseURL") ?? "http://localhost:11434"
-    @State private var selectedOllamaModel = UserDefaults.standard.string(forKey: "ollamaSelectedModel") ?? "mistral"
+    @State private var ollamaBaseURL =
+        UserDefaults.standard.string(forKey: DefaultsKeys.ollamaBaseURL) ?? "http://localhost:11434"
+    @State private var selectedOllamaModel =
+        UserDefaults.standard.string(forKey: DefaultsKeys.ollamaSelectedModel) ?? "mistral"
     @State private var ollamaUserRefreshError: String?
     @State private var localCLICommandTemplate = ""
     @State private var localCLITimeoutSeconds = LocalCLIService.defaultTimeoutSeconds

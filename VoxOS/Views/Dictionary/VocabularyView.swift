@@ -15,7 +15,7 @@ struct VocabularyView: View {
     @State private var sortMode: VocabularySortMode = .wordAsc
 
     init() {
-        if let savedSort = UserDefaults.standard.string(forKey: "vocabularySortMode"),
+        if let savedSort = UserDefaults.standard.string(forKey: DefaultsKeys.vocabularySortMode),
             let mode = VocabularySortMode(rawValue: savedSort)
         {
             _sortMode = State(initialValue: mode)
@@ -33,7 +33,7 @@ struct VocabularyView: View {
 
     private func toggleSort() {
         sortMode = (sortMode == .wordAsc) ? .wordDesc : .wordAsc
-        UserDefaults.standard.set(sortMode.rawValue, forKey: "vocabularySortMode")
+        UserDefaults.standard.set(sortMode.rawValue, forKey: DefaultsKeys.vocabularySortMode)
     }
 
     private var shouldShowAddButton: Bool {

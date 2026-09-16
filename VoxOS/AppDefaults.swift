@@ -16,30 +16,30 @@ enum AppDefaults {
     static func registerDefaults() {
         UserDefaults.standard.register(defaults: [
             // Onboarding & General
-            "hasCompletedOnboardingV2": false,
-            "hasPreparedOnboardingV2": false,
-            "enableAnnouncements": true,
+            DefaultsKeys.hasCompletedOnboardingV2: false,
+            DefaultsKeys.hasPreparedOnboardingV2: false,
+            DefaultsKeys.enableAnnouncements: true,
 
             // Clipboard
-            "restoreClipboardAfterPaste": true,
-            "clipboardRestoreDelay": 2.0,
-            "useAppleScriptPaste": false,
+            DefaultsKeys.restoreClipboardAfterPaste: true,
+            DefaultsKeys.clipboardRestoreDelay: 2.0,
+            DefaultsKeys.useAppleScriptPaste: false,
 
             // Audio & Media
-            "isSystemMuteEnabled": true,
-            "audioResumptionDelay": 0.0,
-            "isPauseMediaEnabled": false,
+            DefaultsKeys.isSystemMuteEnabled: true,
+            DefaultsKeys.audioResumptionDelay: 0.0,
+            DefaultsKeys.isPauseMediaEnabled: false,
             CustomSoundManager.SoundType.start.builtInSoundKey: CustomSoundManager.SoundType.start.defaultBuiltInSound
                 .rawValue,
             CustomSoundManager.SoundType.stop.builtInSoundKey: CustomSoundManager.SoundType.stop.defaultBuiltInSound
                 .rawValue,
 
             // Recording & Transcription
-            "IsTextFormattingEnabled": true,
-            "IsVADEnabled": true,
-            "SelectedLanguage": "en",
-            "AppendTrailingSpace": true,
-            "RecorderType": "notch",
+            DefaultsKeys.isTextFormattingEnabled: true,
+            DefaultsKeys.isVADEnabled: true,
+            DefaultsKeys.selectedLanguage: "en",
+            DefaultsKeys.appendTrailingSpace: true,
+            DefaultsKeys.recorderType: "notch",
             RecorderDisplaySettingsKeys.showLiveTranscript: true,
 
             // Cleanup
@@ -50,23 +50,23 @@ enum AppDefaults {
 
             // UI & Behavior
             // Menu bar only by default: VoxOS is driven by fn / ⌃⌃ and lives in the background.
-            "IsMenuBarOnly": true,
+            DefaultsKeys.isMenuBarOnly: true,
             // One-shot: LaunchAtLoginManager registers the login item on a machine's first run.
             LaunchAtLoginManager.didApplyDefaultKey: false,
             AppAppearancePreference.userDefaultsKey: AppAppearancePreference.system.rawValue,
             AppLanguagePreference.userDefaultsKey: AppLanguagePreference.systemValue,
             // Shortcuts
-            "isMiddleClickToggleEnabled": false,
-            "middleClickActivationDelay": 200,
+            DefaultsKeys.isMiddleClickToggleEnabled: false,
+            DefaultsKeys.middleClickActivationDelay: 200,
 
             // Enhancement
-            "SkipShortEnhancement": true,
-            "ShortEnhancementWordThreshold": 3,
-            "EnhancementTimeoutSeconds": 7,
-            "EnhancementRetryOnTimeout": true,
+            DefaultsKeys.skipShortEnhancement: true,
+            DefaultsKeys.shortEnhancementWordThreshold: 3,
+            DefaultsKeys.enhancementTimeoutSeconds: 7,
+            DefaultsKeys.enhancementRetryOnTimeout: true,
 
             // Model
-            "PrewarmModelOnWake": true,
+            DefaultsKeys.prewarmModelOnWake: true,
 
         ])
 

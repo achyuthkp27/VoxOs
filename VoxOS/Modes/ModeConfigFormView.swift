@@ -695,7 +695,7 @@ struct ModeConfigFormView: View {
 
     private func effectiveLanguage(for model: any TranscriptionModel) -> String {
         TranscriptionLanguageSupport.validLanguageOrFallback(
-            draft.selectedLanguage ?? UserDefaults.standard.string(forKey: "SelectedLanguage"),
+            draft.selectedLanguage ?? UserDefaults.standard.string(forKey: DefaultsKeys.selectedLanguage),
             for: model,
             realtimeEnabled: draft.isRealtimeTranscriptionEnabled
         )

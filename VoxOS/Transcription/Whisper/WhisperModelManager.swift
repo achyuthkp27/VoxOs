@@ -115,7 +115,8 @@ class WhisperModelManager: ObservableObject {
             whisperContext = try await WhisperContext.createContext(path: model.url.path)
 
             let currentPrompt =
-                UserDefaults.standard.string(forKey: "TranscriptionPrompt") ?? whisperPrompt.transcriptionPrompt
+                UserDefaults.standard.string(forKey: DefaultsKeys.transcriptionPrompt)
+                ?? whisperPrompt.transcriptionPrompt
             await whisperContext?.setPrompt(currentPrompt)
 
             isModelLoaded = true

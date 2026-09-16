@@ -24,17 +24,17 @@ extension ModeManager {
 
             if config.selectedTranscriptionModelName == nil {
                 config.selectedTranscriptionModelName = UserDefaults.standard.string(
-                    forKey: "CurrentTranscriptionModel")
+                    forKey: DefaultsKeys.currentTranscriptionModel)
                 changedConfig = true
             }
 
             if config.selectedLanguage == nil {
-                config.selectedLanguage = UserDefaults.standard.string(forKey: "SelectedLanguage") ?? "en"
+                config.selectedLanguage = UserDefaults.standard.string(forKey: DefaultsKeys.selectedLanguage) ?? "en"
                 changedConfig = true
             }
 
             if config.selectedAIProvider == nil {
-                config.selectedAIProvider = UserDefaults.standard.string(forKey: "selectedAIProvider")
+                config.selectedAIProvider = UserDefaults.standard.string(forKey: DefaultsKeys.selectedAIProvider)
                 changedConfig = true
             }
 
@@ -46,7 +46,7 @@ extension ModeManager {
             }
 
             if config.isAIEnhancementEnabled && config.selectedPrompt == nil {
-                config.selectedPrompt = UserDefaults.standard.string(forKey: "selectedPromptId")
+                config.selectedPrompt = UserDefaults.standard.string(forKey: DefaultsKeys.selectedPromptId)
                 changedConfig = true
             }
 

@@ -76,11 +76,11 @@ class TranscriptionModelManager: ObservableObject {
     // MARK: - Model loading from UserDefaults
 
     func loadCurrentTranscriptionModel() {
-        if let savedModelName = UserDefaults.standard.string(forKey: "CurrentTranscriptionModel"),
+        if let savedModelName = UserDefaults.standard.string(forKey: DefaultsKeys.currentTranscriptionModel),
             let savedModel = allAvailableModels.first(where: { $0.name == savedModelName })
         {
             guard isAvailableOnCurrentOS(savedModel) else {
-                UserDefaults.standard.removeObject(forKey: "CurrentTranscriptionModel")
+                UserDefaults.standard.removeObject(forKey: DefaultsKeys.currentTranscriptionModel)
                 currentTranscriptionModel = nil
                 return
             }
@@ -102,7 +102,7 @@ class TranscriptionModelManager: ObservableObject {
         }
 
         self.currentTranscriptionModel = model
-        UserDefaults.standard.set(model.name, forKey: "CurrentTranscriptionModel")
+        UserDefaults.standard.set(model.name, forKey: DefaultsKeys.currentTranscriptionModel)
         ensureSelectedLanguageIsSupported(by: model)
 
         if model.provider != .whisper {
@@ -115,11 +115,11 @@ class TranscriptionModelManager: ObservableObject {
     }
 
     private func ensureSelectedLanguageIsSupported(by model: any TranscriptionModel) {
-        let currentLanguage = UserDefaults.standard.string(forKey: "SelectedLanguage")
+        let currentLanguage = UserDefaults.standard.string(forKey: DefaultsKeys.selectedLanguage)
         let compatibleLanguage = TranscriptionLanguageSupport.validLanguageOrFallback(currentLanguage, for: model)
 
         if currentLanguage != compatibleLanguage {
-            UserDefaults.standard.set(compatibleLanguage, forKey: "SelectedLanguage")
+            UserDefaults.standard.set(compatibleLanguage, forKey: DefaultsKeys.selectedLanguage)
             NotificationCenter.default.post(name: .languageDidChange, object: nil)
         }
     }
@@ -150,7 +150,7 @@ class TranscriptionModelManager: ObservableObject {
 
     func clearCurrentTranscriptionModel() {
         currentTranscriptionModel = nil
-        UserDefaults.standard.removeObject(forKey: "CurrentTranscriptionModel")
+        UserDefaults.standard.removeObject(forKey: DefaultsKeys.currentTranscriptionModel)
     }
 
     // MARK: - Handle model deletion callback
@@ -159,10 +159,10 @@ class TranscriptionModelManager: ObservableObject {
     func handleModelDeleted(_ modelName: String) {
         if currentTranscriptionModel?.name == modelName {
             currentTranscriptionModel = nil
-            UserDefaults.standard.removeObject(forKey: "CurrentTranscriptionModel")
+            UserDefaults.standard.removeObject(forKey: DefaultsKeys.currentTranscriptionModel)
             whisperModelManager?.loadedWhisperModel = nil
             whisperModelManager?.isModelLoaded = false
-            UserDefaults.standard.removeObject(forKey: "CurrentModel")
+            UserDefaults.standard.removeObject(forKey: DefaultsKeys.currentModel)
         }
         refreshAllAvailableModels()
     }

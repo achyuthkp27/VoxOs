@@ -46,7 +46,7 @@ class CursorPaster {
     @MainActor
     private static func performPasteSession(_ text: String) async -> PasteResult {
         let pasteboard = NSPasteboard.general
-        let shouldRestoreClipboard = UserDefaults.standard.bool(forKey: "restoreClipboardAfterPaste")
+        let shouldRestoreClipboard = UserDefaults.standard.bool(forKey: DefaultsKeys.restoreClipboardAfterPaste)
         let savedContents = shouldRestoreClipboard ? snapshotClipboard(from: pasteboard) : []
         let sessionID = UUID().uuidString
 
@@ -109,7 +109,7 @@ class CursorPaster {
         on pasteboard: NSPasteboard
     ) {
         let delay = max(
-            UserDefaults.standard.double(forKey: "clipboardRestoreDelay"),
+            UserDefaults.standard.double(forKey: DefaultsKeys.clipboardRestoreDelay),
             minimumClipboardRestoreDelay
         )
 

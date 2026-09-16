@@ -49,11 +49,11 @@ enum AIProvider: String, CaseIterable {
         case .voxOSRefine:
             return ""
         case .ollama:
-            return UserDefaults.standard.string(forKey: "ollamaBaseURL") ?? "http://localhost:11434"
+            return UserDefaults.standard.string(forKey: DefaultsKeys.ollamaBaseURL) ?? "http://localhost:11434"
         case .localCLI:
             return ""
         case .custom:
-            return UserDefaults.standard.string(forKey: "customProviderBaseURL") ?? ""
+            return UserDefaults.standard.string(forKey: DefaultsKeys.customProviderBaseURL) ?? ""
         }
     }
 
@@ -84,7 +84,7 @@ enum AIProvider: String, CaseIterable {
         case .voxOSRefine:
             return VoxOSRefineService.modelName
         case .ollama:
-            return UserDefaults.standard.string(forKey: "ollamaSelectedModel") ?? "mistral"
+            return UserDefaults.standard.string(forKey: DefaultsKeys.ollamaSelectedModel) ?? "mistral"
         case .localCLI:
             return "local-cli"
         case .custom:
@@ -191,19 +191,21 @@ struct OllamaRefreshResult {
 class AIService: ObservableObject {
     @Published var apiKey: String = ""
     @Published var isAPIKeyValid: Bool = false
-    @Published var customBaseURL: String = UserDefaults.standard.string(forKey: "customProviderBaseURL") ?? "" {
+    @Published var customBaseURL: String =
+        UserDefaults.standard.string(forKey: DefaultsKeys.customProviderBaseURL) ?? ""
+    {
         didSet {
-            userDefaults.set(customBaseURL, forKey: "customProviderBaseURL")
+            userDefaults.set(customBaseURL, forKey: DefaultsKeys.customProviderBaseURL)
         }
     }
-    @Published var customModel: String = UserDefaults.standard.string(forKey: "customProviderModel") ?? "" {
+    @Published var customModel: String = UserDefaults.standard.string(forKey: DefaultsKeys.customProviderModel) ?? "" {
         didSet {
-            userDefaults.set(customModel, forKey: "customProviderModel")
+            userDefaults.set(customModel, forKey: DefaultsKeys.customProviderModel)
         }
     }
     @Published var selectedProvider: AIProvider {
         didSet {
-            userDefaults.set(selectedProvider.rawValue, forKey: "selectedAIProvider")
+            userDefaults.set(selectedProvider.rawValue, forKey: DefaultsKeys.selectedAIProvider)
             if selectedProvider.requiresAPIKey {
                 if let savedKey = APIKeyManager.shared.getAPIKey(forProvider: selectedProvider.rawValue) {
                     self.apiKey = savedKey
@@ -316,11 +318,11 @@ class AIService: ObservableObject {
     }
 
     init() {
-        if userDefaults.string(forKey: "selectedAIProvider") == "GROQ" {
-            userDefaults.set("Groq", forKey: "selectedAIProvider")
+        if userDefaults.string(forKey: DefaultsKeys.selectedAIProvider) == "GROQ" {
+            userDefaults.set("Groq", forKey: DefaultsKeys.selectedAIProvider)
         }
 
-        if let savedProvider = userDefaults.string(forKey: "selectedAIProvider"),
+        if let savedProvider = userDefaults.string(forKey: DefaultsKeys.selectedAIProvider),
             let provider = AIProvider(rawValue: savedProvider)
         {
             self.selectedProvider = provider
@@ -382,8 +384,8 @@ class AIService: ObservableObject {
 
     private func reloadSelectedProviderConfiguration() {
         if selectedProvider == .custom {
-            customBaseURL = userDefaults.string(forKey: "customProviderBaseURL") ?? ""
-            customModel = userDefaults.string(forKey: "customProviderModel") ?? ""
+            customBaseURL = userDefaults.string(forKey: DefaultsKeys.customProviderBaseURL) ?? ""
+            customModel = userDefaults.string(forKey: DefaultsKeys.customProviderModel) ?? ""
         }
 
         let selectedModelKey = "\(selectedProvider.rawValue)SelectedModel"
@@ -428,13 +430,13 @@ class AIService: ObservableObject {
     }
 
     private func loadSavedOpenRouterModels() {
-        if let savedModels = userDefaults.array(forKey: "openRouterModels") as? [String] {
+        if let savedModels = userDefaults.array(forKey: DefaultsKeys.openRouterModels) as? [String] {
             openRouterModels = savedModels
         }
     }
 
     private func saveOpenRouterModels() {
-        userDefaults.set(openRouterModels, forKey: "openRouterModels")
+        userDefaults.set(openRouterModels, forKey: DefaultsKeys.openRouterModels)
     }
 
     func selectModel(_ model: String) {
@@ -664,12 +666,12 @@ class AIService: ObservableObject {
 
     func updateOllamaBaseURL(_ newURL: String) {
         ollamaService.baseURL = newURL
-        userDefaults.set(newURL, forKey: "ollamaBaseURL")
+        userDefaults.set(newURL, forKey: DefaultsKeys.ollamaBaseURL)
     }
 
     func updateSelectedOllamaModel(_ modelName: String) {
         ollamaService.selectedModel = modelName
-        userDefaults.set(modelName, forKey: "ollamaSelectedModel")
+        userDefaults.set(modelName, forKey: DefaultsKeys.ollamaSelectedModel)
     }
 
     func loadLocalCLITemplate(_ template: LocalCLITemplate) {

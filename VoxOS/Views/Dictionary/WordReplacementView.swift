@@ -25,7 +25,7 @@ struct WordReplacementView: View {
     @State private var showInfoPopover = false
 
     init() {
-        if let savedSort = UserDefaults.standard.string(forKey: "wordReplacementSortMode"),
+        if let savedSort = UserDefaults.standard.string(forKey: DefaultsKeys.wordReplacementSortMode),
             let mode = SortMode(rawValue: savedSort)
         {
             _sortMode = State(initialValue: mode)
@@ -60,7 +60,7 @@ struct WordReplacementView: View {
         case .replacement:
             sortMode = (sortMode == .replacementAsc) ? .replacementDesc : .replacementAsc
         }
-        UserDefaults.standard.set(sortMode.rawValue, forKey: "wordReplacementSortMode")
+        UserDefaults.standard.set(sortMode.rawValue, forKey: DefaultsKeys.wordReplacementSortMode)
     }
 
     private var shouldShowAddButton: Bool {

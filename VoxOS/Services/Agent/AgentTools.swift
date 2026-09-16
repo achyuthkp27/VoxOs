@@ -347,7 +347,7 @@ enum AgentTools {
         case "linear_save_token":
             let token = s("token")
             guard !token.isEmpty else { return ["error": "token is required"] }
-            KeychainService.shared.save(token, forKey: "AgentLinearAPIToken")
+            KeychainService.shared.save(token, forKey: DefaultsKeys.agentLinearAPIToken)
             return ["result": "Linear API token saved"]
 
         case "system_volume":
@@ -718,7 +718,7 @@ extension AgentTools {
 
     static func linearCreateIssue(title: String, description: String, team: String) async -> [String: Any] {
         guard !title.isEmpty else { return ["error": "title is required"] }
-        guard let token = KeychainService.shared.getString(forKey: "AgentLinearAPIToken"), !token.isEmpty
+        guard let token = KeychainService.shared.getString(forKey: DefaultsKeys.agentLinearAPIToken), !token.isEmpty
         else {
             return [
                 "error":

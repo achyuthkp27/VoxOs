@@ -7,7 +7,7 @@ import os
 class RecordingShortcutManager: ObservableObject {
     @Published var primaryRecordingShortcut: ShortcutSelection {
         didSet {
-            UserDefaults.standard.set(primaryRecordingShortcut.rawValue, forKey: "primaryRecordingShortcut")
+            UserDefaults.standard.set(primaryRecordingShortcut.rawValue, forKey: DefaultsKeys.primaryRecordingShortcut)
             refreshShortcutMonitoring()
         }
     }
@@ -16,30 +16,33 @@ class RecordingShortcutManager: ObservableObject {
             if secondaryRecordingShortcut == .none {
                 ShortcutStore.setShortcut(nil, for: .secondaryRecording)
             }
-            UserDefaults.standard.set(secondaryRecordingShortcut.rawValue, forKey: "secondaryRecordingShortcut")
+            UserDefaults.standard.set(
+                secondaryRecordingShortcut.rawValue, forKey: DefaultsKeys.secondaryRecordingShortcut)
             refreshShortcutMonitoring()
         }
     }
     @Published var primaryRecordingShortcutMode: Mode {
         didSet {
-            UserDefaults.standard.set(primaryRecordingShortcutMode.rawValue, forKey: "primaryRecordingShortcutMode")
+            UserDefaults.standard.set(
+                primaryRecordingShortcutMode.rawValue, forKey: DefaultsKeys.primaryRecordingShortcutMode)
             primaryRecordingShortcutModeSource.primaryMode = primaryRecordingShortcutMode
         }
     }
     @Published var secondaryRecordingShortcutMode: Mode {
         didSet {
-            UserDefaults.standard.set(secondaryRecordingShortcutMode.rawValue, forKey: "secondaryRecordingShortcutMode")
+            UserDefaults.standard.set(
+                secondaryRecordingShortcutMode.rawValue, forKey: DefaultsKeys.secondaryRecordingShortcutMode)
         }
     }
     @Published var isMiddleClickToggleEnabled: Bool {
         didSet {
-            UserDefaults.standard.set(isMiddleClickToggleEnabled, forKey: "isMiddleClickToggleEnabled")
+            UserDefaults.standard.set(isMiddleClickToggleEnabled, forKey: DefaultsKeys.isMiddleClickToggleEnabled)
             refreshShortcutMonitoring()
         }
     }
     @Published var middleClickActivationDelay: Int {
         didSet {
-            UserDefaults.standard.set(middleClickActivationDelay, forKey: "middleClickActivationDelay")
+            UserDefaults.standard.set(middleClickActivationDelay, forKey: DefaultsKeys.middleClickActivationDelay)
         }
     }
 
@@ -134,8 +137,8 @@ class RecordingShortcutManager: ObservableObject {
             for: .secondaryRecording
         )
 
-        self.isMiddleClickToggleEnabled = UserDefaults.standard.bool(forKey: "isMiddleClickToggleEnabled")
-        self.middleClickActivationDelay = UserDefaults.standard.integer(forKey: "middleClickActivationDelay")
+        self.isMiddleClickToggleEnabled = UserDefaults.standard.bool(forKey: DefaultsKeys.isMiddleClickToggleEnabled)
+        self.middleClickActivationDelay = UserDefaults.standard.integer(forKey: DefaultsKeys.middleClickActivationDelay)
 
         let autoSend = AgentAutoSend(engine: engine, recorderUIManager: recorderUIManager)
         self.autoSend = autoSend
@@ -491,11 +494,11 @@ class RecordingShortcutManager: ObservableObject {
     /// Anything else steals a bare fn tap (emoji picker, input source, Apple Dictation).
     static var systemFnKeyActionIsOff: Bool {
         guard let defaults = UserDefaults(suiteName: "com.apple.HIToolbox"),
-            defaults.object(forKey: "AppleFnUsageType") != nil
+            defaults.object(forKey: DefaultsKeys.appleFnUsageType) != nil
         else {
             return false
         }
-        return defaults.integer(forKey: "AppleFnUsageType") == 0
+        return defaults.integer(forKey: DefaultsKeys.appleFnUsageType) == 0
     }
 
     var isShortcutConfigured: Bool {

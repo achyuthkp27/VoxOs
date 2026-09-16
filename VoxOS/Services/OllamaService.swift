@@ -8,13 +8,13 @@ class OllamaService: ObservableObject {
     // MARK: - Published Properties
     @Published var baseURL: String {
         didSet {
-            UserDefaults.standard.set(baseURL, forKey: "ollamaBaseURL")
+            UserDefaults.standard.set(baseURL, forKey: DefaultsKeys.ollamaBaseURL)
         }
     }
 
     @Published var selectedModel: String {
         didSet {
-            UserDefaults.standard.set(selectedModel, forKey: "ollamaSelectedModel")
+            UserDefaults.standard.set(selectedModel, forKey: DefaultsKeys.ollamaSelectedModel)
         }
     }
 
@@ -25,8 +25,8 @@ class OllamaService: ObservableObject {
     private let defaultTemperature: Double = 0.3
 
     init() {
-        self.baseURL = UserDefaults.standard.string(forKey: "ollamaBaseURL") ?? Self.defaultBaseURL
-        self.selectedModel = UserDefaults.standard.string(forKey: "ollamaSelectedModel") ?? "llama2"
+        self.baseURL = UserDefaults.standard.string(forKey: DefaultsKeys.ollamaBaseURL) ?? Self.defaultBaseURL
+        self.selectedModel = UserDefaults.standard.string(forKey: DefaultsKeys.ollamaSelectedModel) ?? "llama2"
     }
 
     private var baseURLValue: URL? {

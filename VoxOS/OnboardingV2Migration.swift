@@ -2,8 +2,8 @@ import Foundation
 
 enum OnboardingV2Migration {
     private static let legacyCompletedKey = "hasCompletedOnboarding"
-    private static let completedKey = "hasCompletedOnboardingV2"
-    private static let preparedKey = "hasPreparedOnboardingV2"
+    private static let completedKey = DefaultsKeys.hasCompletedOnboardingV2
+    private static let preparedKey = DefaultsKeys.hasPreparedOnboardingV2
     private static let legacyModeConfigurationsKey = "powerModeConfigurationsV2"
     private static let modeConfigurationsKey = "modeConfigurationsV2"
     private static let activeConfigurationIdKey = "activeConfigurationId"

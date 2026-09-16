@@ -45,7 +45,7 @@ enum AgentToolCatalog {
                 "- RESUMING a paused task. You asked the user: \"\(paused.question)\". Treat <TRANSCRIPT> as their answer and continue the task."
                     + (paused.context.isEmpty ? "" : " Context: \(paused.context)"))
         }
-        if let language = UserDefaults.standard.string(forKey: "agentLearningLanguage"), !language.isEmpty {
+        if let language = UserDefaults.standard.string(forKey: DefaultsKeys.agentLearningLanguage), !language.isEmpty {
             lines.append(
                 "- learning language: \(language). When the user asks about a word or phrase, explain it in that language's context (meaning, usage, one example). Call mark_vocabulary_known when they say they know it."
             )

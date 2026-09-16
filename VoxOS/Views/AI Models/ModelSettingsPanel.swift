@@ -190,7 +190,7 @@ private struct WhisperPromptSettingsSection: View {
     private func selectCurrentTranscriptionLanguage() {
         let activeLanguage =
             ModeManager.shared.currentEffectiveConfiguration?.selectedLanguage
-            ?? UserDefaults.standard.string(forKey: "SelectedLanguage")
+            ?? UserDefaults.standard.string(forKey: DefaultsKeys.selectedLanguage)
             ?? "en"
 
         promptLanguage = supportedLanguages[activeLanguage] == nil ? "en" : activeLanguage
@@ -198,10 +198,10 @@ private struct WhisperPromptSettingsSection: View {
 }
 
 private struct EnhancementModelSettingsView: View {
-    @AppStorage("SkipShortEnhancement") private var isSkipShortEnhancementEnabled = true
-    @AppStorage("ShortEnhancementWordThreshold") private var shortEnhancementWordThreshold = 3
-    @AppStorage("EnhancementTimeoutSeconds") private var enhancementTimeoutSeconds = 7
-    @AppStorage("EnhancementRetryOnTimeout") private var retryOnTimeout = true
+    @AppStorage(DefaultsKeys.skipShortEnhancement) private var isSkipShortEnhancementEnabled = true
+    @AppStorage(DefaultsKeys.shortEnhancementWordThreshold) private var shortEnhancementWordThreshold = 3
+    @AppStorage(DefaultsKeys.enhancementTimeoutSeconds) private var enhancementTimeoutSeconds = 7
+    @AppStorage(DefaultsKeys.enhancementRetryOnTimeout) private var retryOnTimeout = true
     @State private var isShortEnhancementExpanded = false
 
     var body: some View {
@@ -254,9 +254,9 @@ private struct EnhancementModelSettingsView: View {
 }
 
 private struct AdvancedModelSettingsSection: View {
-    @AppStorage("IsVADEnabled") private var isVADEnabled = true
-    @AppStorage("AppendTrailingSpace") private var appendTrailingSpace = true
-    @AppStorage("PrewarmModelOnWake") private var prewarmModelOnWake = true
+    @AppStorage(DefaultsKeys.isVADEnabled) private var isVADEnabled = true
+    @AppStorage(DefaultsKeys.appendTrailingSpace) private var appendTrailingSpace = true
+    @AppStorage(DefaultsKeys.prewarmModelOnWake) private var prewarmModelOnWake = true
 
     var body: some View {
         Section {

@@ -23,8 +23,8 @@ enum WindowDiagnostics {
 }
 
 enum MenuBarOnlyPreference {
-    static let key = "IsMenuBarOnly"
-    static let onboardingCompletedKey = "hasCompletedOnboardingV2"
+    static let key = DefaultsKeys.isMenuBarOnly
+    static let onboardingCompletedKey = DefaultsKeys.hasCompletedOnboardingV2
 
     /// The stored preference, as the "Hide Dock Icon" toggle shows it.
     static var isEnabled: Bool {

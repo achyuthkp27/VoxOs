@@ -69,7 +69,8 @@ final class CustomAIProviderManager: ObservableObject {
 
     var defaultModelName: String {
         let savedModel =
-            defaults.string(forKey: "customProviderModel")?.trimmingCharacters(in: .whitespacesAndNewlines) ?? ""
+            defaults.string(forKey: DefaultsKeys.customProviderModel)?.trimmingCharacters(in: .whitespacesAndNewlines)
+            ?? ""
         let configuredModelNames = availableModelNames
         if !savedModel.isEmpty, configuredModelNames.contains(savedModel) {
             return savedModel
@@ -119,7 +120,7 @@ final class CustomAIProviderManager: ObservableObject {
         providers[index] = normalizedProvider
         saveProviders()
 
-        let selectedModelName = defaults.string(forKey: "customProviderModel")
+        let selectedModelName = defaults.string(forKey: DefaultsKeys.customProviderModel)
         if selectedModelName == previousModelName || selectedModelName == normalizedProvider.modelName {
             applyRuntimeConfiguration(normalizedProvider)
         }
@@ -131,7 +132,7 @@ final class CustomAIProviderManager: ObservableObject {
         providers.removeAll { $0.id == provider.id }
         APIKeyManager.shared.deleteCustomAIProviderAPIKey(forProviderId: provider.id)
 
-        if defaults.string(forKey: "customProviderModel") == provider.modelName {
+        if defaults.string(forKey: DefaultsKeys.customProviderModel) == provider.modelName {
             clearRuntimeConfiguration()
         }
 
@@ -229,9 +230,9 @@ final class CustomAIProviderManager: ObservableObject {
 
     private func migrateLegacyCustomProviderIfNeeded() {
         guard providers.isEmpty,
-            let baseURL = defaults.string(forKey: "customProviderBaseURL"),
+            let baseURL = defaults.string(forKey: DefaultsKeys.customProviderBaseURL),
             !baseURL.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty,
-            let model = defaults.string(forKey: "customProviderModel"),
+            let model = defaults.string(forKey: DefaultsKeys.customProviderModel),
             !model.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty
         else {
             return
@@ -255,8 +256,8 @@ final class CustomAIProviderManager: ObservableObject {
     private func applyRuntimeConfiguration(_ provider: CustomAIProviderConfig) {
         let modelName = provider.modelName
 
-        defaults.set(provider.baseURL, forKey: "customProviderBaseURL")
-        defaults.set(modelName, forKey: "customProviderModel")
+        defaults.set(provider.baseURL, forKey: DefaultsKeys.customProviderBaseURL)
+        defaults.set(modelName, forKey: DefaultsKeys.customProviderModel)
         defaults.set(modelName, forKey: "\(AIProvider.custom.rawValue)SelectedModel")
 
         if let key = APIKeyManager.shared.getCustomAIProviderAPIKey(forProviderId: provider.id), !key.isEmpty {
@@ -268,8 +269,8 @@ final class CustomAIProviderManager: ObservableObject {
     }
 
     private func clearRuntimeConfiguration() {
-        defaults.removeObject(forKey: "customProviderBaseURL")
-        defaults.removeObject(forKey: "customProviderModel")
+        defaults.removeObject(forKey: DefaultsKeys.customProviderBaseURL)
+        defaults.removeObject(forKey: DefaultsKeys.customProviderModel)
         defaults.removeObject(forKey: "\(AIProvider.custom.rawValue)SelectedModel")
         APIKeyManager.shared.deleteAPIKey(forProvider: AIProvider.custom.rawValue)
         NotificationCenter.default.post(name: .aiProviderKeyChanged, object: nil)

@@ -890,7 +890,7 @@ class VoxOSEngine: NSObject, ObservableObject {
     @objc func handlePromptChange() {
         Task {
             let currentPrompt =
-                UserDefaults.standard.string(forKey: "TranscriptionPrompt")
+                UserDefaults.standard.string(forKey: DefaultsKeys.transcriptionPrompt)
                 ?? whisperModelManager.whisperPrompt.transcriptionPrompt
             if let context = whisperModelManager.whisperContext {
                 await context.setPrompt(currentPrompt)

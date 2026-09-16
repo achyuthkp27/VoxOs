@@ -13,10 +13,10 @@ struct SettingsView: View {
     @ObservedObject private var launchAtLoginManager = LaunchAtLoginManager.shared
     @ObservedObject private var mediaController = MediaController.shared
     @ObservedObject private var playbackController = PlaybackController.shared
-    @AppStorage("hasCompletedOnboardingV2") private var hasCompletedOnboardingV2 = true
-    @AppStorage("enableAnnouncements") private var enableAnnouncements = true
-    @AppStorage("restoreClipboardAfterPaste") private var restoreClipboardAfterPaste = true
-    @AppStorage("clipboardRestoreDelay") private var clipboardRestoreDelay = 2.0
+    @AppStorage(DefaultsKeys.hasCompletedOnboardingV2) private var hasCompletedOnboardingV2 = true
+    @AppStorage(DefaultsKeys.enableAnnouncements) private var enableAnnouncements = true
+    @AppStorage(DefaultsKeys.restoreClipboardAfterPaste) private var restoreClipboardAfterPaste = true
+    @AppStorage(DefaultsKeys.clipboardRestoreDelay) private var clipboardRestoreDelay = 2.0
     @AppStorage(PasteMethod.userDefaultsKey) private var pasteMethodRawValue = PasteMethod.standard.rawValue
     @AppStorage(AppAppearancePreference.userDefaultsKey) private var appAppearancePreference = AppAppearancePreference
         .system

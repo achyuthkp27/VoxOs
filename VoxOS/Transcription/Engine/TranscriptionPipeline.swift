@@ -188,8 +188,9 @@ class TranscriptionPipeline {
                 outputForDelivery = resolvedOutputConfiguration
                 responseConfig = shouldRespondInRecorder ? resolvedEnhancementConfiguration : nil
 
-                let isSkipShortEnhancementEnabled = UserDefaults.standard.bool(forKey: "SkipShortEnhancement")
-                let savedThreshold = UserDefaults.standard.integer(forKey: "ShortEnhancementWordThreshold")
+                let isSkipShortEnhancementEnabled = UserDefaults.standard.bool(
+                    forKey: DefaultsKeys.skipShortEnhancement)
+                let savedThreshold = UserDefaults.standard.integer(forKey: DefaultsKeys.shortEnhancementWordThreshold)
                 let shortEnhancementWordThreshold = savedThreshold > 0 ? savedThreshold : 3
                 let shouldSkipEnhancement =
                     !shouldRespondInRecorder && isSkipShortEnhancementEnabled

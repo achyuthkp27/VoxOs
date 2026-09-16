@@ -31,10 +31,10 @@ enum StreamingKeysMigration {
             "voxtral-mini-transcribe-realtime-2602": "voxtral-mini-latest",
         ]
 
-        if let savedModel = defaults.string(forKey: "CurrentTranscriptionModel"),
+        if let savedModel = defaults.string(forKey: DefaultsKeys.currentTranscriptionModel),
             let replacement = removedModelMappings[savedModel]
         {
-            defaults.set(replacement, forKey: "CurrentTranscriptionModel")
+            defaults.set(replacement, forKey: DefaultsKeys.currentTranscriptionModel)
         }
 
         // Remap selectedTranscriptionModelName inside each stored ModeConfig.

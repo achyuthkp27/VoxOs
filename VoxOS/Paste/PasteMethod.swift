@@ -4,8 +4,8 @@ enum PasteMethod: String, CaseIterable, Identifiable {
     case standard = "default"
     case appleScript = "appleScript"
 
-    static let userDefaultsKey = "pasteMethod"
-    static let legacyAppleScriptPasteKey = "useAppleScriptPaste"
+    static let userDefaultsKey = DefaultsKeys.pasteMethod
+    static let legacyAppleScriptPasteKey = DefaultsKeys.useAppleScriptPaste
 
     var id: String { rawValue }
 

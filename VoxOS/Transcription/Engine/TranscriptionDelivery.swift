@@ -159,7 +159,7 @@ final class TranscriptionDelivery {
         if WritingDestination.isEnabled {
             textToPaste = WritingStyleFormatter.apply(textToPaste, category: WritingDestinationStore.categoryForPaste())
         }
-        let appendSpace = UserDefaults.standard.bool(forKey: "AppendTrailingSpace")
+        let appendSpace = UserDefaults.standard.bool(forKey: DefaultsKeys.appendTrailingSpace)
         let pastedText = textToPaste + (appendSpace ? " " : "")
         SoundManager.shared.playStopSound()
         await actions.dismiss()

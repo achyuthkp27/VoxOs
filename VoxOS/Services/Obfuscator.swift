@@ -37,13 +37,13 @@ struct Obfuscator {
 
         // Fallback to stored UUID
         let defaults = UserDefaults.standard
-        if let storedId = defaults.string(forKey: "VoxOSDeviceIdentifier") {
+        if let storedId = defaults.string(forKey: DefaultsKeys.voxOSDeviceIdentifier) {
             return storedId
         }
 
         // Create and store new UUID
         let newId = UUID().uuidString
-        defaults.set(newId, forKey: "VoxOSDeviceIdentifier")
+        defaults.set(newId, forKey: DefaultsKeys.voxOSDeviceIdentifier)
         return newId
     }
 

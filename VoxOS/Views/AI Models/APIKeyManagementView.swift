@@ -9,10 +9,10 @@ struct APIKeyManagementView: View {
     @State private var alertMessage = ""
     @State private var isVerifying = false
     @State private var ollamaBaseURL: String =
-        UserDefaults.standard.string(forKey: "ollamaBaseURL") ?? "http://localhost:11434"
+        UserDefaults.standard.string(forKey: DefaultsKeys.ollamaBaseURL) ?? "http://localhost:11434"
     @State private var ollamaModels: [OllamaModel] = []
     @State private var selectedOllamaModel: String =
-        UserDefaults.standard.string(forKey: "ollamaSelectedModel") ?? "mistral"
+        UserDefaults.standard.string(forKey: DefaultsKeys.ollamaSelectedModel) ?? "mistral"
     @State private var isCheckingOllama = false
     @State private var isEditingURL = false
     @State private var localCLICommandTemplate: String = ""

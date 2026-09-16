@@ -21,7 +21,8 @@ enum RecorderPanelStyle: String, CaseIterable, Identifiable {
 
     static var stored: RecorderPanelStyle {
         // The notch is the default everywhere; on Macs without one it draws at the menu bar.
-        let rawValue = UserDefaults.standard.string(forKey: "RecorderType") ?? RecorderPanelStyle.notch.rawValue
+        let rawValue =
+            UserDefaults.standard.string(forKey: DefaultsKeys.recorderType) ?? RecorderPanelStyle.notch.rawValue
         return RecorderPanelStyle(rawValue: rawValue) ?? .notch
     }
 }
@@ -38,7 +39,7 @@ class RecorderUIManager: ObservableObject, RecorderPanelPresenting {
         didSet {
             guard oldValue != recorderPanelStyle else { return }
             rebuildVisiblePanel(previousStyle: oldValue)
-            UserDefaults.standard.set(recorderPanelStyle.rawValue, forKey: "RecorderType")
+            UserDefaults.standard.set(recorderPanelStyle.rawValue, forKey: DefaultsKeys.recorderType)
         }
     }
 

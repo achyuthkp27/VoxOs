@@ -599,10 +599,10 @@ extension AgentTools {
         case "set_learning_language":
             let language = s("language").trimmingCharacters(in: .whitespacesAndNewlines)
             if language.isEmpty || ["off", "none", "stop"].contains(language.lowercased()) {
-                UserDefaults.standard.removeObject(forKey: "agentLearningLanguage")
+                UserDefaults.standard.removeObject(forKey: DefaultsKeys.agentLearningLanguage)
                 return ["ok": true, "learning_language": "off"]
             }
-            UserDefaults.standard.set(language, forKey: "agentLearningLanguage")
+            UserDefaults.standard.set(language, forKey: DefaultsKeys.agentLearningLanguage)
             return [
                 "ok": true, "learning_language": language,
                 "note":

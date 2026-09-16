@@ -171,17 +171,17 @@ struct ModeConfig: Codable, Identifiable, Equatable {
         isTextFormattingEnabled = try container.decodeIfPresent(Bool.self, forKey: .isTextFormattingEnabled) ?? false
         useClipboardContext =
             try container.decodeIfPresent(Bool.self, forKey: .useClipboardContext)
-            ?? UserDefaults.standard.bool(forKey: "useClipboardContext")
+            ?? UserDefaults.standard.bool(forKey: DefaultsKeys.useClipboardContext)
         if let decodedSelectedTextContext = try container.decodeIfPresent(Bool.self, forKey: .useSelectedTextContext) {
             useSelectedTextContext = decodedSelectedTextContext
-        } else if UserDefaults.standard.object(forKey: "useSelectedTextContext") == nil {
+        } else if UserDefaults.standard.object(forKey: DefaultsKeys.useSelectedTextContext) == nil {
             useSelectedTextContext = true
         } else {
-            useSelectedTextContext = UserDefaults.standard.bool(forKey: "useSelectedTextContext")
+            useSelectedTextContext = UserDefaults.standard.bool(forKey: DefaultsKeys.useSelectedTextContext)
         }
         useScreenCapture =
             try container.decodeIfPresent(Bool.self, forKey: .useScreenCapture)
-            ?? UserDefaults.standard.bool(forKey: "useScreenCaptureContext")
+            ?? UserDefaults.standard.bool(forKey: DefaultsKeys.useScreenCaptureContext)
         selectedAIProvider = try container.decodeIfPresent(String.self, forKey: .selectedAIProvider)
         selectedAIModel = try container.decodeIfPresent(String.self, forKey: .selectedAIModel)
         outputMode = try container.decodeIfPresent(ModeOutputMode.self, forKey: .outputMode) ?? .paste

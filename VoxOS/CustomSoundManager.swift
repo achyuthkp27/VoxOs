@@ -128,8 +128,8 @@ class CustomSoundManager: ObservableObject {
         let savedStopBuiltInSound = Self.savedBuiltInSound(for: .stop)
         let savedStartFilename = UserDefaults.standard.string(forKey: SoundType.start.filenameKey)
         let savedStopFilename = UserDefaults.standard.string(forKey: SoundType.stop.filenameKey)
-        let legacySoundFeedbackEnabled = UserDefaults.standard.object(forKey: "isSoundFeedbackEnabled")
-            .map { _ in UserDefaults.standard.bool(forKey: "isSoundFeedbackEnabled") }
+        let legacySoundFeedbackEnabled = UserDefaults.standard.object(forKey: DefaultsKeys.isSoundFeedbackEnabled)
+            .map { _ in UserDefaults.standard.bool(forKey: DefaultsKeys.isSoundFeedbackEnabled) }
 
         self.startBuiltInSound = savedStartBuiltInSound
         self.stopBuiltInSound = savedStopBuiltInSound

@@ -5,7 +5,7 @@ struct ModeSettingsPanelView: View {
     @ObservedObject var modeManager: ModeManager
     let onDismiss: () -> Void
 
-    @AppStorage("ModeTipDismissed")
+    @AppStorage(DefaultsKeys.modeTipDismissed)
     private var isTipDismissed = false
 
     private let contentInset: CGFloat = 20

@@ -15,7 +15,7 @@ final class AssistantChatService {
     private let aiService: AIService
 
     private var requestTimeout: TimeInterval {
-        let stored = UserDefaults.standard.integer(forKey: "EnhancementTimeoutSeconds")
+        let stored = UserDefaults.standard.integer(forKey: DefaultsKeys.enhancementTimeoutSeconds)
         return stored > 0 ? TimeInterval(stored) : 7
     }
 

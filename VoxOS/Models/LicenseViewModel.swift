@@ -246,7 +246,7 @@ final class LicenseViewModel: ObservableObject {
                     if isValid {
                         let limit = licenseCheck.activationsLimit ?? userDefaults.activationsLimit
                         requiresActivation = true
-                        userDefaults.set(true, forKey: "VoxOSLicenseRequiresActivation")
+                        userDefaults.set(true, forKey: DefaultsKeys.voxOSLicenseRequiresActivation)
                         activationsLimit = limit
                         userDefaults.activationsLimit = limit
                         completeSuccessfulValidation(message: String(localized: "License activated successfully!"))
@@ -259,14 +259,14 @@ final class LicenseViewModel: ObservableObject {
 
                 let limit = try await activateAndPersistLicense(normalizedLicenseKey)
                 requiresActivation = true
-                userDefaults.set(true, forKey: "VoxOSLicenseRequiresActivation")
+                userDefaults.set(true, forKey: DefaultsKeys.voxOSLicenseRequiresActivation)
                 activationsLimit = limit
                 userDefaults.activationsLimit = limit
             } else {
                 let limit = licenseCheck.activationsLimit ?? 0
                 try persistLicense(key: normalizedLicenseKey, activationId: nil)
                 requiresActivation = false
-                userDefaults.set(false, forKey: "VoxOSLicenseRequiresActivation")
+                userDefaults.set(false, forKey: DefaultsKeys.voxOSLicenseRequiresActivation)
                 activationsLimit = limit
                 userDefaults.activationsLimit = limit
                 completeSuccessfulValidation(message: String(localized: "License validated successfully!"))
@@ -407,7 +407,7 @@ final class LicenseViewModel: ObservableObject {
     }
 
     private func clearCachedLicense() {
-        userDefaults.set(false, forKey: "VoxOSLicenseRequiresActivation")
+        userDefaults.set(false, forKey: DefaultsKeys.voxOSLicenseRequiresActivation)
         userDefaults.activationsLimit = 0
         storedLicenseKey = nil
         activationId = nil
@@ -435,7 +435,7 @@ final class LicenseViewModel: ObservableObject {
             activationId = storedState.activationId
             trialStartDate = storedState.trialStartDate
             licenseKey = storedLicenseKey ?? ""
-            requiresActivation = userDefaults.bool(forKey: "VoxOSLicenseRequiresActivation")
+            requiresActivation = userDefaults.bool(forKey: DefaultsKeys.voxOSLicenseRequiresActivation)
             activationsLimit = userDefaults.activationsLimit
             isPersistentStateAvailable = true
             persistentStateErrorStatus = nil
@@ -588,7 +588,7 @@ final class LicenseViewModel: ObservableObject {
 // UserDefaults extension for non-sensitive license settings.
 extension UserDefaults {
     var activationsLimit: Int {
-        get { integer(forKey: "VoxOSActivationsLimit") }
-        set { set(newValue, forKey: "VoxOSActivationsLimit") }
+        get { integer(forKey: DefaultsKeys.voxOSActivationsLimit) }
+        set { set(newValue, forKey: DefaultsKeys.voxOSActivationsLimit) }
     }
 }
