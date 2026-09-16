@@ -215,12 +215,15 @@ struct NotchRecorderView<S: RecorderStateProvider & ObservableObject>: View {
 
     // MARK: - Live Text Panel
 
+    /// No rule between the wave and the transcript: the pill is one continuous black surface,
+    /// and `LiveTranscriptView` fades its own top edge so new text rises out of the row above.
     private var liveTextPanel: some View {
         VStack(spacing: 0) {
             if displayState == .liveText {
-                Divider().overlay(Color.primary.opacity(0.10))
-                LiveTranscriptView(text: stateProvider.partialTranscript)
-                    .padding(.horizontal, 8)
+                LiveTranscriptView(
+                    text: stateProvider.partialTranscript,
+                    horizontalInset: sideEdgePadding
+                )
             }
         }
         .frame(height: displayState == .liveText ? transcriptPanelHeight : 0)

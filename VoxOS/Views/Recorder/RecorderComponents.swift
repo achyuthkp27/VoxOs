@@ -556,6 +556,8 @@ struct RecorderModeGlyph: View {
 
 struct LiveTranscriptView: View {
     let text: String
+    /// Matched to the wave's leading inset in the row above so the pill reads as one column.
+    var horizontalInset: CGFloat = 22
 
     var body: some View {
         ScrollViewReader { proxy in
@@ -563,17 +565,22 @@ struct LiveTranscriptView: View {
                 Text(text)
                     .font(.app(size: 15, weight: .regular))
                     .foregroundColor(AppTheme.Notch.text)
+                    .lineSpacing(2)
                     .frame(maxWidth: .infinity, alignment: .leading)
-                    .padding(.horizontal, 22)
-                    .padding(.vertical, 8)
+                    .padding(.horizontal, horizontalInset)
+                    .padding(.top, 2)
+                    .padding(.bottom, 10)
                     .id("bottom")
             }
             .frame(height: 62)
+            // A longer, two-stage ramp replaces the divider that used to sit above this panel:
+            // the first line is still legible while its top edge dissolves into the wave row.
             .mask(
                 LinearGradient(
                     stops: [
                         .init(color: .clear, location: 0.0),
-                        .init(color: .black, location: 0.18),
+                        .init(color: .black.opacity(0.35), location: 0.16),
+                        .init(color: .black, location: 0.44),
                         .init(color: .black, location: 1.0),
                     ],
                     startPoint: .top,
