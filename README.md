@@ -3,6 +3,7 @@
   <h1>VoxOS</h1>
   <p>A native macOS voice dictation + voice-to-action agent, for personal use</p>
 
+  [![CI](https://github.com/achyuthkp27/VoxOs/actions/workflows/ci.yml/badge.svg)](https://github.com/achyuthkp27/VoxOs/actions/workflows/ci.yml)
   [![License](https://img.shields.io/badge/License-GPL%20v3-blue.svg)](https://www.gnu.org/licenses/gpl-3.0)
   ![Platform](https://img.shields.io/badge/platform-macOS%2014.4%2B-brightgreen)
 </div>
@@ -19,11 +20,6 @@ It does two things:
 2. **Agent Mode** — hold a different shortcut, speak a request, and it acts on your Mac: add calendar events,
    set reminders, draft emails, send WhatsApp/Slack/iMessage messages, find files, open apps and URLs, and more,
    using a provider-agnostic JSON tool-calling loop (works with local Ollama, Local CLI, or any hosted provider).
-
-## Build
-
-`make local` builds, signs with your Apple Development identity and installs to `/Applications`;
-`make test` runs the agent-logic unit tests; `make dev` does both build and launch.
 
 ## Features
 
@@ -45,7 +41,10 @@ It does two things:
 - 🖥️ **Notch-docked recorder UI** — a compact panel that molds around the camera notch, with a left-edge
   hover history sidebar for past interactions
 
-## Build from Source
+## Build
+
+`make local` builds, signs with your Apple Development identity and installs to `/Applications`;
+`make dev` does both build and launch. Run `make help` for the full target list.
 
 See [BUILDING.md](BUILDING.md) for the general build instructions. This fork additionally requires:
 
@@ -62,6 +61,48 @@ xcodebuild -project VoxOS.xcodeproj -scheme VoxOS -configuration Debug \
 ```
 
 (Needs the Metal toolchain installed once via `xcodebuild -downloadComponent MetalToolchain`.)
+
+## Development
+
+| command | what it does |
+| --- | --- |
+| `make local` | Build, sign, install to `/Applications` |
+| `make dev` | `make local` then launch |
+| `make test` | Run the test suite (72 tests) |
+| `make lint` | Check formatting with swift-format |
+| `make format` | Reformat sources in place |
+
+`make test` scores the run from its `.xcresult` bundle rather than the xcodebuild console,
+so it reports every test and fails the build when any of them fail:
+
+```
+Passed: 71 passed, 0 failed, 1 skipped (72 total)
+```
+
+The skipped test is a live MCP check; enable it with `TEST_RUNNER_VOXOS_LIVE_MCP=1 make test`.
+The full xcodebuild log is written to `.local-build-tests/test.log`.
+
+Formatting is enforced by [`.swift-format`](.swift-format). Two rules are deliberately off:
+`AlwaysUseLowerCamelCase`, because it cannot tell a `Codable` property whose name is a
+wire-format JSON key from a badly named constant, and `ReplaceForEachWithForLoop`, which is
+a style opinion with no behavioural effect.
+
+The tree was reformatted in one sweep; [`.git-blame-ignore-revs`](.git-blame-ignore-revs) keeps
+that commit out of `git blame`. Enable it locally with:
+
+```shell
+git config blame.ignoreRevsFile .git-blame-ignore-revs
+```
+
+### Continuous integration
+
+[`.github/workflows/ci.yml`](.github/workflows/ci.yml) runs `make test` and `make lint` on a
+clean macOS runner for every push and pull request. The whisper.xcframework is cached against
+the pinned `WHISPER_CPP_REF` in the [Makefile](Makefile), so only the first run pays for
+building it.
+
+Dependencies are pinned by revision rather than tracking branches, and `Package.resolved` is
+committed, so every machine and CI build the same tree.
 
 ## Requirements
 
