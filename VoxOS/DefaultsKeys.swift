@@ -37,6 +37,7 @@ enum DefaultsKeys {
     static let isVADEnabled = "IsVADEnabled"
     static let isTextFormattingEnabled = "IsTextFormattingEnabled"
     static let recorderType = "RecorderType"
+    static let edgeHistoryEnabled = "EdgeHistoryEnabled"
     static let transcriptionPrompt = "TranscriptionPrompt"
     static let currentTranscriptionModel = "CurrentTranscriptionModel"
     static let currentModel = "CurrentModel"

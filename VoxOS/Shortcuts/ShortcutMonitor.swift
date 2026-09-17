@@ -175,10 +175,13 @@ final class ShortcutMonitor {
             CFRunLoopAddSource(CFRunLoopGetCurrent(), source, .commonModes)
             CGEvent.tapEnable(tap: eventTap, enable: true)
             self.tapReady.signal()
-            // A run loop with no other input source returns immediately, so this would spin;
-            // run it in a loop and let stop() break it by invalidating the port.
+            // Blocks until an event arrives or stop() calls CFRunLoopStop. The tap's source
+            // keeps the loop alive, so this sleeps rather than polling — an earlier version ran
+            // with a 0.5s timeout, which woke this thread twice a second for the life of the app
+            // and cost battery for nothing. The outer loop only covers CFRunLoopRun returning
+            // because every source went away.
             while !Thread.current.isCancelled {
-                CFRunLoopRunInMode(.defaultMode, 0.5, false)
+                CFRunLoopRun()
             }
         }
         thread.name = "com.achyuthkp.voxos.shortcut-tap"

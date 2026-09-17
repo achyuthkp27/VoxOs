@@ -79,6 +79,7 @@ struct SettingsView: View {
     private static let interfaceTerms = [
         "Interface", "Appearance", "Language", "Recorder Position", "Live Text Display",
         "Shows live text while recording with realtime models.",
+        "Edge History", "battery", "hover", "power",
     ]
     private static let generalTerms = [
         "General", "Hide Dock Icon", "Launch at Login", "Automatically Check for Updates",
@@ -102,6 +103,7 @@ struct SettingsView: View {
     ]
 
     @AppStorage(DefaultsKeys.identifySpeakers) private var identifySpeakers = false
+    @AppStorage(DefaultsKeys.edgeHistoryEnabled) private var edgeHistoryEnabled = true
 
     @State private var settingsSearch = ""
 
@@ -538,6 +540,14 @@ struct SettingsView: View {
                         AppLanguagePreference.apply(rawValue: normalizedValue)
                         showLanguageRestartAlert = true
                     }
+
+                    Toggle("Left-Edge History", isOn: $edgeHistoryEnabled)
+
+                    Text(
+                        "Reveals recent transcriptions when the pointer reaches the left edge of the screen. Watching for that means tracking every mouse movement, so turning it off measurably reduces battery use. Takes effect after a restart."
+                    )
+                    .font(.app(.caption))
+                    .foregroundStyle(.secondary)
 
                     Picker("Recorder Position", selection: $recorderUIManager.recorderPanelStyle) {
                         ForEach(RecorderPanelStyle.allCases) { style in

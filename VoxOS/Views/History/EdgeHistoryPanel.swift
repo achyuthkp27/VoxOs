@@ -107,6 +107,14 @@ final class EdgeHistoryWindowManager {
 
     private func installHoverMonitor() {
         guard hoverMonitor == nil else { return }
+        // Watching for the pointer reaching the screen edge means asking macOS to deliver every
+        // mouse move this app is running for, which is a continuous wakeup source and the single
+        // biggest thing VoxOS does while otherwise idle. Anyone not using the edge panel should
+        // not pay for it.
+        guard UserDefaults.standard.bool(forKey: DefaultsKeys.edgeHistoryEnabled) else {
+            logger.info("Edge history disabled; not watching for pointer movement")
+            return
+        }
         // NSEvent monitors are delivered on the main thread, so assuming that here rather than
         // hopping through a Task avoids allocating one per mouse move — which, at 120 Hz, was
         // most of what this monitor did.
