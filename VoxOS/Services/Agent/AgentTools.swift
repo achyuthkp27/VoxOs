@@ -917,6 +917,38 @@ enum AgentMemory {
         return ["result": "remembered \(key)"]
     }
 
+    /// Keys the agent has remembered.
+    ///
+    /// Keys only, never values: the point is to tell the agent what it can ask for, and dumping
+    /// every stored value into every request would both bloat the prompt and send the user's
+    /// saved facts to the model whether or not they are relevant.
+    static func keys() -> [String] {
+        load().keys.sorted()
+    }
+
+    /// The runtime-prompt line listing what is remembered, or nil when there is nothing.
+    ///
+    /// Capped on both count and characters because this is re-sent on every agent step, and a
+    /// user with a large memory would otherwise pay for all of it on every request — the same
+    /// rate-limit pressure the tool catalogue is kept lean for. Truncation is stated rather than
+    /// silent, so the agent knows recall can reach keys it cannot see.
+    static func promptLine(from keys: [String], limit: Int = 25, maxLength: Int = 400) -> String? {
+        guard !keys.isEmpty else { return nil }
+
+        var shown: [String] = []
+        var length = 0
+        for key in keys.prefix(limit) {
+            let cost = key.count + 2
+            if length + cost > maxLength { break }
+            shown.append(key)
+            length += cost
+        }
+        guard !shown.isEmpty else { return nil }
+
+        let suffix = shown.count < keys.count ? ", and \(keys.count - shown.count) more" : ""
+        return "- remembered (call recall with one of these keys): " + shown.joined(separator: ", ") + suffix
+    }
+
     static func recall(key: String) -> [String: Any] {
         let dict = load()
         guard !key.isEmpty else {

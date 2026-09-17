@@ -54,6 +54,13 @@ enum AgentToolCatalog {
             lines.append(
                 "- RECORDING macro \"\(name)\": every mutating tool call is being captured until macro_record_stop.")
         }
+        // Memory was write-and-forget: the agent could remember things but had no way to know it
+        // had, so recall only worked when it happened to guess a key. Listing the keys makes what
+        // is stored reachable; the values stay behind recall so the prompt does not carry the
+        // user's saved facts on every request.
+        if let remembered = AgentMemory.promptLine(from: AgentMemory.keys()) {
+            lines.append(remembered)
+        }
         let macros = AgentMacros.list()
         if !macros.isEmpty {
             lines.append("- saved macros: " + macros.map(\.name).joined(separator: ", "))
