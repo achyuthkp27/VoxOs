@@ -159,8 +159,18 @@ final class TranscriptionDelivery {
         if WritingDestination.isEnabled {
             textToPaste = WritingStyleFormatter.apply(textToPaste, category: WritingDestinationStore.categoryForPaste())
         }
+        // Spacing is decided from what sits either side of the caret rather than always adding a
+        // trailing space: that alone gave "Helloworld " when dictating straight after a word, and
+        // doubled the space when one was already there.
         let appendSpace = UserDefaults.standard.bool(forKey: DefaultsKeys.appendTrailingSpace)
-        let pastedText = textToPaste + (appendSpace ? " " : "")
+        let context = AgentAXTree.insertionContext()
+        let spacing = DictationSpacing.decide(
+            text: textToPaste,
+            before: context?.before,
+            after: context?.after,
+            appendTrailingSpace: appendSpace
+        )
+        let pastedText = spacing.applied(to: textToPaste)
         SoundManager.shared.playStopSound()
         await actions.dismiss()
 

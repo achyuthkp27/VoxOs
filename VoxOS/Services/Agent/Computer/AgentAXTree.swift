@@ -85,6 +85,45 @@ enum AgentAXTree {
         return stringFrom(copyAttribute(focused, kAXValueAttribute))
     }
 
+    /// The characters either side of the insertion point in the focused text field.
+    ///
+    /// Returns nil when there is no usable answer — no Accessibility permission, no focused text
+    /// element, a selection rather than a caret, or an app that does not expose its selected
+    /// range. Callers treat nil as "do not guess" rather than as "nothing is there", because
+    /// inventing spacing from a wrong answer shifts the user's text.
+    static func insertionContext() -> (before: Character?, after: Character?)? {
+        guard AXIsProcessTrusted() else { return nil }
+        let system = AXUIElementCreateSystemWide()
+        guard let focused = axElement(copyAttribute(system, kAXFocusedUIElementAttribute)) else {
+            return nil
+        }
+        // stringFrom yields "" for a non-text element rather than nil, and an empty field has no
+        // neighbouring characters to report either way.
+        let value = stringFrom(copyAttribute(focused, kAXValueAttribute))
+        guard !value.isEmpty else { return nil }
+
+        guard let rangeValue = copyAttribute(focused, kAXSelectedTextRangeAttribute) else { return nil }
+        var range = CFRange()
+        guard AXValueGetValue(rangeValue as! AXValue, .cfRange, &range) else { return nil }
+
+        // A non-empty selection is about to be replaced, so neither side describes what the
+        // inserted text will sit between.
+        guard range.length == 0 else { return nil }
+
+        // AX reports UTF-16 offsets; anything outside the string means the two are out of step
+        // and the answer cannot be trusted.
+        let utf16 = Array(value.utf16)
+        let caret = range.location
+        guard caret >= 0, caret <= utf16.count else { return nil }
+
+        func character(at index: Int) -> Character? {
+            guard index >= 0, index < utf16.count else { return nil }
+            return String(utf16CodeUnits: [utf16[index]], count: 1).first
+        }
+
+        return (before: character(at: caret - 1), after: character(at: caret))
+    }
+
     // MARK: - Private
 
     private static func walk(
