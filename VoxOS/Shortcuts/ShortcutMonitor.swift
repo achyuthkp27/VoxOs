@@ -41,7 +41,27 @@ final class ShortcutMonitor {
     /// Guards the state below, which the tap thread now touches alongside start/stop callers.
     private let stateLock = NSLock()
 
+    /// A failed `tapCreate` used to be permanent for the life of the process. At launch the tap
+    /// is built before Accessibility is trusted, so it fails, and macOS never calls back when the
+    /// grant arrives. `RecordingShortcutManager` hid that by rebuilding its monitor on any
+    /// shortcut or setting change, but `ModeShortcutManager` only rebuilds when a mode shortcut
+    /// itself changes — so a launch-time failure left every mode shortcut dead for the whole
+    /// session. Re-attempt on a backoff instead, and only while shortcuts are registered and no
+    /// tap exists, so a healthy monitor schedules nothing.
+    private var tapRetryGeneration: UInt64 = 0
+    private var tapRetryDelay: TimeInterval = ShortcutMonitor.initialTapRetryDelay
+
+    /// Test seams. `tapCreate` only succeeds for a process macOS trusts for Accessibility, and a
+    /// test host cannot be granted that from code, so the failure path this retry exists for is
+    /// otherwise unreachable from a unit test.
+    var simulatesEventTapInstallFailure = false
+    var retryScheduler: (TimeInterval, @escaping () -> Void) -> Void = { delay, work in
+        DispatchQueue.main.asyncAfter(deadline: .now() + delay, execute: work)
+    }
+
     private static let shortcutInterruptionWindow: TimeInterval = 1.0
+    private static let initialTapRetryDelay: TimeInterval = 1.0
+    private static let maxTapRetryDelay: TimeInterval = 30.0
 
     deinit {
         stop()
@@ -74,7 +94,44 @@ final class ShortcutMonitor {
 
         guard hasShortcuts else { return true }
 
-        return installEventTap()
+        return installEventTapOrScheduleRetry()
+    }
+
+    @discardableResult
+    private func installEventTapOrScheduleRetry() -> Bool {
+        if installEventTap() {
+            stateLock.withLock { tapRetryDelay = Self.initialTapRetryDelay }
+            return true
+        }
+
+        scheduleTapInstallRetry()
+        return false
+    }
+
+    private func scheduleTapInstallRetry() {
+        let (generation, delay) = stateLock.withLock { () -> (UInt64, TimeInterval) in
+            tapRetryGeneration &+= 1
+            let delay = tapRetryDelay
+            tapRetryDelay = min(tapRetryDelay * 2, Self.maxTapRetryDelay)
+            return (tapRetryGeneration, delay)
+        }
+
+        logger.notice(
+            "Retrying global shortcut event tap in \(delay, privacy: .public)s (accessibility trusted: \(AXIsProcessTrusted(), privacy: .public))"
+        )
+
+        retryScheduler(delay) { [weak self] in
+            guard let self else { return }
+
+            // A later start()/stop() bumps the generation, so a stale retry does nothing.
+            let isRetryCurrent = self.stateLock.withLock {
+                self.tapRetryGeneration == generation && !self.shortcuts.isEmpty
+            }
+
+            guard isRetryCurrent, self.eventTap == nil else { return }
+
+            self.installEventTapOrScheduleRetry()
+        }
     }
 
     func stop() {
@@ -102,6 +159,8 @@ final class ShortcutMonitor {
             onKeyDown = nil
             onKeyUp = nil
             onShortcutInterrupted = nil
+            tapRetryGeneration &+= 1
+            tapRetryDelay = Self.initialTapRetryDelay
         }
     }
 
@@ -125,6 +184,8 @@ final class ShortcutMonitor {
     }
 
     private func installEventTap() -> Bool {
+        guard !simulatesEventTapInstallFailure else { return false }
+
         let callback: CGEventTapCallBack = { _, type, event, userInfo in
             guard let userInfo else {
                 return Unmanaged.passUnretained(event)
@@ -163,6 +224,11 @@ final class ShortcutMonitor {
             logger.error("Failed to create global shortcut event tap run loop source")
             return false
         }
+
+        // tapCreate returns an *enabled* tap, so from this instant every keystroke on the machine
+        // is routed to a mach port that nothing is servicing yet — input stalls until the tap
+        // thread's run loop picks the source up. Keep it off until that is true.
+        CGEvent.tapEnable(tap: eventTap, enable: false)
 
         self.eventTap = eventTap
         eventTapRunLoopSource = source
@@ -206,14 +272,21 @@ final class ShortcutMonitor {
         // never sees state half-written by start() or stop() on another thread. The handlers it
         // fires already hop to main, so nothing inside waits on the main thread — which is the
         // property that keeps system-wide typing responsive.
-        return stateLock.withLock {
-            handleEvent(
-                kind: eventKind,
-                keyCode: keyCode,
-                modifierFlags: modifierFlags,
-                eventTime: ProcessInfo.processInfo.systemUptime
-            )
-        }
+        //
+        // Never *block* on that lock, though. This is an active head-inserted session tap, so
+        // every keystroke on the machine passes through here: waiting on a lock that main holds
+        // freezes typing everywhere until this process dies — which is what a wedged main thread
+        // used to do. A contended lock costs at most one unrecognised shortcut; the event itself
+        // is always passed through untouched.
+        guard stateLock.try() else { return false }
+        defer { stateLock.unlock() }
+
+        return handleEvent(
+            kind: eventKind,
+            keyCode: keyCode,
+            modifierFlags: modifierFlags,
+            eventTime: ProcessInfo.processInfo.systemUptime
+        )
     }
 
     private func resetPressedShortcutsAfterTapInterruption() {

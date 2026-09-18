@@ -1,7 +1,9 @@
 import Foundation
+import os
 
 @MainActor
 class ModeShortcutManager {
+    private static let logger = Logger(subsystem: "com.achyuthkp.voxos", category: "Shortcuts")
     private let shortcutMonitor = ShortcutMonitor()
     private let modeProvider: @MainActor () -> RecordingShortcutManager.Mode
     private let shortcutModeHandler: RecordingShortcutModeHandler
@@ -66,11 +68,16 @@ class ModeShortcutManager {
             }
         }
 
+        Self.logger.notice(
+            "mode shortcuts registered: \(shortcuts.map { "\($0.key.storageName)=\($0.value.displayString)" }.sorted().joined(separator: ", "), privacy: .public)"
+        )
+
         shortcutMonitor.start(
             shortcuts: shortcuts,
             interruptibleActions: Set(shortcuts.keys),
             onKeyDown: { [weak self] action, eventTime in
                 Task { @MainActor in
+                    Self.logger.notice("mode shortcut down: \(action.storageName, privacy: .public)")
                     guard let self,
                         let modeId = self.modeId(for: action)
                     else {
@@ -87,6 +94,7 @@ class ModeShortcutManager {
             },
             onKeyUp: { [weak self] action, eventTime in
                 Task { @MainActor in
+                    Self.logger.notice("mode shortcut up: \(action.storageName, privacy: .public)")
                     guard let self,
                         case .mode(let modeId) = action
                     else {

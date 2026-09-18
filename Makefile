@@ -107,7 +107,20 @@ local: check setup
 		if pgrep -x VoxOS >/dev/null; then \
 			echo "Quitting running VoxOS..."; \
 			osascript -e 'quit app "VoxOS"' >/dev/null 2>&1 || true; \
-			sleep 2; \
+			for i in $$(seq 1 20); do \
+				pgrep -x VoxOS >/dev/null || break; \
+				sleep 0.5; \
+			done; \
+			if pgrep -x VoxOS >/dev/null; then \
+				echo "VoxOS did not quit in 10s; terminating it before replacing the bundle"; \
+				pkill -x VoxOS || true; \
+				for i in $$(seq 1 10); do \
+					pgrep -x VoxOS >/dev/null || break; \
+					sleep 0.5; \
+				done; \
+				pkill -9 -x VoxOS 2>/dev/null || true; \
+				sleep 1; \
+			fi; \
 		fi; \
 		echo "Installing to $(INSTALL_PATH)..."; \
 		rm -rf "$(INSTALL_PATH)"; \
