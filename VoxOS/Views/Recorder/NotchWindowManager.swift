@@ -1,4 +1,5 @@
 import AppKit
+import Combine
 import SwiftUI
 import os
 
@@ -7,6 +8,7 @@ class NotchWindowManager {
     private var windowController: NSWindowController?
     private var panel: NotchRecorderPanel?
     private var outsideClickMonitor: Any?
+    private var followUpFocusCancellable: AnyCancellable?
 
     private let makeView: () -> AnyView
     private let onCloseTapped: () -> Void
@@ -53,8 +55,28 @@ class NotchWindowManager {
         if panel == nil { initializeWindow() }
         guard let panel else { return false }
         let shown = panel.show()
-        if shown { installOutsideClickMonitor() }
+        if shown {
+            installOutsideClickMonitor()
+            focusPanelWhenFollowUpBecomesAvailable()
+        }
         return shown
+    }
+
+    /// The panel can become key but is only ordered front, so keystrokes kept going to the app
+    /// behind it and the follow-up field's focus request did nothing until the user clicked.
+    /// Taking key status only once a follow-up can be typed keeps plain dictation from stealing
+    /// focus from the paste target; the panel is non-activating, so the front app stays active.
+    private func focusPanelWhenFollowUpBecomesAvailable() {
+        followUpFocusCancellable?.cancel()
+        guard let assistantSession else { return }
+        followUpFocusCancellable = assistantSession.$phase
+            .receive(on: RunLoop.main)
+            .sink { [weak self] _ in
+                guard let self, let panel = self.panel, panel.isVisible,
+                    self.assistantSession?.canSendFollowUp == true, !panel.isKeyWindow
+                else { return }
+                panel.makeKey()
+            }
     }
 
     /// Tears the window down rather than just ordering it out, so `isVisible` is never used as a
@@ -114,6 +136,8 @@ class NotchWindowManager {
     }
 
     private func deinitializeWindow() {
+        followUpFocusCancellable?.cancel()
+        followUpFocusCancellable = nil
         removeOutsideClickMonitor()
         panel?.orderOut(nil)
         windowController?.close()

@@ -138,7 +138,8 @@ class LastTranscriptionService: ObservableObject {
             do {
                 let result = try await transcriptionService.retranscribeAudio(
                     from: audioURL,
-                    using: transcriptionConfiguration.model
+                    using: transcriptionConfiguration.model,
+                    updating: lastTranscription
                 )
                 let newTranscription = result.transcription
 

@@ -43,7 +43,11 @@ class AudioTranscriptionService: ObservableObject {
         self.serviceRegistry = serviceRegistry
     }
 
-    func retranscribeAudio(from url: URL, using model: any TranscriptionModel, mode: ModeConfig? = nil) async throws
+    /// Pass `existing` to update that history row in place; without it a new row is created
+    /// from a copy of the audio (the import path).
+    func retranscribeAudio(
+        from url: URL, using model: any TranscriptionModel, mode: ModeConfig? = nil, updating existing: Transcription? = nil
+    ) async throws
         -> AudioRetranscriptionResult
     {
         guard FileManager.default.fileExists(atPath: url.path) else {
@@ -90,18 +94,23 @@ class AudioTranscriptionService: ObservableObject {
             .appendingPathComponent("com.achyuthkp.VoxOS")
             .appendingPathComponent("Recordings")
 
-            let fileName = "retranscribed_\(UUID().uuidString).wav"
-            let permanentURL = recordingsDirectory.appendingPathComponent(fileName)
-
-            do {
-                try FileManager.default.copyItem(at: url, to: permanentURL)
-            } catch {
-                logger.error("❌ Failed to create permanent copy of audio: \(error, privacy: .public)")
-                isTranscribing = false
-                throw error
+            // Updating an existing row reuses its audio; only a brand-new row needs its own copy.
+            // Copying every time multiplied both history entries and audio files on each retry.
+            let permanentURLString: String
+            if let existing, let existingURL = existing.audioFileURL {
+                permanentURLString = existingURL
+            } else {
+                let fileName = "retranscribed_\(UUID().uuidString).wav"
+                let permanentURL = recordingsDirectory.appendingPathComponent(fileName)
+                do {
+                    try FileManager.default.copyItem(at: url, to: permanentURL)
+                } catch {
+                    logger.error("❌ Failed to create permanent copy of audio: \(error, privacy: .public)")
+                    isTranscribing = false
+                    throw error
+                }
+                permanentURLString = permanentURL.absoluteString
             }
-
-            let permanentURLString = permanentURL.absoluteString
 
             let originalText = cleanedText
             let enhancementConfiguration =
@@ -116,7 +125,14 @@ class AudioTranscriptionService: ObservableObject {
                     }
                 }
 
-            // Apply AI enhancement if enabled
+            var enhancedText: String?
+            var aiEnhancementModelName: String?
+            var promptName: String?
+            var enhancementDuration: TimeInterval?
+            var aiRequestSystemMessage: String?
+            var aiRequestUserMessage: String?
+            var enhancementFailure: String?
+
             if let enhancementService = enhancementService,
                 let enhancementConfiguration,
                 enhancementConfiguration.isEnabled,
@@ -127,98 +143,72 @@ class AudioTranscriptionService: ObservableObject {
                         text,
                         configuration: enhancementConfiguration
                     )
-                    let newTranscription = Transcription(
-                        text: originalText,
-                        duration: duration,
-                        enhancedText: enhancementResult.text,
-                        audioFileURL: permanentURLString,
-                        transcriptionModelName: model.displayName,
-                        aiEnhancementModelName: enhancementConfiguration.modelName
-                            ?? enhancementConfiguration.provider?.defaultModel,
-                        promptName: enhancementResult.promptName,
-                        transcriptionDuration: transcriptionDuration,
-                        enhancementDuration: enhancementResult.duration,
-                        aiRequestSystemMessage: enhancementResult.systemMessage,
-                        aiRequestUserMessage: enhancementResult.userMessage,
-                        modeName: modeName,
-                        modeEmoji: modeEmoji
-                    )
-                    modelContext.insert(newTranscription)
-                    do {
-                        try modelContext.save()
-                        NotificationCenter.default.post(name: .transcriptionCreated, object: newTranscription)
-                        NotificationCenter.default.post(name: .transcriptionCompleted, object: newTranscription)
-                    } catch {
-                        logger.error("❌ Failed to save transcription: \(error, privacy: .public)")
-                    }
-                    await MainActor.run {
-                        isTranscribing = false
-                    }
-
-                    return AudioRetranscriptionResult(
-                        transcription: newTranscription,
-                        enhancementFailure: nil
-                    )
+                    enhancedText = enhancementResult.text
+                    aiEnhancementModelName =
+                        enhancementConfiguration.modelName ?? enhancementConfiguration.provider?.defaultModel
+                    promptName = enhancementResult.promptName
+                    enhancementDuration = enhancementResult.duration
+                    aiRequestSystemMessage = enhancementResult.systemMessage
+                    aiRequestUserMessage = enhancementResult.userMessage
                 } catch {
                     let failureDescription = EnhancementFailureFormatter.description(for: error)
-                    let failureMessage = EnhancementFailureFormatter.message(description: failureDescription)
-                    let newTranscription = Transcription(
-                        text: originalText,
-                        duration: duration,
-                        enhancedText: failureMessage,
-                        audioFileURL: permanentURLString,
-                        transcriptionModelName: model.displayName,
-                        promptName: nil,
-                        transcriptionDuration: transcriptionDuration,
-                        modeName: modeName,
-                        modeEmoji: modeEmoji
-                    )
-                    modelContext.insert(newTranscription)
-                    do {
-                        try modelContext.save()
-                        NotificationCenter.default.post(name: .transcriptionCreated, object: newTranscription)
-                        NotificationCenter.default.post(name: .transcriptionCompleted, object: newTranscription)
-                    } catch {
-                        logger.error("❌ Failed to save transcription: \(error, privacy: .public)")
-                    }
-
-                    await MainActor.run {
-                        isTranscribing = false
-                    }
-
-                    return AudioRetranscriptionResult(
-                        transcription: newTranscription,
-                        enhancementFailure: failureDescription
-                    )
+                    enhancedText = EnhancementFailureFormatter.message(description: failureDescription)
+                    enhancementFailure = failureDescription
                 }
+            }
+
+            let transcription: Transcription
+            if let existing {
+                transcription = existing
+                transcription.text = originalText
+                transcription.enhancedText = enhancedText
+                transcription.duration = duration
+                transcription.transcriptionModelName = model.displayName
+                transcription.aiEnhancementModelName = aiEnhancementModelName
+                transcription.promptName = promptName
+                transcription.transcriptionDuration = transcriptionDuration
+                transcription.enhancementDuration = enhancementDuration
+                transcription.aiRequestSystemMessage = aiRequestSystemMessage
+                transcription.aiRequestUserMessage = aiRequestUserMessage
+                transcription.modeName = modeName
+                transcription.modeEmoji = modeEmoji
             } else {
-                let newTranscription = Transcription(
+                transcription = Transcription(
                     text: originalText,
                     duration: duration,
+                    enhancedText: enhancedText,
                     audioFileURL: permanentURLString,
                     transcriptionModelName: model.displayName,
-                    promptName: nil,
+                    aiEnhancementModelName: aiEnhancementModelName,
+                    promptName: promptName,
                     transcriptionDuration: transcriptionDuration,
+                    enhancementDuration: enhancementDuration,
+                    aiRequestSystemMessage: aiRequestSystemMessage,
+                    aiRequestUserMessage: aiRequestUserMessage,
                     modeName: modeName,
                     modeEmoji: modeEmoji
                 )
-                modelContext.insert(newTranscription)
-                do {
-                    try modelContext.save()
-                    NotificationCenter.default.post(name: .transcriptionCompleted, object: newTranscription)
-                } catch {
-                    logger.error("❌ Failed to save transcription: \(error, privacy: .public)")
-                }
-
-                await MainActor.run {
-                    isTranscribing = false
-                }
-
-                return AudioRetranscriptionResult(
-                    transcription: newTranscription,
-                    enhancementFailure: nil
-                )
+                modelContext.insert(transcription)
             }
+
+            do {
+                try modelContext.save()
+                if existing == nil {
+                    NotificationCenter.default.post(name: .transcriptionCreated, object: transcription)
+                }
+                NotificationCenter.default.post(name: .transcriptionCompleted, object: transcription)
+            } catch {
+                logger.error("❌ Failed to save transcription: \(error, privacy: .public)")
+            }
+
+            await MainActor.run {
+                isTranscribing = false
+            }
+
+            return AudioRetranscriptionResult(
+                transcription: transcription,
+                enhancementFailure: enhancementFailure
+            )
         } catch {
             logger.error("❌ Transcription failed: \(error, privacy: .public)")
             currentError = .transcriptionFailed

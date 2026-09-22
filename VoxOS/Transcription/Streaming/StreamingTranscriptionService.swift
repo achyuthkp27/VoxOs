@@ -424,10 +424,19 @@ class StreamingTranscriptionService {
         // Race: wait for commit acknowledgment vs timeout
         let receivedInTime = await withTaskGroup(of: Bool.self) { group in
             group.addTask { @MainActor in
-                for await _ in signalStream {
-                    return true
+                var iterator = signalStream.makeAsyncIterator()
+                guard await iterator.next() != nil else { return false }
+                // Providers without a finalization event may flush more than one final segment
+                // after the commit. Returning on the first dropped the tail of a long dictation,
+                // so wait until the committed segments stop growing for a short quiet window.
+                let quietWindow: UInt64 = 400_000_000
+                var settledCount = self.committedSegments.count
+                while true {
+                    try? await Task.sleep(nanoseconds: quietWindow)
+                    if Task.isCancelled || self.committedSegments.count == settledCount { break }
+                    settledCount = self.committedSegments.count
                 }
-                return false
+                return true
             }
 
             group.addTask {
