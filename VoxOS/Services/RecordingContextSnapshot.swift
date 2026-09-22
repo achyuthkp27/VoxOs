@@ -45,7 +45,11 @@ final class RecordingContextSnapshotStore {
 
 @MainActor
 enum RecordingContextCaptureService {
-    static func startCapture(into store: RecordingContextSnapshotStore) -> [Task<Void, Never>] {
+    /// `selectionIsRequired` is true for modes that rewrite the selection; it unlocks the
+    /// clipboard-copy fallback for apps that do not expose their selection any other way.
+    static func startCapture(
+        into store: RecordingContextSnapshotStore, selectionIsRequired: Bool = false
+    ) -> [Task<Void, Never>] {
         WritingDestinationStore.set(nil)
         return [
             Task { @MainActor in
@@ -60,7 +64,8 @@ enum RecordingContextCaptureService {
             },
             Task { @MainActor in
                 guard !Task.isCancelled else { return }
-                let selectedText = await SelectedTextService.fetchSelectedText()
+                let selectedText = await SelectedTextService.fetchSelectedText(
+                    allowClipboardCopy: selectionIsRequired)
                 guard !Task.isCancelled else { return }
                 store.updateSelectedText(selectedText)
             },

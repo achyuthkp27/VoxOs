@@ -13,14 +13,20 @@ final class SelectedTextService {
         .appleScript,
     ]
 
-    static func fetchSelectedText() async -> String? {
+    /// `allowClipboardCopy` adds a synthesised ⌘C as the last resort. Terminals (cmux, Ghostty,
+    /// iTerm) and many Electron apps answer neither the Accessibility query nor the menu-item
+    /// press, so without it a selection there reads as "nothing selected". The pasteboard is
+    /// restored afterwards, but ⌘C in an app with no text selection can copy something else
+    /// (files in Finder), so callers enable it only when a selection is mandatory.
+    static func fetchSelectedText(allowClipboardCopy: Bool = false) async -> String? {
         guard AXIsProcessTrusted() else {
             logger.debug("Accessibility is not trusted; selected text capture skipped")
             return nil
         }
 
+        let strategies = allowClipboardCopy ? selectedTextStrategies + [.shortcut] : selectedTextStrategies
         do {
-            return normalized(try await textManager.getSelectedText(strategies: selectedTextStrategies))
+            return normalized(try await textManager.getSelectedText(strategies: strategies))
         } catch {
             logger.debug("SelectedTextKit failed to capture selected text: \(error, privacy: .public)")
             return nil

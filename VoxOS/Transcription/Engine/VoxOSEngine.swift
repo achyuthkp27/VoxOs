@@ -526,7 +526,9 @@ class VoxOSEngine: NSObject, ObservableObject {
 
         let store = RecordingContextSnapshotStore()
         activeRecordingContextStore = store
-        activeRecordingContextTasks = RecordingContextCaptureService.startCapture(into: store)
+        activeRecordingContextTasks = RecordingContextCaptureService.startCapture(
+            into: store,
+            selectionIsRequired: ModeRuntimeResolver.outputConfiguration().outputMode.requiresSelectedText)
     }
 
     private func clearActiveRecordingContext() {
