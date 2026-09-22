@@ -433,6 +433,15 @@ final class ShortcutMonitor {
             return false
         }
 
+        // Keystrokes this process posts itself (the ⌘C that reads a selection, the ⌘V that
+        // pastes, the Return that sends) pass through this session tap like any other. They
+        // must never count as the user's input: a synthesised ⌘C right after a modifier-only
+        // shortcut looked like the user pressing ⌥C, which the interruption logic treats as an
+        // accidental start and cancels — the notch appeared and nothing happened.
+        if event.getIntegerValueField(.eventSourceUnixProcessID) == Int64(ProcessInfo.processInfo.processIdentifier) {
+            return false
+        }
+
         let keyCode = UInt16(event.getIntegerValueField(.keyboardEventKeycode))
         let modifierFlags = NSEvent.ModifierFlags(rawValue: UInt(event.flags.rawValue))
         // Runs on the tap thread. The whole transition is taken under one lock so a keystroke
