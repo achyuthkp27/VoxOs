@@ -421,7 +421,7 @@ struct ModelManagementView: View {
 
     private func presentImportPanel() {
         let panel = NSOpenPanel()
-        panel.allowedContentTypes = [.init(filenameExtension: "bin")!]
+        panel.allowedContentTypes = [UTType(filenameExtension: "bin")].compactMap { $0 }
         panel.allowsMultipleSelection = false
         panel.canChooseDirectories = false
         panel.resolvesAliases = true

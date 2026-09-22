@@ -109,8 +109,16 @@ enum AgentWindows {
             return ["error": "no window found for \(app.localizedName ?? appQuery)"]
         }
 
+        // Model-supplied geometry: keep the window on a display and large enough to grab.
+        let desktop = NSScreen.screens.reduce(CGRect.null) { $0.union($1.frame) }
+        let clampedWidth = max(120, min(width, desktop.isNull ? width : desktop.width))
+        let clampedHeight = max(80, min(height, desktop.isNull ? height : desktop.height))
         var position = CGPoint(x: x, y: y)
-        var size = CGSize(width: width, height: height)
+        if !desktop.isNull {
+            position.x = max(desktop.minX, min(x, desktop.maxX - clampedWidth))
+            position.y = max(desktop.minY, min(y, desktop.maxY - clampedHeight))
+        }
+        var size = CGSize(width: clampedWidth, height: clampedHeight)
         var okPosition = false
         var okSize = false
         if let value = AXValueCreate(.cgPoint, &position) {
@@ -120,8 +128,8 @@ enum AgentWindows {
             okSize = AXUIElementSetAttributeValue(window, kAXSizeAttribute as CFString, value) == .success
         }
         return [
-            "ok": okPosition && okSize, "app": app.localizedName ?? appQuery, "x": x, "y": y, "width": width,
-            "height": height,
+            "ok": okPosition && okSize, "app": app.localizedName ?? appQuery, "x": position.x, "y": position.y,
+            "width": size.width, "height": size.height,
         ]
     }
 

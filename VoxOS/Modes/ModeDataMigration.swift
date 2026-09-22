@@ -50,6 +50,27 @@ extension ModeManager {
                 changedConfig = true
             }
 
+            // The Rewrite starter mode shipped with `.paste`, which silently turned it into
+            // "reword what I just said" — the selection never became the subject. Anyone who
+            // installed it before the template was corrected still holds the broken value.
+            //
+            // Strictly one-shot. Every other rule here only fills a nil field, so re-running is
+            // harmless; this one overwrites a populated, valid value, and Paste is a legitimate
+            // choice the form offers. Without the flag it would silently undo that choice on
+            // every launch, forever. Only promote a mode that can actually rewrite: the editor
+            // forbids `.rewrite` without AI and with VoxOS Refine, which has no selection
+            // context, so promoting one of those would paste the spoken instruction over the
+            // selection.
+            if !UserDefaults.standard.bool(forKey: Self.rewriteOutputModeMigrationKey),
+                config.id == StarterModeCatalog.rewriteId,
+                config.outputMode == .paste,
+                config.isAIEnhancementEnabled,
+                config.selectedAIProvider != AIProvider.voxOSRefine.rawValue
+            {
+                config.outputMode = .rewrite
+                changedConfig = true
+            }
+
             if changedConfig {
                 configurations[index] = config
                 didChange = true
@@ -62,6 +83,14 @@ extension ModeManager {
 
         migrateLegacyShortcutStorageIfNeeded()
     }
+
+    fileprivate static let rewriteOutputModeMigrationKey = "didMigrateRewriteOutputModeV1"
+
+    /// Called at the end of every load, whether or not anything was decoded.
+    func markOneShotModeMigrationsDone() {
+        UserDefaults.standard.set(true, forKey: Self.rewriteOutputModeMigrationKey)
+    }
+
     private func migrateLegacyShortcutStorageIfNeeded() {
         let defaults = UserDefaults.standard
 

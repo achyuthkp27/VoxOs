@@ -4,6 +4,7 @@ struct CopyIconButton: View {
     let textToCopy: String
     var accessibilityLabel: LocalizedStringResource = "Copy"
     @State private var copied = false
+    @State private var copyGeneration = 0
 
     var body: some View {
         Button(action: copy) {
@@ -28,7 +29,10 @@ struct CopyIconButton: View {
     private func copy() {
         let _ = ClipboardManager.copyToClipboard(textToCopy)
         withAnimation { copied = true }
+        copyGeneration += 1
+        let generation = copyGeneration
         DispatchQueue.main.asyncAfter(deadline: .now() + 1.5) {
+            guard generation == copyGeneration else { return }
             withAnimation { copied = false }
         }
     }

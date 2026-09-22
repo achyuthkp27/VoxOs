@@ -113,7 +113,9 @@ final class VoxOSRefineXPCService: NSObject, VoxOSRefineXPCProtocol {
     }
 
     func shutdown(withReply reply: @escaping () -> Void) {
-        let shutdownTask = beginShutdownIfNeeded(cancelActiveTasks: false)
+        // Cancel rather than wait: the client awaits this reply while holding its operation
+        // lock, so a long or wedged generation would block every later enhance request.
+        let shutdownTask = beginShutdownIfNeeded(cancelActiveTasks: true)
         Task(priority: .utility) {
             await shutdownTask.value
             reply()

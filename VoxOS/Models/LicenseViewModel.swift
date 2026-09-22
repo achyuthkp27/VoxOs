@@ -253,8 +253,10 @@ final class LicenseViewModel: ObservableObject {
                         return
                     }
 
-                    // Replace an activation that was removed in the portal.
-                    try persistLicense(key: normalizedLicenseKey, activationId: nil)
+                    // Replace an activation that was removed in the portal. Not cleared here:
+                    // activateAndPersistLicense overwrites both fields once the new activation
+                    // exists, so a failed re-activation leaves the old state (and the paid
+                    // tier) intact instead of demoting the user to an expired trial.
                 }
 
                 let limit = try await activateAndPersistLicense(normalizedLicenseKey)

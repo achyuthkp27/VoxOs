@@ -107,7 +107,14 @@ struct WordReplacementView: View {
             }
             .animation(.easeInOut(duration: 0.2), value: shouldShowAddButton)
 
-            LearnedCorrectionsSection(existingOriginals: wordReplacements.map(\.originalText))
+            // Rows hold comma-separated trigger lists; the learner compares single triggers.
+            LearnedCorrectionsSection(
+                existingOriginals: wordReplacements.flatMap { replacement in
+                    replacement.originalText
+                        .split(separator: ",")
+                        .map { $0.trimmingCharacters(in: .whitespacesAndNewlines) }
+                        .filter { !$0.isEmpty }
+                })
 
             if !wordReplacements.isEmpty {
                 VStack(spacing: 0) {
@@ -175,10 +182,8 @@ struct WordReplacementView: View {
             }
         }
         .frame(maxWidth: .infinity, alignment: .leading)
-        .sheet(isPresented: isEditingReplacement) {
-            if let editingReplacement {
-                EditReplacementSheet(replacement: editingReplacement, modelContext: modelContext)
-            }
+        .sheet(item: $editingReplacement) { replacement in
+            EditReplacementSheet(replacement: replacement, modelContext: modelContext)
         }
         .alert("Word Replacement", isPresented: $showAlert) {
             Button("OK", role: .cancel) {}
@@ -215,16 +220,6 @@ struct WordReplacementView: View {
         }
     }
 
-    private var isEditingReplacement: Binding<Bool> {
-        Binding(
-            get: { editingReplacement != nil },
-            set: { isPresented in
-                if !isPresented {
-                    editingReplacement = nil
-                }
-            }
-        )
-    }
 }
 
 struct WordReplacementInfoPopover: View {

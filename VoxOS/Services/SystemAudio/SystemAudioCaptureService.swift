@@ -124,18 +124,29 @@ final class SystemAudioCaptureService: NSObject, @unchecked Sendable {
     func startCapture(to url: URL) async throws {
         try await ensureStreamRunning()
 
-        let file = try AVAudioFile(
-            forWriting: url,
-            settings: [
-                AVFormatIDKey: kAudioFormatLinearPCM,
-                AVSampleRateKey: Self.outputSampleRate,
-                AVNumberOfChannelsKey: 1,
-                AVLinearPCMBitDepthKey: 16,
-                AVLinearPCMIsFloatKey: false,
-                AVLinearPCMIsBigEndianKey: false,
-                AVLinearPCMIsNonInterleaved: false,
-            ]
-        )
+        let file: AVAudioFile
+        do {
+            file = try AVAudioFile(
+                forWriting: url,
+                settings: [
+                    AVFormatIDKey: kAudioFormatLinearPCM,
+                    AVSampleRateKey: Self.outputSampleRate,
+                    AVNumberOfChannelsKey: 1,
+                    AVLinearPCMBitDepthKey: 16,
+                    AVLinearPCMIsFloatKey: false,
+                    AVLinearPCMIsBigEndianKey: false,
+                    AVLinearPCMIsNonInterleaved: false,
+                ]
+            )
+        } catch {
+            // Otherwise the stream keeps running with nothing consuming it and the screen
+            // recording indicator stays lit.
+            let stillNeeded = withState { isBuffering }
+            if !stillNeeded {
+                await teardownStream()
+            }
+            throw error
+        }
 
         withState {
             audioFile = file
@@ -431,16 +442,17 @@ extension SystemAudioCaptureService: SCStreamOutput {
         if isBuffering {
             appendToRing(UnsafeBufferPointer(start: channel, count: Int(outputBuffer.frameLength)))
         }
-        let file = isWritingToFile ? audioFile : nil
-        stateLock.unlock()
-
-        if let file {
+        // Written under the lock: AVAudioFile is not thread-safe, and stopCapture() reads
+        // `length` and drops the file under this same lock. This runs on the sample queue, not
+        // the real-time thread, so holding the lock across the write is fine.
+        if isWritingToFile, let file = audioFile {
             do {
                 try file.write(from: outputBuffer)
             } catch {
                 logger.error("Failed writing system audio: \(error.localizedDescription, privacy: .public)")
             }
         }
+        stateLock.unlock()
     }
 }
 

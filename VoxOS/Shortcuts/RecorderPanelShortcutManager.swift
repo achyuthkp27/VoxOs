@@ -7,7 +7,6 @@ final class RecorderPanelShortcutManager: ObservableObject {
     private var recorderUIManager: RecorderUIManager
     private var visibilityTask: Task<Void, Never>?
     private var shortcutChangeObserver: NSObjectProtocol?
-    private let visibleRecorderMonitor = ShortcutMonitor()
 
     // Double-tap Escape handling
     private var firstEscapePressTime: Date? = nil
@@ -54,7 +53,7 @@ final class RecorderPanelShortcutManager: ObservableObject {
                 if isVisible {
                     refreshVisibleShortcuts()
                 } else {
-                    visibleRecorderMonitor.stop()
+                    ShortcutMonitor.shared.unregister(owner: .recorderPanel)
                     resetEscapeState()
                 }
             }
@@ -79,7 +78,7 @@ final class RecorderPanelShortcutManager: ObservableObject {
 
     private func refreshVisibleShortcuts() {
         guard recorderUIManager.isRecorderPanelVisible else {
-            visibleRecorderMonitor.stop()
+            ShortcutMonitor.shared.unregister(owner: .recorderPanel)
             resetEscapeState()
             return
         }
@@ -99,7 +98,8 @@ final class RecorderPanelShortcutManager: ObservableObject {
             }
         }
 
-        visibleRecorderMonitor.start(
+        ShortcutMonitor.shared.register(
+            owner: .recorderPanel,
             shortcuts: shortcuts,
             onKeyDown: { [weak self] action, _ in
                 Task { @MainActor in
@@ -192,10 +192,10 @@ final class RecorderPanelShortcutManager: ObservableObject {
         }
 
         visibilityTask?.cancel()
-        MainActor.assumeIsolated {
-            visibleRecorderMonitor.stop()
-            resetEscapeState()
-        }
+        escapeTimeoutTask?.cancel()
+        // Not actor-isolated, and `assumeIsolated` would trap if the last reference is dropped
+        // off the main thread.
+        ShortcutMonitor.shared.unregister(owner: .recorderPanel)
     }
 
     private static let digitKeyCodes: [UInt16] = [

@@ -517,7 +517,12 @@ final class DashboardStatsCache: @unchecked Sendable {
     func shouldRefreshSnapshotAutomatically() -> Bool {
         lock.lock()
         let metadata = snapshotMetadata
+        let isStale = self.isStale
         lock.unlock()
+
+        if isStale {
+            return true
+        }
 
         guard let metadata else {
             return true

@@ -274,8 +274,16 @@ class VoxOSEngine: NSObject, ObservableObject {
                             else {
                                 activeModeTask.cancel()
                                 let shouldKeepRecordingFile = self.shouldCancelRecording
-                                if self.activeRecordingStartID == startID {
+                                // A cancellation that raced this start cleared the ID to nil
+                                // before its own stop ran against a not-yet-started unit, so the
+                                // recorder we just started is otherwise left running with the
+                                // mic hot. Only a *newer* start owns the recorder now.
+                                let ownsRecorder =
+                                    self.activeRecordingStartID == startID || self.activeRecordingStartID == nil
+                                if ownsRecorder {
                                     await self.recorder.stopRecording()
+                                }
+                                if self.activeRecordingStartID == startID {
                                     if !shouldKeepRecordingFile {
                                         self.recordedFile = nil
                                     }

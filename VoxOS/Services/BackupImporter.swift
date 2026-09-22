@@ -77,6 +77,9 @@ enum BackupImporter {
 
                 modeManager.saveConfigurations()
                 shouldRepairModePromptSelections = true
+                // The backup may predate the Agent or have it disabled; ⌃⌃ must keep working.
+                AgentModeGuard.ensure(
+                    enhancementService: enhancementService, transcriptionModelManager: transcriptionModelManager)
 
                 logger.info("Successfully imported \(modeConfigs.count) Mode configurations.")
             } else {

@@ -76,7 +76,15 @@ struct Shortcut: Codable, Equatable {
     }
 
     func conflicts(with other: Shortcut) -> Bool {
-        kind == other.kind && keyCode == other.keyCode && modifierFlags == other.modifierFlags
+        guard kind == other.kind, modifierFlags == other.modifierFlags else { return false }
+        if kind == .modifierOnly {
+            // A generic modifier shortcut matches either side's key, so it collides with a
+            // side-specific one for the same modifier.
+            return keyCode == other.keyCode
+                || keyCode == Self.genericModifierKeyCode
+                || other.keyCode == Self.genericModifierKeyCode
+        }
+        return keyCode == other.keyCode
     }
 
     func matchesKeyEvent(keyCode eventKeyCode: UInt16, modifierFlags eventModifierFlags: NSEvent.ModifierFlags) -> Bool
@@ -187,6 +195,18 @@ struct Shortcut: Codable, Equatable {
         UInt16(kVK_F18),
         UInt16(kVK_F19),
         UInt16(kVK_F20),
+        // macOS also sets the fn flag on these. Without stripping it, a bare arrow key recorded
+        // as `[.function]`, passed the "needs a modifier" check, and the tap then swallowed that
+        // arrow key in every app on the machine.
+        UInt16(kVK_LeftArrow),
+        UInt16(kVK_RightArrow),
+        UInt16(kVK_UpArrow),
+        UInt16(kVK_DownArrow),
+        UInt16(kVK_Home),
+        UInt16(kVK_End),
+        UInt16(kVK_PageUp),
+        UInt16(kVK_PageDown),
+        UInt16(kVK_ForwardDelete),
     ]
 
     private static func sideSpecificModifierName(for keyCode: UInt16, modifiers: NSEvent.ModifierFlags) -> String? {

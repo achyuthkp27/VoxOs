@@ -187,9 +187,10 @@ struct WaveformView: View {
                     .frame(maxWidth: .infinity, maxHeight: .infinity)
                 } else {
                     HStack(spacing: 0.5) {
-                        ForEach(0..<samples.count, id: \.self) { index in
+                        ForEach(Array(samples.enumerated()), id: \.offset) { index, sample in
                             WaveformBar(
-                                sample: samples[index],
+                                index: index,
+                                sample: sample,
                                 isPlayed: CGFloat(index) / CGFloat(samples.count) <= CGFloat(currentTime / duration),
                                 totalBars: samples.count,
                                 geometryWidth: geometry.size.width,
@@ -251,6 +252,7 @@ struct WaveformView: View {
 }
 
 struct WaveformBar: View {
+    let index: Int
     let sample: Float
     let isPlayed: Bool
     let totalBars: Int
@@ -259,7 +261,7 @@ struct WaveformBar: View {
     let hoverProgress: CGFloat
 
     private var isNearHover: Bool {
-        let barPosition = geometryWidth / CGFloat(totalBars)
+        let barPosition = (CGFloat(index) + 0.5) * geometryWidth / CGFloat(max(totalBars, 1))
         let hoverPosition = hoverProgress * geometryWidth
         return abs(barPosition - hoverPosition) < 20
     }

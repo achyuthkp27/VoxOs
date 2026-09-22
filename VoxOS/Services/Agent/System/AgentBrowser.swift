@@ -19,7 +19,11 @@ enum AgentBrowser {
                 js
                 .replacingOccurrences(of: "\\", with: "\\\\")
                 .replacingOccurrences(of: "\"", with: "\\\"")
-                .replacingOccurrences(of: "\n", with: " ")
+                // As an escaped newline, not a space: a `// comment` would otherwise swallow
+                // the rest of the script, and a raw CR breaks the AppleScript literal.
+                .replacingOccurrences(of: "\r\n", with: "\\n")
+                .replacingOccurrences(of: "\n", with: "\\n")
+                .replacingOccurrences(of: "\r", with: "\\n")
             switch self {
             case .safari:
                 return """

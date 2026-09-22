@@ -88,6 +88,7 @@ final class AgentNudges {
     @discardableResult
     func complete(matching query: String) -> AgentNudge? {
         let q = query.lowercased().trimmingCharacters(in: .whitespaces)
+        guard !q.isEmpty else { return nil }
         guard
             let index = nudges.firstIndex(where: {
                 $0.id.uuidString.lowercased().hasPrefix(q) || (!q.isEmpty && $0.text.lowercased().contains(q))

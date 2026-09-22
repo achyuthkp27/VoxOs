@@ -34,11 +34,7 @@ struct StarterModeTemplate: Identifiable {
             labels.append("No AI")
         }
 
-        if outputMode == .respond {
-            labels.append("Respond")
-        } else {
-            labels.append("Paste")
-        }
+        labels.append(outputMode.displayName)
 
         return labels
     }
@@ -102,7 +98,10 @@ enum StarterModeCatalog {
             guidance:
                 "Use this when you have text selected and want a stronger version. The selected text is available as context for the rewrite.",
             promptId: PromptTemplates.rewritePromptId,
-            outputMode: .paste,
+            // Not .paste: `.rewrite` is what makes the selection the subject and the spoken
+            // words the instruction. Shipped as .paste, the selection was demoted to plain
+            // context and Rewrite just pasted a reworded version of whatever was said.
+            outputMode: .rewrite,
             usesAIEnhancement: true,
             useSelectedTextContext: true,
             useScreenCapture: false,
@@ -144,6 +143,7 @@ enum StarterModeCatalog {
 
     /// The Agent starter mode; double-tapping the recording shortcut switches to it.
     static let agentId = UUID(uuidString: "10000000-0000-0000-0000-000000000006")!
+    static let rewriteId = UUID(uuidString: "10000000-0000-0000-0000-000000000004")!
 
     static var ids: Set<UUID> {
         Set(templates.map(\.id))

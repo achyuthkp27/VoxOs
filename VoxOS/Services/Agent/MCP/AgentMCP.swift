@@ -140,14 +140,18 @@ enum AgentMCP {
     }
 
     static func reload() {
-        let old = lock.withLock { () -> [any MCPClient] in
+        let (old, inFlight) = lock.withLock { () -> ([any MCPClient], Task<Void, Never>?) in
             let values = Array(connections.values)
+            let task = startTask
             connections = [:]
             unsupported = [:]
             toolIndex = [:]
             startTask = nil
-            return values
+            return (values, task)
         }
+        // A start still fetching a package would otherwise launch into a connection nobody
+        // tracks, alongside the copy the new start spawns.
+        inFlight?.cancel()
         old.forEach { $0.stop() }
         postStatus()
         warmUp()

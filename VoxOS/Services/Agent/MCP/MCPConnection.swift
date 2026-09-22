@@ -139,6 +139,8 @@ final class MCPConnection: MCPClient, @unchecked Sendable {
     let config: MCPServerConfig
 
     private let lock = NSLock()
+    /// Separate from `lock`, which is never held across I/O.
+    private let writeLock = NSLock()
     private var process: Process?
     private var stdinHandle: FileHandle?
     private var readBuffer = Data()
@@ -219,6 +221,14 @@ final class MCPConnection: MCPClient, @unchecked Sendable {
         lock.withLock {
             self.process = process
             self.stdinHandle = stdin.fileHandleForWriting
+        }
+        // A reload that raced this start has already stopped this connection.
+        guard !Task.isCancelled else {
+            lock.withLock {
+                self.process = nil
+                self.stdinHandle = nil
+            }
+            return
         }
         do {
             try process.run()
@@ -346,7 +356,9 @@ final class MCPConnection: MCPClient, @unchecked Sendable {
         var data = try JSONSerialization.data(withJSONObject: message, options: [.withoutEscapingSlashes])
         data.append(0x0A)
         guard let handle = lock.withLock({ stdinHandle }) else { throw MCPError.notRunning }
-        try handle.write(contentsOf: data)
+        // Writes over PIPE_BUF are not atomic, and search fan-out plus ping replies write from
+        // several threads; interleaved bodies leave the server answering neither.
+        try writeLock.withLock { try handle.write(contentsOf: data) }
     }
 
     private func takePending(_ id: Int) -> CheckedContinuation<MCPJSON, Error>? {

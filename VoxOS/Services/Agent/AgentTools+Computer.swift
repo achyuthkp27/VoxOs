@@ -109,15 +109,16 @@ extension AgentTools {
     }
 
     private static func confirmPending() async -> [String: Any] {
-        guard AgentControlMode.current != .observeOnly else {
-            AgentPendingAction.clear()
-            return ["error": "observe-only mode: nothing can be confirmed"]
-        }
         guard let pending = AgentPendingAction.take() else {
             return [
                 "error":
                     "nothing pending to confirm — a confirmation must come from the user's next request, not from the same turn"
             ]
+        }
+        // The mode switch itself must stay confirmable from observe-only, or "act freely" can
+        // never be confirmed and Settings becomes the only way out.
+        if AgentControlMode.current == .observeOnly, pending.name != "set_control_mode" {
+            return ["error": "observe-only mode: nothing can be confirmed"]
         }
         let arg = { (key: String) -> String in (pending.args[key] as? String) ?? "" }
         switch pending.name {

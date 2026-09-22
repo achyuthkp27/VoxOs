@@ -114,6 +114,8 @@ struct AgentMCPTests {
                 ]),
             tool("find_page", ["properties": ["q": ["type": "string"]]], readOnly: false),
             tool("create_page", ["properties": ["title": ["type": "string"]], "required": ["title"]]),
+            // Named like a search, but it writes: must never be fanned out to.
+            tool("search_and_archive", ["properties": ["query": ["type": "string"]], "required": ["query"]]),
         ])
         #expect(picked.map(\.tool.name) == ["search", "search_files"])
         #expect(picked.map(\.queryParameter) == ["query", "pattern"])

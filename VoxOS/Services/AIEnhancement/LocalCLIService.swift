@@ -143,6 +143,23 @@ final class LocalCLIService {
                     return
                 }
 
+                // Drain both pipes as the child writes. Reading only after exit deadlocks any
+                // command that emits more than a pipe buffer (~64 KB): it blocks on a full
+                // pipe, never exits, and gets reported as a timeout.
+                let outputLock = NSLock()
+                var stdoutData = Data()
+                var stderrData = Data()
+                outputPipe.fileHandleForReading.readabilityHandler = { handle in
+                    let chunk = handle.availableData
+                    guard !chunk.isEmpty else { return }
+                    outputLock.withLock { stdoutData.append(chunk) }
+                }
+                errorPipe.fileHandleForReading.readabilityHandler = { handle in
+                    let chunk = handle.availableData
+                    guard !chunk.isEmpty else { return }
+                    outputLock.withLock { stderrData.append(chunk) }
+                }
+
                 if let inputData = fullPrompt.data(using: .utf8) {
                     inputPipe.fileHandleForWriting.write(inputData)
                 }
@@ -163,8 +180,12 @@ final class LocalCLIService {
                     return
                 }
 
-                let stdoutData = outputPipe.fileHandleForReading.readDataToEndOfFile()
-                let stderrData = errorPipe.fileHandleForReading.readDataToEndOfFile()
+                outputPipe.fileHandleForReading.readabilityHandler = nil
+                errorPipe.fileHandleForReading.readabilityHandler = nil
+                outputLock.withLock {
+                    stdoutData.append(outputPipe.fileHandleForReading.readDataToEndOfFile())
+                    stderrData.append(errorPipe.fileHandleForReading.readDataToEndOfFile())
+                }
 
                 let stdout = Self.cleanOutput(String(data: stdoutData, encoding: .utf8) ?? "")
                 let stderr = Self.cleanOutput(String(data: stderrData, encoding: .utf8) ?? "")

@@ -76,7 +76,11 @@ class AudioTranscriptionManager: ObservableObject {
         processingGeneration &+= 1
         let generation = processingGeneration
 
+        // Cancellation is cooperative: a cancelled worker may still be inside processItem.
+        // Wait for it before pulling from the same queue, or one file gets transcribed twice.
+        let previousTask = processingTask
         processingTask = Task { [weak self] in
+            await previousTask?.value
             guard let self else { return }
 
             while let item = self.nextPendingItem() {
@@ -92,7 +96,6 @@ class AudioTranscriptionManager: ObservableObject {
 
     func cancelProcessing() {
         processingTask?.cancel()
-        processingTask = nil
         isProcessingQueue = false
 
         // Reset any in-progress items back to pending

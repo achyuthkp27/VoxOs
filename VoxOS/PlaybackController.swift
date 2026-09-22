@@ -101,10 +101,12 @@ class PlaybackController: ObservableObject {
             return
         }
 
+        // Not gated on `isPlaying == false`: that flag arrives asynchronously, and for a short
+        // dictation the pause update can still be in flight — the guard then failed and the
+        // music stayed paused with no retry.
         guard let currentTrackInfo = lastKnownTrackInfo,
             let currentBundleId = currentTrackInfo.payload.bundleIdentifier,
-            currentBundleId == bundleId,
-            currentTrackInfo.payload.isPlaying == false
+            currentBundleId == bundleId
         else {
             return
         }

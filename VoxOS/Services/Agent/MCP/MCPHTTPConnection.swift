@@ -139,7 +139,17 @@ final class MCPHTTPConnection: MCPClient, @unchecked Sendable {
 
         let contentType = (http.value(forHTTPHeaderField: "Content-Type") ?? "").lowercased()
         if contentType.contains("text/event-stream") {
-            return try await readStream(bytes, awaiting: id)
+            // URLRequest's timeout is an inactivity timer; a server sending keep-alive comments
+            // while wedged would otherwise hold this call open forever.
+            let outcome: Result<[String: Any], Error>? = await mcpRace(seconds: timeout) {
+                do {
+                    return .success(try await self.readStream(bytes, awaiting: id))
+                } catch {
+                    return .failure(error)
+                }
+            }
+            guard let outcome else { throw MCPError.timeout(method) }
+            return try outcome.get()
         }
         let body = try await Self.collect(bytes, limit: 8_000_000)
         guard let object = try? JSONSerialization.jsonObject(with: Data(body.utf8)) else { throw MCPError.badMessage }
@@ -183,11 +193,17 @@ final class MCPHTTPConnection: MCPClient, @unchecked Sendable {
     private func readStream(_ bytes: URLSession.AsyncBytes, awaiting id: Int) async throws -> [String: Any] {
         var dataLines: [String] = []
         for try await line in bytes.lines {
-            guard line.hasPrefix("data:") else {
+            // An empty line ends an event. Other fields (`id:`, `retry:`, `:` comments) may sit
+            // between the data lines of one event and must not discard what was accumulated.
+            if line.isEmpty {
                 dataLines = []
                 continue
             }
-            dataLines.append(String(line.dropFirst(5)).trimmingCharacters(in: .whitespaces))
+            guard line.hasPrefix("data:") else { continue }
+            var value = Substring(line.dropFirst(5))
+            // SSE strips exactly one leading space; anything else is payload.
+            if value.first == " " { value = value.dropFirst() }
+            dataLines.append(String(value))
             let payload = dataLines.joined(separator: "\n")
             guard (try? JSONSerialization.jsonObject(with: Data(payload.utf8))) != nil else { continue }
             dataLines = []

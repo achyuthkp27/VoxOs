@@ -20,11 +20,15 @@ enum StarterModeFactory {
             ? (installedApps ?? InstalledApps.load())
             : []
 
+        // Keep a starter mode the user already has rather than rebuilding it from the
+        // catalogue: onboarding calls this on every experience step, and "Reset Onboarding"
+        // would otherwise wipe every customised prompt, provider and context switch.
         let starterConfigs = StarterModeCatalog.templates
             .filter { requestedKinds.contains($0.kind) }
-            .map {
-                makeConfig(
-                    from: $0,
+            .map { template in
+                manager.configurations.first { $0.id == template.id }
+                ?? makeConfig(
+                    from: template,
                     provider: provider,
                     modelName: modelName,
                     transcriptionModelName: transcriptionModelName,

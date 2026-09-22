@@ -4,10 +4,10 @@ import os
 @MainActor
 class ModeShortcutManager {
     private static let logger = Logger(subsystem: "com.achyuthkp.voxos", category: "Shortcuts")
-    private let shortcutMonitor = ShortcutMonitor()
     private let modeProvider: @MainActor () -> RecordingShortcutManager.Mode
     private let shortcutModeHandler: RecordingShortcutModeHandler
     private var shortcutChangeObserver: NSObjectProtocol?
+    private var pendingRefresh: Task<Void, Never>?
 
     init(
         modeProvider: @escaping @MainActor () -> RecordingShortcutManager.Mode,
@@ -30,9 +30,7 @@ class ModeShortcutManager {
                 return
             }
 
-            Task { @MainActor in
-                self?.refreshModeShortcuts()
-            }
+            self?.scheduleRefresh()
         }
 
         NotificationCenter.default.addObserver(
@@ -48,14 +46,27 @@ class ModeShortcutManager {
         if let shortcutChangeObserver {
             NotificationCenter.default.removeObserver(shortcutChangeObserver)
         }
-        MainActor.assumeIsolated {
-            shortcutMonitor.stop()
-        }
+        // Not actor-isolated, and `assumeIsolated` would trap if the last reference is dropped
+        // off the main thread.
+        ShortcutMonitor.shared.unregister(owner: .mode)
     }
 
     @objc private func modeShortcutAvailabilityDidChange() {
         Task { @MainActor in
-            refreshModeShortcuts()
+            scheduleRefresh()
+        }
+    }
+
+    /// Rebuilding tears down a system-wide event tap and spawns a new thread, and a single user
+    /// action can post several shortcut notifications. Collapse a burst into one rebuild on the
+    /// next main-loop turn rather than doing that work once per notification.
+    private func scheduleRefresh() {
+        pendingRefresh?.cancel()
+        pendingRefresh = Task { @MainActor [weak self] in
+            await Task.yield()
+            guard let self, !Task.isCancelled else { return }
+            self.pendingRefresh = nil
+            self.refreshModeShortcuts()
         }
     }
 
@@ -72,7 +83,8 @@ class ModeShortcutManager {
             "mode shortcuts registered: \(shortcuts.map { "\($0.key.storageName)=\($0.value.displayString)" }.sorted().joined(separator: ", "), privacy: .public)"
         )
 
-        shortcutMonitor.start(
+        ShortcutMonitor.shared.register(
+            owner: .mode,
             shortcuts: shortcuts,
             interruptibleActions: Set(shortcuts.keys),
             onKeyDown: { [weak self] action, eventTime in

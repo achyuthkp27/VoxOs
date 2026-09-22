@@ -1,10 +1,12 @@
 import Foundation
 
 struct TranscriptionOutputFilter {
+    // Bounded and single-line: model markers are short ("[BLANK_AUDIO]", "(laughs)"), while a
+    // real dictated aside can run a whole clause. The old `.*?` forms also spanned lines.
     private static let hallucinationPatterns = [
-        #"\[.*?\]"#,  // []
-        #"\(.*?\)"#,  // ()
-        #"\{.*?\}"#,  // {}
+        #"\[[^\]\n]{0,40}\]"#,  // []
+        #"\([^)\n]{0,40}\)"#,  // ()
+        #"\{[^}\n]{0,40}\}"#,  // {}
     ]
 
     static func filter(_ text: String) -> String {

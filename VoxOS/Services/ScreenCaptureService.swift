@@ -230,24 +230,14 @@ class ScreenCaptureService: ObservableObject {
         }
     }
 
+    /// Screenshot capture and OCR ignore cancellation, and a task group waits for every child
+    /// before returning — so the old group-based version "timed out" and then blocked anyway,
+    /// stalling context capture at the start of every recording. `mcpRace` abandons the loser.
     private nonisolated static func withTimeout<T: Sendable>(
         seconds: TimeInterval,
         operation: @escaping @Sendable () async -> T?
     ) async -> T? {
-        await withTaskGroup(of: T?.self) { group in
-            group.addTask {
-                await operation()
-            }
-
-            group.addTask {
-                try? await Task.sleep(nanoseconds: UInt64(seconds * 1_000_000_000))
-                return nil
-            }
-
-            let result = await group.next() ?? nil
-            group.cancelAll()
-            return result
-        }
+        await mcpRace(seconds: seconds, operation) ?? nil
     }
 
     private func copyAXElementAttribute(_ attribute: String, from element: AXUIElement) -> AXUIElement? {

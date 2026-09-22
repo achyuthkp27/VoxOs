@@ -7,6 +7,7 @@ private let logger = Logger(subsystem: "com.achyuthkp.voxos", category: "SaveIco
 struct SaveIconButton: View {
     let textToSave: String
     @State private var saved = false
+    @State private var saveGeneration = 0
 
     var body: some View {
         Menu {
@@ -40,7 +41,10 @@ struct SaveIconButton: View {
                 let content = fileExtension == "md" ? formatAsMarkdown(textToSave) : textToSave
                 try content.write(to: url, atomically: true, encoding: .utf8)
                 withAnimation { saved = true }
+                saveGeneration += 1
+                let generation = saveGeneration
                 DispatchQueue.main.asyncAfter(deadline: .now() + 2.0) {
+                    guard generation == saveGeneration else { return }
                     withAnimation { saved = false }
                 }
             } catch {

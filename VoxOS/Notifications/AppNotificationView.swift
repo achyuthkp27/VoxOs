@@ -125,7 +125,7 @@ struct AppNotificationView: View {
         let totalSteps = duration / updateInterval
         let stepDecrement = 1.0 / totalSteps
 
-        timer = Timer.scheduledTimer(withTimeInterval: updateInterval, repeats: true) { _ in
+        let progressTimer = Timer(timeInterval: updateInterval, repeats: true) { _ in
             if progress > 0 {
                 progress = max(0, progress - stepDecrement)
             } else {
@@ -133,5 +133,7 @@ struct AppNotificationView: View {
                 timer = nil
             }
         }
+        RunLoop.main.add(progressTimer, forMode: .common)
+        timer = progressTimer
     }
 }

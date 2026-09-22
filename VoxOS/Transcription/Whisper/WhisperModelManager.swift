@@ -133,9 +133,15 @@ class WhisperModelManager: ObservableObject {
 
         return try await withCheckedThrowingContinuation { (continuation: CheckedContinuation<Data, Error>) in
             let finished = ManagedAtomic(false)
+            // Filled in once the task exists; invalidated exactly once, when the download ends.
+            final class ObservationBox: @unchecked Sendable {
+                var observation: NSKeyValueObservation?
+            }
+            let observationBox = ObservationBox()
 
             func finishOnce(_ result: Result<Data, Error>) {
                 if finished.exchange(true, ordering: .acquiring) == false {
+                    observationBox.observation?.invalidate()
                     continuation.resume(with: result)
                 }
             }
@@ -169,7 +175,7 @@ class WhisperModelManager: ObservableObject {
             var lastUpdateTime = Date()
             var lastProgressValue: Double = 0
 
-            let observation = task.progress.observe(\.fractionCompleted) { progress, _ in
+            observationBox.observation = task.progress.observe(\.fractionCompleted) { progress, _ in
                 let currentTime = Date()
                 let timeSinceLastUpdate = currentTime.timeIntervalSince(lastUpdateTime)
                 let currentProgress = round(progress.fractionCompleted * 100) / 100
@@ -184,16 +190,9 @@ class WhisperModelManager: ObservableObject {
                 }
             }
 
-            Task {
-                await withTaskCancellationHandler {
-                    observation.invalidate()
-                    if finished.exchange(true, ordering: .acquiring) == false {
-                        continuation.resume(throwing: CancellationError())
-                    }
-                } operation: {
-                    await withCheckedContinuation { (_: CheckedContinuation<Void, Never>) in }
-                }
-            }
+            // The previous version parked an unstructured Task on a continuation that was never
+            // resumed, "for cancellation": it inherited no cancellation, so it simply leaked one
+            // suspended task and one live KVO observation per download.
         }
     }
 

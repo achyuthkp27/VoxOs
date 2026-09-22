@@ -33,10 +33,14 @@ final class TranscriptionDelivery {
             return
         }
 
-        if request.output.outputMode == .respond,
-            request.responseConfig != nil || request.responseError != nil
-        {
-            await deliverResponse(request, actions: actions)
+        if request.output.outputMode == .respond {
+            if request.responseConfig != nil || request.responseError != nil {
+                await deliverResponse(request, actions: actions)
+            } else {
+                // Enhancement off or the provider unconfigured. Falling through used to paste
+                // the spoken question into whatever window was frontmost.
+                await actions.failResponse(String(localized: "Respond needs an AI provider — set one up in Settings."))
+            }
             return
         }
 

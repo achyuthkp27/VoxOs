@@ -17,12 +17,24 @@ enum AgentSearch {
     /// Picks MCP tools that look like searches and have a string argument for the query.
     /// Only tools named like a search or marked read-only qualify, so fanning out can never
     /// trigger a write behind the control-mode gate.
+    private static let mutatingVerbs = [
+        "archive", "create", "delete", "remove", "update", "write", "send", "transition", "move", "set_",
+        "modify", "edit", "post", "publish", "replace", "insert", "add_", "upload",
+    ]
+
+    static func namesMutation(_ loweredName: String) -> Bool {
+        mutatingVerbs.contains { loweredName.contains($0) }
+    }
+
     static func sources(from tools: [MCPTool]) -> [Source] {
         tools.compactMap { tool in
             let lowered = tool.name.lowercased()
             let looksLikeSearch = lowered.contains("search") || lowered.hasPrefix("find") || lowered.contains("_find")
             guard looksLikeSearch else { return nil }
-            guard tool.readOnly || lowered.contains("search") else { return nil }
+            // Most servers omit readOnlyHint, so a plain "search" name qualifies on its own —
+            // unless the name also carries a mutating verb ("search_and_archive"): run() calls
+            // the server directly, past the control-mode gate, so this must never write.
+            guard tool.readOnly || (lowered.contains("search") && !Self.namesMutation(lowered)) else { return nil }
 
             let properties = (tool.inputSchema["properties"] as? [String: Any]) ?? [:]
             let required = (tool.inputSchema["required"] as? [String]) ?? []

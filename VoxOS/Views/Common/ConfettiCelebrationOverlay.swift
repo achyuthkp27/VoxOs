@@ -166,6 +166,7 @@ private struct ConfettiCelebrationPresenter: ViewModifier {
         .onDisappear {
             dismissalWorkItem?.cancel()
             dismissalWorkItem = nil
+            isPresented = false
         }
     }
 

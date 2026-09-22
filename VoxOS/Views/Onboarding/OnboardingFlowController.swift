@@ -356,17 +356,13 @@ final class OnboardingFlowController {
             return
         }
 
-        OnboardingStorageKeys.onboardingKeys.forEach {
-            coordinator.defaults.removeObject(forKey: $0)
-        }
+        OnboardingStorageKeys.removeAll(from: coordinator.defaults)
         activateCleanTranscriptionMode()
         onComplete()
     }
 
     func skipOnboarding(onComplete: () -> Void) {
-        OnboardingStorageKeys.onboardingKeys.forEach {
-            coordinator.defaults.removeObject(forKey: $0)
-        }
+        OnboardingStorageKeys.removeAll(from: coordinator.defaults)
         onComplete()
     }
 
@@ -457,24 +453,23 @@ final class OnboardingFlowController {
             return
         }
 
-        var seenKinds = Set<StarterModeKind>()
-        let installedKinds = coordinator.activeExperienceSteps
-            .prefix(index + 1)
-            .map(\.starterModeKind)
-            .filter { seenKinds.insert($0).inserted }
-
         let installedSteps = Array(coordinator.activeExperienceSteps.prefix(index + 1))
 
         let seedResult = StarterModePromptSeeder.ensurePrompts(
-            for: installedKinds,
+            for: StarterModeKind.allCases,
             in: enhancementService.customPrompts
         )
         if seedResult.didChange {
             enhancementService.customPrompts = seedResult.prompts
         }
 
+        // Every starter mode is built in, not something onboarding decides to grant. Installing
+        // only the kinds whose tryout step the user happened to walk through left a fresh install
+        // holding Dictation alone, with Agent absent until the next launch because the guard below
+        // is handed no transcription model manager and so can only repair, never create. Seed the
+        // whole catalogue; `applyDefaultMode` still picks the default from the step reached.
         StarterModeFactory.install(
-            kinds: installedKinds,
+            kinds: StarterModeKind.allCases,
             provider: coordinator.selectedOnboardingProvider,
             modelName: coordinator.selectedOnboardingProvider.defaultModel,
             transcriptionModelName: coordinator.selectedOnboardingTranscriptionModelName
@@ -509,10 +504,15 @@ final class OnboardingFlowController {
     }
 
     func clearExperienceShortcutForIntroIfNeeded() {
+        // Persisted, like the stage itself: the in-memory set alone let a relaunch mid-onboarding
+        // clear the shortcut the user had just recorded a second time.
+        let persistedKey =
+            OnboardingStorageKeys.clearedExperienceShortcutPrefix + coordinator.experienceShortcutAction.storageName
         guard coordinator.stage == .experience,
             coordinator.isExperienceInIntroPhase,
             coordinator.experienceStep.shouldClearShortcutOnIntro,
-            !coordinator.clearedExperienceShortcutActions.contains(coordinator.experienceShortcutAction)
+            !coordinator.clearedExperienceShortcutActions.contains(coordinator.experienceShortcutAction),
+            !coordinator.defaults.bool(forKey: persistedKey)
         else {
             return
         }
@@ -520,6 +520,7 @@ final class OnboardingFlowController {
         var clearedActions = coordinator.clearedExperienceShortcutActions
         clearedActions.insert(coordinator.experienceShortcutAction)
         coordinator.clearedExperienceShortcutActions = clearedActions
+        coordinator.defaults.set(true, forKey: persistedKey)
         ShortcutStore.setShortcut(nil, for: coordinator.experienceShortcutAction)
     }
 

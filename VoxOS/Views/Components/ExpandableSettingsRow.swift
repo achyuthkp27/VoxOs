@@ -67,6 +67,7 @@ struct ExpandableSettingsRow<Content: View>: View {
                     .opacity(rowIsEnabled ? 1 : 0.4)
             }
             .contentShape(Rectangle())
+            .onDisappear { isHandlingToggleChange = false }
             .onTapGesture {
                 guard !isHandlingToggleChange, rowIsEnabled else { return }
                 withAnimation(.easeInOut(duration: 0.2)) {
@@ -95,7 +96,7 @@ struct ExpandableSettingsRow<Content: View>: View {
                     isExpanded = false
                 }
             }
-            DispatchQueue.main.asyncAfter(deadline: .now() + 0.1) {
+            Task { @MainActor in
                 isHandlingToggleChange = false
             }
         }

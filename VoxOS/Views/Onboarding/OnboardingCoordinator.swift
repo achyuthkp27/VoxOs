@@ -434,6 +434,16 @@ enum OnboardingStorageKeys {
     static let transcriptionSetupKind = "onboardingTranscriptionSetupKind"
     static let transcriptionProvider = "onboardingTranscriptionProvider"
     static let skippedAPISetup = "onboardingSkippedAPISetup"
+    /// Prefix for per-action flags recording that the intro already cleared that shortcut.
+    static let clearedExperienceShortcutPrefix = "onboardingClearedExperienceShortcut_"
+
+    /// Removes every onboarding key, including the per-action flags the fixed list cannot name.
+    static func removeAll(from defaults: UserDefaults) {
+        onboardingKeys.forEach { defaults.removeObject(forKey: $0) }
+        for key in defaults.dictionaryRepresentation().keys where key.hasPrefix(clearedExperienceShortcutPrefix) {
+            defaults.removeObject(forKey: key)
+        }
+    }
 
     static let onboardingKeys = [
         stage,

@@ -18,9 +18,7 @@ enum OnboardingV2Migration {
         }
 
         clearModeStorage(defaults: defaults)
-        OnboardingStorageKeys.onboardingKeys.forEach {
-            defaults.removeObject(forKey: $0)
-        }
+        OnboardingStorageKeys.removeAll(from: defaults)
         defaults.set(true, forKey: preparedKey)
     }
 

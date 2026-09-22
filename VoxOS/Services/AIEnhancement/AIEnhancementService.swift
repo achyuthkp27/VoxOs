@@ -157,7 +157,9 @@ class AIEnhancementService: ObservableObject {
         // Rewrite turns the relationship around: the selection is the thing being acted on and
         // the spoken words are the instruction, where everywhere else the selection is context
         // and the spoken words are the material.
-        let isRewrite = configuration.mode?.outputMode == .rewrite
+        let isRewrite =
+            configuration.mode?.outputMode == .rewrite
+            || configuration.prompt?.id == PromptTemplates.rewritePromptId
         let selection = capped(contextSnapshot?.selectedText, 4000)
 
         let rewriteSection: String
@@ -335,6 +337,12 @@ class AIEnhancementService: ObservableObject {
         }
 
         let modelName = configuration.modelName ?? provider.defaultModel
+        // The opening agent turn carries the whole tool catalogue and runs on slower models;
+        // every later turn in the loop already gets 45s. 7s here just times out, retries
+        // twice, and looks like "the agent does nothing".
+        let requestTimeout =
+            AgentToolExecutor.isAgentConversation(systemPrompt: prompt.finalPromptText)
+            ? max(baseTimeout, 45) : baseTimeout
         let formattedText = "\n<TRANSCRIPT>\n\(text)\n</TRANSCRIPT>"
         let systemMessage = await getSystemMessage(
             prompt: prompt,
@@ -348,7 +356,7 @@ class AIEnhancementService: ObservableObject {
                     text: formattedText,
                     systemPrompt: systemMessage,
                     model: modelName,
-                    timeout: baseTimeout
+                    timeout: requestTimeout
                 )
                 return (
                     AIEnhancementOutputFilter.filter(result),
@@ -402,7 +410,7 @@ class AIEnhancementService: ObservableObject {
                     systemPrompt: systemMessage,
                     thinkingLevel: ReasoningConfig.geminiThinkingLevel(for: modelName),
                     store: false,
-                    timeout: baseTimeout
+                    timeout: requestTimeout
                 )
             case .anthropic:
                 result = try await AnthropicLLMClient.chatCompletion(
@@ -410,7 +418,7 @@ class AIEnhancementService: ObservableObject {
                     model: modelName,
                     messages: [.user(formattedText)],
                     systemPrompt: systemMessage,
-                    timeout: baseTimeout
+                    timeout: requestTimeout
                 )
             case .custom:
                 guard
@@ -426,7 +434,7 @@ class AIEnhancementService: ObservableObject {
                     messages: [.user(formattedText)],
                     systemPrompt: systemMessage,
                     temperature: 0.3,
-                    timeout: baseTimeout
+                    timeout: requestTimeout
                 )
             default:
                 guard let baseURL = URL(string: provider.baseURL) else {
@@ -451,7 +459,7 @@ class AIEnhancementService: ObservableObject {
                     temperature: temperature,
                     reasoningEffort: reasoningEffort,
                     extraBody: extraBody,
-                    timeout: baseTimeout
+                    timeout: requestTimeout
                 )
             }
             return (
@@ -613,7 +621,11 @@ class AIEnhancementService: ObservableObject {
                 contextSnapshot: contextSnapshot
             )
             var resultText = requestResult.text
-            if AgentToolExecutor.isAgentConversation(systemPrompt: requestResult.systemMessage),
+            // The trusted prompt decides this, never the assembled message: that message embeds
+            // selected text, clipboard and screen OCR, so a web page carrying the marker string
+            // could otherwise arm the tool loop inside a mode the user never armed — and those
+            // tools send messages, compose mail, open URLs and type.
+            if AgentToolExecutor.isAgentConversation(systemPrompt: configuration.prompt?.finalPromptText),
                 let aiService = getAIService()
             {
                 resultText = await AgentToolExecutor.runLoop(
@@ -695,7 +707,10 @@ class AIEnhancementService: ObservableObject {
 
     func repairModePromptSelections() {
         let availablePromptIds = Set(allPrompts.map { $0.id.uuidString })
-        let fallbackPromptId = allPrompts.first?.id.uuidString
+        // Never the Agent prompt: that would arm the tool loop for plain dictation modes.
+        let fallbackPromptId =
+            (allPrompts.first { !AgentToolExecutor.isAgentConversation(systemPrompt: $0.finalPromptText) }
+                ?? allPrompts.first)?.id.uuidString
         let modeManager = ModeManager.shared
         var updatedConfigurations = modeManager.configurations
         var didUpdateModes = false

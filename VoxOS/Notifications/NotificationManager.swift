@@ -72,12 +72,13 @@ class NotificationManager {
         })
 
         // Schedule a new timer to dismiss the new notification.
-        dismissTimer = Timer.scheduledTimer(
-            withTimeInterval: duration,
-            repeats: false
-        ) { [weak self] _ in
+        // `.common` so the toast still dismisses while a modal alert or a menu is up; the
+        // default mode alone leaves it stuck on screen until the next notification replaces it.
+        let timer = Timer(timeInterval: duration, repeats: false) { [weak self] _ in
             Task { @MainActor in self?.dismissNotification() }
         }
+        RunLoop.main.add(timer, forMode: .common)
+        dismissTimer = timer
     }
 
     @MainActor

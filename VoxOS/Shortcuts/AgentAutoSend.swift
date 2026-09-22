@@ -169,7 +169,10 @@ final class AgentAutoSend {
 
             while !Task.isCancelled {
                 try? await Task.sleep(nanoseconds: 100_000_000)
-                guard let self, let engine = self.engine, engine.recordingState == .recording else { return }
+                // The sleep throws on cancellation and `try?` swallows it, so re-check here or a
+                // cancelled detector runs one more full pass and can stop a freshly re-armed recording.
+                guard !Task.isCancelled, let self, let engine = self.engine, engine.recordingState == .recording
+                else { return }
 
                 let now = Date()
                 let level = engine.recorder.audioMeterSnapshot().averagePower

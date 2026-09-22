@@ -8,7 +8,7 @@ class RecordingShortcutManager: ObservableObject {
     @Published var primaryRecordingShortcut: ShortcutSelection {
         didSet {
             UserDefaults.standard.set(primaryRecordingShortcut.rawValue, forKey: DefaultsKeys.primaryRecordingShortcut)
-            refreshShortcutMonitoring()
+            scheduleShortcutMonitoringRefresh()
         }
     }
     @Published var secondaryRecordingShortcut: ShortcutSelection {
@@ -18,7 +18,7 @@ class RecordingShortcutManager: ObservableObject {
             }
             UserDefaults.standard.set(
                 secondaryRecordingShortcut.rawValue, forKey: DefaultsKeys.secondaryRecordingShortcut)
-            refreshShortcutMonitoring()
+            scheduleShortcutMonitoringRefresh()
         }
     }
     @Published var primaryRecordingShortcutMode: Mode {
@@ -37,7 +37,7 @@ class RecordingShortcutManager: ObservableObject {
     @Published var isMiddleClickToggleEnabled: Bool {
         didSet {
             UserDefaults.standard.set(isMiddleClickToggleEnabled, forKey: DefaultsKeys.isMiddleClickToggleEnabled)
-            refreshShortcutMonitoring()
+            scheduleShortcutMonitoringRefresh()
         }
     }
     @Published var middleClickActivationDelay: Int {
@@ -50,8 +50,8 @@ class RecordingShortcutManager: ObservableObject {
     private var recorderUIManager: RecorderUIManager
     private var recorderPanelShortcutManager: RecorderPanelShortcutManager
     private let modeShortcutManager: ModeShortcutManager
-    private let shortcutMonitor = ShortcutMonitor()
     private var shortcutChangeObserver: NSObjectProtocol?
+    private var pendingMonitoringRefresh: Task<Void, Never>?
     private let shortcutModeHandler: RecordingShortcutModeHandler
     private let primaryRecordingShortcutModeSource: RecordingShortcutModeSource
     private let autoSend: AgentAutoSend
@@ -189,9 +189,20 @@ class RecordingShortcutManager: ObservableObject {
             forName: ShortcutStore.shortcutDidChange,
             object: nil,
             queue: .main
-        ) { [weak self] _ in
+        ) { [weak self] notification in
+            // Mode and recorder-panel shortcuts belong to the other two monitors. Rebuilding
+            // this one for them tore down and recreated a system-wide tap for nothing.
+            if let action = notification.object as? ShortcutAction {
+                switch action {
+                case .mode, .recorderPanelMode, .recorderPanelEscape:
+                    return
+                default:
+                    break
+                }
+            }
+
             Task { @MainActor in
-                self?.refreshShortcutMonitoring()
+                self?.scheduleShortcutMonitoringRefresh()
             }
         }
 
@@ -201,8 +212,29 @@ class RecordingShortcutManager: ObservableObject {
         }
     }
 
+    /// Collapses a burst of shortcut/setting changes into one rebuild. Each rebuild destroys and
+    /// recreates a system-wide event tap, and launch alone posts several notifications.
+    private func scheduleShortcutMonitoringRefresh() {
+        pendingMonitoringRefresh?.cancel()
+        pendingMonitoringRefresh = Task { @MainActor [weak self] in
+            await Task.yield()
+            guard let self, !Task.isCancelled else { return }
+            self.pendingMonitoringRefresh = nil
+            self.refreshShortcutMonitoring()
+        }
+    }
+
     private func refreshShortcutMonitoring() {
-        removeAllMonitoring()
+        // Not removeAllMonitoring(): register() replaces this owner's slice of the shared tap in
+        // place. Unregistering first would empty the tap whenever this is the only owner (no mode
+        // shortcuts, panel hidden — the common case) and tear it down only to rebuild it a line
+        // later, which is exactly the churn the shared tap exists to avoid.
+        removeMiddleClickMonitoring()
+        // A settings change can land mid-press. Resetting then drops the release, and a
+        // push-to-talk recording never stops.
+        if !shortcutModeHandler.hasActivePress {
+            shortcutModeHandler.reset()
+        }
 
         refreshShortcutMonitor()
         setupMiddleClickMonitoring()
@@ -268,7 +300,8 @@ class RecordingShortcutManager: ObservableObject {
             interruptibleRecordingActions.insert(.secondaryRecording)
         }
 
-        shortcutMonitor.start(
+        ShortcutMonitor.shared.register(
+            owner: .recording,
             shortcuts: shortcuts,
             interruptibleActions: interruptibleRecordingActions,
             onKeyDown: { [weak self] action, eventTime in
@@ -292,6 +325,13 @@ class RecordingShortcutManager: ObservableObject {
                         // Armed first: when fn already started (or just stopped) a dictation, the
                         // handler ignores this press, but the paste must still press Return.
                         DictationSend.armOnce()
+                    } else if action == .primaryRecording || action == .secondaryRecording,
+                        !self.recorderUIManager.isRecorderPanelVisible
+                    {
+                        // A brand-new plain dictation. Any one-off send still armed belongs to an
+                        // earlier recording that never pasted; left alone it would press Return
+                        // after this one and send a message the user never asked to send.
+                        DictationSend.clearOnce()
                     }
                     guard let mode = self.recordingMode(for: action) else { return }
                     await self.shortcutModeHandler.handleKeyDown(
@@ -431,8 +471,12 @@ class RecordingShortcutManager: ObservableObject {
     }
 
     private func removeAllMonitoring() {
-        shortcutMonitor.stop()
+        ShortcutMonitor.shared.unregister(owner: .recording)
+        removeMiddleClickMonitoring()
+        shortcutModeHandler.reset()
+    }
 
+    private func removeMiddleClickMonitoring() {
         for monitor in middleClickMonitors {
             if let monitor = monitor {
                 NSEvent.removeMonitor(monitor)
@@ -440,8 +484,6 @@ class RecordingShortcutManager: ObservableObject {
         }
         middleClickMonitors = []
         middleClickTask?.cancel()
-
-        shortcutModeHandler.reset()
     }
 
     /// Switches the live recording between the Agent starter mode and the mode that was
@@ -511,7 +553,7 @@ class RecordingShortcutManager: ObservableObject {
 
     func updateShortcutStatus() {
         // Called when a shortcut changes
-        refreshShortcutMonitoring()
+        scheduleShortcutMonitoringRefresh()
     }
 
     deinit {
@@ -519,8 +561,16 @@ class RecordingShortcutManager: ObservableObject {
             NotificationCenter.default.removeObserver(shortcutChangeObserver)
         }
 
-        MainActor.assumeIsolated {
-            removeAllMonitoring()
+        // deinit is nonisolated and can run on whatever thread drops the last reference, and
+        // `MainActor.assumeIsolated` traps there. The monitor is not actor-isolated, and the
+        // NSEvent monitors are removed on main.
+        ShortcutMonitor.shared.unregister(owner: .recording)
+        let monitors = middleClickMonitors
+        middleClickTask?.cancel()
+        DispatchQueue.main.async {
+            for monitor in monitors {
+                if let monitor { NSEvent.removeMonitor(monitor) }
+            }
         }
     }
 }
@@ -582,6 +632,9 @@ final class RecordingShortcutModeHandler {
         self.toggleAgentMode = toggleAgentMode
         self.onHandsFreeRecordingStarted = onHandsFreeRecordingStarted
     }
+
+    /// True while a recording shortcut is physically held.
+    var hasActivePress: Bool { isShortcutPressed }
 
     func reset() {
         isShortcutPressed = false
@@ -669,6 +722,10 @@ final class RecordingShortcutModeHandler {
         mode: RecordingShortcutManager.Mode,
         modeId: UUID? = nil
     ) async {
+        // A release always clears a pending interruption for its key. Without this, an
+        // interruption recorded while the recorder was idle (a letter typed within a second of a
+        // press the cooldown ignored) sat there and ate the user's next press outright.
+        interruptedRecordingActions.remove(action)
         guard isShortcutPressed, activeRecordingShortcutAction == action else { return }
         isShortcutPressed = false
         activeRecordingShortcutAction = nil

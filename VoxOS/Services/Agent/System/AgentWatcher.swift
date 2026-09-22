@@ -100,7 +100,8 @@ enum AgentWatcher {
     }
 
     static func cancel(id: String?) -> [String: Any] {
-        if let id, let watch = watches[id] {
+        if let id {
+            guard let watch = watches[id] else { return ["error": "no watch with id \(id)"] }
             watch.task?.cancel()
             watches[id] = nil
             return ["ok": true, "cancelled": id]

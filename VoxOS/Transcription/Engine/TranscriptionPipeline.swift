@@ -192,9 +192,65 @@ class TranscriptionPipeline {
                     forKey: DefaultsKeys.skipShortEnhancement)
                 let savedThreshold = UserDefaults.standard.integer(forKey: DefaultsKeys.shortEnhancementWordThreshold)
                 let shortEnhancementWordThreshold = savedThreshold > 0 ? savedThreshold : 3
+                // Never skip for a mode that rewrites a selection. The spoken text is an
+                // instruction ("make it shorter" — three words), not dictation, so the short
+                // -text shortcut would hand the raw instruction to delivery and paste it over
+                // whatever the user had selected.
                 let shouldSkipEnhancement =
-                    !shouldRespondInRecorder && isSkipShortEnhancementEnabled
+                    !shouldRespondInRecorder
+                    && !resolvedOutputConfiguration.outputMode.requiresSelectedText
+                    && isSkipShortEnhancementEnabled
                     && WordCounter.count(in: text) <= shortEnhancementWordThreshold
+
+                // Checked before the enhancement branch, not inside it: a rewrite whose
+                // provider is unconfigured, whose enhancement is off, or which was skipped
+                // above still reaches delivery, and pasting there replaces the very selection
+                // the mode exists to edit.
+                if resolvedOutputConfiguration.outputMode.requiresSelectedText {
+                    let hasSelection = !(await recordingContextSnapshot()?.selectedText ?? "")
+                        .trimmingCharacters(in: .whitespacesAndNewlines).isEmpty
+
+                    if !hasSelection {
+                        logger.info("Rewrite requested with nothing selected; pasting nothing")
+                        await MainActor.run {
+                            NotificationManager.shared.showNotification(
+                                title: String(
+                                    localized: "Select some text first — Rewrite replaces the selection."),
+                                type: .warning
+                            )
+                        }
+                        transcription.transcriptionStatus = TranscriptionStatus.completed.rawValue
+                        saveTranscriptionAndPostCompletion()
+                        onStateChange(.idle)
+                        await onDismiss()
+                        return
+                    }
+
+                    let canRewrite =
+                        enhancementService != nil
+                        && resolvedEnhancementConfiguration?.isEnabled == true
+                        && resolvedEnhancementConfiguration.map {
+                            enhancementService?.isConfigured(for: $0) == true
+                        } == true
+
+                    // Without a working provider there is no rewritten text to put back, and
+                    // delivery would paste the spoken instruction over the selection instead.
+                    if !canRewrite {
+                        logger.info("Rewrite requested without a configured AI provider; pasting nothing")
+                        await MainActor.run {
+                            NotificationManager.shared.showNotification(
+                                title: String(
+                                    localized: "Rewrite needs an AI provider — set one up in Settings."),
+                                type: .warning
+                            )
+                        }
+                        transcription.transcriptionStatus = TranscriptionStatus.completed.rawValue
+                        saveTranscriptionAndPostCompletion()
+                        onStateChange(.idle)
+                        await onDismiss()
+                        return
+                    }
+                }
 
                 if let enhancementService,
                     let resolvedEnhancementConfiguration,
@@ -215,29 +271,6 @@ class TranscriptionPipeline {
 
                     do {
                         let contextSnapshot = await recordingContextSnapshot()
-
-                        // Rewrite replaces a selection. With nothing selected there is nothing
-                        // to rewrite, and falling through would paste the spoken instruction into
-                        // the document as if it were dictation. Keep the recording in history, say
-                        // why, and paste nothing.
-                        if resolvedOutputConfiguration.outputMode.requiresSelectedText,
-                            (contextSnapshot?.selectedText ?? "")
-                                .trimmingCharacters(in: .whitespacesAndNewlines).isEmpty
-                        {
-                            logger.info("Rewrite requested with nothing selected; pasting nothing")
-                            await MainActor.run {
-                                NotificationManager.shared.showNotification(
-                                    title: String(
-                                        localized: "Select some text first — Rewrite replaces the selection."),
-                                    type: .warning
-                                )
-                            }
-                            transcription.transcriptionStatus = TranscriptionStatus.completed.rawValue
-                            saveTranscriptionAndPostCompletion()
-                            onStateChange(.idle)
-                            await onDismiss()
-                            return
-                        }
 
                         let enhancementResult = try await enhancementService.enhance(
                             textForAI,

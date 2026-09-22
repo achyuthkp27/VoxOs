@@ -251,7 +251,9 @@ struct DashboardContent: View {
     }
 
     private var shouldLockPeakHours: Bool {
-        hasLoadedStatsSnapshot && !canViewPeakHours
+        // Not `!canViewPeakHours`: that also covers "no data yet", which the card already
+        // renders as an empty state and which is no reason to show a padlock.
+        hasLoadedStatsSnapshot && selectedTotals.duration < Self.peakHoursUnlockDuration
     }
 
     private var shouldRefreshStatsAfterMetricChange: Bool {
@@ -653,7 +655,7 @@ struct DashboardContent: View {
     }
 
     private func beginEditingDisplayName() {
-        displayNameDraft = defaultedDisplayName
+        displayNameDraft = sanitizedDisplayName(dashboardDisplayName)
         isEditingDisplayName = true
         DispatchQueue.main.async {
             isNameFieldFocused = true

@@ -275,6 +275,10 @@ class AudioProcessor {
         guard let outputFormat = outputFormat else {
             throw AudioProcessingError.unsupportedFormat
         }
+        // A header-only file yields no samples; a zero-capacity buffer traps.
+        guard !samples.isEmpty else {
+            throw AudioProcessingError.sampleExtractionFailed
+        }
 
         let buffer = AVAudioPCMBuffer(
             pcmFormat: outputFormat,

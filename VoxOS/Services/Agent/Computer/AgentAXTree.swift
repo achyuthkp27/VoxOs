@@ -102,9 +102,13 @@ enum AgentAXTree {
         let value = stringFrom(copyAttribute(focused, kAXValueAttribute))
         guard !value.isEmpty else { return nil }
 
-        guard let rangeValue = copyAttribute(focused, kAXSelectedTextRangeAttribute) else { return nil }
+        // Whatever the foreign app returns; some AX bridges hand back an NSValue here, and a
+        // force cast trapped mid-dictation.
+        guard let rangeValue = copyAttribute(focused, kAXSelectedTextRangeAttribute),
+            CFGetTypeID(rangeValue) == AXValueGetTypeID()
+        else { return nil }
         var range = CFRange()
-        guard AXValueGetValue(rangeValue as! AXValue, .cfRange, &range) else { return nil }
+        guard AXValueGetValue(unsafeBitCast(rangeValue, to: AXValue.self), .cfRange, &range) else { return nil }
 
         // A non-empty selection is about to be replaced, so neither side describes what the
         // inserted text will sit between.

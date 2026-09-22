@@ -36,7 +36,14 @@ enum AgentModeGuard {
         }
 
         guard var agent = manager.getConfiguration(with: agentId) else { return nil }
-        var repaired = repair(&agent, connected: aiService.connectedProviders) { aiService.selectedModel(for: $0) }
+        // Ollama's connected state comes from an async probe that has not finished when this
+        // runs at launch. Treat it as unknown rather than absent, or the Agent gets silently
+        // moved to a cloud provider (and its saved choice overwritten) on every launch.
+        let connected = aiService.connectedProviders
+        let unresolved: Set<AIProvider> = connected.contains(.ollama) ? [] : [.ollama]
+        var repaired = repair(&agent, connected: connected, unresolved: unresolved) {
+            aiService.selectedModel(for: $0)
+        }
         // Auto-detect misreads short commands ("open Chrome" came out in Cyrillic): speak the
         // same language as the default dictation mode when that one is set.
         if let language = inheritedLanguage(agent: agent, defaultMode: manager.getDefaultConfiguration()) {
@@ -62,6 +69,7 @@ enum AgentModeGuard {
     static func repair(
         _ agent: inout ModeConfig,
         connected: [AIProvider],
+        unresolved: Set<AIProvider> = [],
         selectedModel: (AIProvider) -> String
     ) -> Bool {
         var changed = false
@@ -86,7 +94,8 @@ enum AgentModeGuard {
         // VoxOS Refine only cleans transcripts; it cannot run the tool loop.
         let usable = connected.filter { $0 != .voxOSRefine }
         let current = agent.selectedAIProvider.flatMap(AIProvider.init(rawValue:))
-        if let replacement = usable.first, current.map({ !usable.contains($0) }) ?? true {
+        let currentIsUnresolved = current.map { unresolved.contains($0) } ?? false
+        if !currentIsUnresolved, let replacement = usable.first, current.map({ !usable.contains($0) }) ?? true {
             agent.selectedAIProvider = replacement.rawValue
             agent.selectedAIModel = selectedModel(replacement)
             changed = true

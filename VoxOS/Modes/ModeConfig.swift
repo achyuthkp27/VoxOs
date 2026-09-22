@@ -312,6 +312,10 @@ class ModeManager: ObservableObject {
             configurations = configs
             migrateLoadedModeConfigurationsIfNeeded()
         }
+        // Set whether or not anything was stored. A fresh install has nothing to decode, and
+        // without this the one-shot Rewrite migration would first run on the *next* launch,
+        // overwriting an output mode the user had chosen in the meantime.
+        markOneShotModeMigrationsDone()
     }
 
     func saveConfigurations() {
@@ -380,6 +384,18 @@ class ModeManager: ObservableObject {
         }
 
         configurations[index] = configuration
+        // Exactly one default, always. With none, app-based switching finds no fallback and
+        // the last triggered mode sticks forever.
+        if !configuration.isDefault, !configurations.contains(where: { $0.isDefault }),
+            let fallbackIndex = configurations.firstIndex(where: {
+                $0.id != configuration.id && $0.isEnabled && $0.outputMode != .respond
+            }) ?? configurations.firstIndex(where: { $0.id != configuration.id })
+        {
+            configurations[fallbackIndex].isDefault = true
+            configurations[fallbackIndex].isEnabled = true
+        } else if !configuration.isDefault, !configurations.contains(where: { $0.isDefault }) {
+            configurations[index].isDefault = true
+        }
         saveConfigurations()
         postShortcutAvailabilityChangeIfNeeded(previousEnabledConfigIds: previousEnabledConfigIds)
     }

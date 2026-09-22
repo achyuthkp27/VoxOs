@@ -103,8 +103,13 @@ enum ShortcutValidator {
 
     private static var allStoredActions: [ShortcutAction] {
         var seenActions = Set<ShortcutAction>()
+        // Everything RecordingShortcutManager registers, not just the legacy set: leaving the
+        // utility, agent double-tap and dictate-and-send actions out let two live shortcuts share
+        // one key combination and both fire on a single press.
         let actions =
             ShortcutAction.legacyKeyboardShortcutActions
+            + ShortcutAction.globalUtilityActions
+            + [.agentDoubleTap, .dictateAndSend]
             + ModeManager.shared.configurations.map { ShortcutAction.mode($0.id) }
 
         return actions.filter { seenActions.insert($0).inserted }

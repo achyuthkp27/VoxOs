@@ -54,8 +54,9 @@ struct LearnedCorrectionsSection: View {
                 )
             }
         }
-        .task { await scan() }
-        .onChange(of: existingOriginals) { _, _ in Task { await scan() } }
+        // One task keyed on the inputs: a change cancels the scan in flight rather than being
+        // dropped by it, so the list cannot go stale after an Add.
+        .task(id: existingOriginals) { await scan() }
     }
 
     private var visibleCandidates: [DictionaryCorrectionLearner.Candidate] {
@@ -123,8 +124,8 @@ struct LearnedCorrectionsSection: View {
 
     /// Diffing a few hundred transcriptions is not free, so it happens off the main actor and
     /// only when this view appears rather than on every keystroke in the dictionary.
+    @MainActor
     private func scan() async {
-        guard !isScanning else { return }
         isScanning = true
         defer { isScanning = false }
 
@@ -150,6 +151,7 @@ struct LearnedCorrectionsSection: View {
             DictionaryCorrectionLearner.candidates(from: pairs, knownOriginals: known)
         }.value
 
+        guard !Task.isCancelled else { return }
         candidates = found
     }
 }
