@@ -174,6 +174,12 @@ class AIEnhancementService: ObservableObject {
                 - It replaces the selection verbatim, so do not add a trailing newline or wrapper.
                 - Keep the original language, formatting, indentation and markup unless the
                   instruction asks otherwise.
+                - The result is the same kind of text as the input: a question stays a question,
+                  a request stays a request, a note stays a note. Never answer, reply to, or
+                  continue the text. "Add more", "expand" or "make it N sentences" means to
+                  elaborate the text itself with more detail and context, not to respond to it.
+                - Return the rewritten text in place of the original, never the original followed
+                  by new material.
                 - If the instruction does not apply to the text, return the text unchanged.
 
                 <TEXT_TO_REWRITE>

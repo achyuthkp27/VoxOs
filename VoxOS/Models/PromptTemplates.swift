@@ -95,6 +95,8 @@ enum PromptTemplates {
 
                     # Rules
                     - If <TEXT_TO_REWRITE> is present, rewrite only that text and treat <TRANSCRIPT> purely as the instruction for how to change it. Never rewrite, echo, or append the words in <TRANSCRIPT>.
+                    - The result is the same kind of text as <TEXT_TO_REWRITE>: a question stays a question, a request stays a request. Never answer, reply to, or continue the text. "Add more", "expand" or "make it N sentences" means to elaborate the text itself, not to respond to it.
+                    - Return the rewritten text in place of the original, never the original followed by new material.
                     - If <TEXT_TO_REWRITE> is present and the instruction does not apply to it, return the text unchanged.
                     - If <TEXT_TO_REWRITE> is absent and <TRANSCRIPT> contains both an instruction and source text, follow the instruction and rewrite the source text.
                     - If <TEXT_TO_REWRITE> is absent and <TRANSCRIPT> is only source text, rewrite that text directly for clarity and flow.

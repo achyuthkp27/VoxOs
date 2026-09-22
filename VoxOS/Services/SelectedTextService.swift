@@ -24,6 +24,12 @@ final class SelectedTextService {
             return nil
         }
 
+        // Terminals with their own selection API come first: for them every general route
+        // below fails, and the synthesised ⌘C fallback costs a round trip for nothing.
+        if let terminalSelection = await TerminalSelectionReader.selectionInFrontmostTerminal() {
+            return normalized(terminalSelection)
+        }
+
         let strategies = allowClipboardCopy ? selectedTextStrategies + [.shortcut] : selectedTextStrategies
         do {
             return normalized(try await textManager.getSelectedText(strategies: strategies))
