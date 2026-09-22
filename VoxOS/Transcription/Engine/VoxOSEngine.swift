@@ -211,6 +211,8 @@ class VoxOSEngine: NSObject, ObservableObject {
                     }
                     NotificationCenter.default.post(name: .transcriptionCreated, object: transcription)
 
+                    await recaptureSelectionIfRewriteStillLacksOne()
+
                     await runPipeline(
                         on: transcription,
                         audioURL: recordedFile,
@@ -529,6 +531,24 @@ class VoxOSEngine: NSObject, ObservableObject {
         activeRecordingContextTasks = RecordingContextCaptureService.startCapture(
             into: store,
             selectionIsRequired: ModeRuntimeResolver.outputConfiguration().outputMode.requiresSelectedText)
+    }
+
+    /// The selection is captured when the recording starts, while the user is still holding the
+    /// shortcut. For a modifier-only shortcut that is a problem for the clipboard fallback:
+    /// macOS merges physically held modifiers into keystrokes posted at the HID level, so the
+    /// synthesised ⌘C reaches the app as ⌘⌥C and nothing is copied. The shortcut has been
+    /// released by the time the recording stops, so try once more here, only when a rewrite
+    /// mode still has no selection to work on.
+    private func recaptureSelectionIfRewriteStillLacksOne() async {
+        guard let store = activeRecordingContextStore,
+            store.snapshot.selectedText == nil,
+            ModeRuntimeResolver.outputConfiguration().outputMode.requiresSelectedText
+        else { return }
+
+        let selectedText = await SelectedTextService.fetchSelectedText(allowClipboardCopy: true)
+        guard activeRecordingContextStore === store else { return }
+        store.updateSelectedText(selectedText)
+        logger.info("Rewrite selection recaptured after release: \(selectedText != nil, privacy: .public)")
     }
 
     private func clearActiveRecordingContext() {
