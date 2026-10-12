@@ -12,10 +12,12 @@ enum AgentQuickIntents {
         let lower = text.lowercased()
         guard lower.count <= 60 else { return nil }
 
+        AgentAutoClose.beginRun()
         switch appRequest(in: lower) {
         case .found(let app):
             let result = await MainActor.run { AgentWindows.openApp(name: app) }
             if let error = result["error"] as? String { return "Couldn't open \(app): \(error)" }
+            AgentAutoClose.recordQuickLaunch()
             return "Opened \(app)."
         case .notFound(let query, let suggestions):
             // Answer at once rather than spending model calls (and rate limit) on a missing app.

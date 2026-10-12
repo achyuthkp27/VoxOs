@@ -67,6 +67,7 @@ enum AppDefaults {
             DefaultsKeys.enhancementTimeoutSeconds: 7,
             DefaultsKeys.enhancementRetryOnTimeout: true,
             DefaultsKeys.aiFallbackProviders: [String](),
+            DefaultsKeys.agentAutoCloseAfterOpen: true,
 
             // Model
             DefaultsKeys.prewarmModelOnWake: true,

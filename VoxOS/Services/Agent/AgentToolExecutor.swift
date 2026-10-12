@@ -51,6 +51,7 @@ enum AgentToolExecutor {
             // A confirmation must come from a later request than the one that asked for it.
             AgentPendingAction.beginRun()
             AgentCardStore.clear()
+            AgentAutoClose.beginRun()
         }
         defer { if !background { AgentProgress.set(nil) } }
         // The task that was paused before this request is being resumed by it; a task this
@@ -67,6 +68,7 @@ enum AgentToolExecutor {
             steps += 1
             if !background { AgentProgress.set(AgentProgress.label(forTool: call.name)) }
             let result = await AgentTools.execute(name: call.name, args: call.args)
+            AgentAutoClose.record(tool: call.name, result: result)
             executed.append(call.name)
             if !background, let card = AgentCard.from(tool: call.name, result: result) { AgentCardStore.add(card) }
 

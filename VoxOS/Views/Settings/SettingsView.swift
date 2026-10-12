@@ -40,6 +40,7 @@ struct SettingsView: View {
     @AppStorage(AgentControlMode.userDefaultsKey) private var agentControlModeRaw = AgentControlMode.takeover.rawValue
     @AppStorage(AgentShell.allowRiskyKey) private var agentAllowRiskyShell = false
     @AppStorage(AgentAutoSend.enabledKey) private var agentAutoSendEnabled = true
+    @AppStorage(AgentAutoClose.enabledKey) private var agentAutoCloseEnabled = true
     @AppStorage(DictationSend.stopWhenQuietKey) private var dictationStopWhenQuiet = false
     @AppStorage(DictationSend.pressReturnKey) private var dictationPressReturn = false
     @AppStorage(AgentAutoSend.pauseKey) private var agentAutoSendPause = AgentAutoSend.Pause.normal.rawValue
@@ -399,6 +400,15 @@ struct SettingsView: View {
                             }
                         }
                         .pickerStyle(.menu)
+                    }
+
+                    Toggle(isOn: $agentAutoCloseEnabled) {
+                        HStack(spacing: 2) {
+                            Text("Close After Opening Something")
+                            InfoTip(
+                                "When a request only opens an app or page (“open Slack”), the Agent panel closes by itself a moment after it does. It stays open for answers, errors, questions, and anything that did more than open."
+                            )
+                        }
                     }
 
                     Toggle(isOn: $agentAllowRiskyShell) {

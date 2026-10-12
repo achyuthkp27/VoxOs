@@ -67,6 +67,8 @@ enum DefaultsKeys {
     static let enhancementRetryOnTimeout = "EnhancementRetryOnTimeout"
     /// Ordered provider names (`AIProvider.rawValue`) the agent may fall back to when the chosen one is down.
     static let aiFallbackProviders = "AIFallbackProviders"
+    /// Close the Agent panel by itself after a request that only opened something.
+    static let agentAutoCloseAfterOpen = "AgentAutoCloseAfterOpen"
     static let customPrompts = "customPrompts"
     static let selectedPromptId = "selectedPromptId"
 
