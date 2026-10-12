@@ -34,6 +34,36 @@ enum AgentToolCatalog {
         - Final reply: one or two plain sentences on what you did, including anything blocked.
         """
 
+    /// Tools that are only described when the request mentions them. The base catalogue is re-sent
+    /// on every agent step and is capped (see `compactCatalogueStaysSmall`), so tools for one area
+    /// each wait here until the user's words point at that area.
+    static let onDemand: [(name: String, keywords: [String], docs: String)] = [
+        (
+            "music",
+            ["play", "pause", "resume", "skip", "song", "music", "track", "playlist", "spotify", "shuffle", "repeat",
+                "volume", "album", "artist", "what's playing", "whats playing", "now playing"],
+            "Music: music_now_playing {} · music_play {\"query\"?,\"app\": \"spotify\"|\"music\"?} (Apple Music plays from the user's library; Spotify only opens its search) · music_control {\"action\": play|pause|toggle|next|previous|shuffle_on|shuffle_off|repeat_on|repeat_off|volume,\"value\": 0-100?,\"app\"?}"
+        ),
+        (
+            "notes",
+            ["note", "notes"],
+            "Notes: notes_search {\"query\",\"limit\"?} -> titles + snippets · notes_read {\"title\"} -> full text (notes_create makes one)"
+        ),
+    ]
+
+    /// The extra tool docs for the areas `request` mentions, or nil when none apply.
+    static func onDemandSection(for request: String) -> String? {
+        let text = request.lowercased()
+        let words = Set(text.split(whereSeparator: { !$0.isLetter && $0 != "'" }).map(String.init))
+        let docs = onDemand.compactMap { entry -> String? in
+            let hit = entry.keywords.contains { keyword in
+                keyword.contains(" ") || keyword.contains("'") ? text.contains(keyword) : words.contains(keyword)
+            }
+            return hit ? entry.docs : nil
+        }
+        return docs.isEmpty ? nil : "# More tools for this request\n" + docs.joined(separator: "\n")
+    }
+
     /// Live state appended after the catalogue: control mode, plugins, active macro recording.
     static func runtimeSection() -> String {
         var lines: [String] = [

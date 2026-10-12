@@ -410,6 +410,23 @@ enum AgentTools {
         case "media_key":
             return await MainActor.run { mediaKey(action: s("action")) }
 
+        case "music_now_playing":
+            return await MainActor.run { AgentMusic.nowPlaying() }
+
+        case "music_play":
+            return await MainActor.run { AgentMusic.play(query: s("query"), app: s("app")) }
+
+        case "music_control":
+            let value: Int? = args["value"] == nil ? nil : i("value", -1)
+            return await MainActor.run { AgentMusic.control(action: s("action"), value: value, app: s("app")) }
+
+        case "notes_search":
+            let limit = i("limit", AgentNotes.maxResults)
+            return await MainActor.run { AgentNotes.search(query: s("query"), limit: limit) }
+
+        case "notes_read":
+            return await MainActor.run { AgentNotes.read(title: s("title")) }
+
         default:
             return ["error": "unknown tool: \(name)", "hint": "reply with a plain-text answer if no tool fits"]
         }

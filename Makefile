@@ -24,7 +24,7 @@ LOCAL_CODESIGN_IDENTITY ?=
 # lying around in ~/Downloads for Spotlight to index.
 INSTALL_PATH ?= /Applications/VoxOS.app
 
-.PHONY: all clean whisper setup build local check healthcheck help dev run release release-setup test lint format print-whisper-ref
+.PHONY: parakeet-redux all clean whisper setup build local check healthcheck help dev run release release-setup test lint format print-whisper-ref
 
 # Default target
 all: check build
@@ -172,6 +172,7 @@ help:
 	@echo "Available targets:"
 	@echo "  check/healthcheck  Check if required CLI tools are installed"
 	@echo "  whisper            Clone and build whisper.cpp XCFramework"
+	@echo "  parakeet-redux     Run the local Parakeet Redux transcription server"
 	@echo "  setup              Copy whisper XCFramework to VoxOS project"
 	@echo "  build              Build the VoxOS Xcode project"
 	@echo "  local              Build, sign with your Apple Development identity, install to /Applications"
@@ -229,3 +230,7 @@ lint:
 
 format:
 	@xcrun swift-format format --in-place --recursive --parallel $(SWIFT_FORMAT_PATHS)
+
+# Local Parakeet Redux transcription server (see scripts/parakeet-redux/README.md)
+parakeet-redux:
+	@scripts/parakeet-redux/run.sh

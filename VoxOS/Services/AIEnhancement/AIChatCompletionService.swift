@@ -5,12 +5,61 @@ extension AIService {
     /// Chat completion with retries for transient failures (429 rate limits, 5xx, network).
     /// Providers like Groq say "try again in 12.3s" in the 429 body; that wait is honoured
     /// (capped) so a burst of agent tool calls does not surface a raw HTTP error to the user.
+    ///
+    /// If the provider is still failing after its retries and the user has listed fallback
+    /// providers (`DefaultsKeys.aiFallbackProviders`), the same conversation is replayed on the
+    /// next one. Tool calls are plain-text JSON (ADR 0001), so any provider can continue a run.
     func completeChat(
         provider: AIProvider,
         modelName: String?,
         messages: [ChatMessage],
         systemPrompt: String? = nil,
         timeout: TimeInterval = 30
+    ) async throws -> String {
+        var lastError: LLMKitError
+        do {
+            return try await completeChatWithRetries(
+                provider: provider, modelName: modelName, messages: messages,
+                systemPrompt: systemPrompt, timeout: timeout, maxAttempts: 3)
+        } catch let error as LLMKitError {
+            lastError = error
+        }
+
+        guard AIProviderFallback.isFailoverWorthy(lastError) else {
+            throw Self.friendlyChatError(lastError, modelName: modelName)
+        }
+        let fallbacks = AIProviderFallback.candidates(
+            primary: provider,
+            configuredOrder: UserDefaults.standard.stringArray(forKey: DefaultsKeys.aiFallbackProviders) ?? [],
+            connected: connectedProviders)
+
+        for fallback in fallbacks {
+            if !AgentRunScope.isBackground {
+                AgentProgress.set("\(provider.rawValue) is unavailable, trying \(fallback.rawValue)…")
+            }
+            do {
+                // The fallback uses its own selected model: the primary's model name means nothing there.
+                return try await completeChatWithRetries(
+                    provider: fallback, modelName: nil, messages: messages,
+                    systemPrompt: systemPrompt, timeout: timeout, maxAttempts: 2)
+            } catch let error as LLMKitError {
+                lastError = error
+                if !AIProviderFallback.isFailoverWorthy(error) { continue }
+            } catch {
+                // Not configured, or another local error: skip this provider and try the next.
+                continue
+            }
+        }
+        throw Self.friendlyChatError(lastError, modelName: modelName)
+    }
+
+    private func completeChatWithRetries(
+        provider: AIProvider,
+        modelName: String?,
+        messages: [ChatMessage],
+        systemPrompt: String?,
+        timeout: TimeInterval,
+        maxAttempts: Int
     ) async throws -> String {
         var attempt = 0
         var delay: TimeInterval = 1.5
@@ -21,8 +70,8 @@ extension AIService {
                     systemPrompt: systemPrompt, timeout: timeout)
             } catch let error as LLMKitError {
                 attempt += 1
-                guard attempt < 3, let wait = Self.retryDelay(for: error, fallback: delay) else {
-                    throw Self.friendlyChatError(error, modelName: modelName)
+                guard attempt < maxAttempts, let wait = Self.retryDelay(for: error, fallback: delay) else {
+                    throw error
                 }
                 let showsProgress = !AgentRunScope.isBackground
                 if showsProgress, case .httpError(429, _) = error {

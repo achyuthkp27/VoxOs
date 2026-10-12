@@ -66,6 +66,7 @@ enum AppDefaults {
             DefaultsKeys.shortEnhancementWordThreshold: 3,
             DefaultsKeys.enhancementTimeoutSeconds: 7,
             DefaultsKeys.enhancementRetryOnTimeout: true,
+            DefaultsKeys.aiFallbackProviders: [String](),
 
             // Model
             DefaultsKeys.prewarmModelOnWake: true,

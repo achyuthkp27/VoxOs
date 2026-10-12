@@ -65,6 +65,8 @@ enum DefaultsKeys {
     static let shortEnhancementWordThreshold = "ShortEnhancementWordThreshold"
     static let enhancementTimeoutSeconds = "EnhancementTimeoutSeconds"
     static let enhancementRetryOnTimeout = "EnhancementRetryOnTimeout"
+    /// Ordered provider names (`AIProvider.rawValue`) the agent may fall back to when the chosen one is down.
+    static let aiFallbackProviders = "AIFallbackProviders"
     static let customPrompts = "customPrompts"
     static let selectedPromptId = "selectedPromptId"
 

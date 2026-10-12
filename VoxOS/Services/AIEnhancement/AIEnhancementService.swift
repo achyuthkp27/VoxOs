@@ -135,7 +135,8 @@ class AIEnhancementService: ObservableObject {
     private func getSystemMessage(
         prompt: CustomPrompt,
         configuration: EnhancementRuntimeConfiguration,
-        contextSnapshot: RecordingContextSnapshot?
+        contextSnapshot: RecordingContextSnapshot?,
+        userRequest: String = ""
     ) async -> String {
         let useSelectedText = configuration.useSelectedTextContext
         let useClipboard = configuration.useClipboardContext
@@ -274,6 +275,7 @@ class AIEnhancementService: ObservableObject {
         let agentSections: [String] =
             isAgent
             ? [AgentToolCatalog.promptSection, AgentToolCatalog.runtimeSection()]
+                + [AgentToolCatalog.onDemandSection(for: userRequest)].compactMap { $0 }
             : []
 
         // Dictation adapts to where it lands; the Agent answers in the recorder, so it does not.
@@ -353,7 +355,8 @@ class AIEnhancementService: ObservableObject {
         let systemMessage = await getSystemMessage(
             prompt: prompt,
             configuration: configuration,
-            contextSnapshot: contextSnapshot
+            contextSnapshot: contextSnapshot,
+            userRequest: text
         )
 
         if provider == .ollama {
