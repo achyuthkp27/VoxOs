@@ -87,7 +87,8 @@ enum AgentNotes {
         let result = AgentAppleScript.run(searchScript(query: query, limit: limit))
         if let error = result["error"] { return ["error": error] }
         let notes = parseSearch(result["result"] as? String ?? "")
-        return notes.isEmpty ? ["notes": [], "note": "No notes match \"\(query)\"."] : ["notes": notes, "count": notes.count]
+        return notes.isEmpty
+            ? ["notes": [], "note": "No notes match \"\(query)\"."] : ["notes": notes, "count": notes.count]
     }
 
     @MainActor

@@ -40,8 +40,10 @@ enum AgentToolCatalog {
     static let onDemand: [(name: String, keywords: [String], docs: String)] = [
         (
             "music",
-            ["play", "pause", "resume", "skip", "song", "music", "track", "playlist", "spotify", "shuffle", "repeat",
-                "volume", "album", "artist", "what's playing", "whats playing", "now playing"],
+            [
+                "play", "pause", "resume", "skip", "song", "music", "track", "playlist", "spotify", "shuffle", "repeat",
+                "volume", "album", "artist", "what's playing", "whats playing", "now playing",
+            ],
             "Music: music_now_playing {} · music_play {\"query\"?,\"app\": \"spotify\"|\"music\"?} (Apple Music plays from the user's library; Spotify only opens its search) · music_control {\"action\": play|pause|toggle|next|previous|shuffle_on|shuffle_off|repeat_on|repeat_off|volume,\"value\": 0-100?,\"app\"?}"
         ),
         (

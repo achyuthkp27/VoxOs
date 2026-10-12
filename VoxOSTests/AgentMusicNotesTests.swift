@@ -13,25 +13,37 @@ struct AgentMusicNotesTests {
 
     @Test func explicitAppAlwaysWins() {
         #expect(
-            AgentMusic.choosePlayer(requested: "Spotify", spotifyRunning: false, musicRunning: true, spotifyPlaying: false)
+            AgentMusic.choosePlayer(
+                requested: "Spotify", spotifyRunning: false, musicRunning: true, spotifyPlaying: false)
                 == .spotify)
         #expect(
-            AgentMusic.choosePlayer(requested: "apple music", spotifyRunning: true, musicRunning: false, spotifyPlaying: true)
+            AgentMusic.choosePlayer(
+                requested: "apple music", spotifyRunning: true, musicRunning: false, spotifyPlaying: true)
                 == .music)
     }
 
     @Test func runningPlayerIsChosenWhenNoneRequested() {
-        #expect(AgentMusic.choosePlayer(requested: "", spotifyRunning: true, musicRunning: false, spotifyPlaying: false) == .spotify)
-        #expect(AgentMusic.choosePlayer(requested: "", spotifyRunning: false, musicRunning: true, spotifyPlaying: false) == .music)
+        #expect(
+            AgentMusic.choosePlayer(requested: "", spotifyRunning: true, musicRunning: false, spotifyPlaying: false)
+                == .spotify)
+        #expect(
+            AgentMusic.choosePlayer(requested: "", spotifyRunning: false, musicRunning: true, spotifyPlaying: false)
+                == .music)
     }
 
     @Test func whenBothAreOpenThePlayingOneWins() {
-        #expect(AgentMusic.choosePlayer(requested: "", spotifyRunning: true, musicRunning: true, spotifyPlaying: true) == .spotify)
-        #expect(AgentMusic.choosePlayer(requested: "", spotifyRunning: true, musicRunning: true, spotifyPlaying: false) == .music)
+        #expect(
+            AgentMusic.choosePlayer(requested: "", spotifyRunning: true, musicRunning: true, spotifyPlaying: true)
+                == .spotify)
+        #expect(
+            AgentMusic.choosePlayer(requested: "", spotifyRunning: true, musicRunning: true, spotifyPlaying: false)
+                == .music)
     }
 
     @Test func appleMusicIsTheDefaultWhenNothingIsOpen() {
-        #expect(AgentMusic.choosePlayer(requested: "", spotifyRunning: false, musicRunning: false, spotifyPlaying: false) == .music)
+        #expect(
+            AgentMusic.choosePlayer(requested: "", spotifyRunning: false, musicRunning: false, spotifyPlaying: false)
+                == .music)
     }
 
     // MARK: Control scripts
@@ -46,17 +58,27 @@ struct AgentMusicNotesTests {
     }
 
     @Test func shuffleAndRepeatUseEachPlayersOwnVocabulary() {
-        #expect(AgentMusic.controlScript(action: "shuffle_on", value: nil, player: .spotify)?.contains("set shuffling to true") == true)
-        #expect(AgentMusic.controlScript(action: "shuffle_on", value: nil, player: .music)?.contains("set shuffle enabled to true") == true)
-        #expect(AgentMusic.controlScript(action: "repeat_on", value: nil, player: .music)?.contains("set song repeat to all") == true)
-        #expect(AgentMusic.controlScript(action: "repeat_off", value: nil, player: .spotify)?.contains("set repeating to false") == true)
+        #expect(
+            AgentMusic.controlScript(action: "shuffle_on", value: nil, player: .spotify)?.contains(
+                "set shuffling to true") == true)
+        #expect(
+            AgentMusic.controlScript(action: "shuffle_on", value: nil, player: .music)?.contains(
+                "set shuffle enabled to true") == true)
+        #expect(
+            AgentMusic.controlScript(action: "repeat_on", value: nil, player: .music)?.contains(
+                "set song repeat to all") == true)
+        #expect(
+            AgentMusic.controlScript(action: "repeat_off", value: nil, player: .spotify)?.contains(
+                "set repeating to false") == true)
     }
 
     @Test func volumeNeedsAValueInRange() {
         #expect(AgentMusic.controlScript(action: "volume", value: nil, player: .music) == nil)
         #expect(AgentMusic.controlScript(action: "volume", value: -1, player: .music) == nil)
         #expect(AgentMusic.controlScript(action: "volume", value: 101, player: .music) == nil)
-        #expect(AgentMusic.controlScript(action: "volume", value: 40, player: .music)?.contains("set sound volume to 40") == true)
+        #expect(
+            AgentMusic.controlScript(action: "volume", value: 40, player: .music)?.contains("set sound volume to 40")
+                == true)
     }
 
     @Test func unknownActionsBuildNothing() {
@@ -105,8 +127,9 @@ struct AgentMusicNotesTests {
     }
 
     @Test func spotifySearchEncodesTheQuery() {
-        #expect(AgentMusic.spotifySearchURL(query: "daft punk & friends")?.absoluteString
-            == "spotify:search:daft%20punk%20%26%20friends")
+        #expect(
+            AgentMusic.spotifySearchURL(query: "daft punk & friends")?.absoluteString
+                == "spotify:search:daft%20punk%20%26%20friends")
         #expect(AgentMusic.spotifySearchURL(query: "") == nil)
     }
 
@@ -168,7 +191,8 @@ struct AgentMusicNotesTests {
         #expect(AgentToolCatalog.onDemandSection(for: "what's the weather") == nil)
         #expect(AgentToolCatalog.onDemandSection(for: "play some jazz")?.contains("music_play") == true)
         #expect(AgentToolCatalog.onDemandSection(for: "skip this song")?.contains("music_control") == true)
-        #expect(AgentToolCatalog.onDemandSection(for: "what's playing right now")?.contains("music_now_playing") == true)
+        #expect(
+            AgentToolCatalog.onDemandSection(for: "what's playing right now")?.contains("music_now_playing") == true)
         #expect(AgentToolCatalog.onDemandSection(for: "find my note about taxes")?.contains("notes_search") == true)
     }
 
