@@ -47,8 +47,10 @@ struct NotchIdleTabTests {
             "an external display has no notch")
     }
 
-    @Test func onByDefaultAndRegistered() {
-        #expect(UserDefaults.standard.object(forKey: DefaultsKeys.notchIdleTabEnabled) as? Bool == true)
+    @Test func offByDefaultAndRegistered() {
+        // The notch comes on the shortcut; the resting tab is something the user opts into.
+        #expect(UserDefaults.standard.object(forKey: DefaultsKeys.notchIdleTabEnabled) as? Bool == false)
+        #expect(!NotchIdleTab.isEnabled)
         #expect(NotchIdleTab.shrinkDelay > 0.1 && NotchIdleTab.shrinkDelay < 0.5, "no flicker, no lag")
     }
 

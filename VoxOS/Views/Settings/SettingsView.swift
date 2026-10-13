@@ -42,7 +42,7 @@ struct SettingsView: View {
     @AppStorage(AgentAutoSend.enabledKey) private var agentAutoSendEnabled = true
     @AppStorage(AgentAutoClose.enabledKey) private var agentAutoCloseEnabled = true
     @AppStorage(DefaultsKeys.notchMaterial) private var notchMaterialRaw = NotchDesign.Material.liquidGlass.rawValue
-    @AppStorage(DefaultsKeys.notchIdleTabEnabled) private var notchIdleTabEnabled = true
+    @AppStorage(DefaultsKeys.notchIdleTabEnabled) private var notchIdleTabEnabled = false
     @State private var fallbackProviders: [String] =
         UserDefaults.standard.stringArray(forKey: DefaultsKeys.aiFallbackProviders) ?? []
     @AppStorage(DictationSend.stopWhenQuietKey) private var dictationStopWhenQuiet = false
@@ -624,7 +624,7 @@ struct SettingsView: View {
                         HStack(spacing: 2) {
                             Text("Always-Visible Notch Tab")
                             InfoTip(
-                                "Keeps a slim tab under the notch between dictations. Hover to see it, click to start recording. Only on displays with a notch."
+                                "Off by default: the notch appears only on the shortcut. On, a slim tab stays under the notch between dictations; hover to see it, click to start recording. Only on displays with a notch."
                             )
                         }
                     }

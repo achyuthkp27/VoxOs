@@ -51,8 +51,10 @@ enum NotchIdleTab {
         enabled && style == .notch && hasNotch && !recorderPanelVisible
     }
 
+    /// Off unless asked for: the notch should appear on the shortcut, not whenever the pointer
+    /// wanders to the top of the screen.
     static var isEnabled: Bool {
-        UserDefaults.standard.object(forKey: DefaultsKeys.notchIdleTabEnabled) as? Bool ?? true
+        UserDefaults.standard.object(forKey: DefaultsKeys.notchIdleTabEnabled) as? Bool ?? false
     }
 }
 
