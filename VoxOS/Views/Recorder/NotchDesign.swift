@@ -1,0 +1,83 @@
+import SwiftUI
+
+/// The notch's measurements, material and motion in one place.
+///
+/// These follow the proportions of a premium dictation notch: a flat black band that grows out of
+/// the physical notch with scooped shoulders, three silhouettes (resting, listening, expanded)
+/// whose corners grow with the surface, and one soft glass material instead of a hard black pill.
+/// Everything here is drawn in SwiftUI; no artwork or code is borrowed.
+enum NotchDesign {
+
+    // MARK: Silhouettes
+
+    /// Shoulder (the scoop where the band meets the screen edge) and bottom corner radius per state.
+    /// Corners grow with the surface so a bigger panel never looks like a small pill scaled up.
+    struct Radii: Equatable {
+        let shoulder: CGFloat
+        let bottom: CGFloat
+    }
+
+    static let resting = Radii(shoulder: 10, bottom: 11)
+    static let listening = Radii(shoulder: 14, bottom: 17)
+    /// The expanded bottom corner is concentric with the 19 pt composer pill inside a 12 pt inset
+    /// (19 + 12), which is what makes the inner field and the outer edge look like one shape.
+    static let expanded = Radii(shoulder: 18, bottom: 31)
+
+    // MARK: Sizes
+
+    /// Total width of the expanded panel, and the width of the content inside it.
+    static let expandedWidth: CGFloat = 480
+    static let expandedBodyWidth: CGFloat = 440
+    static let expandedMaxHeight: CGFloat = 580
+    /// The listening band is only as tall as the notch itself: it widens, it does not hang down.
+    static let listeningBandMinWidth: CGFloat = 270
+    static let sideSlotWidth: CGFloat = 68
+    static let sideEdgeInset: CGFloat = 14
+    /// Gap between the straight side of the band and the first piece of content.
+    static let contentInset: CGFloat = 12
+
+    // MARK: Material
+
+    /// Almost opaque, with the faintest blue so it reads as black glass rather than a flat fill.
+    static let solid = Color(red: 0, green: 0, blue: 2 / 255, opacity: 0.98)
+    static let glassTint = Color(red: 0, green: 0, blue: 5 / 255, opacity: 0.18)
+    /// A one-point cool edge that lifts the active surface off a dark wallpaper.
+    static let rim = Color(red: 235 / 255, green: 245 / 255, blue: 1, opacity: 0.22)
+    static let rimWidth: CGFloat = 0.9
+
+    struct Shadow {
+        let opacity: Double
+        let radius: CGFloat
+        let y: CGFloat
+    }
+    static let restingShadow = Shadow(opacity: 0.25, radius: 3, y: 2)
+    static let activeShadow = Shadow(opacity: 0.28, radius: 6, y: 5)
+
+    // MARK: Motion
+
+    /// Growing and shrinking between states: one calm ease for size, a quicker, snappier curve to
+    /// open and a short one to close, so opening feels responsive and closing stays out of the way.
+    static let sizeAnimation = Animation.timingCurve(0.45, 0, 0.55, 1, duration: 0.34)
+    static let openAnimation = Animation.timingCurve(0.2, 0.8, 0.2, 1, duration: 0.28)
+    static let closeAnimation = Animation.timingCurve(0.45, 0, 0.55, 1, duration: 0.20)
+
+    // MARK: Waveform
+
+    /// Five bars, tallest in the middle. Heights are 7 pt plus up to 10 pt scaled by the bar's
+    /// weight, which keeps the quietest frame readable and the loudest one inside the band.
+    static let barWeights: [CGFloat] = [0.8, 1.1, 1.4, 1.1, 0.8]
+    static let barMinHeight: CGFloat = 7
+    static let barRange: CGFloat = 10
+    static let barWidth: CGFloat = 4
+    static let barSpacing: CGFloat = 3
+
+    static func barHeight(at index: Int) -> CGFloat {
+        guard barWeights.indices.contains(index), let maxWeight = barWeights.max() else { return barMinHeight }
+        let height = barMinHeight + barRange * (barWeights[index] / maxWeight) * 0.92
+        return (height * 10).rounded() / 10
+    }
+
+    static var waveformWidth: CGFloat {
+        CGFloat(barWeights.count) * barWidth + CGFloat(barWeights.count - 1) * barSpacing
+    }
+}

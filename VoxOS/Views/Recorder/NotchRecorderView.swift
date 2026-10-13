@@ -74,8 +74,9 @@ struct NotchRecorderView<S: RecorderStateProvider & ObservableObject>: View {
 
     private let recordingSideExpansion: CGFloat = 64
     private let transcriptSideExpansion: CGFloat = 130
-    private let assistantSideExpansion: CGFloat = 140
-    private let activeHeightBonus: CGFloat = 26
+    private var assistantSideExpansion: CGFloat { max(140, (NotchDesign.expandedWidth - notchWidth) / 2) }
+    /// The listening band is exactly as tall as the notch: it widens out of it instead of hanging down.
+    private let activeHeightBonus: CGFloat = 0
     private let transcriptPanelHeight: CGFloat = 64
     private let assistantPanelHeight: CGFloat = 300
 
@@ -112,8 +113,10 @@ struct NotchRecorderView<S: RecorderStateProvider & ObservableObject>: View {
         }
     }
 
+    /// Content starts a comfortable distance inside the straight side of the band, which begins one
+    /// shoulder-radius in from the frame edge. A fixed inset would crowd the scoop as it grows.
     private var sideEdgePadding: CGFloat {
-        displayState == .liveText || displayState == .assistant ? 22 : 18
+        notchShape.topCornerRadius + NotchDesign.contentInset
     }
 
     private var shouldShowCloseButton: Bool {
@@ -127,11 +130,16 @@ struct NotchRecorderView<S: RecorderStateProvider & ObservableObject>: View {
 
     // MARK: - Animation
 
-    private let expandAnimation = Animation.spring(response: 0.42, dampingFraction: 0.80)
-    private let collapseAnimation = Animation.spring(response: 0.45, dampingFraction: 1.0)
+    private let expandAnimation = NotchDesign.openAnimation
+    private let collapseAnimation = NotchDesign.closeAnimation
 
+    /// Opening is quick and snappy, closing is short, and growing between open states is one calm ease.
     private var pillAnimation: Animation {
-        displayState == .collapsed ? collapseAnimation : expandAnimation
+        switch displayState {
+        case .collapsed: return NotchDesign.closeAnimation
+        case .active: return NotchDesign.openAnimation
+        case .liveText, .assistant: return NotchDesign.sizeAnimation
+        }
     }
 
     // MARK: - Body
@@ -157,11 +165,29 @@ struct NotchRecorderView<S: RecorderStateProvider & ObservableObject>: View {
             assistantPanel
         }
         .frame(width: pillWidth, height: pillHeight)
-        // Solid black so the pill reads as part of the physical notch. Forced dark appearance
-        // keeps the system label colours white on it in light mode.
-        .background(Color.black.clipShape(notchShape))
+        // Near-black glass: solid enough to read as part of the physical notch, with a faint sheen
+        // from the top and a cool one-point rim on the lower edge once it is doing something.
+        .background(
+            notchShape.fill(NotchDesign.solid)
+                .overlay(
+                    notchShape.fill(
+                        LinearGradient(
+                            colors: [Color.white.opacity(0.035), .clear], startPoint: .top,
+                            endPoint: UnitPoint(x: 0.5, y: 0.6)))
+                )
+                .overlay(
+                    notchShape.stroke(NotchDesign.rim, lineWidth: NotchDesign.rimWidth)
+                        .mask(
+                            LinearGradient(
+                                colors: [.clear, .white], startPoint: .top, endPoint: UnitPoint(x: 0.5, y: 0.35))
+                        )
+                        .opacity(displayState == .collapsed ? 0 : 1)
+                )
+        )
         .environment(\.colorScheme, .dark)
-        .shadow(color: Color.black.opacity(0.35), radius: 10, y: 4)
+        .shadow(
+            color: Color.black.opacity(activeShadow.opacity), radius: activeShadow.radius, y: activeShadow.y
+        )
         .animation(.easeInOut(duration: 0.35), value: isRecording)
         .animation(.easeInOut(duration: 0.35), value: isAgentMode)
     }
@@ -172,11 +198,17 @@ struct NotchRecorderView<S: RecorderStateProvider & ObservableObject>: View {
 
     private var recordingAccent: Color { isAgentMode ? AppTheme.Recorder.agentAccent : AppTheme.Accent.primary }
 
+    private var activeShadow: NotchDesign.Shadow {
+        displayState == .collapsed ? NotchDesign.restingShadow : NotchDesign.activeShadow
+    }
+
+    /// Corners grow with the surface: resting, listening, expanded.
     private var notchShape: NotchShape {
-        NotchShape(
-            topCornerRadius: 10,
-            bottomCornerRadius: displayState == .active ? 22 : AppTheme.Notch.cornerRadius
-        )
+        switch displayState {
+        case .collapsed: return NotchShape(NotchDesign.resting)
+        case .active, .liveText: return NotchShape(NotchDesign.listening)
+        case .assistant: return NotchShape(NotchDesign.expanded)
+        }
     }
 
     // MARK: - Main Row
