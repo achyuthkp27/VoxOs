@@ -58,7 +58,7 @@ enum NotchDesign {
     /// as part of the physical notch, so the glass only shows below it.
     static let glassDarkStop: CGFloat = 0.48
     /// Behind the glass, so the band stays readable even over a bright wallpaper.
-    static let glassUnderlay = Color.black.opacity(0.35)
+    static let glassUnderlay = Color.black.opacity(0.88)
 
     /// Almost opaque, with the faintest blue so it reads as black glass rather than a flat fill.
     static let solid = Color(red: 0, green: 0, blue: 2 / 255, opacity: 0.98)

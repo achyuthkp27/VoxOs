@@ -137,6 +137,12 @@ enum AgentMusic {
 
     @MainActor
     private static func resolve(_ requested: String) -> Player {
+        // An explicit name needs no probe into the other player.
+        switch requested.lowercased().trimmingCharacters(in: .whitespaces) {
+        case "spotify": return .spotify
+        case "music", "apple music", "applemusic", "itunes": return .music
+        default: break
+        }
         let spotifyRunning = Player.spotify.isRunning
         let spotifyPlaying =
             spotifyRunning
@@ -150,9 +156,21 @@ enum AgentMusic {
     @MainActor
     static func nowPlaying() -> [String: Any] {
         var report: [[String: Any]] = []
+        var failures: [String] = []
         for player in [Player.spotify, .music] where player.isRunning {
             let result = AgentAppleScript.run(nowPlayingScript(player))
-            if let raw = result["result"] as? String { report.append(parseNowPlaying(raw, player: player)) }
+            if let raw = result["result"] as? String {
+                report.append(parseNowPlaying(raw, player: player))
+            } else if let error = result["error"] as? String {
+                failures.append("\(player.rawValue): \(error)")
+            }
+        }
+        if report.isEmpty, !failures.isEmpty {
+            // A permission refusal must not be reported as silence.
+            return [
+                "error": failures.joined(separator: "; "),
+                "hint": "Allow VoxOS to control the player in System Settings > Privacy & Security > Automation.",
+            ]
         }
         guard !report.isEmpty else { return ["playing": false, "note": "Neither Spotify nor Music is open."] }
         // Report whichever is actually playing; fall back to the first open player.
@@ -166,6 +184,10 @@ enum AgentMusic {
             return ["error": "unknown action \(action); use \(controlActions.joined(separator: ", "))"]
         }
         let player = resolve(app)
+        guard player.isRunning else {
+            // Pausing or skipping nothing should not launch a player.
+            return ["error": "\(player.rawValue) is not open, so there is nothing to \(action)."]
+        }
         guard let script = controlScript(action: action, value: value, player: player) else {
             return ["error": "volume needs a value from 0 to 100"]
         }

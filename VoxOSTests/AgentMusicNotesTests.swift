@@ -215,9 +215,11 @@ struct AgentMusicNotesTests {
     }
 
     @Test func privateReadsAndActionsAreGatedByControlMode() {
-        for tool in ["music_play", "music_control", "notes_search", "notes_read"] {
+        for tool in ["music_play", "music_control"] {
             #expect(AgentControlMode.isMutating(tool), "\(tool) must not run in observe-only")
         }
-        #expect(!AgentControlMode.isMutating("music_now_playing"))
+        for tool in ["music_now_playing", "notes_search", "notes_read"] {
+            #expect(!AgentControlMode.isMutating(tool), "\(tool) only reads; it must work in every control mode")
+        }
     }
 }

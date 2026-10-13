@@ -16,17 +16,17 @@ extension AIService {
         systemPrompt: String? = nil,
         timeout: TimeInterval = 30
     ) async throws -> String {
-        var lastError: LLMKitError
+        let primaryError: LLMKitError
         do {
             return try await completeChatWithRetries(
                 provider: provider, modelName: modelName, messages: messages,
                 systemPrompt: systemPrompt, timeout: timeout, maxAttempts: 3)
         } catch let error as LLMKitError {
-            lastError = error
+            primaryError = error
         }
 
-        guard AIProviderFallback.isFailoverWorthy(lastError) else {
-            throw Self.friendlyChatError(lastError, modelName: modelName)
+        guard AIProviderFallback.isFailoverWorthy(primaryError) else {
+            throw Self.friendlyChatError(primaryError, modelName: modelName)
         }
         let fallbacks = AIProviderFallback.candidates(
             primary: provider,
@@ -42,15 +42,14 @@ extension AIService {
                 return try await completeChatWithRetries(
                     provider: fallback, modelName: nil, messages: messages,
                     systemPrompt: systemPrompt, timeout: timeout, maxAttempts: 2)
-            } catch let error as LLMKitError {
-                lastError = error
-                if !AIProviderFallback.isFailoverWorthy(error) { continue }
             } catch {
-                // Not configured, or another local error: skip this provider and try the next.
+                // Rate-limited, misconfigured or down: this fallback is no help, try the next one.
                 continue
             }
         }
-        throw Self.friendlyChatError(lastError, modelName: modelName)
+        // Every fallback failed too. The error worth showing is the chosen provider's: that is the
+        // one the user can act on (wait out the limit, pick another model).
+        throw Self.friendlyChatError(primaryError, modelName: modelName)
     }
 
     private func completeChatWithRetries(
@@ -90,20 +89,7 @@ extension AIService {
         switch error {
         case .httpError(let status, let message):
             if status == 429 {
-                // "Please try again in 7.5s" / "in 1m2.3s"
-                if let match = message.range(of: #"try again in ([0-9.]+)(m)?([0-9.]+)?s"#, options: .regularExpression)
-                {
-                    let text = String(message[match])
-                    let numbers = text.components(separatedBy: CharacterSet(charactersIn: "0123456789.").inverted)
-                        .compactMap { Double($0) }
-                    let seconds: Double
-                    if text.contains("m"), numbers.count >= 2 {
-                        seconds = numbers[0] * 60 + numbers[1]
-                    } else if text.contains("m"), numbers.count == 1 {
-                        seconds = numbers[0] * 60
-                    } else {
-                        seconds = numbers.first ?? fallback
-                    }
+                if let seconds = Self.retryAfterSeconds(in: message) {
                     return min(max(seconds + 0.5, fallback), 8)
                 }
                 return fallback
@@ -114,6 +100,25 @@ extension AIService {
         default:
             return nil
         }
+    }
+
+    /// "try again in 7.5s", "in 1m2.3s", "in 859.5ms". The millisecond form used to be read as
+    /// minutes, which turned a sub-second wait into the 8 s cap.
+    static func retryAfterSeconds(in message: String) -> Double? {
+        let lower = message.lowercased()
+        guard let range = lower.range(of: "try again in ") else { return nil }
+        let rest = lower[range.upperBound...]
+        let token = rest.prefix { !$0.isWhitespace && $0 != "." || $0 == "." }
+        let text = String(token).trimmingCharacters(in: CharacterSet(charactersIn: ".,"))
+        if text.hasSuffix("ms"), let ms = Double(text.dropLast(2)) { return ms / 1000 }
+        if let m = text.firstIndex(of: "m"), text.hasSuffix("s"),
+            let minutes = Double(text[..<m]),
+            let seconds = Double(text[text.index(after: m)..<text.index(before: text.endIndex)])
+        {
+            return minutes * 60 + seconds
+        }
+        if text.hasSuffix("s"), let seconds = Double(text.dropLast()) { return seconds }
+        return nil
     }
 
     private static func friendlyChatError(_ error: LLMKitError, modelName: String?) -> Error {

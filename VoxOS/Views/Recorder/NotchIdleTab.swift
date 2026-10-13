@@ -17,6 +17,8 @@ enum NotchIdleTab {
     static let hoverGrow: CGFloat = 6
     static let hoverWiden: CGFloat = 16
     static let contentHeight: CGFloat = 29
+    /// At rest the lip is too short for the recorder's corners; small radii keep it a flat tab.
+    static let restRadii = NotchDesign.Radii(shoulder: 8, bottom: 5)
     /// The tab waits this long after the pointer leaves before shrinking, so it never flickers.
     static let shrinkDelay: TimeInterval = 0.22
 
@@ -65,7 +67,7 @@ struct NotchIdleTabView: View {
     @State private var hovered = false
 
     private var geometry: NotchIdleTab.Geometry { NotchIdleTab.geometry(hovered: hovered, notchWidth: notchWidth) }
-    private var shape: NotchShape { NotchShape(hovered ? NotchDesign.listening : NotchDesign.resting) }
+    private var shape: NotchShape { NotchShape(hovered ? NotchDesign.listening : NotchIdleTab.restRadii) }
     private var accent: Color { RecorderModeAccent.color(for: modeManager.currentEffectiveConfiguration) }
 
     var body: some View {
@@ -122,7 +124,8 @@ final class NotchIdleTabPanel: NSPanel {
         level = .statusBar + 1
         backgroundColor = .clear
         isOpaque = false
-        hasShadow = true
+        // No shadow at rest: on a 5 pt lip it reads as a halo. It is switched on while hovered.
+        hasShadow = false
         isMovableByWindowBackground = false
         hidesOnDeactivate = false
         acceptsMouseMovedEvents = true
@@ -145,6 +148,11 @@ final class NotchIdleTabManager {
     private var shrinkTask: Task<Void, Never>?
     private var notchWidth: CGFloat = 0
     private var notchHeight: CGFloat = 0
+    /// The screen the panel was sized for. Frames always come from it, never from whichever screen
+    /// happens to hold the key window, so a hover cannot teleport the tab to another display.
+    private var screen: NSScreen?
+    private var hovered = false
+    private var enabledLastSeen = NotchIdleTab.isEnabled
     private let logger = Logger(subsystem: "com.achyuthkp.voxos", category: "NotchIdleTab")
 
     init(uiManager: RecorderUIManager) {
@@ -155,7 +163,13 @@ final class NotchIdleTabManager {
         uiManager.$recorderPanelStyle.receive(on: RunLoop.main)
             .sink { [weak self] _ in self?.refresh() }.store(in: &cancellables)
         NotificationCenter.default.publisher(for: UserDefaults.didChangeNotification).receive(on: RunLoop.main)
-            .sink { [weak self] _ in self?.refresh() }.store(in: &cancellables)
+            .sink { [weak self] _ in
+                // Only the tab's own switch matters; any other defaults write is noise.
+                guard let self, NotchIdleTab.isEnabled != self.enabledLastSeen else { return }
+                self.enabledLastSeen = NotchIdleTab.isEnabled
+                self.refresh()
+            }
+            .store(in: &cancellables)
         // A panel must not outlive a sleep/wake cycle or a display change: it can stop rendering
         // while still reporting itself visible, so it is rebuilt rather than repositioned.
         LifecycleObserver.shared.publisher(for: [.screenConfigurationChanged, .systemDidWake])
@@ -170,7 +184,7 @@ final class NotchIdleTabManager {
 
     private func refresh() {
         guard let uiManager else { return }
-        let screen = RecorderScreenResolver.resolve()
+        let screen = self.screen ?? RecorderScreenResolver.resolve()
         let hasNotch = (screen?.safeAreaInsets.top ?? 0) > 0
         let show = NotchIdleTab.shouldShow(
             enabled: NotchIdleTab.isEnabled, style: uiManager.recorderPanelStyle, hasNotch: hasNotch,
@@ -181,11 +195,12 @@ final class NotchIdleTabManager {
         }
         if panel == nil { buildPanel(on: screen) }
         guard let panel else { return }
-        panel.setFrame(frame(hovered: false, on: screen), display: true)
+        if !hovered { panel.setFrame(frame(hovered: false, on: screen), display: true) }
         panel.orderFrontRegardless()
     }
 
     private func buildPanel(on screen: NSScreen) {
+        self.screen = screen
         notchHeight = screen.safeAreaInsets.top
         notchWidth = {
             if let left = screen.auxiliaryTopLeftArea?.width, let right = screen.auxiliaryTopRightArea?.width {
@@ -216,23 +231,26 @@ final class NotchIdleTabManager {
     /// The window grows before the shape animates out, and shrinks only after it has animated back.
     private func hoverChanged(_ inside: Bool) {
         shrinkTask?.cancel()
-        guard let panel, let screen = RecorderScreenResolver.resolve() else { return }
+        hovered = inside
+        guard let panel, let screen else { return }
         if inside {
+            panel.hasShadow = true
             panel.setFrame(frame(hovered: true, on: screen), display: true)
         } else {
             shrinkTask = Task { @MainActor [weak self, weak panel] in
                 try? await Task.sleep(for: .seconds(NotchIdleTab.shrinkDelay))
-                guard !Task.isCancelled, let self, let panel, let screen = RecorderScreenResolver.resolve() else {
-                    return
-                }
+                guard !Task.isCancelled, let self, let panel, let screen = self.screen else { return }
                 panel.setFrame(self.frame(hovered: false, on: screen), display: true)
+                panel.hasShadow = false
             }
         }
     }
 
     private func destroyPanel() {
         shrinkTask?.cancel()
+        hovered = false
         panel?.orderOut(nil)
         panel = nil
+        screen = nil
     }
 }

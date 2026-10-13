@@ -18,8 +18,8 @@ enum AgentNotes {
               set q to "\(AgentMusic.escape(query))"
               set hits to {}
               set matched to (every note whose name contains q)
-              if (count of matched) < \(limit) then
-                set matched to matched & (every note whose plaintext contains q)
+              if (count of matched) is 0 then
+                set matched to (every note whose plaintext contains q)
               end if
               set seen to {}
               repeat with n in matched

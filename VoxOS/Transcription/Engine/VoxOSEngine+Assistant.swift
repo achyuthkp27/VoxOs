@@ -18,7 +18,10 @@ extension VoxOSEngine {
         let modeName = assistantSession.modeName
         let modeEmoji = assistantSession.modeEmoji
         let promptName = assistantSession.promptName
-        let systemPrompt = assistantSession.systemPrompt
+        // The stored prompt was built for the first request; a follow-up that first mentions music
+        // or notes needs those tools described too.
+        let systemPrompt = [assistantSession.systemPrompt, AgentToolCatalog.onDemandSection(for: trimmed)]
+            .compactMap { $0 }.joined(separator: "\n\n")
         let userMessage = assistantSession.beginFollowUp(trimmed)
 
         // "yes" to "Did you mean Slack?" has no meaning to a model that never saw the offer, and

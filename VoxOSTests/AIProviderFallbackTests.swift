@@ -22,6 +22,13 @@ struct AIProviderFallbackTests {
         }
     }
 
+    @Test func retryAfterReadsSecondsMinutesAndMilliseconds() {
+        #expect(AIService.retryAfterSeconds(in: "Please try again in 7.5s.") == 7.5)
+        #expect(AIService.retryAfterSeconds(in: "Rate limit reached. Please try again in 1m2.3s") == 62.3)
+        #expect(AIService.retryAfterSeconds(in: "Please try again in 859.5ms") == 0.8595, "ms is not minutes")
+        #expect(AIService.retryAfterSeconds(in: "slow down") == nil)
+    }
+
     @Test func emptyListMeansNoFallback() {
         let result = AIProviderFallback.candidates(
             primary: .gemini, configuredOrder: [], connected: [.gemini, .groq, .openAI])
