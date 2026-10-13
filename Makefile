@@ -13,6 +13,8 @@ WHISPER_CPP_DIR := $(DEPS_DIR)/whisper.cpp
 WHISPER_CPP_REF ?= c4ac0012a8f5a2082dfca6aad4ddfd8b2c02b337
 FRAMEWORK_PATH := $(WHISPER_CPP_DIR)/build-apple/whisper.xcframework
 LOCAL_DERIVED_DATA := $(CURDIR)/.local-build
+# Debug (default) builds fast and is unoptimised; `make local LOCAL_CONFIG=Release` builds the optimised app.
+LOCAL_CONFIG ?= Debug
 TEST_DERIVED_DATA := $(CURDIR)/.local-build-tests
 # The test host is the app itself. Sharing the app's bundle identifier let macOS resolve
 # the login item to whichever copy ran last, so a test run re-pointed it at this throwaway
@@ -90,7 +92,7 @@ local: check setup
 		SIGNING_REQUIRED=NO; \
 		echo "Using ad-hoc signing (permissions may need approval after rebuilds)"; \
 	fi; \
-	xcodebuild -project VoxOS.xcodeproj -scheme VoxOS -configuration Debug \
+	xcodebuild -project VoxOS.xcodeproj -scheme VoxOS -configuration $(LOCAL_CONFIG) \
 		-derivedDataPath "$(LOCAL_DERIVED_DATA)" \
 		-xcconfig LocalBuild.xcconfig \
 		-skipPackagePluginValidation \
@@ -102,7 +104,7 @@ local: check setup
 		CODE_SIGN_ENTITLEMENTS="$(CURDIR)/VoxOS/VoxOS.local.entitlements" \
 		SWIFT_ACTIVE_COMPILATION_CONDITIONS='$$(inherited) LOCAL_BUILD' \
 		build
-	@APP_PATH="$(LOCAL_DERIVED_DATA)/Build/Products/Debug/VoxOS.app" && \
+	@APP_PATH="$(LOCAL_DERIVED_DATA)/Build/Products/$(LOCAL_CONFIG)/VoxOS.app" && \
 	if [ -d "$$APP_PATH" ]; then \
 		if pgrep -x VoxOS >/dev/null; then \
 			echo "Quitting running VoxOS..."; \
@@ -176,6 +178,7 @@ help:
 	@echo "  setup              Copy whisper XCFramework to VoxOS project"
 	@echo "  build              Build the VoxOS Xcode project"
 	@echo "  local              Build, sign with your Apple Development identity, install to /Applications"
+	@echo "    LOCAL_CONFIG=Release builds the optimised app (slower to build, faster to run)"
 	@echo "    LOCAL_CODESIGN_IDENTITY=<SHA or name> overrides automatic Apple Development detection"
 	@echo "  run                Launch the installed VoxOS app"
 	@echo "  test               Run the unit tests"
