@@ -35,7 +35,7 @@ struct SettingsView: View {
 
     @State private var isMiddleClickExpanded = false
     @State private var isSystemAudioBufferExpanded = false
-    @State private var agentHasAccessibility = AXIsProcessTrusted()
+    @State private var agentHasAccessibility = ProcessIdentity.isTestHost ? false : AXIsProcessTrusted()
     @State private var agentHasScreenRecording = CGPreflightScreenCaptureAccess()
     @AppStorage(AgentControlMode.userDefaultsKey) private var agentControlModeRaw = AgentControlMode.takeover.rawValue
     @AppStorage(AgentShell.allowRiskyKey) private var agentAllowRiskyShell = false
@@ -71,6 +71,7 @@ struct SettingsView: View {
         "Control Mode", "Send When You Stop Talking", "Pause Before Sending", "Allow Risky Shell Commands", "Plugins",
         "Open Plugins Folder", "Permissions", "Accessibility", "Accessibility missing", "Screen Recording",
         "Screen Recording missing", "Agent",
+        "Close After Opening Something", "Fall Back To Other Providers", "fallback", "failover",
     ]
     private static let mcpTerms = ["MCP Servers", "Model Context Protocol", "tools", "integrations"]
     private static let pastingTerms = [
@@ -85,6 +86,7 @@ struct SettingsView: View {
         "Interface", "Appearance", "Language", "Recorder Position", "Live Text Display",
         "Shows live text while recording with realtime models.",
         "Edge History", "battery", "hover", "power",
+        "Notch Material", "Liquid Glass", "Solid Black", "Always-Visible Notch Tab", "notch", "tab",
     ]
     private static let generalTerms = [
         "General", "Hide Dock Icon", "Launch at Login", "Automatically Check for Updates",
@@ -439,6 +441,12 @@ struct SettingsView: View {
                                 .font(.app(.caption))
                                 .foregroundStyle(.secondary)
                         }
+                        // Numbered in fallback order, but only over providers still connected: a
+                        // switched-on provider that has since been disconnected is not in the list,
+                        // and counting it would leave a visible gap in the numbering.
+                        let numberedFallbacks = fallbackProviders.filter { rawValue in
+                            candidates.contains { $0.rawValue == rawValue }
+                        }
                         ForEach(candidates, id: \.rawValue) { provider in
                             Toggle(
                                 isOn: Binding(
@@ -450,7 +458,7 @@ struct SettingsView: View {
                                             fallbackProviders, forKey: DefaultsKeys.aiFallbackProviders)
                                     })
                             ) {
-                                if let index = fallbackProviders.firstIndex(of: provider.rawValue) {
+                                if let index = numberedFallbacks.firstIndex(of: provider.rawValue) {
                                     Text("\(index + 1). \(provider.rawValue)")
                                 } else {
                                     Text(provider.rawValue)
@@ -710,6 +718,12 @@ struct SettingsView: View {
         }
         .formStyle(.grouped)
         .scrollContentBackground(.hidden)
+        .onAppear(perform: refreshAgentPermissions)
+        .onReceive(NotificationCenter.default.publisher(for: NSApplication.didBecomeActiveNotification)) { _ in
+            // Permissions are granted in System Settings, so they change while VoxOS is in the
+            // background; re-reading on activation shows the grant without reopening Settings.
+            refreshAgentPermissions()
+        }
         .alert("Reset Onboarding", isPresented: $showResetOnboardingAlert) {
             Button("Cancel", role: .cancel) {}
             Button("Reset", role: .destructive) {
@@ -725,6 +739,11 @@ struct SettingsView: View {
         } message: {
             Text("Your language change will take full effect after you quit and reopen VoxOS.")
         }
+    }
+
+    private func refreshAgentPermissions() {
+        agentHasAccessibility = ProcessIdentity.isTestHost ? false : AXIsProcessTrusted()
+        agentHasScreenRecording = CGPreflightScreenCaptureAccess()
     }
 
     private static let defaultCancelRecordingShortcut = Shortcut.key(

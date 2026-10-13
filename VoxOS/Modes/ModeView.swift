@@ -59,6 +59,10 @@ struct ModeView: View {
     @EnvironmentObject private var transcriptionModelManager: TranscriptionModelManager
     @State private var activePanel: PanelType?
     @State private var panelID = UUID()
+    /// Set by the editor inside the panel. Closing the panel from outside it (click-away, Escape,
+    /// the X button) is owned here, so this is where a discard has to be confirmed.
+    @State private var panelHasUnsavedChanges = false
+    @State private var isShowingDiscardConfirmation = false
 
     private enum PanelType {
         case configuration(ConfigurationMode)
@@ -111,7 +115,7 @@ struct ModeView: View {
             AppScreenHeader(
                 title: "Modes",
                 infoMessage: "Modes help you set up VoxOS for different writing tasks, workflows, and scenarios.",
-                infoURL: "https://tryvoiceink.com/docs/modes"
+                infoURL: "https://github.com/achyuthkp27/VoxOs#readme"
             ) {
                 headerControls
             }
@@ -173,19 +177,36 @@ struct ModeView: View {
         .sidePanel(
             isPresented: .init(
                 get: { isPanelOpen },
-                set: { if !$0 { closePanel() } }
+                set: { if !$0 { requestClosePanel() } }
             ), dismissOnExitCommand: false
         ) {
             switch activePanel {
             case .configuration(let mode)?:
-                ModeConfigEditorView(mode: mode, modeManager: modeManager, onDismiss: closePanel)
-                    .environmentObject(modeWarmupStore)
-                    .id(panelID)
+                ModeConfigEditorView(
+                    mode: mode,
+                    modeManager: modeManager,
+                    hasUnsavedChanges: $panelHasUnsavedChanges,
+                    onDismiss: requestClosePanel
+                )
+                .environmentObject(modeWarmupStore)
+                .id(panelID)
             case .settings?:
                 ModeSettingsPanelView(modeManager: modeManager, onDismiss: closePanel)
             case nil:
                 EmptyView()
             }
+        }
+        .confirmationDialog(
+            "Discard Changes?",
+            isPresented: $isShowingDiscardConfirmation,
+            titleVisibility: .visible
+        ) {
+            Button("Discard Changes", role: .destructive) {
+                closePanel()
+            }
+            Button("Keep Editing", role: .cancel) {}
+        } message: {
+            Text("This mode has unsaved changes.")
         }
         .onAppear {
             modeWarmupStore.configure(
@@ -201,7 +222,16 @@ struct ModeView: View {
         activePanel = .configuration(mode)
     }
 
+    private func requestClosePanel() {
+        if panelHasUnsavedChanges {
+            isShowingDiscardConfirmation = true
+        } else {
+            closePanel()
+        }
+    }
+
     private func closePanel() {
+        panelHasUnsavedChanges = false
         activePanel = nil
     }
 

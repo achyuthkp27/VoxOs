@@ -276,6 +276,8 @@ struct ConfigurationRow: View {
 
             Divider()
 
+            // Up to five capsules share this row; each label truncates (lineLimit 1) and the spacer
+            // can collapse so a long model or prompt name never pushes the row past the card width.
             HStack(spacing: 8) {
                 let modelMetadata = transcriptionModelMetadata
                 HStack(spacing: 4) {
@@ -283,6 +285,7 @@ struct ConfigurationRow: View {
                         .font(.app(size: 10, weight: .regular))
                     Text(modelMetadata.label)
                         .font(.app(.caption))
+                        .lineLimit(1)
                 }
                 .foregroundStyle(modelMetadata.isWarning ? Color.white : Color.primary)
                 .padding(.horizontal, 6)
@@ -308,6 +311,7 @@ struct ConfigurationRow: View {
                             .font(.app(size: 10, weight: .regular))
                         Text(language)
                             .font(.app(.caption))
+                            .lineLimit(1)
                     }
                     .padding(.horizontal, 6)
                     .padding(.vertical, 2)
@@ -331,6 +335,7 @@ struct ConfigurationRow: View {
                             .font(.app(size: 10, weight: .regular))
                         Text(modelName.count > 20 ? String(modelName.prefix(18)) + "..." : modelName)
                             .font(.app(.caption))
+                            .lineLimit(1)
                     }
                     .padding(.horizontal, 6)
                     .padding(.vertical, 2)
@@ -350,6 +355,7 @@ struct ConfigurationRow: View {
                             .font(.app(size: 10, weight: .regular))
                         Text(config.outputMode.displayName)
                             .font(.app(.caption))
+                            .lineLimit(1)
                     }
                     .padding(.horizontal, 6)
                     .padding(.vertical, 2)
@@ -369,6 +375,7 @@ struct ConfigurationRow: View {
                             .font(.app(size: 10, weight: .regular))
                         Text(config.autoSendKey.displayName)
                             .font(.app(.caption))
+                            .lineLimit(1)
                     }
                     .padding(.horizontal, 6)
                     .padding(.vertical, 2)
@@ -391,6 +398,7 @@ struct ConfigurationRow: View {
                                 : selectedPrompt?.title ?? "AI"
                         )
                         .font(.app(.caption))
+                        .lineLimit(1)
                     }
                     .padding(.horizontal, 6)
                     .padding(.vertical, 2)
@@ -404,7 +412,7 @@ struct ConfigurationRow: View {
                     )
                 }
 
-                Spacer()
+                Spacer(minLength: 0)
 
                 if isHovering {
                     editModeButton

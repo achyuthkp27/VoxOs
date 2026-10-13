@@ -137,6 +137,7 @@ private struct TriggerTextChip: View {
                 .lineLimit(1)
                 .truncationMode(truncationMode)
                 .frame(maxWidth: 100, alignment: .leading)
+                .help(title)
 
             Button(action: onRemove) {
                 Image(systemName: "xmark")

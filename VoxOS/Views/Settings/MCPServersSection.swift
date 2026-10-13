@@ -3,17 +3,19 @@ import SwiftUI
 /// Settings → MCP Servers: what is connected, and the three things a user does with it —
 /// edit the config, import Claude Desktop's servers, reload.
 struct MCPServersSection: View {
-    @State private var statuses: [AgentMCP.ServerStatus] = AgentMCP.statuses()
+    /// nil until `onAppear` loads it: an initial-value expression would re-parse mcp.json on every
+    /// SettingsView body pass, and nil keeps the empty-state text from flashing before the first load.
+    @State private var statuses: [AgentMCP.ServerStatus]?
     @State private var importMessage: String?
 
     var body: some View {
         Section {
-            if statuses.isEmpty {
+            if statuses?.isEmpty == true {
                 Text("No servers yet. Add them to the config file, or import the ones Claude Desktop already uses.")
                     .font(.app(.caption))
                     .foregroundStyle(.secondary)
             } else {
-                ForEach(statuses) { status in
+                ForEach(statuses ?? []) { status in
                     HStack(spacing: 10) {
                         Circle()
                             .fill(color(for: status))

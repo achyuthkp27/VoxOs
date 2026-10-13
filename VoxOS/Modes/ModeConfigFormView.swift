@@ -19,6 +19,9 @@ struct ModeConfigFormView: View {
     @State private var isShowingDeleteConfirmation = false
     @State private var isShowingDefaultModeDeleteAlert = false
     @State private var isContextAwarenessExpanded = false
+    /// Apple Speech assets download only after the user picks a language here, never on open:
+    /// merely looking at a mode must not start a network download for its current language.
+    @State private var didPickLanguage = false
 
     private var isDeletingDefaultMode: Bool {
         modeManager.getConfiguration(with: draft.id)?.isDefault == true
@@ -265,7 +268,10 @@ struct ModeConfigFormView: View {
         {
             let languageBinding = Binding<String?>(
                 get: { effectiveLanguage(for: modelInfo) },
-                set: { draft.selectedLanguage = $0 }
+                set: {
+                    didPickLanguage = true
+                    draft.selectedLanguage = $0
+                }
             )
 
             HStack(spacing: 8) {
@@ -279,7 +285,7 @@ struct ModeConfigFormView: View {
                     NativeAppleLanguageAssetControl(
                         localeIdentifier: effectiveLanguage(for: modelInfo),
                         isVisible: true,
-                        startsDownloadAutomatically: true
+                        startsDownloadAutomatically: didPickLanguage
                     )
                     .layoutPriority(1)
                     .frame(width: 28, height: 24)

@@ -19,6 +19,9 @@ struct PromptEditorView: View {
 
     let mode: Mode
     @EnvironmentObject private var enhancementService: AIEnhancementService
+    /// Reported upward so the side panel that hosts this editor can refuse to close silently
+    /// while the prompt differs from what is saved.
+    @Binding var hasUnsavedChanges: Bool
     let onDismiss: () -> Void
     let onSave: (CustomPrompt) -> Void
     let onDelete: ((CustomPrompt) -> Void)?
@@ -26,6 +29,17 @@ struct PromptEditorView: View {
     @State private var promptText: String
     @State private var useSystemInstructions: Bool
     @State private var showDeleteConfirmation = false
+    @State private var showDiscardConfirmation = false
+
+    private var isDirty: Bool {
+        switch mode {
+        case .add:
+            return !title.isEmpty || !promptText.isEmpty
+        case .edit(let prompt):
+            return title != prompt.title || promptText != prompt.promptText
+                || useSystemInstructions != prompt.useSystemInstructions
+        }
+    }
 
     private var saveButtonTitle: LocalizedStringKey {
         mode == .add ? "Create & Select" : "Save & Select"
@@ -49,11 +63,13 @@ struct PromptEditorView: View {
 
     init(
         mode: Mode,
+        hasUnsavedChanges: Binding<Bool> = .constant(false),
         onDismiss: @escaping () -> Void,
         onSave: @escaping (CustomPrompt) -> Void,
         onDelete: ((CustomPrompt) -> Void)? = nil
     ) {
         self.mode = mode
+        _hasUnsavedChanges = hasUnsavedChanges
         self.onDismiss = onDismiss
         self.onSave = onSave
         self.onDelete = onDelete
@@ -69,8 +85,14 @@ struct PromptEditorView: View {
         }
     }
 
+    /// Back and Cancel go through here so unsaved edits are confirmed, never dropped silently;
+    /// Save and Delete call `onDismiss` directly because nothing is lost on those paths.
     private func dismissPanel() {
-        onDismiss()
+        if isDirty {
+            showDiscardConfirmation = true
+        } else {
+            onDismiss()
+        }
     }
 
     var body: some View {
@@ -90,6 +112,21 @@ struct PromptEditorView: View {
             }
 
             footer
+        }
+        .onChange(of: isDirty, initial: true) { _, newValue in
+            hasUnsavedChanges = newValue
+        }
+        .confirmationDialog(
+            "Discard Changes?",
+            isPresented: $showDiscardConfirmation,
+            titleVisibility: .visible
+        ) {
+            Button("Discard Changes", role: .destructive) {
+                onDismiss()
+            }
+            Button("Keep Editing", role: .cancel) {}
+        } message: {
+            Text("This prompt has unsaved changes.")
         }
         .confirmationDialog(
             "Delete Prompt?",
@@ -174,9 +211,12 @@ struct PromptEditorView: View {
 
     private var instructionsEditor: some View {
         ZStack(alignment: .topLeading) {
+            // The editor grows with its text and the outer ScrollView does the scrolling; a fixed
+            // 440 pt frame with its own scroller fought the ScrollView for wheel events.
             TextEditor(text: $promptText)
                 .font(.system(.body, design: .monospaced))
-                .frame(height: 440)
+                .scrollDisabled(true)
+                .frame(minHeight: 220)
                 .scrollContentBackground(.hidden)
                 .padding(8)
                 .background(AppCardBackground(cornerRadius: 8))
@@ -219,7 +259,7 @@ struct PromptEditorView: View {
                 if let savedPrompt = save() {
                     onSave(savedPrompt)
                 }
-                dismissPanel()
+                onDismiss()
             } label: {
                 Text(saveButtonTitle)
                     .frame(minWidth: 108)
@@ -237,7 +277,7 @@ struct PromptEditorView: View {
     private func deletePrompt() {
         guard let prompt = editingPrompt, canDeletePrompt else { return }
         onDelete?(prompt)
-        dismissPanel()
+        onDismiss()
     }
 
     private func save() -> CustomPrompt? {

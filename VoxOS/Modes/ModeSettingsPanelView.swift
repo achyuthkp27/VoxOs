@@ -72,19 +72,31 @@ struct ModeSettingsPanelView: View {
 private struct ModeReorderList: View {
     @ObservedObject var modeManager: ModeManager
 
+    /// The drag's source row. Kept apart from the faded `draggedConfigID` because SwiftUI gives no
+    /// drag-ended callback: a drop outside the list never reaches `performDrop`, so the fade is
+    /// cleared on `dropExited` while the source survives for a re-entry.
+    @State private var dragSourceID: UUID?
     @State private var draggedConfigID: UUID?
     @State private var targetedConfigID: UUID?
+    /// Order being previewed mid-drag. Only the drop commits it, so one drag saves once instead
+    /// of on every row crossed; nil means the list shows what is saved.
+    @State private var pendingOrder: [ModeConfig]?
+
+    private var displayedConfigurations: [ModeConfig] {
+        pendingOrder ?? modeManager.configurations
+    }
 
     var body: some View {
         ScrollView {
             LazyVStack(spacing: 8) {
-                ForEach(modeManager.configurations) { config in
+                ForEach(displayedConfigurations) { config in
                     ModeReorderRow(
                         config: config,
                         isDragged: draggedConfigID == config.id,
                         isTargeted: targetedConfigID == config.id
                     )
                     .onDrag {
+                        dragSourceID = config.id
                         draggedConfigID = config.id
                         return NSItemProvider(object: config.id.uuidString as NSString)
                     } preview: {
@@ -94,9 +106,12 @@ private struct ModeReorderList: View {
                         of: [UTType.text],
                         delegate: ModeReorderDropDelegate(
                             item: config,
-                            modeManager: modeManager,
+                            dragSourceID: $dragSourceID,
                             draggedConfigID: $draggedConfigID,
-                            targetedConfigID: $targetedConfigID
+                            targetedConfigID: $targetedConfigID,
+                            pendingOrder: $pendingOrder,
+                            savedOrder: modeManager.configurations,
+                            commit: commitPendingOrder
                         )
                     )
                 }
@@ -108,9 +123,21 @@ private struct ModeReorderList: View {
             of: [UTType.text],
             delegate: ModeReorderResetDropDelegate(
                 draggedConfigID: $draggedConfigID,
-                targetedConfigID: $targetedConfigID
+                targetedConfigID: $targetedConfigID,
+                pendingOrder: $pendingOrder,
+                commit: commitPendingOrder
             )
         )
+    }
+
+    private func commitPendingOrder() {
+        if let pendingOrder, pendingOrder.map(\.id) != modeManager.configurations.map(\.id) {
+            modeManager.replaceConfigurations(pendingOrder)
+        }
+        pendingOrder = nil
+        dragSourceID = nil
+        draggedConfigID = nil
+        targetedConfigID = nil
     }
 }
 
@@ -288,28 +315,35 @@ private struct ModeReorderDragPreview: View {
 
 private struct ModeReorderDropDelegate: DropDelegate {
     let item: ModeConfig
-    let modeManager: ModeManager
+    @Binding var dragSourceID: UUID?
     @Binding var draggedConfigID: UUID?
     @Binding var targetedConfigID: UUID?
+    @Binding var pendingOrder: [ModeConfig]?
+    let savedOrder: [ModeConfig]
+    let commit: () -> Void
 
     func dropEntered(info: DropInfo) {
-        guard let draggedConfigID,
-            draggedConfigID != item.id,
-            let fromIndex = modeManager.configurations.firstIndex(where: { $0.id == draggedConfigID }),
-            let toIndex = modeManager.configurations.firstIndex(where: { $0.id == item.id })
+        guard let dragSourceID, dragSourceID != item.id else {
+            return
+        }
+
+        var order = pendingOrder ?? savedOrder
+        guard let fromIndex = order.firstIndex(where: { $0.id == dragSourceID }),
+            let toIndex = order.firstIndex(where: { $0.id == item.id })
         else {
             return
         }
 
+        // Re-entering after the pointer left the list restores the fade cleared on exit.
+        draggedConfigID = dragSourceID
         targetedConfigID = item.id
 
         withAnimation(.smooth(duration: 0.18)) {
-            var updatedConfigurations = modeManager.configurations
-            updatedConfigurations.move(
+            order.move(
                 fromOffsets: IndexSet(integer: fromIndex),
                 toOffset: toIndex > fromIndex ? toIndex + 1 : toIndex
             )
-            modeManager.replaceConfigurations(updatedConfigurations)
+            pendingOrder = order
         }
     }
 
@@ -324,8 +358,7 @@ private struct ModeReorderDropDelegate: DropDelegate {
     }
 
     func performDrop(info: DropInfo) -> Bool {
-        draggedConfigID = nil
-        targetedConfigID = nil
+        commit()
         return true
     }
 }
@@ -333,14 +366,25 @@ private struct ModeReorderDropDelegate: DropDelegate {
 private struct ModeReorderResetDropDelegate: DropDelegate {
     @Binding var draggedConfigID: UUID?
     @Binding var targetedConfigID: UUID?
+    @Binding var pendingOrder: [ModeConfig]?
+    let commit: () -> Void
 
     func dropUpdated(info: DropInfo) -> DropProposal? {
         DropProposal(operation: .move)
     }
 
-    func performDrop(info: DropInfo) -> Bool {
+    func dropExited(info: DropInfo) {
+        // Leaving the list may be the end of the drag (a drop outside never calls performDrop), so
+        // snap back to the saved order and un-fade the row; a re-entry rebuilds the preview.
+        withAnimation(.smooth(duration: 0.18)) {
+            pendingOrder = nil
+        }
         draggedConfigID = nil
         targetedConfigID = nil
+    }
+
+    func performDrop(info: DropInfo) -> Bool {
+        commit()
         return true
     }
 }

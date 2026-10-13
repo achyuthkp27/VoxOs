@@ -42,12 +42,16 @@ final class DictionaryQuickAddManager {
         newPanel.makeKeyAndOrderFront(nil)
     }
 
-    func hide() {
+    /// `reactivatePreviousApp` is false when the panel closes because it lost key status: the user
+    /// already clicked into some other app, and pulling `previousApp` back would steal focus from it.
+    func hide(reactivatePreviousApp: Bool = true) {
         guard isVisible else { return }
         panel?.orderOut(nil)
         panel = nil
         hostingController = nil
-        previousApp?.activate()
+        if reactivatePreviousApp {
+            previousApp?.activate()
+        }
         previousApp = nil
     }
 }
@@ -94,7 +98,7 @@ class DictionaryQuickAddPanel: NSPanel {
     override func resignKey() {
         super.resignKey()
         DispatchQueue.main.async { [weak self] in
-            self?.manager?.hide()
+            self?.manager?.hide(reactivatePreviousApp: false)
         }
     }
 

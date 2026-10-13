@@ -4,6 +4,9 @@ struct ModeConfigEditorView: View {
     let mode: ConfigurationMode
     let modeManager: ModeManager
     let onDismiss: () -> Void
+    /// Mirrors whether the draft (or an open prompt editor) differs from what is saved, so the
+    /// owner of the side panel can ask before an outside click or Escape throws the edits away.
+    @Binding var hasUnsavedChanges: Bool
 
     @EnvironmentObject private var enhancementService: AIEnhancementService
     @EnvironmentObject private var aiService: AIService
@@ -15,13 +18,46 @@ struct ModeConfigEditorView: View {
     @State private var showValidationAlert = false
     @State private var promptEditorMode: PromptEditorView.Mode?
     @State private var promptEditorID = UUID()
+    @State private var promptEditorHasUnsavedChanges = false
     @State private var didSaveConfiguration = false
+    /// The mode shortcut as it was when editing began. The recorder writes to `ShortcutStore` the
+    /// moment a shortcut is captured, so Cancel has to put this back by hand.
+    private let shortcutAtEditStart: Shortcut?
+    private let shortcutWasClearedAtEditStart: Bool
 
-    init(mode: ConfigurationMode, modeManager: ModeManager, onDismiss: @escaping () -> Void) {
+    init(
+        mode: ConfigurationMode,
+        modeManager: ModeManager,
+        hasUnsavedChanges: Binding<Bool> = .constant(false),
+        onDismiss: @escaping () -> Void
+    ) {
         self.mode = mode
         self.modeManager = modeManager
         self.onDismiss = onDismiss
-        _draft = State(initialValue: ModeConfigDraft(mode: mode, modeManager: modeManager))
+        _hasUnsavedChanges = hasUnsavedChanges
+        let draft = ModeConfigDraft(mode: mode, modeManager: modeManager)
+        _draft = State(initialValue: draft)
+        shortcutAtEditStart = ShortcutStore.shortcut(for: .mode(draft.id))
+        shortcutWasClearedAtEditStart = ShortcutStore.isShortcutCleared(for: .mode(draft.id))
+    }
+
+    private var unsavedChangesPresent: Bool {
+        if promptEditorHasUnsavedChanges {
+            return true
+        }
+
+        switch mode {
+        case .add:
+            // Everything else in a new draft is inherited defaults; only what the user typed or
+            // added counts as something worth protecting.
+            return !draft.name.isEmpty || !draft.appConfigs.isEmpty || !draft.websiteConfigs.isEmpty
+                || !draft.triggerGroups.isEmpty || !draft.triggerWords.isEmpty
+        case .edit:
+            // Compare what would be saved with what is saved, not the raw draft: the form
+            // normalises the draft on appear, and that must not read as a user edit.
+            guard let savedConfig = modeManager.getConfiguration(with: draft.id) else { return false }
+            return draft.makeConfig(mode: mode) != savedConfig
+        }
     }
 
     var body: some View {
@@ -29,6 +65,7 @@ struct ModeConfigEditorView: View {
             if let promptEditorMode {
                 PromptEditorView(
                     mode: promptEditorMode,
+                    hasUnsavedChanges: $promptEditorHasUnsavedChanges,
                     onDismiss: closePromptEditor,
                     onSave: handlePromptSaved,
                     onDelete: handlePromptDeleted
@@ -53,6 +90,9 @@ struct ModeConfigEditorView: View {
         .onAppear(perform: prepareView)
         .onDisappear(perform: cleanupUnsavedShortcutIfNeeded)
         .onExitCommand(perform: handleExitCommand)
+        .onChange(of: unsavedChangesPresent, initial: true) { _, newValue in
+            hasUnsavedChanges = newValue
+        }
     }
 
     private func openPromptEditor(mode: PromptEditorView.Mode) {
@@ -61,6 +101,7 @@ struct ModeConfigEditorView: View {
     }
 
     private func closePromptEditor() {
+        promptEditorHasUnsavedChanges = false
         promptEditorMode = nil
     }
 
@@ -78,7 +119,11 @@ struct ModeConfigEditorView: View {
 
     private func handleExitCommand() {
         if promptEditorMode != nil {
-            closePromptEditor()
+            // The prompt editor's own Back button confirms before discarding; Escape normally
+            // reaches that button first, so this only closes when there is nothing to lose.
+            if !promptEditorHasUnsavedChanges {
+                closePromptEditor()
+            }
         } else {
             onDismiss()
         }
@@ -129,6 +174,9 @@ struct ModeConfigEditorView: View {
         }
 
         didSaveConfiguration = true
+        // Cleared before dismissing: the owner checks this flag synchronously and must not ask
+        // about discarding edits that were just saved.
+        hasUnsavedChanges = false
         onDismiss()
     }
 
@@ -136,6 +184,7 @@ struct ModeConfigEditorView: View {
         let result = modeManager.removeConfiguration(with: draft.id)
         switch result {
         case .removed, .notFound:
+            hasUnsavedChanges = false
             onDismiss()
         case .blockedDefault:
             break
@@ -144,10 +193,28 @@ struct ModeConfigEditorView: View {
     }
 
     private func cleanupUnsavedShortcutIfNeeded() {
-        guard case .add = mode, !didSaveConfiguration else {
+        guard !didSaveConfiguration else {
             return
         }
 
-        ShortcutStore.removeShortcutStorage(for: .mode(draft.id))
+        let action = ShortcutAction.mode(draft.id)
+        switch mode {
+        case .add:
+            ShortcutStore.removeShortcutStorage(for: action)
+        case .edit:
+            guard
+                ShortcutStore.shortcut(for: action) != shortcutAtEditStart
+                    || ShortcutStore.isShortcutCleared(for: action) != shortcutWasClearedAtEditStart
+            else {
+                return
+            }
+
+            if shortcutAtEditStart != nil || shortcutWasClearedAtEditStart {
+                ShortcutStore.setShortcut(shortcutAtEditStart, for: action)
+            } else {
+                // Nothing was stored before, so leave nothing behind rather than a "cleared" marker.
+                ShortcutStore.removeShortcutStorage(for: action)
+            }
+        }
     }
 }

@@ -5,7 +5,10 @@ struct AudioSetupView: View {
     @ObservedObject private var audioDeviceManager = AudioDeviceManager.shared
     @ObservedObject private var mediaController = MediaController.shared
     @ObservedObject private var playbackController = PlaybackController.shared
-    @State private var microphoneSourceBeforePriorityOrder: MicrophoneSourceSelection = .systemDefault
+    /// Seeded from the last stored device rather than `.systemDefault`: while Priority Order is on,
+    /// `onAppear` never captures a source, so a view rebuild used to forget the remembered microphone.
+    @State private var microphoneSourceBeforePriorityOrder: MicrophoneSourceSelection =
+        UserDefaults.standard.selectedAudioDeviceUID.map { .device($0) } ?? .systemDefault
     @State private var refreshIconRotation = 0.0
 
     var body: some View {

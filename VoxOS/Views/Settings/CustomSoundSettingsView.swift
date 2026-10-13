@@ -3,7 +3,9 @@ import UniformTypeIdentifiers
 
 struct CustomSoundSettingsView: View {
     @StateObject private var customSoundManager = CustomSoundManager.shared
-    @State private var showingAlert = false
+    /// Which row's file failed. The alert is attached per row, so a shared Bool on the `Group`
+    /// would present it once from each row; keying it by sound type presents it exactly once.
+    @State private var alertSoundType: CustomSoundManager.SoundType?
     @State private var alertTitle = ""
     @State private var alertMessage = ""
 
@@ -18,16 +20,32 @@ struct CustomSoundSettingsView: View {
             LabeledContent("Start Sound") {
                 soundControls(for: .start)
             }
+            .alert(alertTitle, isPresented: alertPresented(for: .start)) {
+                Button("OK", role: .cancel) {}
+            } message: {
+                Text(alertMessage)
+            }
 
             LabeledContent("Stop Sound") {
                 soundControls(for: .stop)
             }
+            .alert(alertTitle, isPresented: alertPresented(for: .stop)) {
+                Button("OK", role: .cancel) {}
+            } message: {
+                Text(alertMessage)
+            }
         }
-        .alert(alertTitle, isPresented: $showingAlert) {
-            Button("OK", role: .cancel) {}
-        } message: {
-            Text(alertMessage)
-        }
+    }
+
+    private func alertPresented(for type: CustomSoundManager.SoundType) -> Binding<Bool> {
+        Binding(
+            get: { alertSoundType == type },
+            set: { isPresented in
+                if !isPresented, alertSoundType == type {
+                    alertSoundType = nil
+                }
+            }
+        )
     }
 
     @ViewBuilder
@@ -138,7 +156,7 @@ struct CustomSoundSettingsView: View {
             if case .failure(let error) = result {
                 alertTitle = "Invalid Audio File"
                 alertMessage = error.localizedDescription
-                showingAlert = true
+                alertSoundType = type
             }
         }
     }
