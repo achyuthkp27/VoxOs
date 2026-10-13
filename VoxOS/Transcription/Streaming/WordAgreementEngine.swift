@@ -36,6 +36,12 @@ struct AgreementConfig {
     var minPassConfidence: Float = 0.15
     // All words in the last 3 positions before a sentence boundary must meet this threshold to be confirmed.
     var minWordConfidence: Float = 0.6
+    // Without three sentence enders the punctuation rule never confirms anything, so every pass
+    // re-decodes the whole recording and the audio buffer grows without bound. Once the
+    // unconfirmed window is longer than this, agreed words older than `forcedConfirmKeepSeconds`
+    // are confirmed regardless of punctuation.
+    var maxUnconfirmedSeconds: Double = 30
+    var forcedConfirmKeepSeconds: Double = 10
 }
 
 struct AgreementResult {
@@ -108,16 +114,24 @@ final class WordAgreementEngine {
             return makeResult(hypothesisWords: words, newlyConfirmedWords: [])
         }
 
-        let confirmUpTo = applyPunctuationRule(words: Array(words.prefix(commonPrefix.count)))
+        let agreedWords = Array(words.prefix(commonPrefix.count))
+        var confirmUpTo = applyPunctuationRule(words: agreedWords)
+        var isForced = false
+        if confirmUpTo == 0, let windowEnd = words.last?.endTime {
+            confirmUpTo = applyWindowBound(words: agreedWords, windowEnd: windowEnd)
+            isForced = confirmUpTo > 0
+        }
 
         guard confirmUpTo > 0 else {
             return makeResult(hypothesisWords: words, newlyConfirmedWords: [])
         }
 
         // All 3 words at the confirmation boundary must meet the minimum confidence threshold.
+        // A forced cut has no sentence boundary to protect and must not be blocked by one shaky
+        // word, or the bound it exists to enforce never engages.
         let boundaryWords = Array(words.prefix(confirmUpTo).suffix(3))
         let minBoundaryConfidence = boundaryWords.map(\.confidence).min() ?? 1.0
-        guard minBoundaryConfidence >= config.minWordConfidence else {
+        guard isForced || minBoundaryConfidence >= config.minWordConfidence else {
             return makeResult(hypothesisWords: words, newlyConfirmedWords: [])
         }
 
@@ -236,6 +250,21 @@ final class WordAgreementEngine {
         let confirmCount = cutIndex + 1
 
         // Require minimum word count to avoid confirming tiny fragments
+        guard confirmCount >= config.minWordsToConfirm else { return 0 }
+
+        return confirmCount
+    }
+
+    // Bound on the unconfirmed window: once it spans more than `maxUnconfirmedSeconds`, confirm the
+    // agreed words that ended more than `forcedConfirmKeepSeconds` before the newest word.
+    private func applyWindowBound(words: [TimedWord], windowEnd: Double) -> Int {
+        guard let windowStart = words.first?.startTime,
+            windowEnd - windowStart > config.maxUnconfirmedSeconds
+        else { return 0 }
+
+        let cutoff = windowEnd - config.forcedConfirmKeepSeconds
+        let confirmCount = words.prefix { $0.endTime <= cutoff }.count
+
         guard confirmCount >= config.minWordsToConfirm else { return 0 }
 
         return confirmCount

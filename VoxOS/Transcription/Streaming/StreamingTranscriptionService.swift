@@ -130,6 +130,10 @@ class StreamingTranscriptionService {
     private var stopStartedAt: Date?
     private var firstPartialLogged = false
     private var firstCommitLogged = false
+    /// First `.error` the provider emitted during this session. Audio sent around it may never
+    /// have been transcribed, so stop throws instead of returning a transcript with a hole in it;
+    /// the session catches that and re-runs the whole recording through batch.
+    private var providerError: Error?
 
     init(
         modelContext: ModelContext, fluidAudioService: FluidAudioTranscriptionService? = nil,
@@ -159,6 +163,7 @@ class StreamingTranscriptionService {
         let start = Date()
         state = .connecting
         committedSegments = []
+        providerError = nil
         metrics.reset()
         firstPartialLogged = false
         firstCommitLogged = false
@@ -256,7 +261,18 @@ class StreamingTranscriptionService {
             }
             finalText = finalization.text
         case .committedEvent(let signalStream):
-            finalText = await waitForFinalCommit(signalStream: signalStream)
+            let finalCommit = await waitForFinalCommit(signalStream: signalStream)
+            // No acknowledgement and nothing committed: the provider never produced text for
+            // this recording. Returning "" would paste nothing, so fail over to batch instead.
+            if !finalCommit.received && finalCommit.text.isEmpty {
+                logger.warning("No transcript received from streaming; using batch fallback")
+                try await failStreaming(StreamingTranscriptionError.timeout)
+            }
+            finalText = finalCommit.text
+        }
+        if let providerError {
+            logger.warning("Streaming reported an error mid-session; using batch fallback")
+            try await failStreaming(providerError)
         }
         if let stopStartedAt {
             logger.notice(
@@ -268,6 +284,13 @@ class StreamingTranscriptionService {
         await cleanupStreaming()
 
         return .finalized(text: finalText)
+    }
+
+    /// Tears the session down and rethrows `error` so TranscriptionSession runs the batch fallback.
+    private func failStreaming(_ error: Error) async throws {
+        state = .failed
+        await cleanupStreaming()
+        throw error
     }
 
     /// Cancels the streaming session without waiting for results.
@@ -413,6 +436,9 @@ class StreamingTranscriptionService {
                 case .error(let error):
                     await MainActor.run {
                         self.logger.error("Streaming event error: \(error, privacy: .public)")
+                        if self.providerError == nil {
+                            self.providerError = error
+                        }
                     }
                 }
             }
@@ -420,7 +446,7 @@ class StreamingTranscriptionService {
     }
 
     /// Waits for the server to acknowledge our explicit commit, with a 10-second timeout.
-    private func waitForFinalCommit(signalStream: AsyncStream<Void>) async -> String {
+    private func waitForFinalCommit(signalStream: AsyncStream<Void>) async -> (received: Bool, text: String) {
         // Race: wait for commit acknowledgment vs timeout
         let receivedInTime = await withTaskGroup(of: Bool.self) { group in
             group.addTask { @MainActor in
@@ -456,11 +482,7 @@ class StreamingTranscriptionService {
         commitSignal?.finish()
         commitSignal = nil
 
-        if !receivedInTime && committedSegments.isEmpty {
-            logger.warning("No transcript received from streaming")
-        }
-
-        return committedSegments.isEmpty ? "" : committedSegments.joined(separator: " ")
+        return (receivedInTime, committedSegments.joined(separator: " "))
     }
 
     /// Waits for a provider's documented end-of-stream acknowledgement and authoritative full transcript.
@@ -502,5 +524,6 @@ class StreamingTranscriptionService {
         provider = nil
         state = .idle
         committedSegments = []
+        providerError = nil
     }
 }

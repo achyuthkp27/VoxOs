@@ -527,84 +527,35 @@ class AIEnhancementService: ObservableObject {
         UserDefaults.standard.bool(forKey: DefaultsKeys.enhancementRetryOnTimeout)
     }
 
+    /// One attempt per request. LLMkit already retries 429/5xx/network failures three times
+    /// with backoff inside every call, so the loop that used to live here multiplied that into
+    /// nine round-trips before the user saw an error. The only app-level retry left is the
+    /// user's opt-in "retry on timeout" (LLMkit does not retry timeouts), and only once.
     private func makeRequestWithRetry(
         text: String,
         configuration: EnhancementRuntimeConfiguration,
-        contextSnapshot: RecordingContextSnapshot?,
-        maxRetries: Int = 3,
-        initialDelay: TimeInterval = 1.0
+        contextSnapshot: RecordingContextSnapshot?
     ) async throws -> (text: String, systemMessage: String?, userMessage: String?) {
-        var retries = 0
-        var currentDelay = initialDelay
+        var retriedTimeout = false
 
-        while retries < maxRetries {
+        while true {
             do {
                 return try await makeRequest(
                     text: text,
                     configuration: configuration,
                     contextSnapshot: contextSnapshot
                 )
-            } catch let error as EnhancementError {
-                switch error {
-                case .networkError, .serverError, .rateLimitExceeded:
-                    retries += 1
-                    if retries < maxRetries {
-                        if case .rateLimitExceeded = error {
-                            AgentProgress.set("Model is rate-limited, retrying in \(Int(currentDelay))s…")
-                        } else {
-                            AgentProgress.set("Connection hiccup, retrying…")
-                        }
-                        logger.warning(
-                            "Request failed, retrying in \(currentDelay, privacy: .public)s... (Attempt \(retries, privacy: .public)/\(maxRetries, privacy: .public))"
-                        )
-                        try await Task.sleep(nanoseconds: UInt64(currentDelay * 1_000_000_000))
-                        currentDelay *= 2
-                    } else {
-                        logger.error("Request failed after \(maxRetries, privacy: .public) retries.")
-                        throw error
-                    }
-                case .timeout:
-                    if retryOnTimeout {
-                        retries += 1
-                        if retries < maxRetries {
-                            logger.warning(
-                                "Request timed out, retrying immediately... (Attempt \(retries, privacy: .public)/\(maxRetries, privacy: .public))"
-                            )
-                        } else {
-                            logger.error("Request timed out after \(maxRetries, privacy: .public) retries.")
-                            throw error
-                        }
-                    } else {
-                        logger.error("Request timed out, failing immediately (retry disabled).")
-                        throw error
-                    }
-                default:
-                    throw error
-                }
-            } catch {
-                let nsError = error as NSError
-                if nsError.domain == NSURLErrorDomain
-                    && [NSURLErrorNotConnectedToInternet, NSURLErrorTimedOut, NSURLErrorNetworkConnectionLost].contains(
-                        nsError.code)
-                {
-                    retries += 1
-                    if retries < maxRetries {
-                        logger.warning(
-                            "Request failed with network error, retrying in \(currentDelay, privacy: .public)s... (Attempt \(retries, privacy: .public)/\(maxRetries, privacy: .public))"
-                        )
-                        try await Task.sleep(nanoseconds: UInt64(currentDelay * 1_000_000_000))
-                        currentDelay *= 2
-                    } else {
-                        logger.error("Request failed after \(maxRetries, privacy: .public) retries with network error.")
-                        throw EnhancementError.networkError
-                    }
-                } else {
-                    throw error
-                }
+            } catch EnhancementError.timeout where retryOnTimeout && !retriedTimeout {
+                retriedTimeout = true
+                logger.warning("Request timed out, retrying once (retry on timeout enabled)...")
+            } catch let error as NSError
+                where error.domain == NSURLErrorDomain
+                && [NSURLErrorNotConnectedToInternet, NSURLErrorTimedOut, NSURLErrorNetworkConnectionLost].contains(
+                    error.code)
+            {
+                throw EnhancementError.networkError
             }
         }
-
-        throw EnhancementError.enhancementFailed
     }
 
     func enhance(

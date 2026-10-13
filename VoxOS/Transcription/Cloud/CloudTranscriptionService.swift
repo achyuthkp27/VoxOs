@@ -60,7 +60,7 @@ class CloudTranscriptionService: TranscriptionService {
                     throw CloudTranscriptionError.unsupportedProvider
                 }
                 return try await openAICompatibleService.transcribe(
-                    audioURL: audioURL, model: customModel, context: context)
+                    audioData: audioData, fileName: fileName, model: customModel, context: context)
             }
 
             guard let cloudProvider = CloudProviderRegistry.provider(for: model.provider) else {
@@ -73,7 +73,7 @@ class CloudTranscriptionService: TranscriptionService {
                 apiKey: apiKey,
                 model: model.name,
                 language: language,
-                customVocabulary: getCustomDictionaryTerms()
+                customVocabulary: await CustomVocabularyTerms.fetch(from: modelContext)
             )
         } catch let error as CloudTranscriptionError {
             throw error
@@ -103,25 +103,6 @@ class CloudTranscriptionService: TranscriptionService {
     private func selectedLanguage(from context: TranscriptionRequestContext) -> String? {
         let lang = context.language ?? "auto"
         return (lang == "auto" || lang.isEmpty) ? nil : lang
-    }
-
-    private func getCustomDictionaryTerms() -> [String] {
-        let descriptor = FetchDescriptor<VocabularyWord>(sortBy: [SortDescriptor(\.word)])
-        guard let vocabularyWords = try? modelContext.fetch(descriptor) else {
-            return []
-        }
-        var seen = Set<String>()
-        var unique: [String] = []
-        for word in vocabularyWords {
-            let trimmed = word.word.trimmingCharacters(in: .whitespacesAndNewlines)
-            guard !trimmed.isEmpty else { continue }
-            let key = trimmed.lowercased()
-            if !seen.contains(key) {
-                seen.insert(key)
-                unique.append(trimmed)
-            }
-        }
-        return unique
     }
 
     private func mapLLMKitError(_ error: LLMKitError) -> CloudTranscriptionError {

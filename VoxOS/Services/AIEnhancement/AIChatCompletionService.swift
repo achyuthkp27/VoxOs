@@ -2,13 +2,16 @@ import Foundation
 import LLMkit
 
 extension AIService {
-    /// Chat completion with retries for transient failures (429 rate limits, 5xx, network).
-    /// Providers like Groq say "try again in 12.3s" in the 429 body; that wait is honoured
-    /// (capped) so a burst of agent tool calls does not surface a raw HTTP error to the user.
+    /// Chat completion with provider failover. LLMkit already retries 429/5xx/network failures
+    /// three times with backoff inside every call, so this layer makes one attempt per provider.
+    /// The exception is a 429 whose body names a wait ("try again in 12.3s", Groq): LLMkit's
+    /// 1 s/2 s backoff cannot outlast that, so the named wait is honoured (capped) once here, so
+    /// a burst of agent tool calls does not surface a raw HTTP error to the user. A timeout is
+    /// never retried: the completion may already have run.
     ///
-    /// If the provider is still failing after its retries and the user has listed fallback
-    /// providers (`DefaultsKeys.aiFallbackProviders`), the same conversation is replayed on the
-    /// next one. Tool calls are plain-text JSON (ADR 0001), so any provider can continue a run.
+    /// If the provider is still failing and the user has listed fallback providers
+    /// (`DefaultsKeys.aiFallbackProviders`), the same conversation is replayed on the next one.
+    /// Tool calls are plain-text JSON (ADR 0001), so any provider can continue a run.
     func completeChat(
         provider: AIProvider,
         modelName: String?,
@@ -18,9 +21,9 @@ extension AIService {
     ) async throws -> String {
         let primaryError: LLMKitError
         do {
-            return try await completeChatWithRetries(
+            return try await completeChatHonouringRetryAfter(
                 provider: provider, modelName: modelName, messages: messages,
-                systemPrompt: systemPrompt, timeout: timeout, maxAttempts: 3)
+                systemPrompt: systemPrompt, timeout: timeout)
         } catch let error as LLMKitError {
             primaryError = error
         }
@@ -34,14 +37,18 @@ extension AIService {
             connected: connectedProviders)
 
         for fallback in fallbacks {
+            // A cancelled run must not keep spending calls on the remaining providers.
+            try Task.checkCancellation()
             if !AgentRunScope.isBackground {
                 AgentProgress.set("\(provider.rawValue) is unavailable, trying \(fallback.rawValue)…")
             }
             do {
                 // The fallback uses its own selected model: the primary's model name means nothing there.
-                return try await completeChatWithRetries(
+                return try await completeChatHonouringRetryAfter(
                     provider: fallback, modelName: nil, messages: messages,
-                    systemPrompt: systemPrompt, timeout: timeout, maxAttempts: 2)
+                    systemPrompt: systemPrompt, timeout: timeout)
+            } catch is CancellationError {
+                throw CancellationError()
             } catch {
                 // Rate-limited, misconfigured or down: this fallback is no help, try the next one.
                 continue
@@ -52,54 +59,42 @@ extension AIService {
         throw Self.friendlyChatError(primaryError, modelName: modelName)
     }
 
-    private func completeChatWithRetries(
+    private func completeChatHonouringRetryAfter(
         provider: AIProvider,
         modelName: String?,
         messages: [ChatMessage],
         systemPrompt: String?,
-        timeout: TimeInterval,
-        maxAttempts: Int
+        timeout: TimeInterval
     ) async throws -> String {
-        var attempt = 0
-        var delay: TimeInterval = 1.5
+        var waitedForRetryAfter = false
         while true {
             do {
                 return try await completeChatOnce(
                     provider: provider, modelName: modelName, messages: messages,
                     systemPrompt: systemPrompt, timeout: timeout)
             } catch let error as LLMKitError {
-                attempt += 1
-                guard attempt < maxAttempts, let wait = Self.retryDelay(for: error, fallback: delay) else {
+                guard !waitedForRetryAfter, let wait = Self.retryAfterDelay(for: error) else {
                     throw error
                 }
+                waitedForRetryAfter = true
                 let showsProgress = !AgentRunScope.isBackground
-                if showsProgress, case .httpError(429, _) = error {
+                if showsProgress {
                     AgentProgress.set("Model is rate-limited, retrying in \(Int(wait.rounded(.up)))s…")
-                } else if showsProgress {
-                    AgentProgress.set("Connection hiccup, retrying…")
                 }
                 try await Task.sleep(nanoseconds: UInt64(wait * 1_000_000_000))
                 if showsProgress { AgentProgress.set("Thinking…") }
-                delay *= 2
             }
         }
     }
 
-    private static func retryDelay(for error: LLMKitError, fallback: TimeInterval) -> TimeInterval? {
-        switch error {
-        case .httpError(let status, let message):
-            if status == 429 {
-                if let seconds = Self.retryAfterSeconds(in: message) {
-                    return min(max(seconds + 0.5, fallback), 8)
-                }
-                return fallback
-            }
-            return (500...599).contains(status) ? fallback : nil
-        case .networkError, .timeout:
-            return fallback
-        default:
+    /// Only a 429 that names its wait earns a retry here; everything else LLMkit already retried.
+    static func retryAfterDelay(for error: LLMKitError) -> TimeInterval? {
+        guard case .httpError(429, let message) = error,
+            let seconds = Self.retryAfterSeconds(in: message)
+        else {
             return nil
         }
+        return min(seconds + 0.5, 8)
     }
 
     /// "try again in 7.5s", "in 1m2.3s", "in 859.5ms". The millisecond form used to be read as

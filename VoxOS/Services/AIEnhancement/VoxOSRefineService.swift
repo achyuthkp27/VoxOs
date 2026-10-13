@@ -257,9 +257,30 @@ final class VoxOSRefineService: ObservableObject {
             return
         }
 
-        isDownloaded = VoxOSRefineModelDownloader.isSnapshotComplete(
-            at: snapshotURL
-        )
+        switch VoxOSRefineModelDownloader.snapshotStatus(at: snapshotURL) {
+        case .verified:
+            isDownloaded = true
+        case .incomplete:
+            isDownloaded = false
+        case .needsVerification:
+            // Sizes match, so treat the model as present (as the old size-only check did) while
+            // the 1 GB hash runs off the main thread; a failed hash flips it back to not downloaded
+            // instead of letting a corrupt or tampered snapshot load.
+            isDownloaded = true
+            Task.detached(priority: .utility) { [weak self] in
+                do {
+                    try VoxOSRefineModelDownloader.verifySnapshot(at: snapshotURL)
+                } catch {
+                    await MainActor.run {
+                        guard let self else { return }
+                        self.logger.error(
+                            "VoxOS Refine snapshot failed integrity verification: \(error.localizedDescription, privacy: .public)"
+                        )
+                        self.isDownloaded = false
+                    }
+                }
+            }
+        }
     }
 
     @MainActor

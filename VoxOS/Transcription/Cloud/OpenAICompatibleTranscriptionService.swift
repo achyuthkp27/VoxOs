@@ -1,8 +1,11 @@
 import Foundation
 
 class OpenAICompatibleTranscriptionService {
-    func transcribe(audioURL: URL, model: CustomCloudModel, context: TranscriptionRequestContext) async throws -> String
-    {
+    /// `audioData` is the file CloudTranscriptionService has already read; taking it avoids a
+    /// second read of the recording just to build the multipart body.
+    func transcribe(
+        audioData: Data, fileName: String, model: CustomCloudModel, context: TranscriptionRequestContext
+    ) async throws -> String {
         guard let url = URL(string: model.apiEndpoint) else {
             throw NSError(
                 domain: "CustomWhisperTranscriptionService", code: -1,
@@ -14,9 +17,12 @@ class OpenAICompatibleTranscriptionService {
         request.httpMethod = "POST"
         request.setValue("multipart/form-data; boundary=\(boundary)", forHTTPHeaderField: "Content-Type")
         request.setValue("Bearer \(model.apiKey)", forHTTPHeaderField: "Authorization")
+        // Idle timeout; the default 60 s is too short for a slow self-hosted endpoint to start
+        // answering a long upload, and without a bound a stalled one would hang the recording.
+        request.timeoutInterval = 120
 
-        let body = try buildRequestBody(
-            audioURL: audioURL, modelName: model.modelName, boundary: boundary, context: context)
+        let body = buildRequestBody(
+            audioData: audioData, fileName: fileName, modelName: model.modelName, boundary: boundary, context: context)
         // Ephemeral session per request: the shared session persists Alt-Svc and upgrades
         // new connections to HTTP/3, but QUIC bulk uploads blackhole behind VPNs that drop
         // full-size UDP datagrams (e.g. GlobalProtect), timing out large audio uploads.
@@ -41,12 +47,8 @@ class OpenAICompatibleTranscriptionService {
     }
 
     private func buildRequestBody(
-        audioURL: URL, modelName: String, boundary: String, context: TranscriptionRequestContext
-    ) throws -> Data {
-        guard let audioData = try? Data(contentsOf: audioURL) else {
-            throw CloudTranscriptionError.audioFileNotFound
-        }
-
+        audioData: Data, fileName: String, modelName: String, boundary: String, context: TranscriptionRequestContext
+    ) -> Data {
         let selectedLanguage = context.language ?? "auto"
         let crlf = "\r\n"
         var body = Data()
@@ -60,7 +62,7 @@ class OpenAICompatibleTranscriptionService {
         }
 
         append("--\(boundary)\(crlf)")
-        append("Content-Disposition: form-data; name=\"file\"; filename=\"\(audioURL.lastPathComponent)\"\(crlf)")
+        append("Content-Disposition: form-data; name=\"file\"; filename=\"\(fileName)\"\(crlf)")
         append("Content-Type: audio/wav\(crlf)\(crlf)")
         body.append(audioData)
         append(crlf)

@@ -96,11 +96,38 @@ class WhisperModelManager: ObservableObject {
                 at: modelsDirectory, includingPropertiesForKeys: nil)
             availableModels = fileURLs.compactMap { url in
                 guard url.pathExtension == "bin" else { return nil }
+                // A truncated download (crash mid-write, full disk) or a foreign .bin dropped into
+                // the folder would otherwise show up as installed and fail at load time.
+                guard Self.isPlausibleWhisperModelFile(at: url) else {
+                    logger.warning(
+                        "Skipping \(url.lastPathComponent, privacy: .public): not a complete ggml model file")
+                    return nil
+                }
                 return WhisperModelFile(name: url.deletingPathExtension().lastPathComponent, url: url)
             }
         } catch {
             logError("Error loading available models", error)
         }
+    }
+
+    /// Smallest shipped whisper.cpp model (tiny, q5) is ~30 MB; anything under 1 MB is a stub.
+    nonisolated static let minimumModelFileSize: UInt64 = 1_024 * 1_024
+
+    /// whisper.cpp refuses any model whose first four bytes are not `GGML_FILE_MAGIC`
+    /// (0x67676d6c, written little-endian so it reads "lmgg" on disk).
+    nonisolated static let ggmlFileMagic: [UInt8] = [0x6c, 0x6d, 0x67, 0x67]
+
+    nonisolated static func isPlausibleWhisperModelFile(at url: URL) -> Bool {
+        guard let attributes = try? FileManager.default.attributesOfItem(atPath: url.path),
+            let size = (attributes[.size] as? NSNumber)?.uint64Value,
+            size >= minimumModelFileSize
+        else {
+            return false
+        }
+        guard let handle = try? FileHandle(forReadingFrom: url) else { return false }
+        defer { try? handle.close() }
+        guard let header = try? handle.read(upToCount: ggmlFileMagic.count) else { return false }
+        return Array(header) == ggmlFileMagic
     }
 
     // MARK: - Model Loading
@@ -229,7 +256,11 @@ class WhisperModelManager: ObservableObject {
         let data = try await downloadFileWithProgress(from: url, progressKey: progressKeyMain)
 
         let destinationURL = modelsDirectory.appendingPathComponent(model.filename)
-        try data.write(to: destinationURL)
+        // Multi-GB write: off the main actor so the UI keeps drawing, and atomic so a crash
+        // mid-write cannot leave a truncated .bin that loadAvailableModels() lists as installed.
+        try await Task.detached(priority: .utility) {
+            try data.write(to: destinationURL, options: .atomic)
+        }.value
 
         return WhisperModelFile(name: model.name, url: destinationURL)
     }
@@ -241,7 +272,9 @@ class WhisperModelManager: ObservableObject {
         let coreMLData = try await downloadFileWithProgress(from: url, progressKey: progressKeyCoreML)
 
         let coreMLZipPath = modelsDirectory.appendingPathComponent("\(model.name)-encoder.mlmodelc.zip")
-        try coreMLData.write(to: coreMLZipPath)
+        try await Task.detached(priority: .utility) {
+            try coreMLData.write(to: coreMLZipPath, options: .atomic)
+        }.value
 
         return try await unzipAndSetupCoreMLModel(for: model, zipPath: coreMLZipPath, progressKey: progressKeyCoreML)
     }
@@ -257,23 +290,12 @@ class WhisperModelManager: ObservableObject {
     }
 
     private func unzipCoreMLFile(_ zipPath: URL, to destination: URL) async throws {
-        let finished = ManagedAtomic(false)
-
-        return try await withCheckedThrowingContinuation { (continuation: CheckedContinuation<Void, Error>) in
-            func finishOnce(_ result: Result<Void, Error>) {
-                if finished.exchange(true, ordering: .acquiring) == false {
-                    continuation.resume(with: result)
-                }
-            }
-
-            do {
-                try FileManager.default.createDirectory(at: destination, withIntermediateDirectories: true)
-                try Zip.unzipFile(zipPath, destination: destination, overwrite: true, password: nil)
-                finishOnce(.success(()))
-            } catch {
-                finishOnce(.failure(error))
-            }
-        }
+        // The continuation this used to wrap ran the unzip synchronously on the main actor;
+        // a detached task actually moves the seconds of inflation off the UI thread.
+        try await Task.detached(priority: .utility) {
+            try FileManager.default.createDirectory(at: destination, withIntermediateDirectories: true)
+            try Zip.unzipFile(zipPath, destination: destination, overwrite: true, password: nil)
+        }.value
     }
 
     private func verifyAndCleanupCoreMLFiles(

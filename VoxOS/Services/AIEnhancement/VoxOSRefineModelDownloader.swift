@@ -131,45 +131,46 @@ final class VoxOSRefineModelDownloader: @unchecked Sendable {
         modelRootDirectory
     }
 
-    static func isSnapshotComplete(at snapshotDirectory: URL) -> Bool {
-        isSnapshotComplete(at: snapshotDirectory, files: files)
+    enum SnapshotStatus: Equatable {
+        /// Every file has the expected size and the stored integrity record matches its mtimes.
+        case verified
+        /// Sizes match but there is no integrity record, or the mtimes differ from the stored
+        /// one. The files must be hashed with `verifySnapshot(at:)` before they can be trusted.
+        case needsVerification
+        case incomplete
     }
 
-    static func isSnapshotComplete(
-        at snapshotDirectory: URL,
-        files: [ModelFile]
-    ) -> Bool {
-        guard
-            let currentRecord = verificationRecord(
-                at: snapshotDirectory,
-                files: files
+    /// Cheap check (sizes and mtimes only) safe to run on the main thread at launch. The old
+    /// `isSnapshotComplete` hashed the 1 GB weights synchronously whenever an mtime differed,
+    /// and accepted the files on size alone when no record existed yet.
+    static func snapshotStatus(at snapshotDirectory: URL) -> SnapshotStatus {
+        snapshotStatus(at: snapshotDirectory, files: files)
+    }
+
+    static func snapshotStatus(at snapshotDirectory: URL, files: [ModelFile]) -> SnapshotStatus {
+        guard let currentRecord = verificationRecord(at: snapshotDirectory, files: files) else {
+            return .incomplete
+        }
+        return storedVerificationRecord(at: snapshotDirectory) == currentRecord ? .verified : .needsVerification
+    }
+
+    /// Hashes every file and writes the integrity record. Reads the whole snapshot, so call it
+    /// off the main thread. Throws when any file fails verification.
+    static func verifySnapshot(at snapshotDirectory: URL) throws {
+        try verifySnapshot(at: snapshotDirectory, files: files)
+    }
+
+    static func verifySnapshot(at snapshotDirectory: URL, files: [ModelFile]) throws {
+        for file in files {
+            try validateDownloadedFile(
+                at: snapshotDirectory.appendingPathComponent(file.path),
+                file: file
             )
-        else {
-            return false
         }
-
-        let recordURL = snapshotDirectory.appendingPathComponent(verificationRecordFilename)
-        if !FileManager.default.fileExists(atPath: recordURL.path) {
-            // Existing installations use the original size-based completion check.
-            return true
+        guard let record = verificationRecord(at: snapshotDirectory, files: files) else {
+            throw VoxOSRefineDownloadError.invalidResponse(verificationRecordFilename)
         }
-
-        if storedVerificationRecord(at: snapshotDirectory) == currentRecord {
-            return true
-        }
-
-        do {
-            for file in files {
-                try validateDownloadedFile(
-                    at: snapshotDirectory.appendingPathComponent(file.path),
-                    file: file
-                )
-            }
-            try? persistVerificationRecord(currentRecord, at: snapshotDirectory)
-            return true
-        } catch {
-            return false
-        }
+        try persistVerificationRecord(record, at: snapshotDirectory)
     }
 
     private let repositoryID: String
@@ -319,7 +320,9 @@ final class VoxOSRefineModelDownloader: @unchecked Sendable {
         }
 
         var request = URLRequest(url: url)
-        request.timeoutInterval = 24 * 60 * 60
+        // No per-request timeoutInterval: it overrides the session's 120 s idle timeout, so a
+        // stalled connection would sit silent for a day instead of erroring into the retry loop.
+        // The 24 h resource timeout on the session still bounds the whole transfer.
         request.setValue("VoxOS", forHTTPHeaderField: "User-Agent")
 
         var resumeOffset: Int64 = 0
@@ -455,24 +458,7 @@ final class VoxOSRefineModelDownloader: @unchecked Sendable {
     }
 
     private func validateSnapshot() throws {
-        for file in Self.files {
-            try Self.validateDownloadedFile(
-                at: snapshotDirectory.appendingPathComponent(file.path),
-                file: file
-            )
-        }
-
-        guard
-            let record = Self.verificationRecord(
-                at: snapshotDirectory,
-                files: Self.files
-            )
-        else {
-            throw VoxOSRefineDownloadError.invalidResponse(
-                Self.verificationRecordFilename
-            )
-        }
-        try Self.persistVerificationRecord(record, at: snapshotDirectory)
+        try Self.verifySnapshot(at: snapshotDirectory)
     }
 
     private func downloadURL(for file: ModelFile) -> URL? {
