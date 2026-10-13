@@ -5,12 +5,25 @@ import SwiftUI
 /// round lock button up top, transcripts grouped under "Today, 16:10"-style headers, each
 /// row a round avatar beside a single truncated title line.
 struct EdgeHistorySidebarView: View {
-    @Query(sort: \Transcription.timestamp, order: .reverse) private var transcriptions: [Transcription]
+    @Query(Self.recentTranscriptionsDescriptor()) private var transcriptions: [Transcription]
     @State private var searchText = ""
+    /// Trimmed search term, updated once per keystroke so the filter never re-normalises it per row.
+    @State private var normalizedQuery = ""
     let onSelectTranscription: () -> Void
     @Binding var isPinned: Bool
 
     private static let rowLimit = 60
+    /// The card shows at most `rowLimit` rows; fetching the whole history to pick 60 was
+    /// wasted work. 200 still leaves plenty of room for search to find older entries.
+    private static let fetchLimit = 200
+
+    private static func recentTranscriptionsDescriptor() -> FetchDescriptor<Transcription> {
+        var descriptor = FetchDescriptor<Transcription>(
+            sortBy: [SortDescriptor(\Transcription.timestamp, order: .reverse)]
+        )
+        descriptor.fetchLimit = fetchLimit
+        return descriptor
+    }
 
     // Palette lifted from the reference: near-black card, charcoal pill, 40% white captions.
     private static let card = Color(red: 0.05, green: 0.05, blue: 0.06)
@@ -20,13 +33,17 @@ struct EdgeHistorySidebarView: View {
     private static let title = Color.white.opacity(0.95)
 
     private var filteredTranscriptions: [Transcription] {
-        guard !searchText.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty else {
+        guard !normalizedQuery.isEmpty else {
             return Array(transcriptions.prefix(Self.rowLimit))
         }
-        let query = searchText.lowercased()
+        let query = normalizedQuery
+        // Case-insensitive range search instead of lowercasing every transcript per keystroke.
         return
             transcriptions
-            .filter { $0.text.lowercased().contains(query) || ($0.enhancedText?.lowercased().contains(query) ?? false) }
+            .filter {
+                $0.text.localizedCaseInsensitiveContains(query)
+                    || ($0.enhancedText?.localizedCaseInsensitiveContains(query) ?? false)
+            }
             .prefix(Self.rowLimit)
             .map { $0 }
     }
@@ -44,15 +61,25 @@ struct EdgeHistorySidebarView: View {
         }
     }
 
+    // Built once: a DateFormatter per group per render was the single most expensive thing in this view.
+    private static let timeFormatter: DateFormatter = {
+        let formatter = DateFormatter()
+        formatter.dateFormat = "HH:mm"
+        return formatter
+    }()
+
+    private static let dayFormatter: DateFormatter = {
+        let formatter = DateFormatter()
+        formatter.dateFormat = "EEE, d MMM"
+        return formatter
+    }()
+
     private static func groupLabel(day: Date, newest: Date) -> String {
         let calendar = Calendar.current
-        let time = DateFormatter()
-        time.dateFormat = "HH:mm"
-        if calendar.isDateInToday(day) { return String(localized: "Today") + ", " + time.string(from: newest) }
-        if calendar.isDateInYesterday(day) { return String(localized: "Yesterday") + ", " + time.string(from: newest) }
-        let date = DateFormatter()
-        date.dateFormat = "EEE, d MMM"
-        return date.string(from: day) + ", " + time.string(from: newest)
+        let time = timeFormatter.string(from: newest)
+        if calendar.isDateInToday(day) { return String(localized: "Today") + ", " + time }
+        if calendar.isDateInYesterday(day) { return String(localized: "Yesterday") + ", " + time }
+        return dayFormatter.string(from: day) + ", " + time
     }
 
     var body: some View {
@@ -63,6 +90,9 @@ struct EdgeHistorySidebarView: View {
         .frame(maxWidth: .infinity, maxHeight: .infinity)
         .liquidGlass(cornerRadius: EdgeHistoryPanel.cornerRadius, tint: Self.card.opacity(0.62))
         .preferredColorScheme(.dark)
+        .onChange(of: searchText) { _, newValue in
+            normalizedQuery = newValue.trimmingCharacters(in: .whitespacesAndNewlines)
+        }
     }
 
     private var header: some View {
@@ -108,16 +138,19 @@ struct EdgeHistorySidebarView: View {
     }
 
     private var list: some View {
-        ScrollView(.vertical, showsIndicators: false) {
+        // Evaluated once per body pass; the `isEmpty` check and the ForEach used to each
+        // re-run the whole filter-and-group.
+        let groups = groupedByDay
+        return ScrollView(.vertical, showsIndicators: false) {
             LazyVStack(alignment: .leading, spacing: 0, pinnedViews: []) {
-                if groupedByDay.isEmpty {
+                if groups.isEmpty {
                     Text("No history yet")
                         .font(.app(size: 14))
                         .foregroundStyle(Self.caption)
                         .frame(maxWidth: .infinity)
                         .padding(.top, 32)
                 } else {
-                    ForEach(groupedByDay, id: \.id) { group in
+                    ForEach(groups, id: \.id) { group in
                         Text(group.label)
                             .font(.app(size: 13.5))
                             .foregroundStyle(Self.caption)
@@ -151,8 +184,11 @@ private struct EdgeHistoryRow: View {
     @State private var isHovering = false
 
     private var displayTitle: String {
-        let text = transcription.enhancedText ?? transcription.text
-        let trimmed = text.trimmingCharacters(in: .whitespacesAndNewlines)
+        // An empty or failed enhancement is stored in `enhancedText` too; neither makes a title.
+        let enhanced = transcription.enhancedText?.trimmingCharacters(in: .whitespacesAndNewlines) ?? ""
+        let usableEnhanced = !enhanced.isEmpty && !enhanced.hasPrefix("Enhancement failed")
+        let trimmed =
+            usableEnhanced ? enhanced : transcription.text.trimmingCharacters(in: .whitespacesAndNewlines)
         return trimmed.isEmpty ? String(localized: "Chat session") : trimmed
     }
 

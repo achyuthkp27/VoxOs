@@ -43,7 +43,7 @@ struct DashboardTimeSavedCard: View {
 
     var body: some View {
         ZStack(alignment: .leading) {
-            DashboardInsightCardBackground(cornerRadius: 16)
+            DashboardInsightCardBackground()
 
             content
                 .frame(height: 196 - (20 * 2), alignment: .topLeading)

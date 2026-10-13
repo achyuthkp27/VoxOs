@@ -16,7 +16,11 @@ extension View {
         clear: Bool = false
     ) -> some View {
         if #available(macOS 26.0, *) {
-            self.glassEffect(Self.glass(tint: tint, interactive: interactive, clear: clear), in: shape)
+            // `glassEffect` shapes only the glass, not the content above it; a square gradient
+            // or glow drawn as the view's background would otherwise poke past the corners.
+            // Clipping the content first (and not the glass) keeps Tahoe's own rim intact.
+            self.clipShape(shape)
+                .glassEffect(Self.glass(tint: tint, interactive: interactive, clear: clear), in: shape)
         } else {
             self.background(
                 shape.fill(.ultraThinMaterial)

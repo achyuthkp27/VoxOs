@@ -132,7 +132,7 @@ class AudioPlayerManager: ObservableObject {
     }
 
     private func startTimer() {
-        timer = Timer.scheduledTimer(withTimeInterval: 0.1, repeats: true) { [weak self] _ in
+        let timer = Timer(timeInterval: 0.1, repeats: true) { [weak self] _ in
             guard let self = self else { return }
             self.currentTime = self.audioPlayer?.currentTime ?? 0
             if self.currentTime >= self.duration {
@@ -140,6 +140,10 @@ class AudioPlayerManager: ObservableObject {
                 self.seek(to: 0)
             }
         }
+        // `.common`, not the default mode: a scheduled timer stops firing while the user
+        // scrolls, which froze the playhead and the time label mid-playback.
+        RunLoop.main.add(timer, forMode: .common)
+        self.timer = timer
     }
 
     private func stopTimer() {
@@ -173,6 +177,12 @@ struct WaveformView: View {
     @State private var isHovering = false
     @State private var hoverLocation: CGFloat = 0
 
+    /// Fraction of the clip played; guarded so a 0-second clip does not produce NaN.
+    private var playedProgress: CGFloat {
+        guard duration > 0 else { return 0 }
+        return min(max(CGFloat(currentTime / duration), 0), 1)
+    }
+
     var body: some View {
         GeometryReader { geometry in
             ZStack(alignment: .leading) {
@@ -186,18 +196,17 @@ struct WaveformView: View {
                     }
                     .frame(maxWidth: .infinity, maxHeight: .infinity)
                 } else {
-                    HStack(spacing: 0.5) {
-                        ForEach(Array(samples.enumerated()), id: \.offset) { index, sample in
-                            WaveformBar(
-                                index: index,
-                                sample: sample,
-                                isPlayed: CGFloat(index) / CGFloat(samples.count) <= CGFloat(currentTime / duration),
-                                totalBars: samples.count,
-                                geometryWidth: geometry.size.width,
-                                isHovering: isHovering,
-                                hoverProgress: hoverLocation / geometry.size.width
-                            )
-                        }
+                    // Two static bar layers, the played one revealed by a mask: the 10 Hz
+                    // playhead tick then only moves a rectangle instead of rebuilding 200
+                    // gradient-filled capsules.
+                    ZStack(alignment: .leading) {
+                        waveformBars(isPlayed: false, width: geometry.size.width)
+
+                        waveformBars(isPlayed: true, width: geometry.size.width)
+                            .mask(alignment: .leading) {
+                                Rectangle()
+                                    .frame(width: geometry.size.width * playedProgress)
+                            }
                     }
                     .opacity(0.6)
                     .frame(maxHeight: .infinity)
@@ -228,7 +237,8 @@ struct WaveformView: View {
                     .onChanged { value in
                         if !isLoading {
                             hoverLocation = value.location.x
-                            onSeek(Double(value.location.x / geometry.size.width) * duration)
+                            let fraction = min(max(Double(value.location.x / geometry.size.width), 0), 1)
+                            onSeek(fraction * duration)
                         }
                     }
             )
@@ -248,6 +258,22 @@ struct WaveformView: View {
             }
         }
         .frame(height: 32)
+    }
+
+    private func waveformBars(isPlayed: Bool, width: CGFloat) -> some View {
+        HStack(spacing: 0.5) {
+            ForEach(Array(samples.enumerated()), id: \.offset) { index, sample in
+                WaveformBar(
+                    index: index,
+                    sample: sample,
+                    isPlayed: isPlayed,
+                    totalBars: samples.count,
+                    geometryWidth: width,
+                    isHovering: isHovering,
+                    hoverProgress: hoverLocation / width
+                )
+            }
+        }
     }
 }
 

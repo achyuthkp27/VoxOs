@@ -17,6 +17,7 @@ struct HistorySettingsPanel: View {
     @State private var showAudioCleanupResult = false
     @State private var audioCleanupResult: (deletedCount: Int, errorCount: Int) = (0, 0)
     @State private var showTranscriptCleanupResult = false
+    @State private var isShowingTranscriptConfirmation = false
 
     var body: some View {
         VStack(spacing: 0) {
@@ -36,13 +37,7 @@ struct HistorySettingsPanel: View {
                         }
 
                         Button("Run Cleanup Now") {
-                            Task {
-                                await TranscriptionAutoCleanupService.shared.runManualCleanup(
-                                    modelContext: modelContext)
-                                await MainActor.run {
-                                    showTranscriptCleanupResult = true
-                                }
-                            }
+                            isShowingTranscriptConfirmation = true
                         }
                     }
                 } header: {
@@ -83,6 +78,16 @@ struct HistorySettingsPanel: View {
             .formStyle(.grouped)
             .scrollContentBackground(.hidden)
             .frame(maxWidth: .infinity, maxHeight: .infinity)
+        }
+        // Confirm first: with "Immediately" selected this wipes the entire history, and the
+        // deletion is not undoable.
+        .alert("Delete Transcript History?", isPresented: $isShowingTranscriptConfirmation) {
+            Button("Cancel", role: .cancel) {}
+            Button("Delete", role: .destructive) {
+                runTranscriptCleanup()
+            }
+        } message: {
+            Text(transcriptCleanupConfirmationMessage)
         }
         .alert("Transcript Cleanup", isPresented: $showTranscriptCleanupResult) {
             Button("OK", role: .cancel) {}
@@ -150,6 +155,26 @@ struct HistorySettingsPanel: View {
             Text(title)
 
             InfoTip(message: tip, iconSize: .small, iconColor: .secondary, width: 260)
+        }
+    }
+
+    private var transcriptCleanupConfirmationMessage: String {
+        guard transcriptionRetentionMinutes > 0 else {
+            return String(localized: "This deletes every transcript and its audio file. This cannot be undone.")
+        }
+
+        return String(
+            localized:
+                "This deletes transcripts older than the retention period, along with their audio files. This cannot be undone."
+        )
+    }
+
+    private func runTranscriptCleanup() {
+        Task {
+            await TranscriptionAutoCleanupService.shared.runManualCleanup(modelContext: modelContext)
+            await MainActor.run {
+                showTranscriptCleanupResult = true
+            }
         }
     }
 

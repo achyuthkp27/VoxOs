@@ -225,10 +225,12 @@ func progressDotsWithNumber(value: Double) -> some View {
 }
 
 func progressDots(value: Double) -> some View {
-    HStack(spacing: 2) {
+    // Round to the nearest dot: truncating showed no dots at all for a 1.9 score.
+    let filledDots = min(5, max(0, Int((value / 2).rounded())))
+    return HStack(spacing: 2) {
         ForEach(0..<5) { index in
             Circle()
-                .fill(index < Int(value / 2) ? performanceColor(value: value / 10) : Color(.quaternaryLabelColor))
+                .fill(index < filledDots ? performanceColor(value: value / 10) : Color(.quaternaryLabelColor))
                 .frame(width: 6, height: 6)
         }
     }

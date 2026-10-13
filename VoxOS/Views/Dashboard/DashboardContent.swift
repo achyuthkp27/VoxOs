@@ -23,6 +23,9 @@ struct DashboardContent: View {
 
     @State private var statsSummary: DashboardStatsSummary = .empty
     @State private var hasLoadedStatsSnapshot: Bool = false
+    /// Set when a stats load throws and nothing is cached yet, so the hero card can offer a
+    /// retry instead of sitting on "Calculating…" and a padlock forever.
+    @State private var didStatsLoadFail = false
     @State private var statsSnapshotGeneratedAt: Date?
     @State private var isDashboardStatsRefreshing = false
     @State private var dashboardStatsTask: Task<Void, Never>?
@@ -31,7 +34,7 @@ struct DashboardContent: View {
     @State private var isModelUsagePanelPresented = false
     @State private var isInsightsViewPresented = false
     @State private var selectedInsightPeriod: DashboardInsightPeriod = .allTime
-    @State private var isAccessibilityEnabled = AXIsProcessTrusted()
+    @State private var isAccessibilityEnabled = ProcessIdentity.isTestHost ? false : AXIsProcessTrusted()
     @EnvironmentObject private var updaterViewModel: UpdaterViewModel
     @ObservedObject private var modeManager = ModeManager.shared
     @State private var isSystemInfoCopied = false
@@ -57,12 +60,8 @@ struct DashboardContent: View {
         self.modelContext = modelContext
         self.licenseState = licenseState
         self.onAddLicenseKey = onAddLicenseKey
-
-        let cachedSummary = DashboardStatsCache.shared.currentSummary()
-        let cachedMetadata = DashboardStatsCache.shared.currentMetadata()
-        _statsSummary = State(initialValue: cachedSummary ?? .empty)
-        _hasLoadedStatsSnapshot = State(initialValue: cachedSummary != nil)
-        _statsSnapshotGeneratedAt = State(initialValue: cachedMetadata?.generatedAt)
+        // The cached snapshot is read in `.task`: on a locale/time-zone mismatch the cache
+        // decodes JSON from disk, which must not happen inside a view initialiser.
     }
 
     var body: some View {
@@ -91,6 +90,8 @@ struct DashboardContent: View {
             }
         }
         .task {
+            await restoreCachedStatsSnapshot()
+            guard !Task.isCancelled else { return }
             scheduleDashboardStatsRefresh(allowSkipWhenFresh: hasLoadedStatsSnapshot)
         }
         .onAppear {
@@ -260,15 +261,31 @@ struct DashboardContent: View {
         !hasLoadedStatsSnapshot || statsSummary.totalCount < Self.automaticStatsRefreshMetricLimit
     }
 
+    /// A failed load with no cached snapshot to fall back on: the hero card turns its action
+    /// into a retry.
+    private var showsStatsLoadError: Bool {
+        didStatsLoadFail && !hasLoadedStatsSnapshot
+    }
+
     private var insightsActionTitle: LocalizedStringKey {
-        canViewInsights ? "View Insights" : "Insights Locked"
+        if showsStatsLoadError {
+            return "Retry"
+        }
+        return canViewInsights ? "View Insights" : "Insights Locked"
     }
 
     private var insightsActionIcon: String {
-        canViewInsights ? "chart.line.uptrend.xyaxis" : "lock.fill"
+        if showsStatsLoadError {
+            return "arrow.clockwise"
+        }
+        return canViewInsights ? "chart.line.uptrend.xyaxis" : "lock.fill"
     }
 
     private var insightsActionHelp: String {
+        if showsStatsLoadError {
+            return String(localized: "Try loading your stats again")
+        }
+
         if canViewInsights {
             return String(localized: "View dashboard insights")
         }
@@ -277,7 +294,10 @@ struct DashboardContent: View {
     }
 
     private var insightsActionAccessibilityLabel: String {
-        canViewInsights ? "View insights" : "Insights locked"
+        if showsStatsLoadError {
+            return "Retry loading stats"
+        }
+        return canViewInsights ? "View insights" : "Insights locked"
     }
 
     private var accessibilityReminder: some View {
@@ -369,7 +389,7 @@ struct DashboardContent: View {
     }
 
     private func refreshAccessibilityStatus() {
-        isAccessibilityEnabled = AXIsProcessTrusted()
+        isAccessibilityEnabled = ProcessIdentity.isTestHost ? false : AXIsProcessTrusted()
     }
 
     private func openAccessibilitySettings() {
@@ -397,6 +417,26 @@ struct DashboardContent: View {
     @MainActor
     private func refreshDashboardStats() {
         scheduleDashboardStatsRefresh(allowSkipWhenFresh: false)
+    }
+
+    /// Loads the on-disk snapshot off the main thread; the in-memory cache answers at once on
+    /// every later appearance, so this only costs anything the first time.
+    @MainActor
+    private func restoreCachedStatsSnapshot() async {
+        guard !hasLoadedStatsSnapshot else { return }
+
+        let cached = await Task.detached(priority: .userInitiated) {
+            (
+                summary: DashboardStatsCache.shared.currentSummary(),
+                metadata: DashboardStatsCache.shared.currentMetadata()
+            )
+        }.value
+
+        guard !hasLoadedStatsSnapshot, let summary = cached.summary else { return }
+
+        statsSummary = summary
+        statsSnapshotGeneratedAt = cached.metadata?.generatedAt
+        hasLoadedStatsSnapshot = true
     }
 
     @MainActor
@@ -479,22 +519,26 @@ struct DashboardContent: View {
                 let metadata = DashboardStatsCache.shared.update(summary)
                 self.statsSnapshotGeneratedAt = metadata.generatedAt
                 self.hasLoadedStatsSnapshot = true
+                self.didStatsLoadFail = false
             }
         } catch is CancellationError {
             await finishDashboardStatsRefresh(generation: generation)
         } catch {
-            await finishDashboardStatsRefresh(generation: generation)
+            await finishDashboardStatsRefresh(generation: generation, failed: true)
             logger.error("Error loading dashboard stats: \(error, privacy: .public)")
         }
     }
 
-    private func finishDashboardStatsRefresh(generation: Int) async {
+    private func finishDashboardStatsRefresh(generation: Int, failed: Bool = false) async {
         await MainActor.run {
             guard generation == dashboardStatsLoadGeneration else {
                 return
             }
 
             self.isDashboardStatsRefreshing = false
+            if failed {
+                self.didStatsLoadFail = true
+            }
         }
     }
 
@@ -551,10 +595,10 @@ struct DashboardContent: View {
             subtext: momentumSubtext,
             actionTitle: insightsActionTitle,
             actionIcon: insightsActionIcon,
-            canViewInsights: canViewInsights,
+            canViewInsights: canViewInsights || showsStatsLoadError,
             actionHelp: insightsActionHelp,
             actionAccessibilityLabel: insightsActionAccessibilityLabel,
-            onViewInsights: openInsightsIfAvailable
+            onViewInsights: showsStatsLoadError ? refreshDashboardStats : openInsightsIfAvailable
         )
     }
 
@@ -745,6 +789,10 @@ struct DashboardContent: View {
     }
 
     private var headerSubtitle: String {
+        if showsStatsLoadError {
+            return String(localized: "Your stats couldn’t be loaded.")
+        }
+
         guard hasLoadedStatsSnapshot else {
             return String(localized: "Pulling together your VoxOS activity.")
         }
@@ -765,6 +813,10 @@ struct DashboardContent: View {
     }
 
     private var momentumHeadline: DashboardHeroHeadline {
+        if showsStatsLoadError {
+            return .statsUnavailable
+        }
+
         guard hasLoadedStatsSnapshot else {
             return .calculatingProgress
         }
@@ -777,6 +829,10 @@ struct DashboardContent: View {
     }
 
     private var momentumSubtext: String {
+        if showsStatsLoadError {
+            return String(localized: "Something went wrong while reading your history. Try again.")
+        }
+
         guard hasLoadedStatsSnapshot else {
             return String(localized: "Your word count and benchmark will appear here.")
         }
@@ -867,7 +923,7 @@ private struct DashboardAccessibilityReminder: View {
         }
         .padding(16)
         .frame(maxWidth: .infinity, alignment: .leading)
-        .background(AppCardBackground(cornerRadius: 16))
+        .background(AppCardBackground(cornerRadius: DashboardLayout.cardCornerRadius))
     }
 }
 
@@ -907,7 +963,7 @@ private struct DashboardNoModesReminder: View {
         }
         .padding(16)
         .frame(maxWidth: .infinity, alignment: .leading)
-        .background(AppCardBackground(cornerRadius: 16))
+        .background(AppCardBackground(cornerRadius: DashboardLayout.cardCornerRadius))
     }
 }
 

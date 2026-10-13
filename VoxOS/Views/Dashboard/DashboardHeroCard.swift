@@ -5,6 +5,8 @@ enum DashboardHeroHeadline {
     case calculatingProgress
     case startRecordingProgress
     case savedTime(String)
+    /// Stats failed to load and nothing is cached; the card's action becomes a retry.
+    case statsUnavailable
 }
 
 struct DashboardHeroCard: View {
@@ -82,6 +84,9 @@ struct DashboardHeroCard: View {
         case .savedTime(let value):
             highlightedValue = value
             text = AttributedString(localized: "You have saved \(highlightedValue) with VoxOS")
+        case .statsUnavailable:
+            highlightedValue = String(localized: "VoxOS progress")
+            text = AttributedString(localized: "Couldn’t load \(highlightedValue).")
         }
 
         text.font = Self.headlineFont

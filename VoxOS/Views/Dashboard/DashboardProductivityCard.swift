@@ -41,7 +41,7 @@ struct DashboardProductivityCard: View {
         }
         .padding(18)
         .frame(maxWidth: .infinity, alignment: .leading)
-        .background(DashboardInsightCardBackground(cornerRadius: 16))
+        .background(DashboardInsightCardBackground())
     }
 
     private var statusText: String {
@@ -108,7 +108,7 @@ struct DashboardProductivitySummaryStrip: View {
         .padding(.horizontal, 16)
         .padding(.vertical, 14)
         .frame(minWidth: 132, maxWidth: .infinity, minHeight: 86, alignment: .leading)
-        .background(DashboardInsightCardBackground(cornerRadius: 16))
+        .background(DashboardInsightCardBackground())
     }
 }
 
@@ -227,7 +227,7 @@ private struct DashboardProductivityChart: View {
 
     var body: some View {
         HStack(alignment: .top, spacing: 12) {
-            DashboardProductivityYAxis(labels: yAxisLabels)
+            DashboardProductivityYAxis(labels: yAxisLabels, upperBound: yAxisUpperBound)
                 .accessibilityHidden(true)
 
             DashboardProductivityPlotArea(
@@ -253,6 +253,11 @@ private struct DashboardProductivityChart: View {
 
 private struct DashboardProductivityYAxis: View {
     let labels: [Int]
+    let upperBound: Int
+
+    /// Half the label height: labels are centred on their grid line, and the top and bottom
+    /// ones are nudged inward so they stay inside the axis instead of being half-clipped.
+    private static let labelHalfHeight: CGFloat = 7
 
     var body: some View {
         VStack(alignment: .leading, spacing: 0) {
@@ -263,10 +268,17 @@ private struct DashboardProductivityYAxis: View {
                 }
                 .frame(maxHeight: .infinity, alignment: .bottomLeading)
             } else {
-                VStack(alignment: .leading, spacing: 0) {
+                // The plot maps a value to `height * (1 - value / upperBound)`; spacing the
+                // labels evenly instead put "0" well above the baseline whenever the dedupe
+                // in `yAxisLabels` dropped a tick.
+                GeometryReader { geometry in
                     ForEach(labels, id: \.self) { label in
                         yAxisLabel(label)
-                            .frame(maxHeight: .infinity, alignment: .topLeading)
+                            .frame(width: geometry.size.width, alignment: .leading)
+                            .position(
+                                x: geometry.size.width / 2,
+                                y: labelCenterY(for: label, in: geometry.size.height)
+                            )
                     }
                 }
                 .frame(maxHeight: .infinity, alignment: .topLeading)
@@ -281,10 +293,17 @@ private struct DashboardProductivityYAxis: View {
         .frame(width: 42, alignment: .leading)
     }
 
+    private func labelCenterY(for label: Int, in plotHeight: CGFloat) -> CGFloat {
+        let progress = min(max(CGFloat(label) / CGFloat(max(upperBound, 1)), 0), 1)
+        let lineY = plotHeight * (1 - progress)
+        return min(max(lineY, Self.labelHalfHeight), max(plotHeight - Self.labelHalfHeight, Self.labelHalfHeight))
+    }
+
     private func yAxisLabel(_ label: Int) -> some View {
         Text(Formatters.formattedAxisValue(label))
             .font(.app(size: 11, weight: .medium))
             .foregroundStyle(AppTheme.Text.secondary)
             .lineLimit(1)
+            .fixedSize()
     }
 }

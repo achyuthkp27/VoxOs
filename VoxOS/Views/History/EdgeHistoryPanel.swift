@@ -65,7 +65,8 @@ final class EdgeHistoryPanel: NSPanel {
     static func expandedFrame(on screen: NSScreen) -> NSRect {
         let height = min(maxPanelHeight, screen.visibleFrame.height * panelHeightFraction)
         return NSRect(
-            x: screen.frame.minX + edgeInset,
+            // `visibleFrame`, not `frame`: a Dock on the left edge would otherwise sit on top of the card.
+            x: screen.visibleFrame.minX + edgeInset,
             y: screen.frame.midY - height / 2,
             width: panelWidth,
             height: height

@@ -7,6 +7,7 @@ private let logger = Logger(subsystem: "com.achyuthkp.voxos", category: "Transcr
 struct TranscriptionHistoryView: View {
     @Environment(\.modelContext) private var modelContext
     @State private var searchText = ""
+    @State private var lastFetchedSearchText = ""
     @State private var selectedTranscription: Transcription?
     @State private var selectedTranscriptions: Set<Transcription> = []
     @State private var showDeleteConfirmation = false
@@ -153,11 +154,16 @@ struct TranscriptionHistoryView: View {
         .onDisappear {
             isViewCurrentlyVisible = false
         }
-        .onChange(of: searchText) { _, _ in
-            Task {
-                resetPagination()
-                await loadInitialContent()
-            }
+        .task(id: searchText) {
+            // Debounced: a fetch per keystroke made typing stutter on large histories. The
+            // task is cancelled and restarted on each change, so only the last one fetches.
+            // The initial load is `onAppear`'s job, hence the skip while nothing changed.
+            guard searchText != lastFetchedSearchText else { return }
+            try? await Task.sleep(for: .milliseconds(250))
+            guard !Task.isCancelled else { return }
+            lastFetchedSearchText = searchText
+            resetPagination()
+            await loadInitialContent()
         }
         .onChange(of: latestTranscriptionIndicator.first?.id) { oldId, newId in
             guard isViewCurrentlyVisible else { return }

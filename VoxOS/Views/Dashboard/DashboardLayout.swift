@@ -8,7 +8,10 @@ enum DashboardLayout {
     static let contentBottomOffset: CGFloat = 56
     static let footerTopSpacing: CGFloat = 20
     static let footerButtonHeight: CGFloat = 36
-    static let cardCornerRadius: CGFloat = 16
+    /// Every dashboard card uses this radius, except the hero card.
+    static let cardCornerRadius: CGFloat = 18
+    /// The hero card is deliberately rounder than the cards below it.
+    static let heroCornerRadius: CGFloat = 22
 
     static func contentWidth(for availableWidth: CGFloat) -> CGFloat {
         max(0, availableWidth - (pageHorizontalPadding * 2))

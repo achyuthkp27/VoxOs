@@ -49,7 +49,7 @@ struct ModelPerformanceCard: View {
         .fixedSize(horizontal: false, vertical: true)
         .padding(18)
         .frame(maxWidth: .infinity, alignment: .topLeading)
-        .background(DashboardInsightCardBackground(cornerRadius: 16))
+        .background(DashboardInsightCardBackground())
     }
 
     private static func previewRow(from summary: ModelPerformanceSummary) -> ModelPreviewRow {

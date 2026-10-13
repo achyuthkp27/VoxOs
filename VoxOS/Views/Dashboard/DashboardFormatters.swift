@@ -11,27 +11,19 @@ enum Formatters {
         numberFormatter.string(from: NSNumber(value: value)) ?? "\(value)"
     }
 
+    /// Compact notation through `formatted()` so the suffix and decimal separator follow the
+    /// locale ("1.2K" in en, "1,2 k" in fr) instead of a hand-rolled "%.1f" + K/M.
     static func formattedCompactNumber(_ value: Int) -> String {
         guard value >= 1000 else {
-            return "\(value)"
+            return formattedNumber(value)
         }
 
-        var divisor: Double = value >= 1_000_000 ? 1_000_000 : 1000
-        var suffix = value >= 1_000_000 ? "M" : "K"
-        let compactValue = Double(value) / divisor
-        var roundedValue = (compactValue * 10).rounded() / 10
-
-        if suffix == "K", roundedValue >= 1000 {
-            divisor = 1_000_000
-            suffix = "M"
-            roundedValue = ((Double(value) / divisor) * 10).rounded() / 10
-        }
-
-        if roundedValue.truncatingRemainder(dividingBy: 1) == 0 {
-            return "\(Int(roundedValue))\(suffix)"
-        }
-
-        return String(format: "%.1f%@", roundedValue, suffix)
+        return value.formatted(
+            .number
+                .notation(.compactName)
+                .precision(.fractionLength(0...1))
+                .rounded(rule: .toNearestOrAwayFromZero)
+        )
     }
 
     static func formattedAxisValue(_ value: Int) -> String {

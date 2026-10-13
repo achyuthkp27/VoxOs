@@ -34,7 +34,7 @@ struct DashboardPeakHoursCard: View {
         .fixedSize(horizontal: false, vertical: true)
         .padding(18)
         .frame(maxWidth: .infinity, minHeight: 196, maxHeight: 196, alignment: .topLeading)
-        .background(DashboardInsightCardBackground(cornerRadius: 16))
+        .background(DashboardInsightCardBackground())
         .accessibilityElement(children: .combine)
         .accessibilityLabel("Peak dictation hours")
         .accessibilityValue(accessibilityValue)
@@ -109,17 +109,23 @@ struct DashboardPeakHoursCard: View {
     }
 
     private func formattedHour(_ hour: Int) -> String {
-        "\(displayHour(hour)) \(hourSuffix(hour))"
+        DashboardHourLabel.string(for: hour)
     }
+}
 
-    private func displayHour(_ hour: Int) -> Int {
-        let hour = ((hour % 24) + 24) % 24
-        return hour % 12 == 0 ? 12 : hour % 12
-    }
+/// Hour-of-day labels through the locale's own "j" skeleton, so 24-hour locales never see a
+/// hardcoded "AM"/"PM".
+private enum DashboardHourLabel {
+    private static let formatter = Formatters.localizedHourFormatter(calendar: .current)
 
-    private func hourSuffix(_ hour: Int) -> String {
+    static func string(for hour: Int) -> String {
         let hour = ((hour % 24) + 24) % 24
-        return hour < 12 ? "AM" : "PM"
+        let calendar = Calendar.current
+        let today = calendar.startOfDay(for: Date())
+        guard let date = calendar.date(bySettingHour: hour, minute: 0, second: 0, of: today) else {
+            return "\(hour)"
+        }
+        return formatter.string(from: date)
     }
 }
 
@@ -166,15 +172,15 @@ private struct DashboardPeakHoursHistogram: View {
             .frame(height: 104)
 
             HStack {
-                axisLabel("12 AM")
+                axisLabel(DashboardHourLabel.string(for: 0))
                 Spacer(minLength: 0)
-                axisLabel("6 AM")
+                axisLabel(DashboardHourLabel.string(for: 6))
                 Spacer(minLength: 0)
-                axisLabel("12 PM")
+                axisLabel(DashboardHourLabel.string(for: 12))
                 Spacer(minLength: 0)
-                axisLabel("6 PM")
+                axisLabel(DashboardHourLabel.string(for: 18))
                 Spacer(minLength: 0)
-                axisLabel("12 AM")
+                axisLabel(DashboardHourLabel.string(for: 0))
             }
         }
         .accessibilityElement(children: .ignore)
@@ -211,8 +217,8 @@ private struct DashboardPeakHoursHistogram: View {
         return max(4, availableHeight * (0.40 + (emphasizedActivity(for: point) * 0.60)))
     }
 
-    private func axisLabel(_ label: LocalizedStringKey) -> some View {
-        Text(label)
+    private func axisLabel(_ label: String) -> some View {
+        Text(verbatim: label)
             .font(.app(size: 10, weight: .semibold))
             .foregroundStyle(AppTheme.Text.secondary)
             .lineLimit(1)
