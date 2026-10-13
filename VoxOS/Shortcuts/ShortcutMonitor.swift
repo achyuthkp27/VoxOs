@@ -126,10 +126,20 @@ final class ShortcutMonitor {
         onShortcutInterrupted: ((ShortcutAction, TimeInterval) -> Void)? = nil
     ) {
         stateLock.withLock {
+            // A settings change (or the launch-time refresh burst) can land while a shortcut is
+            // physically held. Rebuilding its state from scratch forgot the press: the release
+            // then matched nothing, the handler kept thinking the key was down, and the next
+            // press was swallowed. Keep the press for a shortcut that is unchanged; one that
+            // changed or vanished mid-press is released now so the handler stays in step.
+            let previous = self.shortcuts.filter { ownerByAction[$0.key] == owner }
             removeRegistrationLocked(owner: owner)
 
             for (action, shortcut) in shortcuts {
-                self.shortcuts[action] = ShortcutState(shortcut: shortcut)
+                if let kept = previous[action], kept.shortcut == shortcut {
+                    self.shortcuts[action] = kept
+                } else {
+                    self.shortcuts[action] = ShortcutState(shortcut: shortcut)
+                }
                 ownerByAction[action] = owner
             }
 
@@ -141,6 +151,13 @@ final class ShortcutMonitor {
             )
 
             self.interruptibleActions.formUnion(interruptibleActions)
+
+            let releasedAt = ProcessInfo.processInfo.systemUptime
+            for (action, state) in previous where state.isDown && self.shortcuts[action]?.isDown != true {
+                // Through this owner's new handler, since the action may no longer map to one.
+                ActivityTrail.mark("shortcut up \(action.storageName) (re-registered mid-press)")
+                DispatchQueue.main.async { onKeyUp(action, releasedAt) }
+            }
         }
 
         syncTapWithRegistrations()
@@ -618,7 +635,9 @@ final class ShortcutMonitor {
                 state.pressedAt = nil
                 state.isInterrupted = false
                 shortcuts[action] = state
-                shouldSuppress = true
+                // A release by modifier (flagsChanged) belongs to the system; only the key's
+                // own keyUp is part of the shortcut.
+                shouldSuppress = shouldSuppress || kind != .flagsChanged
                 dispatchKeyUp(for: action, eventTime: eventTime)
             }
         }
@@ -654,11 +673,16 @@ final class ShortcutMonitor {
                 return .none
             }
 
+            // Letting go of a modifier while the key is still down ends the shortcut, but the
+            // flagsChanged event itself is never ours to swallow: it is the only notice the
+            // frontmost app gets that ⌥ (say) is up again, and eating it left that app with a
+            // modifier stuck down. Only the shortcut's own key events are suppressed (see
+            // handleEvent).
             let currentFlags = Shortcut.normalizedModifierFlags(
                 modifierFlags,
                 forKeyCode: shortcut.keyCode
             )
-            return currentFlags.isSuperset(of: shortcut.modifierFlags) ? .suppress : .keyUp
+            return currentFlags.isSuperset(of: shortcut.modifierFlags) ? .none : .keyUp
         }
     }
 

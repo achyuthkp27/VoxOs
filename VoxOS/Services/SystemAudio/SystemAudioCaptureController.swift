@@ -36,6 +36,11 @@ final class SystemAudioCaptureController: ObservableObject {
     /// or a hotkey racing an agent system_audio_start) would otherwise pass the stale
     /// `isCapturing == false` check and clobber this capture's temp file.
     private var isStarting = false
+    /// The mirror image for finishCapture(): `stopCapture` suspends too, so a second stop
+    /// landing while the first one is still awaiting it found `currentCaptureURL` still set,
+    /// took the URL with a zero duration and deleted the WAV the first stop was about to
+    /// transcribe.
+    private var isStopping = false
 
     private init() {}
 
@@ -121,6 +126,10 @@ final class SystemAudioCaptureController: ObservableObject {
     }
 
     private func finishCapture() async {
+        guard !isStopping else { return }
+        isStopping = true
+        defer { isStopping = false }
+
         let duration = await capture.stopCapture()
         isCapturing = false
 
@@ -170,6 +179,10 @@ final class SystemAudioCaptureController: ObservableObject {
 
     func agentStop() async -> [String: Any] {
         guard isCapturing else { return ["error": "not capturing; call system_audio_start first"] }
+        // Same race as finishCapture(): a hotkey stop and an agent stop can overlap.
+        guard !isStopping else { return ["error": "already stopping the capture"] }
+        isStopping = true
+        defer { isStopping = false }
         let duration = await capture.stopCapture()
         isCapturing = false
         guard let url = currentCaptureURL else { return ["error": "no capture file"] }

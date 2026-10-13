@@ -36,7 +36,7 @@ struct ShortcutRecorder: View {
                         shortcut = newShortcut
                         onShortcutChanged()
                     }
-                    // The model cleared storage so the old shortcut cannot fire mid-recording.
+                    // The model suspended the action so the old shortcut cannot fire mid-recording.
                     shortcut = nil
                     onShortcutChanged()
                 }
@@ -162,11 +162,6 @@ final class ShortcutRecorderModel: ObservableObject {
     private var localMonitor: Any?
     private var onCapture: ((Shortcut) -> Void)?
     private var activeAction: ShortcutAction?
-    /// What was stored before recording began. Storage is cleared for the duration of the
-    /// recording so the old shortcut cannot fire while a new one is being pressed; cancelling
-    /// (Esc, clicking away, a validation error) must put it back. Clearing it for good also set
-    /// the `_cleared` flag, so merely clicking the field and pressing Esc used to lose fn forever.
-    private var shortcutBeforeRecording: Shortcut?
     private var pendingModifierShortcut: Shortcut?
     private var peakModifierFlags: NSEvent.ModifierFlags = []
 
@@ -178,8 +173,11 @@ final class ShortcutRecorderModel: ObservableObject {
         cancel()
 
         activeAction = action
-        shortcutBeforeRecording = ShortcutStore.shortcut(for: action)
-        ShortcutStore.setShortcut(nil, for: action)
+        // Suspended, not cleared: the old shortcut must not fire while the new one is being
+        // pressed, but nothing is persisted until the recording finishes. Writing "cleared" to
+        // defaults here meant a crash (or quit) mid-recording lost the shortcut for good and
+        // kept the fn default from being re-seeded on the next launch.
+        ShortcutStore.suspend(action)
         self.onCapture = onCapture
         isRecording = true
         previewShortcut = nil
@@ -188,8 +186,10 @@ final class ShortcutRecorderModel: ObservableObject {
 
     func cancel() {
         removeRecordingMonitor()
-        if let activeAction, let previous = shortcutBeforeRecording {
-            ShortcutStore.setShortcut(previous, for: activeAction)
+        // Esc, clicking away, a validation error: the stored shortcut is untouched, so lifting
+        // the suspension is all it takes to put it back.
+        if let activeAction {
+            ShortcutStore.resume(activeAction)
         }
         resetRecordingState()
     }
@@ -210,6 +210,8 @@ final class ShortcutRecorderModel: ObservableObject {
         removeRecordingMonitor()
         resetRecordingState()
 
+        // Resume before the write so the single change notification carries the new shortcut.
+        ShortcutStore.resume(activeAction)
         ShortcutStore.setShortcut(shortcut, for: activeAction)
         capture?(shortcut)
     }
@@ -219,7 +221,6 @@ final class ShortcutRecorderModel: ObservableObject {
         previewShortcut = nil
         onCapture = nil
         activeAction = nil
-        shortcutBeforeRecording = nil
         pendingModifierShortcut = nil
         peakModifierFlags = []
     }

@@ -26,12 +26,23 @@ class AudioDeviceManager: ObservableObject {
 
     var recordingDeviceSession = RecordingDeviceSession()
     var clamshellStateMonitor: ClamshellStateMonitor?
+    /// Per-device answer of `isInternalMicrophone`, which costs two or three HAL property
+    /// reads and is asked twice per device on the main thread at every recording start.
+    /// The answer only moves with the hardware, so it is dropped whenever the device list
+    /// changes. Main-thread only, like the rest of this class's state.
+    private var internalMicrophoneCache: [AudioDeviceID: Bool] = [:]
 
     var isRecordingActive: Bool { recordingDeviceSession.isActive }
     var activeRecordingDeviceID: AudioDeviceID? { recordingDeviceSession.activeDeviceID }
     var isClamshellClosed: Bool { clamshellStateMonitor?.isClosed == true }
 
     static let shared = AudioDeviceManager()
+
+    /// The single-microphone choice (System Default or one device) that Settings returns to when
+    /// Priority Order is switched off. It has its own key because `selectedAudioDeviceUID` is the
+    /// custom-device hint, which choosing System Default deliberately keeps so that a replugged
+    /// microphone is found again; that hint therefore cannot record "System Default".
+    static let singleMicrophoneSourceKey = "SingleMicrophoneSource"
 
     init() {
         loadPrioritizedDevices()
@@ -171,6 +182,8 @@ class AudioDeviceManager: ObservableObject {
 
         DispatchQueue.main.async { [weak self] in
             guard let self = self else { return }
+            // A device ID can be reused for different hardware once the list has changed.
+            self.internalMicrophoneCache.removeAll()
             self.availableDevices = devices.map { ($0.id, $0.uid, $0.name) }
             if let currentID = self.selectedDeviceID, !devices.contains(where: { $0.id == currentID }) {
                 if !self.isRecordingActive {
@@ -567,6 +580,15 @@ class AudioDeviceManager: ObservableObject {
     /// The MacBook's internal microphone is physically disconnected when the lid closes.
     /// A headset-jack microphone also uses the built-in codec, so transport alone cannot identify lid-dependent inputs.
     func isInternalMicrophone(_ deviceID: AudioDeviceID) -> Bool {
+        if let cached = internalMicrophoneCache[deviceID] {
+            return cached
+        }
+        let answer = readIsInternalMicrophone(deviceID)
+        internalMicrophoneCache[deviceID] = answer
+        return answer
+    }
+
+    private func readIsInternalMicrophone(_ deviceID: AudioDeviceID) -> Bool {
         guard
             getUInt32DeviceProperty(
                 deviceID: deviceID,

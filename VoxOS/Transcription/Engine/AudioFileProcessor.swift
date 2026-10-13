@@ -102,11 +102,20 @@ class AudioProcessor {
                     throw AudioProcessingError.conversionFailed
                 }
 
+                // The converter calls back until the output buffer is full or input runs dry.
+                // Always answering `.haveData` with the same buffer let it read the chunk twice
+                // whenever the output had room left, duplicating audio in the transcript.
+                var suppliedInput = false
                 var error: NSError?
                 let status = converter.convert(
                     to: outputBuffer,
                     error: &error,
-                    withInputFrom: { inNumPackets, outStatus in
+                    withInputFrom: { _, outStatus in
+                        if suppliedInput {
+                            outStatus.pointee = .noDataNow
+                            return nil
+                        }
+                        suppliedInput = true
                         outStatus.pointee = .haveData
                         return inputBuffer
                     }

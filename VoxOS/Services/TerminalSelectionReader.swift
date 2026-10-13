@@ -26,14 +26,37 @@ enum TerminalSelectionReader {
             return nil
         }
 
+        let process = Process()
+        process.executableURL = tool
+        process.arguments = ["read-selection"]
+        let child = ProcessBox(process)
         let output = await mcpRace(seconds: timeout) {
-            await Task.detached(priority: .userInitiated) { run(tool, arguments: ["read-selection"]) }.value
+            await Task.detached(priority: .userInitiated) { run(child) }.value
         }
-        guard let output, let output else {
+        guard let output else {
+            // The race does not wait for the loser, so when the clock wins the CLI is still
+            // running with a thread blocked on its stdout. Kill it: the pipe closes, the read
+            // returns and waitUntilExit reaps the child instead of leaving a zombie.
+            logger.notice("cmux read-selection timed out; terminating it")
+            child.terminateIfRunning()
+            return nil
+        }
+        guard let output else {
             logger.notice("cmux read-selection produced no output")
             return nil
         }
         return parseCmuxSelection(output)
+    }
+
+    /// `Process` is not Sendable, and the launch and the timeout live on different tasks.
+    private final class ProcessBox: @unchecked Sendable {
+        let process: Process
+        init(_ process: Process) { self.process = process }
+
+        func terminateIfRunning() {
+            guard process.isRunning else { return }
+            process.terminate()
+        }
     }
 
     /// `read-selection` prints a `Kind:` header, a blank line, then either the selection or
@@ -48,10 +71,8 @@ enum TerminalSelectionReader {
         return body
     }
 
-    private static func run(_ tool: URL, arguments: [String]) -> String? {
-        let process = Process()
-        process.executableURL = tool
-        process.arguments = arguments
+    private static func run(_ child: ProcessBox) -> String? {
+        let process = child.process
         let stdout = Pipe()
         process.standardOutput = stdout
         process.standardError = Pipe()

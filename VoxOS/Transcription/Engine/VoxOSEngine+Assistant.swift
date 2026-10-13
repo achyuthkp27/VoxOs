@@ -25,9 +25,17 @@ extension VoxOSEngine {
         let userMessage = assistantSession.beginFollowUp(trimmed)
 
         // "yes" to "Did you mean Slack?" has no meaning to a model that never saw the offer, and
-        // it answers with a made-up how-to. The offer is remembered locally, so answer it here.
+        // it answers with a made-up how-to. The offer is remembered locally, so answer it here,
+        // before anything else can forget it (see AgentQuickIntents.answerFollowUp).
         // "open Chrome" typed as a follow-up must open Chrome, not be narrated by the model.
-        if let quick = await AgentQuickIntents.handle(trimmed) {
+        //
+        // Only in an Agent conversation, and never in observe-only mode — the same gate the
+        // first request goes through in AIEnhancementService. Without it a follow-up in a plain
+        // assistant chat, or with the Agent told to look but not act, still launched apps.
+        let quickIntentsAllowed =
+            AgentToolExecutor.isAgentConversation(systemPrompt: assistantSession.systemPrompt)
+            && AgentControlMode.current != .observeOnly
+        if quickIntentsAllowed, let quick = await AgentQuickIntents.answerFollowUp(trimmed) {
             guard assistantSession.hasMessage(id: userMessage.id) else { return }
             assistantSession.finishFollowUp(quick)
             scheduleAutoCloseIfOnlyLaunched()
@@ -35,14 +43,6 @@ extension VoxOSEngine {
         }
 
         AgentAutoClose.beginRun()
-        let offered = AgentQuickIntents.takePendingSuggestions()
-        if let local = AgentQuickIntents.followUp(reply: trimmed, suggestions: offered) {
-            let text = await AgentQuickIntents.perform(local)
-            guard assistantSession.hasMessage(id: userMessage.id) else { return }
-            assistantSession.finishFollowUp(text)
-            scheduleAutoCloseIfOnlyLaunched()
-            return
-        }
 
         do {
             let reply = try await assistantChat.requestAssistantReply(

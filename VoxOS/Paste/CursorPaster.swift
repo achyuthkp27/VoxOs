@@ -96,7 +96,7 @@ class CursorPaster {
     @MainActor
     private static func postPasteCommand() async -> PasteResult {
         if PasteMethod.current() == .appleScript {
-            return pasteUsingAppleScript() ? .commandPosted : .commandNotPosted
+            return await pasteUsingAppleScript() ? .commandPosted : .commandNotPosted
         } else {
             return await pasteFromClipboard()
         }
@@ -156,10 +156,32 @@ class CursorPaster {
         return script
     }
 
-    private static let pasteScriptKeystroke = makeScript(
-        "tell application \"System Events\" to keystroke \"v\" using command down")
-    private static let pasteScriptKeyCode = makeScript(
-        "tell application \"System Events\" to key code 9 using command down")
+    /// Every NSAppleScript here is compiled and run on this one queue, and nowhere else.
+    /// `executeAndReturnError` is synchronous and goes through System Events over Apple events,
+    /// which can take hundreds of milliseconds (seconds, when System Events is cold) — on the
+    /// main thread that froze the UI and starved the keyboard tap for the whole paste. The
+    /// scripts are built lazily on the queue too, because NSAppleScript is not thread-safe and
+    /// must only ever be touched from the thread that created it.
+    private static let appleScriptQueue = DispatchQueue(
+        label: "com.achyuthkp.voxos.cursorpaster.applescript", qos: .userInitiated)
+    private static var pasteScriptKeystroke: NSAppleScript??
+    private static var pasteScriptKeyCode: NSAppleScript??
+
+    /// Caller must be on `appleScriptQueue`.
+    private static func pasteScript(useKeyCode: Bool) -> NSAppleScript? {
+        if useKeyCode {
+            if pasteScriptKeyCode == nil {
+                pasteScriptKeyCode = .some(
+                    makeScript("tell application \"System Events\" to key code 9 using command down"))
+            }
+            return pasteScriptKeyCode ?? nil
+        }
+        if pasteScriptKeystroke == nil {
+            pasteScriptKeystroke = .some(
+                makeScript("tell application \"System Events\" to keystroke \"v\" using command down"))
+        }
+        return pasteScriptKeystroke ?? nil
+    }
 
     @MainActor
     private static var layoutSwitchesToQWERTYOnCommand: Bool {
@@ -169,18 +191,25 @@ class CursorPaster {
     }
 
     @MainActor
-    private static func pasteUsingAppleScript() -> Bool {
-        guard let script = layoutSwitchesToQWERTYOnCommand ? pasteScriptKeyCode : pasteScriptKeystroke else {
-            logger.error("AppleScript paste script is unavailable")
-            return false
-        }
+    private static func pasteUsingAppleScript() async -> Bool {
+        // The layout check is TIS (main thread); only the script run leaves main.
+        let useKeyCode = layoutSwitchesToQWERTYOnCommand
+        return await withCheckedContinuation { continuation in
+            appleScriptQueue.async {
+                guard let script = pasteScript(useKeyCode: useKeyCode) else {
+                    logger.error("AppleScript paste script is unavailable")
+                    continuation.resume(returning: false)
+                    return
+                }
 
-        var error: NSDictionary?
-        script.executeAndReturnError(&error)
-        if let error {
-            logger.error("AppleScript paste failed: \(String(describing: error), privacy: .public)")
+                var error: NSDictionary?
+                script.executeAndReturnError(&error)
+                if let error {
+                    logger.error("AppleScript paste failed: \(String(describing: error), privacy: .public)")
+                }
+                continuation.resume(returning: error == nil)
+            }
         }
-        return error == nil
     }
 
     // MARK: - CGEvent paste

@@ -15,12 +15,21 @@ enum ActivityTrail {
         if entries.count > capacity { entries.removeFirst(entries.count - capacity) }
     }
 
-    static func recent() -> [String] {
-        lock.lock()
-        defer { lock.unlock() }
+    /// Immutable after setup, and DateFormatter is thread-safe for formatting.
+    private static let timeFormatter: DateFormatter = {
         let formatter = DateFormatter()
         formatter.dateFormat = "HH:mm:ss.SSS"
-        return entries.map { "\(formatter.string(from: $0.0)) \($0.1)" }
+        return formatter
+    }()
+
+    static func recent() -> [String] {
+        // Copy under the lock, format outside it: `mark` is called from the event-tap callback
+        // while it holds the shortcut state lock, so every millisecond this lock is held during
+        // a stall report is a millisecond the whole machine's keyboard waits.
+        lock.lock()
+        let snapshot = entries
+        lock.unlock()
+        return snapshot.map { "\(timeFormatter.string(from: $0.0)) \($0.1)" }
     }
 
     static func clear() {
@@ -95,7 +104,7 @@ final class MainThreadWatchdog {
             lock.lock()
             stallStart = now
             lock.unlock()
-            write(
+            append(
                 "main thread stalled (\(Int(age * 1000)) ms and counting); recent activity:\n    "
                     + ActivityTrail.recent().joined(separator: "\n    "))
         } else if let stalled {
@@ -103,7 +112,7 @@ final class MainThreadWatchdog {
             stallStart = nil
             lock.unlock()
             // Measured from the detection, not the last pong: `age` at detection is the true start.
-            write("recovered after \(Int((now - stalled) * 1000)) ms since detection")
+            append("recovered after \(Int((now - stalled) * 1000)) ms since detection")
         }
     }
 
@@ -113,23 +122,51 @@ final class MainThreadWatchdog {
     /// the caller may be the tap thread and a disk write there is itself a keyboard stall.
     func note(_ text: String) {
         ActivityTrail.mark(text)
-        noteQueue.async { [self] in write("note: \(text)") }
+        append("note: \(text)")
     }
 
+    /// The log is cut back to its newest `logKeepBytes` once it passes `logCapBytes`, so a
+    /// machine that stalls often cannot grow it without bound.
+    static let logCapBytes: UInt64 = 1 << 20
+    static let logKeepBytes: UInt64 = 256 << 10
+
+    /// Every write goes through this one serial queue, from the watchdog thread and from note()
+    /// alike, so two lines can never interleave or race the trim.
     private let noteQueue = DispatchQueue(label: "com.achyuthkp.voxos.watchdog.notes", qos: .utility)
 
-    private func write(_ text: String) {
+    /// Stamps the line now, when it happened, and writes it on noteQueue.
+    private func append(_ text: String) {
         let formatter = DateFormatter()
         formatter.dateFormat = "yyyy-MM-dd HH:mm:ss"
         let line = "\(formatter.string(from: Date())) \(text)\n"
+        noteQueue.async { [self] in write(line) }
+    }
+
+    /// Runs on noteQueue only. The file is opened with O_APPEND, so every write lands at the end
+    /// even if something else has the file open, and it is created on the first line rather than
+    /// replaced: the old fallback wrote atomically, which swaps in a new file and loses the log.
+    private func write(_ line: String) {
+        dispatchPrecondition(condition: .onQueue(noteQueue))
         let directory = logURL.deletingLastPathComponent()
         try? FileManager.default.createDirectory(at: directory, withIntermediateDirectories: true)
-        if let handle = try? FileHandle(forWritingTo: logURL) {
-            defer { try? handle.close() }
-            _ = try? handle.seekToEnd()
-            try? handle.write(contentsOf: Data(line.utf8))
-        } else {
-            try? line.write(to: logURL, atomically: true, encoding: .utf8)
-        }
+        let descriptor = open(logURL.path, O_WRONLY | O_APPEND | O_CREAT, 0o644)
+        guard descriptor >= 0 else { return }
+        let handle = FileHandle(fileDescriptor: descriptor, closeOnDealloc: true)
+        try? handle.write(contentsOf: Data(line.utf8))
+        let size = (try? handle.seekToEnd()) ?? 0
+        try? handle.close()
+        if size > Self.logCapBytes { trim(size: size) }
+    }
+
+    /// Keeps the newest `logKeepBytes`, starting at a line boundary. Only noteQueue writes the
+    /// file, so replacing it here cannot drop a line written meanwhile.
+    private func trim(size: UInt64) {
+        guard let reader = try? FileHandle(forReadingFrom: logURL) else { return }
+        defer { try? reader.close() }
+        guard (try? reader.seek(toOffset: size - Self.logKeepBytes)) != nil,
+            var tail = try? reader.readToEnd()
+        else { return }
+        if let newline = tail.firstIndex(of: UInt8(ascii: "\n")) { tail = tail[tail.index(after: newline)...] }
+        try? tail.write(to: logURL, options: .atomic)
     }
 }

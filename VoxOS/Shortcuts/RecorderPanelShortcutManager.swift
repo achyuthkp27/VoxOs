@@ -48,13 +48,18 @@ final class RecorderPanelShortcutManager: ObservableObject {
     }
 
     private func setupVisibilityObserver() {
-        visibilityTask = Task { @MainActor in
-            for await isVisible in recorderUIManager.$isRecorderPanelVisible.values {
+        // The stream never ends while the UI manager lives, so a strong capture here would keep
+        // this manager alive for as long as the publisher does; deinit (and its cancel) would
+        // never run.
+        let visibility = recorderUIManager.$isRecorderPanelVisible.values
+        visibilityTask = Task { @MainActor [weak self] in
+            for await isVisible in visibility {
+                guard let self else { return }
                 if isVisible {
-                    refreshVisibleShortcuts()
+                    self.refreshVisibleShortcuts()
                 } else {
                     ShortcutMonitor.shared.unregister(owner: .recorderPanel)
-                    resetEscapeState()
+                    self.resetEscapeState()
                 }
             }
         }

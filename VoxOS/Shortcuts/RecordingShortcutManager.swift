@@ -774,8 +774,13 @@ final class RecordingShortcutModeHandler {
             }
 
         case .hybrid:
+            // `.starting` counts as recording: the mic can take longer than the hold threshold
+            // to open, and treating that release as a tap turned a push-to-talk hold into a
+            // hands-free recording the user then had to stop by hand. The UI manager finishes
+            // (not cancels) a recording that is still starting.
             let pressDuration = shortcutPressStartTime.map { eventTime - $0 } ?? 0
-            if pressDuration >= hybridPressThreshold && recordingState() == .recording {
+            let isRecordingOrStarting = recordingState() == .recording || recordingState() == .starting
+            if pressDuration >= hybridPressThreshold && isRecordingOrStarting {
                 guard canHandleShortcutAction() else { return }
                 await toggleRecorderPanel(modeId)
             } else {

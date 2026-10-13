@@ -13,11 +13,28 @@ enum ShortcutStore {
             return nil
         }
 
-        guard !isShortcutCleared(for: action) else {
+        guard !isShortcutCleared(for: action), !suspendedActions.contains(action) else {
             return nil
         }
 
         return rawShortcut(for: action)
+    }
+
+    /// Actions whose shortcut is hidden from readers without touching storage. The recorder
+    /// suspends the action it is re-recording so the old shortcut cannot fire mid-recording;
+    /// the monitors see "no shortcut" and drop it until `resume`. Nothing is written to
+    /// defaults, so a crash mid-recording leaves the old shortcut intact instead of persisting
+    /// "cleared" — which also blocked the fn default from ever being re-seeded.
+    private static var suspendedActions = Set<ShortcutAction>()
+
+    static func suspend(_ action: ShortcutAction) {
+        guard suspendedActions.insert(action).inserted else { return }
+        NotificationCenter.default.post(name: shortcutDidChange, object: action)
+    }
+
+    static func resume(_ action: ShortcutAction) {
+        guard suspendedActions.remove(action) != nil else { return }
+        NotificationCenter.default.post(name: shortcutDidChange, object: action)
     }
 
     static func setShortcut(_ shortcut: Shortcut?, for action: ShortcutAction) {

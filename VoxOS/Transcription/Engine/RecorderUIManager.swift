@@ -68,6 +68,10 @@ class RecorderUIManager: ObservableObject, RecorderPanelPresenting {
     private var pendingHideTask: Task<Void, Never>?
     private var didSetupNotifications = false
     private var lifecycleCancellable: AnyCancellable?
+    /// The screen this dictation's panel was asked to appear on, such as the idle tab's own
+    /// screen when the tab is clicked. Nil means the usual screen (see RecorderScreenResolver).
+    /// Kept while the panel is up, so a reposition after a display change stays on it.
+    private var requestedScreen: NSScreen?
 
     private weak var engine: VoxOSEngine?
     private var recorder: Recorder?
@@ -123,7 +127,9 @@ class RecorderUIManager: ObservableObject, RecorderPanelPresenting {
                     }
                 )
             }
-            shown = notchWindowManager?.show() ?? false
+            // A screen that has gone away since it was asked for falls back to the usual one.
+            let screen = requestedScreen.flatMap { NSScreen.screens.contains($0) ? $0 : nil }
+            shown = notchWindowManager?.show(on: screen) ?? false
         case .mini:
             if miniWindowManager == nil {
                 miniWindowManager = MiniWindowManager(
@@ -168,11 +174,20 @@ class RecorderUIManager: ObservableObject, RecorderPanelPresenting {
         // `dismissRecorderPanel()` and the flag's observer can both get here for one dismissal,
         // so this deliberately stays at debug level.
         logger.debug("Hiding recorder panel style=\(self.recorderPanelStyle.rawValue, privacy: .public)")
+        // Both, not just the current style's: a style change while a hide is pending skips
+        // rebuildVisiblePanel (the panel is no longer visible), so the old style's window, its
+        // outside-click monitor and its makeKey subscription would otherwise outlive the hide.
+        notchWindowManager?.hide()
+        miniWindowManager?.hide()
+        requestedScreen = nil
+    }
+
+    /// How long the current style's collapse takes before its window can go. The Mini pill
+    /// springs closed more slowly than the notch band.
+    private var collapseDuration: TimeInterval {
         switch recorderPanelStyle {
-        case .notch:
-            notchWindowManager?.hide()
-        case .mini:
-            miniWindowManager?.hide()
+        case .notch: return NotchDesign.closeDuration
+        case .mini: return max(NotchDesign.closeDuration, MiniRecorderMotion.collapseDuration)
         }
     }
 
@@ -181,8 +196,9 @@ class RecorderUIManager: ObservableObject, RecorderPanelPresenting {
     /// already reset; ordering out at once cut the animation off every time.
     private func hideRecorderPanelAfterCollapse() {
         pendingHideTask?.cancel()
+        let delay = collapseDuration
         pendingHideTask = Task { @MainActor [weak self] in
-            try? await Task.sleep(for: .seconds(NotchDesign.closeDuration))
+            try? await Task.sleep(for: .seconds(delay))
             guard !Task.isCancelled, let self, !self.isRecorderPanelVisible else { return }
             self.pendingHideTask = nil
             self.hideRecorderPanel()
@@ -246,14 +262,30 @@ class RecorderUIManager: ObservableObject, RecorderPanelPresenting {
 
     // MARK: - Recorder Panel Management
 
-    func toggleRecorderPanel(modeId: UUID? = nil) async {
+    /// `screen` is where the panel should appear if this call opens it; nil uses the usual screen.
+    func toggleRecorderPanel(modeId: UUID? = nil, on screen: NSScreen? = nil) async {
         guard let engine = engine else { return }
 
         if isRecorderPanelVisible {
             switch engine.recordingState {
             case .recording:
                 await engine.toggleRecord(modeId: modeId)
-            case .starting, .transcribing, .enhancing:
+            case .starting:
+                // A push-to-talk release (or a second toggle press) that lands while the mic is
+                // still opening is the user finishing, not cancelling, and cancelling here threw
+                // the utterance away. The engine cannot stop a unit that has not started, so
+                // wait for the start to land — bounded, so a start that never completes can
+                // still be cancelled the old way.
+                guard !isWaitingForRecordingStart else { return }
+                isWaitingForRecordingStart = true
+                let started = await waitForRecordingToStart(engine)
+                isWaitingForRecordingStart = false
+                if started {
+                    await engine.toggleRecord(modeId: modeId)
+                } else if engine.recordingState == .starting {
+                    await cancelRecording()
+                }
+            case .transcribing, .enhancing:
                 await cancelRecording()
             case .idle:
                 if engine.assistantSession.canSendFollowUp {
@@ -270,19 +302,33 @@ class RecorderUIManager: ObservableObject, RecorderPanelPresenting {
             }
         } else {
             SoundManager.shared.playStartSound()
+            requestedScreen = screen
             isRecorderPanelVisible = true
             await engine.toggleRecord(modeId: modeId)
         }
+    }
+
+    private var isWaitingForRecordingStart = false
+    static let recordingStartWaitTimeout: TimeInterval = 2
+
+    /// True once the engine reports `.recording`; false when the start was abandoned (the state
+    /// left `.starting` for anything else) or the timeout passed while it was still starting.
+    private func waitForRecordingToStart(_ engine: VoxOSEngine) async -> Bool {
+        let deadline = ContinuousClock.now + .seconds(Self.recordingStartWaitTimeout)
+        while engine.recordingState == .starting, ContinuousClock.now < deadline {
+            try? await Task.sleep(for: .milliseconds(25))
+        }
+        return engine.recordingState == .recording
     }
 
     func dismissRecorderPanel() async {
         guard let engine = engine else { return }
 
         // Reset first so the band collapses while its window is still on screen, then let the
-        // close animation play before the window goes (see hideRecorderPanelAfterCollapse).
+        // close animation play before the window goes. Clearing the flag schedules that hide
+        // (see isRecorderPanelVisible and hideRecorderPanelAfterCollapse), so it is not repeated here.
         engine.assistantSession.reset()
         isRecorderPanelVisible = false
-        hideRecorderPanelAfterCollapse()
     }
 
     func resetOnLaunch() async {

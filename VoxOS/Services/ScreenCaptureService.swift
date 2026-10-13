@@ -78,7 +78,11 @@ class ScreenCaptureService: ObservableObject {
 
         if AXIsProcessTrusted() {
             let appElement = AXUIElementCreateApplication(frontmostPID)
+            // Runs on main before the capture. The default AX timeout is six seconds per call,
+            // and a busy frontmost app would hold the UI for that long on each of the four reads.
+            AXUIElementSetMessagingTimeout(appElement, 1.0)
             if let focusedWindow = copyAXElementAttribute(kAXFocusedWindowAttribute, from: appElement) {
+                AXUIElementSetMessagingTimeout(focusedWindow, 1.0)
                 focusedTitle = normalized(copyStringAttribute(kAXTitleAttribute, from: focusedWindow))
 
                 if let position = copyCGPointAttribute(kAXPositionAttribute, from: focusedWindow),
