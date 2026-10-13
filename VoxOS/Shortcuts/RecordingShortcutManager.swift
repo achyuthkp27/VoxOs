@@ -226,6 +226,8 @@ class RecordingShortcutManager: ObservableObject {
     }
 
     private func refreshShortcutMonitoring() {
+        // The test host must never install the keyboard tap: see ProcessIdentity.
+        guard !ProcessIdentity.isTestHost else { return }
         // Not removeAllMonitoring(): register() replaces this owner's slice of the shared tap in
         // place. Unregistering first would empty the tap whenever this is the only owner (no mode
         // shortcuts, panel hidden — the common case) and tear it down only to rebuild it a line
