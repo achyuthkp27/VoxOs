@@ -20,6 +20,11 @@ enum AIProviderFallback {
         }
     }
 
+    /// Switching a provider on appends it (order of switching on = order of trying); off removes it.
+    static func toggled(_ list: [String], _ name: String) -> [String] {
+        list.contains(name) ? list.filter { $0 != name } : list + [name]
+    }
+
     /// The providers to try after `primary` fails, in the user's order.
     /// Skips the primary itself, duplicates, unknown names and providers that are not connected.
     static func candidates(

@@ -1,3 +1,4 @@
+import AppKit
 import Foundation
 import PDFKit
 
@@ -18,6 +19,18 @@ enum AgentFiles {
         }
         guard !forWriting else { return false }
         return ["/tmp", "/private/tmp", "/Applications"].contains { resolved == $0 || resolved.hasPrefix($0 + "/") }
+    }
+
+    /// Selects the file in a Finder window. Read-side rules apply: home, /tmp and /Applications.
+    static func reveal(path: String) -> [String: Any] {
+        guard !path.isEmpty else { return ["error": "path is required"] }
+        let expanded = (path as NSString).expandingTildeInPath
+        guard isAllowed(expanded, forWriting: false) else {
+            return ["error": "reveal_in_finder only works inside your home folder"]
+        }
+        guard FileManager.default.fileExists(atPath: expanded) else { return ["error": "not found: \(expanded)"] }
+        NSWorkspace.shared.activateFileViewerSelecting([URL(fileURLWithPath: expanded)])
+        return ["ok": true, "path": expanded]
     }
 
     static func move(from: String, to: String) -> [String: Any] {

@@ -43,6 +43,8 @@ struct SettingsView: View {
     @AppStorage(AgentAutoClose.enabledKey) private var agentAutoCloseEnabled = true
     @AppStorage(DefaultsKeys.notchMaterial) private var notchMaterialRaw = NotchDesign.Material.liquidGlass.rawValue
     @AppStorage(DefaultsKeys.notchIdleTabEnabled) private var notchIdleTabEnabled = true
+    @State private var fallbackProviders: [String] =
+        UserDefaults.standard.stringArray(forKey: DefaultsKeys.aiFallbackProviders) ?? []
     @AppStorage(DictationSend.stopWhenQuietKey) private var dictationStopWhenQuiet = false
     @AppStorage(DictationSend.pressReturnKey) private var dictationPressReturn = false
     @AppStorage(AgentAutoSend.pauseKey) private var agentAutoSendPause = AgentAutoSend.Pause.normal.rawValue
@@ -419,6 +421,41 @@ struct SettingsView: View {
                             InfoTip(
                                 "Commands that look destructive (rm -rf, sudo, disk formatting, piping downloads into a shell…) are refused unless this is on. When on, they run and the agent tells you what it did."
                             )
+                        }
+                    }
+
+                    VStack(alignment: .leading, spacing: 6) {
+                        HStack(spacing: 2) {
+                            Text("Fall Back To Other Providers")
+                            InfoTip(
+                                "If the chosen provider keeps failing (rate limit, outage), the Agent replays the request on these, in the order you switch them on. Off by default: your text only goes to providers you pick here."
+                            )
+                        }
+                        let candidates = (enhancementService.getAIService()?.connectedProviders ?? []).filter {
+                            $0 != .voxOSRefine
+                        }
+                        if candidates.isEmpty {
+                            Text("Connect another AI provider to enable this.")
+                                .font(.app(.caption))
+                                .foregroundStyle(.secondary)
+                        }
+                        ForEach(candidates, id: \.rawValue) { provider in
+                            Toggle(
+                                isOn: Binding(
+                                    get: { fallbackProviders.contains(provider.rawValue) },
+                                    set: { _ in
+                                        fallbackProviders = AIProviderFallback.toggled(
+                                            fallbackProviders, provider.rawValue)
+                                        UserDefaults.standard.set(
+                                            fallbackProviders, forKey: DefaultsKeys.aiFallbackProviders)
+                                    })
+                            ) {
+                                if let index = fallbackProviders.firstIndex(of: provider.rawValue) {
+                                    Text("\(index + 1). \(provider.rawValue)")
+                                } else {
+                                    Text(provider.rawValue)
+                                }
+                            }
                         }
                     }
 

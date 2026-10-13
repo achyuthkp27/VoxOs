@@ -188,7 +188,7 @@ struct AgentMusicNotesTests {
 
     @Test func onDemandDocsAppearOnlyWhenTheRequestMentionsThem() {
         #expect(AgentToolCatalog.onDemandSection(for: "open Safari") == nil)
-        #expect(AgentToolCatalog.onDemandSection(for: "what's the weather") == nil)
+        #expect(AgentToolCatalog.onDemandSection(for: "what's the weather")?.contains("weather_now") == true)
         #expect(AgentToolCatalog.onDemandSection(for: "play some jazz")?.contains("music_play") == true)
         #expect(AgentToolCatalog.onDemandSection(for: "skip this song")?.contains("music_control") == true)
         #expect(
