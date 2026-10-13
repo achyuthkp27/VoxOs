@@ -38,6 +38,7 @@ class ScreenCaptureService: ObservableObject {
     }
 
     func captureAndExtractText() async -> String? {
+        ActivityTrail.mark("screen OCR start")
         guard !isCapturing else { return nil }
 
         isCapturing = true

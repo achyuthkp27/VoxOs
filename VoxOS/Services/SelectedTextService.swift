@@ -19,6 +19,7 @@ final class SelectedTextService {
     /// restored afterwards, but ⌘C in an app with no text selection can copy something else
     /// (files in Finder), so callers enable it only when a selection is mandatory.
     static func fetchSelectedText(allowClipboardCopy: Bool = false) async -> String? {
+        ActivityTrail.mark("selected text read start (clipboard fallback: \(allowClipboardCopy))")
         guard AXIsProcessTrusted() else {
             logger.debug("Accessibility is not trusted; selected text capture skipped")
             return nil

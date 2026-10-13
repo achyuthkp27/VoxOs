@@ -230,6 +230,7 @@ final class NotchIdleTabManager {
 
     /// The window grows before the shape animates out, and shrinks only after it has animated back.
     private func hoverChanged(_ inside: Bool) {
+        ActivityTrail.mark("idle tab hover \(inside)")
         shrinkTask?.cancel()
         hovered = inside
         guard let panel, let screen else { return }

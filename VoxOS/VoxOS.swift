@@ -174,6 +174,9 @@ struct VoxOSApp: App {
 
         AppShortcuts.updateAppShortcutParameters()
 
+        // Evidence for stalls: see MainThreadWatchdog. The test host does not need it.
+        if !ProcessIdentity.isTestHost { MainThreadWatchdog.shared.start() }
+
         let statsMigrationTask = SessionMetricMigrationService.shared.runStatsMigrationIfNeeded(
             modelContainer: resolvedContainer)
         let mainContext = resolvedContainer.mainContext

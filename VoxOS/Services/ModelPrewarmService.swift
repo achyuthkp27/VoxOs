@@ -31,7 +31,8 @@ final class ModelPrewarmService: ObservableObject {
                 self?.schedulePrewarm()
             }
         }
-        schedulePrewarmOnAppLaunch()
+        // The test host hosts tests; loading a speech model from it only loads the machine.
+        if !ProcessIdentity.isTestHost { schedulePrewarmOnAppLaunch() }
     }
 
     // MARK: - Trigger Handlers
@@ -75,6 +76,7 @@ final class ModelPrewarmService: ObservableObject {
         let currentModel = transcriptionConfiguration.model
 
         logger.notice("Prewarming \(currentModel.displayName, privacy: .public)")
+        ActivityTrail.mark("prewarm start \(currentModel.displayName)")
         let startTime = Date()
 
         do {
@@ -85,6 +87,7 @@ final class ModelPrewarmService: ObservableObject {
             )
             let duration = Date().timeIntervalSince(startTime)
 
+            ActivityTrail.mark("prewarm end")
             logger.notice("Prewarm completed in \(String(format: "%.2f", duration), privacy: .public)s")
 
         } catch {

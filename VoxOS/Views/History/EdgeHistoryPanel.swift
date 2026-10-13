@@ -111,7 +111,8 @@ final class EdgeHistoryWindowManager {
         // mouse move this app is running for, which is a continuous wakeup source and the single
         // biggest thing VoxOS does while otherwise idle. Anyone not using the edge panel should
         // not pay for it.
-        guard UserDefaults.standard.bool(forKey: DefaultsKeys.edgeHistoryEnabled) else {
+        // The test host must not watch the mouse either: see ProcessIdentity.
+        guard !ProcessIdentity.isTestHost, UserDefaults.standard.bool(forKey: DefaultsKeys.edgeHistoryEnabled) else {
             logger.info("Edge history disabled; not watching for pointer movement")
             return
         }

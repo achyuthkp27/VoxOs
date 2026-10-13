@@ -83,7 +83,7 @@ class RecorderUIManager: ObservableObject, RecorderPanelPresenting {
         self.engine = engine
         self.recorder = recorder
         setupNotifications()
-        idleTabManager = NotchIdleTabManager(uiManager: self)
+        if !ProcessIdentity.isTestHost { idleTabManager = NotchIdleTabManager(uiManager: self) }
     }
 
     // MARK: - Recorder Panel Management

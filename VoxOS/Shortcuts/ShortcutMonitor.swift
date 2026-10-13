@@ -497,6 +497,7 @@ final class ShortcutMonitor {
     /// for as long as the app runs. Re-arm a few times, then give up and tear the tap down. A
     /// dead shortcut is recoverable; a dead keyboard is not.
     private func handleTapDisabled(_ type: CGEventType) {
+        ActivityTrail.mark("EVENT TAP DISABLED by \(type == .tapDisabledByTimeout ? "timeout" : "user input")")
         releasePressedShortcutsAfterTapInterruption()
 
         // Runs on the tap thread, so never block on the lock. If main holds it right now, hand
@@ -716,6 +717,7 @@ final class ShortcutMonitor {
 
     private func dispatchKeyDown(for action: ShortcutAction, eventTime: TimeInterval) {
         guard let handler = registration(for: action)?.onKeyDown else { return }
+        ActivityTrail.mark("shortcut down \(action.storageName)")
         DispatchQueue.main.async {
             handler(action, eventTime)
         }
@@ -723,6 +725,7 @@ final class ShortcutMonitor {
 
     private func dispatchKeyUp(for action: ShortcutAction, eventTime: TimeInterval) {
         guard let handler = registration(for: action)?.onKeyUp else { return }
+        ActivityTrail.mark("shortcut up \(action.storageName)")
         DispatchQueue.main.async {
             handler(action, eventTime)
         }

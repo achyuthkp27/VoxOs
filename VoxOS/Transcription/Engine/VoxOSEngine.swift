@@ -180,6 +180,7 @@ class VoxOSEngine: NSObject, ObservableObject {
     // MARK: - Toggle Record
 
     func toggleRecord(modeId: UUID? = nil, isAssistantFollowUp: Bool = false) async {
+        ActivityTrail.mark("toggleRecord from \(String(describing: recordingState))")
         if recordingState == .starting {
             await cancelRecording()
             return
@@ -528,6 +529,7 @@ class VoxOSEngine: NSObject, ObservableObject {
 
         let store = RecordingContextSnapshotStore()
         activeRecordingContextStore = store
+        ActivityTrail.mark("recording context capture start")
         activeRecordingContextTasks = RecordingContextCaptureService.startCapture(
             into: store,
             selectionIsRequired: ModeRuntimeResolver.outputConfiguration().outputMode.requiresSelectedText)
