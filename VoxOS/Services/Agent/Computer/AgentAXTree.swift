@@ -79,9 +79,11 @@ enum AgentAXTree {
 
     /// Text of the focused element (what the user is typing into), if any.
     static func focusedElementValue() -> String? {
-        guard AXIsProcessTrusted() else { return nil }
+        guard AXIsProcessTrusted(), !AgentSelfGuard.isFrontmost else { return nil }
         let system = AXUIElementCreateSystemWide()
-        guard let focused = axElement(copyAttribute(system, kAXFocusedUIElementAttribute)) else { return nil }
+        guard let focused = axElement(copyAttribute(system, kAXFocusedUIElementAttribute)),
+            !AgentSelfGuard.isOwn(focused)
+        else { return nil }
         return stringFrom(copyAttribute(focused, kAXValueAttribute))
     }
 
@@ -92,9 +94,11 @@ enum AgentAXTree {
     /// range. Callers treat nil as "do not guess" rather than as "nothing is there", because
     /// inventing spacing from a wrong answer shifts the user's text.
     static func insertionContext() -> (before: Character?, after: Character?)? {
-        guard AXIsProcessTrusted() else { return nil }
+        guard AXIsProcessTrusted(), !AgentSelfGuard.isFrontmost else { return nil }
         let system = AXUIElementCreateSystemWide()
-        guard let focused = axElement(copyAttribute(system, kAXFocusedUIElementAttribute)) else {
+        guard let focused = axElement(copyAttribute(system, kAXFocusedUIElementAttribute)),
+            !AgentSelfGuard.isOwn(focused)
+        else {
             return nil
         }
         // stringFrom yields "" for a non-text element rather than nil, and an empty field has no

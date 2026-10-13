@@ -78,6 +78,8 @@ enum AgentPointerElement {
     /// (the frontmost app may be slow to answer).
     static func capture(at point: CGPoint) -> Info? {
         guard AXIsProcessTrusted() else { return nil }
+        // Before the hit-test: see AgentSelfGuard. The bundle check below runs too late to help.
+        guard !AgentSelfGuard.pointIsInOwnWindow(point) else { return nil }
         let system = AXUIElementCreateSystemWide()
         AXUIElementSetMessagingTimeout(system, 1.0)
         var hit: AXUIElement?

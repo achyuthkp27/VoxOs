@@ -90,6 +90,14 @@ struct AgentQuickIntentFollowUpTests {
         }
     }
 
+    @Test func selfGuardKnowsItsOwnWindowsAndNothingElse() {
+        let frames = [CGRect(x: 100, y: 0, width: 200, height: 50)]
+        #expect(AgentSelfGuard.contains(CGPoint(x: 150, y: 10), in: frames))
+        #expect(!AgentSelfGuard.contains(CGPoint(x: 10, y: 10), in: frames))
+        #expect(!AgentSelfGuard.pointIsInOwnWindow(CGPoint(x: -99_999, y: -99_999)), "nothing lives off-screen")
+        #expect(AgentSelfGuard.ownPID == ProcessInfo.processInfo.processIdentifier)
+    }
+
     @Test func withNothingOfferedAYesIsNotInterpreted() {
         #expect(AgentQuickIntents.followUp(reply: "yes", suggestions: []) == nil)
     }

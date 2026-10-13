@@ -26,6 +26,14 @@ extension VoxOSEngine {
 
         // "yes" to "Did you mean Slack?" has no meaning to a model that never saw the offer, and
         // it answers with a made-up how-to. The offer is remembered locally, so answer it here.
+        // "open Chrome" typed as a follow-up must open Chrome, not be narrated by the model.
+        if let quick = await AgentQuickIntents.handle(trimmed) {
+            guard assistantSession.hasMessage(id: userMessage.id) else { return }
+            assistantSession.finishFollowUp(quick)
+            scheduleAutoCloseIfOnlyLaunched()
+            return
+        }
+
         AgentAutoClose.beginRun()
         let offered = AgentQuickIntents.takePendingSuggestions()
         if let local = AgentQuickIntents.followUp(reply: trimmed, suggestions: offered) {
