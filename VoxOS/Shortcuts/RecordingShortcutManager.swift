@@ -166,7 +166,8 @@ class RecordingShortcutManager: ObservableObject {
             },
             onHandsFreeRecordingStarted: { [weak autoSend] in
                 autoSend?.startIfEnabled()
-            }
+            },
+            startDelay: RecordingShortcutModeHandler.defaultStartDelay
         )
 
         let primaryRecordingShortcutModeSource = RecordingShortcutModeSource(
@@ -593,6 +594,14 @@ final class RecordingShortcutModeHandler {
     private let cancelRecording: @MainActor () async -> Void
     private let toggleAgentMode: @MainActor () -> Bool
     private let onHandsFreeRecordingStarted: @MainActor () -> Void
+    /// In toggle and hybrid modes a press waits this long before starting, so fn+Delete, fn+arrows
+    /// and other combos never start a recording (mic, selection read, screen OCR) only to cancel
+    /// it a few milliseconds later. A release inside the window is a tap and starts at once; a
+    /// hold starts when the window ends. Zero keeps the old immediate start, which the tests use.
+    private let startDelay: TimeInterval
+    static let defaultStartDelay: TimeInterval = 0.15
+    private var pendingStart: Task<Void, Never>?
+    private var hasPendingStart = false
 
     private var shortcutPressStartTime: TimeInterval?
     private var lastKeyUpTime: TimeInterval?
@@ -622,8 +631,10 @@ final class RecordingShortcutModeHandler {
         toggleRecorderPanel: @escaping @MainActor (UUID?) async -> Void,
         cancelRecording: @escaping @MainActor () async -> Void,
         toggleAgentMode: @escaping @MainActor () -> Bool = { false },
-        onHandsFreeRecordingStarted: @escaping @MainActor () -> Void = {}
+        onHandsFreeRecordingStarted: @escaping @MainActor () -> Void = {},
+        startDelay: TimeInterval = 0
     ) {
+        self.startDelay = startDelay
         self.canHandleShortcutAction = canHandleShortcutAction
         self.isRecorderVisible = isRecorderVisible
         self.recordingState = recordingState
@@ -637,6 +648,7 @@ final class RecordingShortcutModeHandler {
     var hasActivePress: Bool { isShortcutPressed }
 
     func reset() {
+        cancelDeferredStart()
         isShortcutPressed = false
         shortcutPressStartTime = nil
         isHandsFreeRecording = false
@@ -705,7 +717,11 @@ final class RecordingShortcutModeHandler {
 
             if !isRecorderVisible() {
                 guard canHandleShortcutAction() else { return }
-                await toggleRecorderPanel(modeId)
+                if startDelay > 0 {
+                    armDeferredStart(modeId: modeId)
+                } else {
+                    await toggleRecorderPanel(modeId)
+                }
             }
 
         case .pushToTalk:
@@ -732,6 +748,17 @@ final class RecordingShortcutModeHandler {
         activeShortcutCanCancelAccidentalStart = false
         lastKeyUpTime = eventTime
         lastKeyUpAction = action
+
+        // Released inside the start window: a tap. Start now, hands-free.
+        if hasPendingStart {
+            cancelDeferredStart()
+            shortcutPressStartTime = nil
+            guard canHandleShortcutAction(), !isRecorderVisible() else { return }
+            await toggleRecorderPanel(modeId)
+            isHandsFreeRecording = true
+            onHandsFreeRecordingStarted()
+            return
+        }
 
         switch mode {
         case .toggle:
@@ -768,8 +795,36 @@ final class RecordingShortcutModeHandler {
 
         guard activeShortcutCanCancelAccidentalStart else { return }
 
+        // Another key inside the start window: a combo, not a dictation. Nothing has started, so
+        // there is nothing to cancel; just forget the press.
+        if hasPendingStart {
+            reset()
+            return
+        }
+
         reset()
         await cancelRecording()
+    }
+
+    private func armDeferredStart(modeId: UUID?) {
+        cancelDeferredStart()
+        hasPendingStart = true
+        let delay = startDelay
+        pendingStart = Task { @MainActor [weak self] in
+            try? await Task.sleep(for: .seconds(delay))
+            guard !Task.isCancelled, let self, self.hasPendingStart else { return }
+            self.hasPendingStart = false
+            self.pendingStart = nil
+            // Still held, and nothing else claimed the recorder meanwhile: push-to-talk starts.
+            guard self.isShortcutPressed, self.canHandleShortcutAction(), !self.isRecorderVisible() else { return }
+            await self.toggleRecorderPanel(modeId)
+        }
+    }
+
+    private func cancelDeferredStart() {
+        pendingStart?.cancel()
+        pendingStart = nil
+        hasPendingStart = false
     }
 
     private var canCurrentShortcutPressCancelAccidentalStart: Bool {
