@@ -21,6 +21,18 @@ extension VoxOSEngine {
         let systemPrompt = assistantSession.systemPrompt
         let userMessage = assistantSession.beginFollowUp(trimmed)
 
+        // "yes" to "Did you mean Slack?" has no meaning to a model that never saw the offer, and
+        // it answers with a made-up how-to. The offer is remembered locally, so answer it here.
+        AgentAutoClose.beginRun()
+        let offered = AgentQuickIntents.takePendingSuggestions()
+        if let local = AgentQuickIntents.followUp(reply: trimmed, suggestions: offered) {
+            let text = await AgentQuickIntents.perform(local)
+            guard assistantSession.hasMessage(id: userMessage.id) else { return }
+            assistantSession.finishFollowUp(text)
+            scheduleAutoCloseIfOnlyLaunched()
+            return
+        }
+
         do {
             let reply = try await assistantChat.requestAssistantReply(
                 provider: provider,

@@ -311,6 +311,7 @@ struct AgentLogicTests {
         #expect(AgentQuickIntents.appRequest(in: "can you open slak", installed: apps) == .found("Slack"))
         #expect(AgentQuickIntents.appRequest(in: "open system settings", installed: apps) == .found("System Settings"))
 
+        // A name nothing resembles is still answered locally, but offers no unrelated apps.
         guard
             case .notFound(let query, let suggestions) = AgentQuickIntents.appRequest(
                 in: "can you open crew", installed: apps)
@@ -319,7 +320,17 @@ struct AgentLogicTests {
             return
         }
         #expect(query == "crew")
-        #expect(!suggestions.isEmpty && suggestions.count <= 3)
+        #expect(suggestions.isEmpty, "nothing here sounds like \"crew\"")
+
+        // "chorme" is a transposition of the word "chrome" in "Google Chrome": too far off to open
+        // by itself, close enough to offer.
+        guard
+            case .notFound(_, let near) = AgentQuickIntents.appRequest(in: "open chorme", installed: apps)
+        else {
+            Issue.record("a near miss should come back with the close name")
+            return
+        }
+        #expect(near == ["Google Chrome"])
 
         // These must still reach the model.
         #expect(AgentQuickIntents.appRequest(in: "start a timer", installed: apps) == nil)

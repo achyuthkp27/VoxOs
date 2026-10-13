@@ -13,6 +13,7 @@ enum AgentQuickIntents {
         guard lower.count <= 60 else { return nil }
 
         AgentAutoClose.beginRun()
+        setPendingSuggestions([])
         switch appRequest(in: lower) {
         case .found(let app):
             let result = await MainActor.run { AgentWindows.openApp(name: app) }
@@ -22,6 +23,7 @@ enum AgentQuickIntents {
         case .notFound(let query, let suggestions):
             // Answer at once rather than spending model calls (and rate limit) on a missing app.
             guard !suggestions.isEmpty else { return "I couldn't find an app called “\(query)”." }
+            setPendingSuggestions(suggestions)
             return "I couldn't find an app called “\(query)”. Did you mean \(listPhrase(suggestions))?"
         case .none:
             break
@@ -91,17 +93,83 @@ enum AgentQuickIntents {
         return nil
     }
 
-    /// Up to three installed apps that sound closest, same first letter preferred.
+    /// Up to three installed apps that sound close to what was said. Close means a slip of the ear,
+    /// not just a shared letter: a short name tolerates one wrong letter, a longer one two or three.
+    /// Offering "Stocks" for "slack" is worse than offering nothing, because the user then says "yes".
     static func suggestions(for query: String, in names: [String]) -> [String] {
         let q = query.lowercased()
         let scored = names.map { name -> (String, Int) in
             let candidates = [name.lowercased()] + name.lowercased().split(separator: " ").map(String.init)
             let distance = candidates.map { editDistance($0, q) }.min() ?? Int.max
-            let firstLetterBonus = name.lowercased().split(separator: " ").contains { $0.first == q.first } ? 0 : 2
-            return (name, distance + firstLetterBonus)
+            let firstLetterPenalty = name.lowercased().split(separator: " ").contains { $0.first == q.first } ? 0 : 1
+            return (name, distance + firstLetterPenalty)
         }
-        let limit = max(3, q.count / 2 + 2)
+        let limit = q.count <= 4 ? 1 : (q.count <= 8 ? 2 : 3)
         return scored.filter { $0.1 <= limit }.sorted { $0.1 == $1.1 ? $0.0 < $1.0 : $0.1 < $1.1 }.prefix(3).map(\.0)
+    }
+
+    // MARK: Answering "yes" to "Did you mean …?"
+
+    private static let pendingLock = NSLock()
+    private static var pendingSuggestions: [String] = []
+
+    static func setPendingSuggestions(_ names: [String]) {
+        pendingLock.lock()
+        defer { pendingLock.unlock() }
+        pendingSuggestions = names
+    }
+
+    /// What the last not-found reply offered. Taking it forgets it, so a "yes" two questions later
+    /// can never open an app the user has long since stopped talking about.
+    static func takePendingSuggestions() -> [String] {
+        pendingLock.lock()
+        defer { pendingLock.unlock() }
+        defer { pendingSuggestions = [] }
+        return pendingSuggestions
+    }
+
+    enum FollowUp: Equatable {
+        case open(String)
+        case ask(question: String, suggestions: [String])
+    }
+
+    private static let affirmatives: Set<String> = [
+        "yes", "yeah", "yep", "yup", "sure", "ok", "okay", "correct", "right", "please", "do it", "go ahead",
+        "yes please", "yeah sure", "sure thing", "that one",
+    ]
+
+    /// A short reply to a "Did you mean …?" that can be answered without a model: "yes" for a single
+    /// offer, or naming one of the offers. "yes" to several is ambiguous, so it asks which.
+    /// Anything else (a question, "no", a new request) goes on to the model as usual.
+    static func followUp(reply: String, suggestions: [String]) -> FollowUp? {
+        guard !suggestions.isEmpty else { return nil }
+        let cleaned = reply.lowercased()
+            .trimmingCharacters(in: .whitespacesAndNewlines.union(.punctuationCharacters))
+        guard !cleaned.isEmpty, cleaned.split(separator: " ").count <= 4 else { return nil }
+
+        if let named = suggestions.first(where: {
+            let name = $0.lowercased()
+            return cleaned == name || cleaned == "open \(name)" || cleaned == "the \(name)"
+        }) {
+            return .open(named)
+        }
+        guard affirmatives.contains(cleaned) else { return nil }
+        if suggestions.count == 1 { return .open(suggestions[0]) }
+        return .ask(question: "Which one: \(listPhrase(suggestions))?", suggestions: suggestions)
+    }
+
+    /// Carries out a local follow-up and returns the reply to show.
+    static func perform(_ followUp: FollowUp) async -> String {
+        switch followUp {
+        case .open(let app):
+            let result = await MainActor.run { AgentWindows.openApp(name: app) }
+            if let error = result["error"] as? String { return "Couldn't open \(app): \(error)" }
+            AgentAutoClose.recordQuickLaunch()
+            return "Opened \(app)."
+        case .ask(let question, let suggestions):
+            setPendingSuggestions(suggestions)
+            return question
+        }
     }
 
     static func editDistance(_ a: String, _ b: String) -> Int {
