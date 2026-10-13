@@ -405,7 +405,7 @@ struct VoxOSApp: App {
 
     /// Only one notification fits on screen, so show at most one launch reminder.
     private func showLaunchRemindersIfNeeded() {
-        guard !didShowLaunchReminders else { return }
+        guard !didShowLaunchReminders, !ProcessIdentity.isTestHost else { return }
         didShowLaunchReminders = true
 
         if !AXIsProcessTrusted() {

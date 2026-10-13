@@ -257,7 +257,7 @@ struct LicenseManagementView: View {
                 systemImage: "sparkles",
                 tint: neutralIconColor
             ) {
-                openURL("https://tryvoiceink.com/recommended-models")
+                openURL("https://github.com/achyuthkp27/VoxOs#readme")
             }
 
             ResourceLinkRow(
@@ -266,7 +266,7 @@ struct LicenseManagementView: View {
                 systemImage: "link.badge.plus",
                 tint: neutralIconColor
             ) {
-                openURL("https://tryvoiceink.com/affiliate")
+                openURL("https://github.com/achyuthkp27/VoxOs")
             }
 
             ResourceLinkRow(

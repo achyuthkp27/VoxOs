@@ -12,6 +12,7 @@ struct AudioVisualizer: View {
     private let maxHeight: CGFloat
 
     private let phases: [Double]
+    @Environment(\.accessibilityReduceMotion) private var reduceMotion
 
     init(
         audioMeterProvider: @escaping () -> AudioMeter, color: Color, isActive: Bool,
@@ -59,7 +60,8 @@ struct AudioVisualizer: View {
         let amplitude = max(0, min(1, pow(audioMeter.averagePower, 0.7)))  // boosted for visibility
         // A slow swell with a high floor, so the bars breathe with the voice instead of
         // flickering; the centre bars carry the most height, like the resting glyph.
-        let wave = 0.65 + 0.35 * (sin(time * 5 + phases[index]) * 0.5 + 0.5)
+        // With Reduce Motion the bars follow the level only, with no swell.
+        let wave = reduceMotion ? 1.0 : 0.65 + 0.35 * (sin(time * 5 + phases[index]) * 0.5 + 0.5)
         let weights = NotchDesign.barWeights
         let weight = Double(weights[index % weights.count] / (weights.max() ?? 1))
 

@@ -8,12 +8,19 @@ struct NotchRecorderView<S: RecorderStateProvider & ObservableObject>: View {
     let onRecordButtonTapped: () -> Void
     let onCloseTapped: () -> Void
     let onAssistantFollowUp: (String) -> Void
+    /// The notch of the screen the window was built on. Resolving the screen per render follows
+    /// the key window, which moves the band to another display after a click there.
+    var notchMetricsOverride: (width: CGFloat, height: CGFloat)? = nil
+    /// Reports the band's laid-out size, so the window manager can tell a click on the band from a
+    /// click on the transparent rest of its much larger window.
+    var onPillSizeChange: (CGSize) -> Void = { _ in }
     @AppStorage(RecorderDisplaySettingsKeys.showLiveTranscript) private var showLiveTranscript = true
     @AppStorage(DefaultsKeys.notchMaterial) private var notchMaterialRaw = NotchDesign.Material.liquidGlass.rawValue
     /// Bumped on every screen reconfiguration to invalidate the view. The notch metrics below
     /// come from AppKit, which SwiftUI cannot observe on its own, so without this the view keeps
     /// whatever sizes it happened to compute the last time it was rendered.
     @State private var screenGeneration = 0
+    @Environment(\.accessibilityReduceMotion) private var reduceMotion
 
     // MARK: - Display State
 
@@ -47,6 +54,7 @@ struct NotchRecorderView<S: RecorderStateProvider & ObservableObject>: View {
     /// on the state that changed.
     private var screenMetrics: (width: CGFloat, height: CGFloat) {
         _ = screenGeneration
+        if let notchMetricsOverride { return notchMetricsOverride }
 
         guard let screen = RecorderScreenResolver.resolve() else { return (180, 37) }
 
@@ -61,7 +69,7 @@ struct NotchRecorderView<S: RecorderStateProvider & ObservableObject>: View {
 
         let height: CGFloat = {
             if screen.safeAreaInsets.top > 0 { return screen.safeAreaInsets.top }
-            return NSApplication.shared.mainMenu?.menuBarHeight ?? NSStatusBar.system.thickness
+            return NotchDesign.fallbackNotchHeight
         }()
 
         return (width, height)
@@ -151,7 +159,9 @@ struct NotchRecorderView<S: RecorderStateProvider & ObservableObject>: View {
         GeometryReader { geo in
             pill.position(x: geo.size.width / 2, y: pillHeight / 2)
         }
-        .animation(pillAnimation, value: displayState)
+        .animation(reduceMotion ? nil : pillAnimation, value: displayState)
+        // The panel height follows the reply; the band must resize with it, not snap.
+        .animation(reduceMotion ? nil : NotchDesign.sizeAnimation, value: assistantPanelHeight)
         .onReceive(
             LifecycleObserver.shared.publisher(for: .screenConfigurationChanged)
         ) { _ in
@@ -168,8 +178,11 @@ struct NotchRecorderView<S: RecorderStateProvider & ObservableObject>: View {
             assistantPanel
         }
         .frame(width: pillWidth, height: pillHeight)
+        .onGeometryChange(for: CGSize.self, of: { $0.size }, action: onPillSizeChange)
         .background(notchBackground)
         .environment(\.colorScheme, .dark)
+        // One shadow for the whole band, not one per layer.
+        .compositingGroup()
         .shadow(
             color: Color.black.opacity(activeShadow.opacity), radius: activeShadow.radius, y: activeShadow.y
         )
@@ -211,9 +224,10 @@ struct NotchRecorderView<S: RecorderStateProvider & ObservableObject>: View {
                 .mask(
                     LinearGradient(
                         stops: [
+                            // Solid for the full height of the hardware notch, glass only below it.
                             .init(color: .white, location: 0),
-                            .init(color: .white, location: NotchDesign.glassDarkStop * 0.4),
-                            .init(color: .clear, location: NotchDesign.glassDarkStop),
+                            .init(color: .white, location: min(1, notchHeight / max(pillHeight, 1))),
+                            .init(color: .clear, location: min(1, (notchHeight + 12) / max(pillHeight, 1))),
                         ], startPoint: .top, endPoint: .bottom))
             rim
         }
@@ -231,8 +245,6 @@ struct NotchRecorderView<S: RecorderStateProvider & ObservableObject>: View {
     private var isRecording: Bool { stateProvider.recordingState == .recording }
 
     private var isAgentMode: Bool { modeManager.currentEffectiveConfiguration?.id == StarterModeCatalog.agentId }
-
-    private var recordingAccent: Color { isAgentMode ? AppTheme.Recorder.agentAccent : AppTheme.Accent.primary }
 
     private var activeShadow: NotchDesign.Shadow {
         displayState == .collapsed ? NotchDesign.restingShadow : NotchDesign.activeShadow
@@ -262,6 +274,8 @@ struct NotchRecorderView<S: RecorderStateProvider & ObservableObject>: View {
                     audioMeterProvider: recorder.audioMeterSnapshot,
                     accent: modeAccent
                 )
+                .accessibilityElement(children: .ignore)
+                .accessibilityLabel(Text(pillAccessibilityLabel))
                 Spacer(minLength: 0)
             }
             .padding(.leading, sideEdgePadding)
@@ -276,9 +290,15 @@ struct NotchRecorderView<S: RecorderStateProvider & ObservableObject>: View {
         .frame(height: mainRowHeight)
     }
 
-    /// Mode colour for the wave: dictation white, AI-enhanced dictation blue, Agent violet.
+    /// Mode colour for the wave: white for dictation (plain or AI-enhanced), violet for the Agent.
     private var modeAccent: Color {
         RecorderModeAccent.color(for: modeManager.currentEffectiveConfiguration)
+    }
+
+    private var pillAccessibilityLabel: String {
+        RecorderPillAccessibility.label(
+            recordingState: stateProvider.recordingState, assistantVisible: assistantSession.isVisible,
+            assistantBusy: assistantSession.isBusy)
     }
 
     // MARK: - Live Text Panel
@@ -312,7 +332,7 @@ struct NotchRecorderView<S: RecorderStateProvider & ObservableObject>: View {
             }
         }
         .frame(height: displayState == .assistant ? assistantPanelHeight : 0)
-        .animation(NotchDesign.sizeAnimation, value: assistantContentHeight)
+        .animation(reduceMotion ? nil : NotchDesign.sizeAnimation, value: assistantContentHeight)
         .clipped()
     }
 }

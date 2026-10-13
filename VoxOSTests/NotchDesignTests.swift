@@ -83,7 +83,6 @@ struct NotchDesignTests {
 
     @Test func expandedCornerIsConcentricWithTheComposer() {
         #expect(NotchDesign.expanded.bottom == CGFloat(19 + 12), "composer radius plus its inset")
-        #expect(NotchDesign.expandedBodyWidth < NotchDesign.expandedWidth)
     }
 
     @Test func waveformIsTallestInTheMiddleAndSymmetric() {
@@ -116,6 +115,46 @@ struct NotchDesignTests {
 
     @Test func theTopStaysSolidSoItMergesWithThePhysicalNotch() {
         #expect(NotchDesign.glassDarkStop > 0.3 && NotchDesign.glassDarkStop < 0.6)
+    }
+
+    @Test func theComposerIsExactlyOneLineTallWithTheOrbInIt() {
+        // Laid out for real: the orb and a line of text in the composer's font, inside the same
+        // chrome the reply panel uses. panelChrome counts minHeight for the composer, so the real
+        // height must be exactly that, or the band and the panel disagree.
+        let composer = HStack(spacing: 6) {
+            AgentOrb(isActive: true)
+            TextField("", text: .constant("Ask anything")).textFieldStyle(.plain).font(.app(size: 15))
+        }
+        .modifier(AgentComposerChrome())
+        .frame(width: 400)
+        let height = NSHostingView(rootView: composer).fittingSize.height
+        #expect(abs(height - AgentComposer.minHeight) < 0.5, "composer laid out at \(height) pt")
+
+        let orbHeight = NSHostingView(rootView: AgentOrb(isActive: false)).fittingSize.height
+        #expect(orbHeight + 2 * AgentComposer.verticalPadding <= AgentComposer.minHeight + 0.01)
+    }
+
+    @Test func theNotchWindowHoldsTheLargestBandAndItsShadow() {
+        let notchWidth: CGFloat = 185
+        let notchHeight: CGFloat = 38
+        let windowWidth = notchWidth + (NotchDesign.windowSideExpansion + NotchDesign.windowSideMargin) * 2
+        // The widest band: the expanded width, or the notch plus 140 pt a side on a very wide notch.
+        let widestBand = notchWidth + 2 * max(140, (NotchDesign.expandedWidth - notchWidth) / 2)
+        #expect(windowWidth >= widestBand + 2 * NotchDesign.activeShadow.radius)
+        let tallestBand = notchHeight + AgentComposer.panelHeight(forContent: 10_000)
+        #expect(
+            NotchDesign.windowHeight(notchHeight: notchHeight)
+                >= tallestBand + NotchDesign.activeShadow.radius + NotchDesign.activeShadow.y)
+    }
+
+    @Test func outsideClicksAreJudgedAgainstTheVisiblePillNotTheWindow() {
+        let window = NSRect(x: 100, y: 500, width: 700, height: 366)
+        let band = NotchWindowManager.pillRect(size: CGSize(width: 480, height: 200), in: window)
+        #expect(band.midX == window.midX && band.maxY == window.maxY, "the band hangs from the top centre")
+        #expect(band.height == 200 && band.width == 480)
+        let pill = MiniWindowManager.pillRect(size: CGSize(width: 520, height: 190), in: window)
+        #expect(pill.midX == window.midX && pill.minY == window.minY, "the mini pill sits at the bottom centre")
+        #expect(!band.contains(CGPoint(x: window.minX + 5, y: window.minY + 5)), "transparent corner is outside")
     }
 
     @Test func replyPanelContentStaysInsideTheBandBody() {

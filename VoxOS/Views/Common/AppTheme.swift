@@ -5,7 +5,11 @@ import SwiftUI
 /// the wallpaper and appearance, and the text follows the system label colours.
 enum AppTheme {
     enum Accent {
-        static let primary = Color.accentColor
+        /// The app's own violet, the same hue as the Agent accent in the recorder. Primary fills
+        /// use it instead of `Color.accentColor` so white text on them keeps its contrast when the
+        /// user picks a light system accent such as yellow.
+        static let brand = Color(red: 0.55, green: 0.36, blue: 0.96)
+        static let primary = brand
         static let fillSubtle = primary.opacity(0.10)
         static let fill = primary.opacity(0.16)
         static let fillStrong = primary.opacity(0.30)
@@ -27,7 +31,7 @@ enum AppTheme {
         static let card = Color.primary.opacity(0.04)
         static let materialCard = Color.primary.opacity(0.04)
         static let subtle = Color.primary.opacity(0.05)
-        static let tinted = Color.accentColor.opacity(0.06)
+        static let tinted = Accent.primary.opacity(0.06)
         static let controlActive = Color.primary.opacity(0.10)
         static let control = Color.primary.opacity(0.06)
         static let sidePanelOverlay = Color.black.opacity(0.18)
@@ -38,7 +42,7 @@ enum AppTheme {
         static let control = Color.primary.opacity(0.12)
         static let card = Color.primary.opacity(0.08)
         static let subtle = Color.primary.opacity(0.06)
-        static let tint = Color.accentColor.opacity(0.35)
+        static let tint = Accent.primary.opacity(0.35)
         static let sidePanelOuter = Color.white.opacity(0.14)
     }
 
@@ -128,7 +132,7 @@ enum AppTheme {
     /// over whatever is behind it and follows the system appearance.
     enum Recorder {
         /// Agent mode is violet everywhere in the recorder so it never reads as plain dictation.
-        static let agentAccent = Color(red: 0.55, green: 0.36, blue: 0.96)
+        static let agentAccent = Accent.brand
     }
 
     enum Notch {

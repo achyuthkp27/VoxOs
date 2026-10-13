@@ -25,16 +25,28 @@ enum NotchDesign {
 
     // MARK: Sizes
 
-    /// Total width of the expanded panel, and the width of the content inside it.
+    /// Total width of the expanded panel. Its content is inset by AgentComposer.panelInset per side.
     static let expandedWidth: CGFloat = 480
-    static let expandedBodyWidth: CGFloat = 440
-    static let expandedMaxHeight: CGFloat = 580
-    /// The listening band is only as tall as the notch itself: it widens, it does not hang down.
-    static let listeningBandMinWidth: CGFloat = 270
-    static let sideSlotWidth: CGFloat = 68
-    static let sideEdgeInset: CGFloat = 14
     /// Gap between the straight side of the band and the first piece of content.
     static let contentInset: CGFloat = 12
+
+    /// Height of the band's top row on a display without a notch: the status bar's thickness.
+    /// The view and the panel both read it here, so the band and its window always agree.
+    @MainActor static var fallbackNotchHeight: CGFloat { NSStatusBar.system.thickness }
+
+    // MARK: Window
+
+    /// The notch panel's window is sized once for the largest band it can hold, plus room for the
+    /// band's shadow, so the band is never clipped while it grows. No state widens the band by more
+    /// than half the expanded width on either side of the notch.
+    static var windowSideExpansion: CGFloat { expandedWidth / 2 }
+    /// Room beside the widest band for its shadow.
+    static var windowSideMargin: CGFloat { activeShadow.radius }
+
+    /// The tallest band is the notch row plus the reply panel at its cap; below it, its shadow.
+    static func windowHeight(notchHeight: CGFloat) -> CGFloat {
+        notchHeight + AgentComposer.panelMaxHeight + activeShadow.radius * 2 + activeShadow.y
+    }
 
     // MARK: Material
 
@@ -81,7 +93,9 @@ enum NotchDesign {
     /// open and a short one to close, so opening feels responsive and closing stays out of the way.
     static let sizeAnimation = Animation.timingCurve(0.45, 0, 0.55, 1, duration: 0.34)
     static let openAnimation = Animation.timingCurve(0.2, 0.8, 0.2, 1, duration: 0.28)
-    static let closeAnimation = Animation.timingCurve(0.45, 0, 0.55, 1, duration: 0.20)
+    static let closeAnimation = Animation.timingCurve(0.45, 0, 0.55, 1, duration: closeDuration)
+    /// How long closeAnimation runs; the recorder waits this long before it orders the window out.
+    static let closeDuration: TimeInterval = 0.20
 
     // MARK: Waveform
 

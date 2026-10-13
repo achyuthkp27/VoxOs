@@ -55,7 +55,7 @@ class RecorderUIManager: ObservableObject, RecorderPanelPresenting {
             if isRecorderPanelVisible {
                 showRecorderPanel()
             } else {
-                hideRecorderPanel()
+                hideRecorderPanelAfterCollapse()
             }
         }
     }
@@ -64,6 +64,8 @@ class RecorderUIManager: ObservableObject, RecorderPanelPresenting {
     private var miniWindowManager: MiniWindowManager?
     private var idleTabManager: NotchIdleTabManager?
     private var panelInvalidationTask: Task<Void, Never>?
+    /// A hide waiting for the band's close animation to finish. A show cancels it.
+    private var pendingHideTask: Task<Void, Never>?
     private var didSetupNotifications = false
     private var lifecycleCancellable: AnyCancellable?
 
@@ -89,6 +91,10 @@ class RecorderUIManager: ObservableObject, RecorderPanelPresenting {
     // MARK: - Recorder Panel Management
 
     private func showRecorderPanel() {
+        // A dismissal still waiting for its close animation must not order out the panel this
+        // show brings back, and the new recording must not wait for it either.
+        pendingHideTask?.cancel()
+        pendingHideTask = nil
         guard let engine = engine, let recorder = recorder else { return }
 
         let shown: Bool
@@ -157,14 +163,29 @@ class RecorderUIManager: ObservableObject, RecorderPanelPresenting {
     }
 
     private func hideRecorderPanel() {
-        // `dismissRecorderPanel()` calls this directly and then clears the flag, which calls it
-        // again, so this deliberately stays at debug level.
+        pendingHideTask?.cancel()
+        pendingHideTask = nil
+        // `dismissRecorderPanel()` and the flag's observer can both get here for one dismissal,
+        // so this deliberately stays at debug level.
         logger.debug("Hiding recorder panel style=\(self.recorderPanelStyle.rawValue, privacy: .public)")
         switch recorderPanelStyle {
         case .notch:
             notchWindowManager?.hide()
         case .mini:
             miniWindowManager?.hide()
+        }
+    }
+
+    /// Orders the panel out only after the band has had time to play its close animation. The
+    /// collapsed state comes from the engine and the assistant session, which the caller has
+    /// already reset; ordering out at once cut the animation off every time.
+    private func hideRecorderPanelAfterCollapse() {
+        pendingHideTask?.cancel()
+        pendingHideTask = Task { @MainActor [weak self] in
+            try? await Task.sleep(for: .seconds(NotchDesign.closeDuration))
+            guard !Task.isCancelled, let self, !self.isRecorderPanelVisible else { return }
+            self.pendingHideTask = nil
+            self.hideRecorderPanel()
         }
     }
 
@@ -257,9 +278,11 @@ class RecorderUIManager: ObservableObject, RecorderPanelPresenting {
     func dismissRecorderPanel() async {
         guard let engine = engine else { return }
 
-        hideRecorderPanel()
-        isRecorderPanelVisible = false
+        // Reset first so the band collapses while its window is still on screen, then let the
+        // close animation play before the window goes (see hideRecorderPanelAfterCollapse).
         engine.assistantSession.reset()
+        isRecorderPanelVisible = false
+        hideRecorderPanelAfterCollapse()
     }
 
     func resetOnLaunch() async {

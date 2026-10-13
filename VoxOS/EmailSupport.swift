@@ -24,7 +24,7 @@ struct EmailSupport {
 
 
             ## 📋 COMMON ISSUES:
-            Check out our Common Issues page before sending an email: https://tryvoiceink.com/common-issues
+            Check out our Common Issues page before sending an email: https://github.com/achyuthkp27/VoxOs/issues
             ------------------------
 
             System Information:

@@ -58,6 +58,7 @@ class NotificationManager {
         panel.backgroundColor = NSColor.clear
         panel.hasShadow = false
         panel.isMovableByWindowBackground = false
+        panel.collectionBehavior = [.canJoinAllSpaces, .fullScreenAuxiliary, .transient]
 
         positionWindow(panel)
         panel.alphaValue = 0

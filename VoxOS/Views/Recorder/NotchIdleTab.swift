@@ -65,6 +65,7 @@ struct NotchIdleTabView: View {
     let onTap: () -> Void
     @ObservedObject private var modeManager = ModeManager.shared
     @State private var hovered = false
+    @Environment(\.accessibilityReduceMotion) private var reduceMotion
 
     private var geometry: NotchIdleTab.Geometry { NotchIdleTab.geometry(hovered: hovered, notchWidth: notchWidth) }
     private var shape: NotchShape { NotchShape(hovered ? NotchDesign.listening : NotchIdleTab.restRadii) }
@@ -99,12 +100,17 @@ struct NotchIdleTabView: View {
         .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .top)
         .contentShape(Rectangle())
         .environment(\.colorScheme, .dark)
-        .animation(hovered ? NotchDesign.openAnimation : NotchDesign.closeAnimation, value: hovered)
+        .animation(
+            reduceMotion ? nil : (hovered ? NotchDesign.openAnimation : NotchDesign.closeAnimation), value: hovered
+        )
         .onHover { inside in
             hovered = inside
             onHoverChange(inside)
         }
         .onTapGesture(perform: onTap)
+        .accessibilityElement(children: .ignore)
+        .accessibilityLabel(Text("Start recording"))
+        .accessibilityAddTraits(.isButton)
     }
 }
 
@@ -184,19 +190,27 @@ final class NotchIdleTabManager {
 
     private func refresh() {
         guard let uiManager else { return }
-        let screen = self.screen ?? RecorderScreenResolver.resolve()
+        let screen = self.screen ?? Self.notchedScreen()
         let hasNotch = (screen?.safeAreaInsets.top ?? 0) > 0
         let show = NotchIdleTab.shouldShow(
             enabled: NotchIdleTab.isEnabled, style: uiManager.recorderPanelStyle, hasNotch: hasNotch,
             recorderPanelVisible: uiManager.isRecorderPanelVisible)
         guard show, let screen else {
-            panel?.orderOut(nil)
+            // Hidden while hovered, which is what a click on the tab does: the panel never sees
+            // the pointer leave, so it is rebuilt next time instead of coming back expanded.
+            if hovered { destroyPanel() } else { panel?.orderOut(nil) }
             return
         }
         if panel == nil { buildPanel(on: screen) }
         guard let panel else { return }
         if !hovered { panel.setFrame(frame(hovered: false, on: screen), display: true) }
         panel.orderFrontRegardless()
+    }
+
+    /// The tab hangs from a physical notch, so it belongs on the screen that has one, not on
+    /// whichever screen holds the key window. Without a notched screen it falls back to the main one.
+    private static func notchedScreen() -> NSScreen? {
+        NSScreen.screens.first { $0.safeAreaInsets.top > 0 } ?? RecorderScreenResolver.resolve()
     }
 
     private func buildPanel(on screen: NSScreen) {

@@ -9,8 +9,10 @@ class MiniWindowManager {
     private var panel: MiniRecorderPanel?
     private var outsideClickMonitor: Any?
     private var followUpFocusCancellable: AnyCancellable?
+    /// The pill's size as last laid out by the view. Zero until the view has reported it.
+    private var pillSize: CGSize = .zero
 
-    private let makeView: () -> AnyView
+    private let makeView: (@escaping (CGSize) -> Void) -> AnyView
     private let onCloseTapped: () -> Void
     private weak var assistantSession: AssistantSession?
     private let logger = Logger(subsystem: "com.achyuthkp.voxos", category: "MiniWindowManager")
@@ -25,7 +27,7 @@ class MiniWindowManager {
     ) {
         self.onCloseTapped = onCloseTapped
         self.assistantSession = assistantSession
-        self.makeView = {
+        self.makeView = { onPillSizeChange in
             AnyView(
                 MiniRecorderView(
                     stateProvider: engine,
@@ -33,7 +35,8 @@ class MiniWindowManager {
                     assistantSession: assistantSession,
                     onRecordButtonTapped: onRecordButtonTapped,
                     onCloseTapped: onCloseTapped,
-                    onAssistantFollowUp: onAssistantFollowUp
+                    onAssistantFollowUp: onAssistantFollowUp,
+                    onPillSizeChange: onPillSizeChange
                 )
             )
         }
@@ -102,11 +105,26 @@ class MiniWindowManager {
                 !assistantSession.isBusy
             else { return }
             let clickLocation = NSEvent.mouseLocation
-            guard !panel.frame.contains(clickLocation) else { return }
+            // The window is far larger than the pill and transparent around it, so a click
+            // there reaches the app behind. Only the pill itself counts as inside.
+            let hitRect =
+                self.pillSize == .zero
+                ? panel.frame
+                : Self.pillRect(size: self.pillSize, in: panel.frame).insetBy(
+                    dx: -Self.outsideClickTolerance, dy: -Self.outsideClickTolerance)
+            guard !hitRect.contains(clickLocation) else { return }
             Task { @MainActor in
                 self.onCloseTapped()
             }
         }
+    }
+
+    /// A click this close to the pill's edge still counts as a click on the pill.
+    static let outsideClickTolerance: CGFloat = 6
+
+    /// The pill sits at the bottom of the window, centred on it (see MiniRecorderView.body).
+    static func pillRect(size: CGSize, in panelFrame: NSRect) -> NSRect {
+        NSRect(x: panelFrame.midX - size.width / 2, y: panelFrame.minY, width: size.width, height: size.height)
     }
 
     private func removeOutsideClickMonitor() {
@@ -126,7 +144,10 @@ class MiniWindowManager {
             return
         }
         let newPanel = MiniRecorderPanel(contentRect: metrics)
-        let view = makeView()
+        pillSize = .zero
+        let view = makeView { [weak self] size in
+            self?.pillSize = size
+        }
         let hostingController = NSHostingController(rootView: view)
         newPanel.contentView = hostingController.view
         panel = newPanel

@@ -9,8 +9,10 @@ class NotchWindowManager {
     private var panel: NotchRecorderPanel?
     private var outsideClickMonitor: Any?
     private var followUpFocusCancellable: AnyCancellable?
+    /// The band's size as last laid out by the view. Zero until the view has reported it.
+    private var pillSize: CGSize = .zero
 
-    private let makeView: () -> AnyView
+    private let makeView: ((width: CGFloat, height: CGFloat)?, @escaping (CGSize) -> Void) -> AnyView
     private let onCloseTapped: () -> Void
     private weak var assistantSession: AssistantSession?
     private let logger = Logger(subsystem: "com.achyuthkp.voxos", category: "NotchWindowManager")
@@ -25,7 +27,7 @@ class NotchWindowManager {
     ) {
         self.onCloseTapped = onCloseTapped
         self.assistantSession = assistantSession
-        self.makeView = {
+        self.makeView = { metrics, onPillSizeChange in
             AnyView(
                 NotchRecorderView(
                     stateProvider: engine,
@@ -33,7 +35,9 @@ class NotchWindowManager {
                     assistantSession: assistantSession,
                     onRecordButtonTapped: onRecordButtonTapped,
                     onCloseTapped: onCloseTapped,
-                    onAssistantFollowUp: onAssistantFollowUp
+                    onAssistantFollowUp: onAssistantFollowUp,
+                    notchMetricsOverride: metrics,
+                    onPillSizeChange: onPillSizeChange
                 )
             )
         }
@@ -81,8 +85,23 @@ class NotchWindowManager {
 
     /// Tears the window down rather than just ordering it out, so `isVisible` is never used as a
     /// liveness test and no panel is carried across dictations.
+    /// Long enough for the band's close animation (NotchDesign.closeAnimation) to finish.
+    static let closeGrace: TimeInterval = 0.25
+
+    /// The window is released from this manager at once, so a show() that follows builds a fresh
+    /// one, but the old window stays on screen for a moment so the collapse can animate; tearing
+    /// it down immediately cut the animation off every time.
     func hide() {
-        deinitializeWindow()
+        followUpFocusCancellable?.cancel()
+        followUpFocusCancellable = nil
+        removeOutsideClickMonitor()
+        guard let dying = panel, let controller = windowController else { return }
+        panel = nil
+        windowController = nil
+        DispatchQueue.main.asyncAfter(deadline: .now() + Self.closeGrace) {
+            dying.orderOut(nil)
+            controller.close()
+        }
     }
 
     func destroyWindow() {
@@ -104,11 +123,28 @@ class NotchWindowManager {
                 !assistantSession.isBusy
             else { return }
             let clickLocation = NSEvent.mouseLocation
-            guard !panel.frame.contains(clickLocation) else { return }
+            // The window is far larger than the band and transparent around it, so a click
+            // there reaches the app behind. Only the band itself counts as inside.
+            let hitRect =
+                self.pillSize == .zero
+                ? panel.frame
+                : Self.pillRect(size: self.pillSize, in: panel.frame).insetBy(
+                    dx: -Self.outsideClickTolerance, dy: -Self.outsideClickTolerance)
+            guard !hitRect.contains(clickLocation) else { return }
             Task { @MainActor in
                 self.onCloseTapped()
             }
         }
+    }
+
+    /// A click this close to the band's edge still counts as a click on the band.
+    static let outsideClickTolerance: CGFloat = 6
+
+    /// The band hangs from the top of the window, centred on it (see NotchRecorderView.body).
+    static func pillRect(size: CGSize, in panelFrame: NSRect) -> NSRect {
+        NSRect(
+            x: panelFrame.midX - size.width / 2, y: panelFrame.maxY - size.height, width: size.width,
+            height: size.height)
     }
 
     private func removeOutsideClickMonitor() {
@@ -128,7 +164,10 @@ class NotchWindowManager {
             return
         }
         let newPanel = NotchRecorderPanel(contentRect: metrics.frame)
-        let view = makeView()
+        pillSize = .zero
+        let view = makeView((width: metrics.notchWidth, height: metrics.notchHeight)) { [weak self] size in
+            self?.pillSize = size
+        }
         let hostingController = NotchRecorderHostingController(rootView: view)
         newPanel.contentView = hostingController.view
         panel = newPanel

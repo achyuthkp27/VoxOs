@@ -46,7 +46,7 @@ class NotchRecorderPanel: KeyablePanel {
         guard let screen = RecorderScreenResolver.resolve() else { return nil }
 
         let safeAreaInsets = screen.safeAreaInsets
-        let notchHeight: CGFloat = safeAreaInsets.top > 0 ? safeAreaInsets.top : NSStatusBar.system.thickness
+        let notchHeight: CGFloat = safeAreaInsets.top > 0 ? safeAreaInsets.top : NotchDesign.fallbackNotchHeight
 
         let notchWidth: CGFloat = {
             if let left = screen.auxiliaryTopLeftArea?.width,
@@ -57,11 +57,10 @@ class NotchRecorderPanel: KeyablePanel {
             return 180
         }()
 
-        let maxSideExpansion: CGFloat = 240
-        let sideMargin: CGFloat = 10
-        let totalWidth = notchWidth + (maxSideExpansion + sideMargin) * 2
+        // Sized for the largest band plus its shadow (see NotchDesign's window tokens).
+        let totalWidth = notchWidth + (NotchDesign.windowSideExpansion + NotchDesign.windowSideMargin) * 2
 
-        let maxContentHeight: CGFloat = 430
+        let maxContentHeight = NotchDesign.windowHeight(notchHeight: notchHeight)
         let xPosition = screen.frame.midX - (totalWidth / 2)
         let yPosition = screen.frame.maxY - maxContentHeight
 
