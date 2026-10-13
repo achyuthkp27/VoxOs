@@ -103,6 +103,17 @@ final class MainThreadWatchdog {
         }
     }
 
+    /// An event worth a line of its own even when the main thread is fine: the keyboard tap
+    /// being disabled is the symptom the user feels as "typing froze", and the trail only
+    /// reaches the log when a stall happens to dump it. Written off the caller's thread, since
+    /// the caller may be the tap thread and a disk write there is itself a keyboard stall.
+    func note(_ text: String) {
+        ActivityTrail.mark(text)
+        noteQueue.async { [self] in write("note: \(text)") }
+    }
+
+    private let noteQueue = DispatchQueue(label: "com.achyuthkp.voxos.watchdog.notes", qos: .utility)
+
     private func write(_ text: String) {
         let formatter = DateFormatter()
         formatter.dateFormat = "yyyy-MM-dd HH:mm:ss"

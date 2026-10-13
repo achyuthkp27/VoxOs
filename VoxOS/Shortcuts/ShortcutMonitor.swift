@@ -504,7 +504,8 @@ final class ShortcutMonitor {
     /// for as long as the app runs. Re-arm a few times, then give up and tear the tap down. A
     /// dead shortcut is recoverable; a dead keyboard is not.
     private func handleTapDisabled(_ type: CGEventType) {
-        ActivityTrail.mark("EVENT TAP DISABLED by \(type == .tapDisabledByTimeout ? "timeout" : "user input")")
+        MainThreadWatchdog.shared.note(
+            "EVENT TAP DISABLED by \(type == .tapDisabledByTimeout ? "timeout" : "user input")")
         releasePressedShortcutsAfterTapInterruption()
 
         // Runs on the tap thread, so never block on the lock. If main holds it right now, hand
@@ -546,6 +547,7 @@ final class ShortcutMonitor {
     private func applyTapDisableDecision(type: CGEventType, tapToReenable: CFMachPort?, hasExceededBudget: Bool) {
         guard !hasExceededBudget else {
             logger.error("Shortcut event tap keeps being disabled; rebuilding it on a backoff instead of re-arming")
+            MainThreadWatchdog.shared.note("EVENT TAP re-arm budget exceeded; tearing down and rebuilding on backoff")
             DispatchQueue.main.async { [weak self] in
                 guard let self else { return }
                 self.teardownTap()
