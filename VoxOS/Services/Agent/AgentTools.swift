@@ -427,6 +427,21 @@ enum AgentTools {
         case "notes_read":
             return await MainActor.run { AgentNotes.read(title: s("title")) }
 
+        case "reveal_in_finder":
+            return await MainActor.run { AgentFiles.reveal(path: s("path")) }
+
+        case "weather_now":
+            return await AgentWeather.current()
+
+        case "day_summary":
+            return await MainActor.run { AgentDaySummary.today() }
+
+        case "coding_sessions":
+            return AgentCodingSessions.listTool()
+
+        case "resume_coding_session":
+            return await MainActor.run { AgentCodingSessions.resume(id: s("id")) }
+
         default:
             return ["error": "unknown tool: \(name)", "hint": "reply with a plain-text answer if no tool fits"]
         }

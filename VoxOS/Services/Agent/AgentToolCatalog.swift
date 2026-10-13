@@ -14,7 +14,7 @@ enum AgentToolCatalog {
         Apps: frontmost_app {} · list_apps {} · activate_app {"name"} (open_app launches) · list_windows {} · set_window_bounds {"app","x","y","width","height"}
         System: - run_shell {"command": str} (zsh, 30s; risky blocked unless allowed) · - run_applescript {"script": str} · - read_file {"path": str} · read_pdf {"path"} · move_file {"from","to"} (no delete) · read_clipboard {}
         Browser: browser_snapshot {} · browser_click_text {"text"} · browser_run_js {"js"} · list_browser_tabs {} · switch_browser_tab {"index"} · - fetch_url {"url": str} (read a page without the browser) · web_results {"query"} (web_search opens the browser)
-        Find: search_everywhere {"query"} -> Finder + connected MCP sources; use when the user doesn't say where · mcp_servers {}
+        Find: search_everywhere {"query"} -> Finder + connected MCP sources; use when the user doesn't say where · mcp_servers {} · reveal_in_finder {"path"}
         Apps by link: obsidian_note {"name","content"?,"vault"?,"append"?} · open_in_editor {"path","editor": "vscode"|"cursor"?,"line"?} · maps_search {"query"} · maps_directions {"to","from"?,"mode"?} · telegram_send {"to"?,"text"} (user presses Send) · ask_assistant {"prompt","assistant": "chatgpt"|"claude"?} (opens a new chat with it asked) · messenger_open {"to": username,"text"?} (text goes to the clipboard)
         Sending: mail_compose, gmail_compose, slack_send take "send": true only when the user said send; that returns confirm_required — say what goes to whom and stop. Next request: confirm → confirm_action {}, declined → cancel_action {}. Otherwise leave a draft.
         Macros: macro_record_start {"name"} · macro_record_stop {} · - macro_run {"name": str} · macro_list {} · macro_delete {"name"}
@@ -50,6 +50,27 @@ enum AgentToolCatalog {
             "notes",
             ["note", "notes"],
             "Notes: notes_search {\"query\",\"limit\"?} -> titles + snippets · notes_read {\"title\"} -> full text (notes_create makes one)"
+        ),
+        (
+            "weather",
+            ["weather", "forecast", "rain", "raining", "temperature", "umbrella", "sunny", "snow", "windy", "humid"],
+            "Weather: weather_now {} -> current conditions, feels-like, wind, and today/tomorrow highs, lows and rain chance at the user's location"
+        ),
+        (
+            "day",
+            [
+                "summary of my day", "summarize my day", "summarise my day", "what did i do today", "recap my day",
+                "today's summary", "my day today", "daily summary",
+            ],
+            "Day: day_summary {} -> everything dictated and asked today, with times, for you to sum up"
+        ),
+        (
+            "coding",
+            [
+                "claude code", "coding session", "coding sessions", "resume session", "resume my session", "codex",
+                "last session", "continue coding", "my sessions",
+            ],
+            "Coding: coding_sessions {} -> recent Claude Code sessions (id, project, first prompt, last used) · resume_coding_session {\"id\"} -> opens it in Terminal; Codex is not installed"
         ),
     ]
 
