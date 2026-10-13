@@ -219,6 +219,9 @@ test: check
 		exit $$STATUS; \
 	fi
 	@./scripts/test-summary.sh $(TEST_RESULT_BUNDLE)
+	@# The test host is a second app to macOS. Whatever it registers in Privacy settings while hosting
+	@# tests is cleared here, so it never leaves a stale "VoxOS" row or re-prompts on the next run.
+	@tccutil reset All com.achyuthkp.VoxOS$(TEST_BUNDLE_ID_SUFFIX) >/dev/null 2>&1 || true
 
 # Formatting, configured by .swift-format. swift-format ships inside the Xcode
 # toolchain rather than on PATH, hence `xcrun`.
