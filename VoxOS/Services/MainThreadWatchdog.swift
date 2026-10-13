@@ -44,8 +44,10 @@ final class MainThreadWatchdog {
 
     let logURL: URL
     private let lock = NSLock()
-    private var lastPong = Date()
-    private var stallStart: Date?
+    /// Measured on the uptime clock, which stops while the Mac sleeps: on the wall clock every
+    /// sleep looked like a minutes-long stall of the whole process (four of them on 13 Oct).
+    private var lastPong = ProcessInfo.processInfo.systemUptime
+    private var stallStart: TimeInterval?
     private var thread: Thread?
 
     init(logURL: URL = MainThreadWatchdog.defaultLogURL) {
@@ -54,7 +56,7 @@ final class MainThreadWatchdog {
 
     func start() {
         guard thread == nil else { return }
-        lastPong = Date()
+        lastPong = ProcessInfo.processInfo.systemUptime
         let thread = Thread { [weak self] in
             while !Thread.current.isCancelled {
                 guard let self else { return }
@@ -77,20 +79,21 @@ final class MainThreadWatchdog {
 
     private func pong() {
         lock.lock()
-        lastPong = Date()
+        lastPong = ProcessInfo.processInfo.systemUptime
         lock.unlock()
     }
 
     private func check() {
+        let now = ProcessInfo.processInfo.systemUptime
         lock.lock()
-        let age = Date().timeIntervalSince(lastPong)
+        let age = now - lastPong
         let stalled = stallStart
         lock.unlock()
 
         if age > Self.threshold {
             guard stalled == nil else { return }
             lock.lock()
-            stallStart = Date()
+            stallStart = now
             lock.unlock()
             write(
                 "main thread stalled (\(Int(age * 1000)) ms and counting); recent activity:\n    "
@@ -99,7 +102,8 @@ final class MainThreadWatchdog {
             lock.lock()
             stallStart = nil
             lock.unlock()
-            write("recovered after \(Int(Date().timeIntervalSince(stalled) * 1000)) ms")
+            // Measured from the detection, not the last pong: `age` at detection is the true start.
+            write("recovered after \(Int((now - stalled) * 1000)) ms since detection")
         }
     }
 
