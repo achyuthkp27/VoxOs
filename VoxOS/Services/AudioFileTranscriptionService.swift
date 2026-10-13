@@ -46,7 +46,8 @@ class AudioTranscriptionService: ObservableObject {
     /// Pass `existing` to update that history row in place; without it a new row is created
     /// from a copy of the audio (the import path).
     func retranscribeAudio(
-        from url: URL, using model: any TranscriptionModel, mode: ModeConfig? = nil, updating existing: Transcription? = nil
+        from url: URL, using model: any TranscriptionModel, mode: ModeConfig? = nil,
+        updating existing: Transcription? = nil
     ) async throws
         -> AudioRetranscriptionResult
     {

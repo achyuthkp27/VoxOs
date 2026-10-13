@@ -719,7 +719,7 @@ class AIEnhancementService: ObservableObject {
         // Never the Agent prompt: that would arm the tool loop for plain dictation modes.
         let fallbackPromptId =
             (allPrompts.first { !AgentToolExecutor.isAgentConversation(systemPrompt: $0.finalPromptText) }
-                ?? allPrompts.first)?.id.uuidString
+            ?? allPrompts.first)?.id.uuidString
         let modeManager = ModeManager.shared
         var updatedConfigurations = modeManager.configurations
         var didUpdateModes = false

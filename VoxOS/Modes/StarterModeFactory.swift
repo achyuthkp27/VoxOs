@@ -27,15 +27,15 @@ enum StarterModeFactory {
             .filter { requestedKinds.contains($0.kind) }
             .map { template in
                 manager.configurations.first { $0.id == template.id }
-                ?? makeConfig(
-                    from: template,
-                    provider: provider,
-                    modelName: modelName,
-                    transcriptionModelName: transcriptionModelName,
-                    isRealtimeTranscriptionEnabled: isRealtimeTranscriptionEnabled,
-                    selectedLanguage: selectedLanguage,
-                    installedApps: availableInstalledApps
-                )
+                    ?? makeConfig(
+                        from: template,
+                        provider: provider,
+                        modelName: modelName,
+                        transcriptionModelName: transcriptionModelName,
+                        isRealtimeTranscriptionEnabled: isRealtimeTranscriptionEnabled,
+                        selectedLanguage: selectedLanguage,
+                        installedApps: availableInstalledApps
+                    )
             }
 
         let nonStarterConfigs = manager.configurations
