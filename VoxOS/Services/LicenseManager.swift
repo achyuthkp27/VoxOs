@@ -139,11 +139,9 @@ final class LicenseManager: LicenseStoring {
         case .value(let value):
             trialStartDate = value
         case .notFound:
-            let startDate = Date()
-            guard storeTrialStartDate(startDate) else {
-                return .unavailable(errSecIO)
-            }
-            trialStartDate = startDate
+            // Reading is read-only: the trial clock starts only via `startTrialIfNeeded`,
+            // not as a side effect of the first Keychain read.
+            trialStartDate = nil
         case .unavailable(let status):
             return .unavailable(status)
         }

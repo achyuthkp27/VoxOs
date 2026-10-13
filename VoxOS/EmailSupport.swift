@@ -2,10 +2,16 @@ import AppKit
 import Foundation
 import SwiftUI
 
+/// Support requests go to the project's GitHub issues, prefilled with the template and system
+/// information. They used to be mailed to the upstream project's support address, which is a
+/// third party that does not handle VoxOS.
 @MainActor
 struct EmailSupport {
-    private static let supportEmailAddress = "support@tryvoiceink.com"
+    private static let newIssueURL = "https://github.com/achyuthkp27/VoxOs/issues/new"
     private static let supportEmailSubject = "VoxOS Support Request"
+    /// GitHub rejects very long URLs, so a body beyond this is cut; the full system information
+    /// is on the clipboard as well.
+    private static let maximumBodyLength = 6_000
 
     static func generateSupportEmailBody() -> String {
         let systemInfo = SystemInfoService.shared.getSystemInfoString()
@@ -24,7 +30,7 @@ struct EmailSupport {
 
 
             ## 📋 COMMON ISSUES:
-            Check out our Common Issues page before sending an email: https://github.com/achyuthkp27/VoxOs/issues
+            Check out our Common Issues page before opening a new issue: https://github.com/achyuthkp27/VoxOs/issues
             ------------------------
 
             System Information:
@@ -34,25 +40,25 @@ struct EmailSupport {
             """
     }
 
-    static func generateSupportEmailURL() -> URL? {
-        let encodedSubject = supportEmailSubject.addingPercentEncoding(withAllowedCharacters: .urlQueryAllowed) ?? ""
-        return URL(string: "mailto:\(supportEmailAddress)?subject=\(encodedSubject)")
+    /// A new-issue URL with the title and body prefilled.
+    static func generateSupportEmailURL(body: String = "") -> URL? {
+        var components = URLComponents(string: newIssueURL)
+        components?.queryItems = [
+            URLQueryItem(name: "title", value: supportEmailSubject),
+            URLQueryItem(name: "body", value: String(body.prefix(maximumBodyLength))),
+        ]
+        // URLComponents leaves "+" as is, and form decoding on the server would read it as a space.
+        let encodedQuery = components?.percentEncodedQuery?.replacingOccurrences(of: "+", with: "%2B")
+        components?.percentEncodedQuery = encodedQuery
+        return components?.url
     }
 
     static func openSupportEmail() {
-        let body = generateSupportEmailBody()
-
-        if let sharingService = NSSharingService(named: .composeEmail) {
-            sharingService.recipients = [supportEmailAddress]
-            sharingService.subject = supportEmailSubject
-            sharingService.perform(withItems: [body])
-            return
-        }
-
+        // Also on the clipboard, in case the browser or GitHub drops part of a long prefilled body.
         SystemInfoService.shared.copySystemInfoToClipboard()
 
-        if let emailURL = generateSupportEmailURL() {
-            NSWorkspace.shared.open(emailURL)
+        if let issueURL = generateSupportEmailURL(body: generateSupportEmailBody()) {
+            NSWorkspace.shared.open(issueURL)
         }
     }
 }

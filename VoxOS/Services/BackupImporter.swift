@@ -44,9 +44,12 @@ enum BackupImporter {
 
         if categories.contains(.prompts) {
             if let customPrompts = backup.customPrompts {
-                enhancementService.customPrompts = customPrompts
+                let merge = merging(enhancementService.customPrompts, with: customPrompts)
+                enhancementService.customPrompts = merge.merged
                 shouldRepairModePromptSelections = true
-                logger.info("Successfully imported \(customPrompts.count) prompts.")
+                logger.info(
+                    "Imported \(merge.added.count) new prompts; \(customPrompts.count - merge.added.count) already present."
+                )
             } else {
                 logger.info("No custom prompts found in the imported file. Existing prompts remain unchanged.")
             }
@@ -55,12 +58,11 @@ enum BackupImporter {
         if categories.contains(.modes) {
             if let modeConfigs = backup.modeConfigs {
                 let modeManager = ModeManager.shared
-                for config in modeManager.configurations {
-                    ShortcutStore.removeShortcutStorage(for: .mode(config.id))
-                }
-
-                modeManager.configurations = modeConfigs
-                let importedModeIds = Set(modeConfigs.map(\.id))
+                // Merge: existing modes (and their shortcuts) are kept, so nothing is replaced and
+                // no shortcut storage needs clearing. Only shortcuts of newly added modes come in.
+                let merge = merging(modeManager.configurations, with: modeConfigs)
+                modeManager.configurations = merge.merged
+                let importedModeIds = Set(merge.added.map(\.id))
 
                 if let shortcuts = backup.modeShortcuts {
                     for (idString, shortcutBackup) in shortcuts {
@@ -81,7 +83,9 @@ enum BackupImporter {
                 AgentModeGuard.ensure(
                     enhancementService: enhancementService, transcriptionModelManager: transcriptionModelManager)
 
-                logger.info("Successfully imported \(modeConfigs.count) Mode configurations.")
+                logger.info(
+                    "Imported \(merge.added.count) new Mode configurations; \(modeConfigs.count - merge.added.count) already present."
+                )
             } else {
                 logger.info("No Mode configurations found in the imported file. Existing Modes remain unchanged.")
             }
@@ -322,10 +326,25 @@ enum BackupImporter {
         }
 
         let customModelManager = CustomCloudModelManager.shared
-        customModelManager.customModels = models.map { $0.makeModel() }
+        // `makeModel()` also stores a bundled API key, so only build the models being added.
+        let existingIds = Set(customModelManager.customModels.map(\.id))
+        let addedModels = models.filter { !existingIds.contains($0.id) }.map { $0.makeModel() }
+        customModelManager.customModels.append(contentsOf: addedModels)
         customModelManager.saveCustomModels()
         transcriptionModelManager.refreshAllAvailableModels()
-        logger.info("Successfully imported \(models.count) custom model definitions.")
+        logger.info(
+            "Imported \(addedModels.count) new custom model definitions; \(models.count - addedModels.count) already present."
+        )
+    }
+
+    /// Keeps every existing item and appends the imported ones whose id is not already present
+    /// (first occurrence wins within the import too). Order: existing first, then new imports.
+    static func merging<Item: Identifiable>(
+        _ existing: [Item], with imported: [Item]
+    ) -> (merged: [Item], added: [Item]) {
+        var seenIds = Set(existing.map(\.id))
+        let added = imported.filter { seenIds.insert($0.id).inserted }
+        return (existing + added, added)
     }
 
     private static func tokens(from text: String) -> [String] {

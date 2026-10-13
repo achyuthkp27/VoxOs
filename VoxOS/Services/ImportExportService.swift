@@ -281,7 +281,9 @@ class ImportExportService {
             let backup = try decoder.decode(BackupFile.self, from: jsonData)
 
             if backup.version != currentSettingsVersion {
-                showAlert(
+                // Synchronous on purpose: `showAlert` dispatches async, which would open this
+                // modal on top of the selection dialog that runs next.
+                showAlertNow(
                     title: String(localized: "Version Mismatch"),
                     message: String(
                         format: String(
@@ -369,13 +371,18 @@ class ImportExportService {
 
     private func showAlert(title: String, message: String) {
         DispatchQueue.main.async {
-            let alert = NSAlert()
-            alert.messageText = title
-            alert.informativeText = message
-            alert.alertStyle = .informational
-            alert.addButton(withTitle: String(localized: "OK"))
-            alert.runModal()
+            self.showAlertNow(title: title, message: message)
         }
+    }
+
+    /// Runs the alert modally right now; callers must be on the main thread.
+    private func showAlertNow(title: String, message: String) {
+        let alert = NSAlert()
+        alert.messageText = title
+        alert.informativeText = message
+        alert.alertStyle = .informational
+        alert.addButton(withTitle: String(localized: "OK"))
+        alert.runModal()
     }
 
     private func showImportSuccessAlert(message: String, needsAPIKeyReminder: Bool) {

@@ -29,6 +29,8 @@ enum AppDefaults {
             DefaultsKeys.isSystemMuteEnabled: true,
             DefaultsKeys.audioResumptionDelay: 0.0,
             DefaultsKeys.isPauseMediaEnabled: false,
+            // Empty means no choice recorded yet; Settings then falls back to the last custom device.
+            AudioDeviceManager.singleMicrophoneSourceKey: "",
             CustomSoundManager.SoundType.start.builtInSoundKey: CustomSoundManager.SoundType.start.defaultBuiltInSound
                 .rawValue,
             CustomSoundManager.SoundType.stop.builtInSoundKey: CustomSoundManager.SoundType.stop.defaultBuiltInSound

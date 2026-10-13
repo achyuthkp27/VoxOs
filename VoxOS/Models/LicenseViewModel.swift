@@ -166,10 +166,8 @@ final class LicenseViewModel: ObservableObject {
     var usageRestrictionMessage: String? {
         switch licenseState {
         case .unlicensed, .trialExpired:
-            return String(
-                format: String(localized: "Your trial has ended. Upgrade to VoxOS Pro at %@"),
-                "tryvoiceink.com/buy"
-            )
+            // No purchase link: the old one pointed at the upstream project's store.
+            return String(localized: "Your trial has ended. Upgrade to VoxOS Pro.")
         case .trial, .licensed:
             return nil
         }
@@ -298,7 +296,7 @@ final class LicenseViewModel: ObservableObject {
             logger.error("🔑 Unexpected license error: \(error, privacy: .public)")
             validationMessage = String(
                 format: String(localized: "An unexpected error occurred. Please try again or contact support at %@"),
-                "support@tryvoiceink.com"
+                "https://github.com/achyuthkp27/VoxOs/issues"
             )
         }
     }

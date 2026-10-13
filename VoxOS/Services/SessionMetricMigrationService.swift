@@ -18,8 +18,20 @@ final class SessionMetricMigrationService {
 
     private init() {}
 
+    /// Rows written before `transcriptionStatus` existed have a nil status; they were only ever
+    /// saved once transcription finished, so nil counts as completed here (as the Dashboard does).
+    nonisolated private static let completedStatus = TranscriptionStatus.completed.rawValue
+
+    /// `isPersistentStore` is false when the app fell back to the in-memory container: there is
+    /// nothing to migrate there, and marking the one-shot done would skip the real store later.
     @discardableResult
-    func runStatsMigrationIfNeeded(modelContainer: ModelContainer) -> Task<Void, Never>? {
+    func runStatsMigrationIfNeeded(modelContainer: ModelContainer, isPersistentStore: Bool = true) -> Task<
+        Void, Never
+    >? {
+        guard isPersistentStore else {
+            logger.notice("Skipping stats migration: running on the in-memory fallback store")
+            return nil
+        }
         guard !UserDefaults.standard.bool(forKey: completionKey), !isStatsMigrationRunning else { return nil }
         isStatsMigrationRunning = true
 
@@ -36,8 +48,11 @@ final class SessionMetricMigrationService {
                         .map { $0.transcriptionId }
                 )
 
+                let completedStatus = Self.completedStatus
                 let descriptor = FetchDescriptor<Transcription>(
-                    predicate: #Predicate<Transcription> { $0.transcriptionStatus == "completed" }
+                    predicate: #Predicate<Transcription> {
+                        $0.transcriptionStatus == nil || $0.transcriptionStatus == completedStatus
+                    }
                 )
                 let transcriptions = try backgroundContext.fetch(descriptor)
 
@@ -68,7 +83,13 @@ final class SessionMetricMigrationService {
     }
 
     @discardableResult
-    func runEnhancementTokenBackfillIfNeeded(modelContainer: ModelContainer) -> Task<Void, Never>? {
+    func runEnhancementTokenBackfillIfNeeded(modelContainer: ModelContainer, isPersistentStore: Bool = true) -> Task<
+        Void, Never
+    >? {
+        guard isPersistentStore else {
+            logger.notice("Skipping enhancement token backfill: running on the in-memory fallback store")
+            return nil
+        }
         guard !UserDefaults.standard.bool(forKey: tokenBackfillCompletionKey), !isTokenBackfillRunning else {
             return nil
         }
@@ -166,9 +187,12 @@ final class SessionMetricMigrationService {
         for transcriptionId: UUID,
         in context: ModelContext
     ) throws -> Transcription? {
+        let completedStatus = Self.completedStatus
         var descriptor = FetchDescriptor<Transcription>(
             predicate: #Predicate<Transcription> { transcription in
-                transcription.id == transcriptionId && transcription.transcriptionStatus == "completed"
+                transcription.id == transcriptionId
+                    && (transcription.transcriptionStatus == nil
+                        || transcription.transcriptionStatus == completedStatus)
             }
         )
         descriptor.fetchLimit = 1

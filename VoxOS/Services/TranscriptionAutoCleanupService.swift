@@ -100,9 +100,13 @@ class TranscriptionAutoCleanupService {
         do {
             let backgroundContext = ModelContext(modelContainer)
 
+            // A `pending` row is still being transcribed on another context; deleting it from here
+            // would race the pipeline. Completed, failed and canceled rows (and legacy rows with no
+            // status) are final and may go.
+            let pendingStatus = TranscriptionStatus.pending.rawValue
             let descriptor = FetchDescriptor<Transcription>(
                 predicate: #Predicate<Transcription> { transcription in
-                    transcription.timestamp < cutoffDate
+                    transcription.timestamp < cutoffDate && transcription.transcriptionStatus != pendingStatus
                 }
             )
             let items = try backgroundContext.fetch(descriptor)

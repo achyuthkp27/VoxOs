@@ -1,10 +1,28 @@
 import Combine
 import Foundation
+import OSLog
 import Sparkle
 import SwiftUI
 
 @MainActor
 final class UpdaterViewModel: NSObject, ObservableObject, SPUUpdaterDelegate {
+    /// Sparkle needs both keys to work. Without them `startUpdater()` fails and the standard
+    /// controller puts up its error modal right after launch, and "Check for Updates…" can
+    /// only ever error. So the updater is left unstarted (menu item disabled) until a build
+    /// ships with the keys in its Info.plist.
+    nonisolated static func isConfigured(in bundle: Bundle = .main) -> Bool {
+        hasFeedConfiguration(
+            feedURL: bundle.object(forInfoDictionaryKey: "SUFeedURL") as? String,
+            publicKey: bundle.object(forInfoDictionaryKey: "SUPublicEDKey") as? String
+        )
+    }
+
+    nonisolated static func hasFeedConfiguration(feedURL: String?, publicKey: String?) -> Bool {
+        guard let feedURL, let publicKey else { return false }
+        let trimmedKey = publicKey.trimmingCharacters(in: .whitespacesAndNewlines)
+        return !trimmedKey.isEmpty && URL(string: feedURL)?.scheme != nil
+    }
+
     struct AvailableUpdate: Equatable {
         let versionIdentifier: String
         let displayVersion: String
@@ -17,6 +35,8 @@ final class UpdaterViewModel: NSObject, ObservableObject, SPUUpdaterDelegate {
     }
 
     private let defaults: UserDefaults
+    private let logger = Logger(subsystem: "com.achyuthkp.voxos", category: "Updater")
+    private let isUpdaterConfigured: Bool
     private var isUserInitiatedUpdateCheck = false
     private lazy var updaterController = SPUStandardUpdaterController(
         startingUpdater: false,
@@ -32,7 +52,13 @@ final class UpdaterViewModel: NSObject, ObservableObject, SPUUpdaterDelegate {
         let defaults = UserDefaults.standard
         self.defaults = defaults
         checksForUpdatesWhenDashboardAppears = Self.initialAutomaticCheckPreference(in: defaults)
+        isUpdaterConfigured = Self.isConfigured()
         super.init()
+
+        guard isUpdaterConfigured else {
+            logger.notice("Sparkle is not configured (SUFeedURL/SUPublicEDKey missing); update checks are disabled.")
+            return
+        }
 
         let updater = updaterController.updater
 
@@ -61,7 +87,7 @@ final class UpdaterViewModel: NSObject, ObservableObject, SPUUpdaterDelegate {
     }
 
     func checkForUpdatesIfDue() {
-        guard checksForUpdatesWhenDashboardAppears else { return }
+        guard isUpdaterConfigured, checksForUpdatesWhenDashboardAppears else { return }
 
         let updater = updaterController.updater
         guard !updater.sessionInProgress else { return }
@@ -75,7 +101,7 @@ final class UpdaterViewModel: NSObject, ObservableObject, SPUUpdaterDelegate {
     }
 
     func checkForUpdates() {
-        guard canCheckForUpdates else { return }
+        guard isUpdaterConfigured, canCheckForUpdates else { return }
 
         // Any explicit check is interaction with the currently advertised update.
         // Persist it before presenting Sparkle so dismissing or closing the native
@@ -120,6 +146,7 @@ final class UpdaterViewModel: NSObject, ObservableObject, SPUUpdaterDelegate {
     }
 
     private func checkForUpdateInformationIfPossible() {
+        guard isUpdaterConfigured else { return }
         let updater = updaterController.updater
         guard !updater.sessionInProgress else { return }
         updater.checkForUpdateInformation()

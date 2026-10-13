@@ -54,6 +54,8 @@ struct VoxOSApp: App {
             SessionMetric.self,
         ])
         let resolvedContainer: ModelContainer
+        // One-shot migrations must not mark themselves done against the empty fallback store.
+        var isPersistentStore = true
 
         // Attempt 1: Try persistent storage
         do {
@@ -62,6 +64,7 @@ struct VoxOSApp: App {
             // Attempt 2: Try in-memory storage
             do {
                 resolvedContainer = try Self.createInMemoryContainer(schema: schema, logger: logger)
+                isPersistentStore = false
                 logger.warning("Using in-memory storage as fallback. Data will not persist between sessions.")
 
                 DispatchQueue.main.async {
@@ -88,7 +91,13 @@ struct VoxOSApp: App {
         }
 
         container = resolvedContainer
-        DictionaryService.removeExactDuplicateContent(context: resolvedContainer.mainContext, source: "launch")
+        // Session boundaries for "Export Logs" are the launch times, so record this one now
+        // instead of when the exporter is first used.
+        _ = LogExporter.shared
+        // Full-table dictionary scan: keep it off the main thread and out of the launch path.
+        Task.detached(priority: .utility) {
+            DictionaryService.removeExactDuplicateContent(context: ModelContext(resolvedContainer), source: "launch")
+        }
 
         // Initialize services with proper sharing of instances
         let aiService = AIService()
@@ -178,14 +187,14 @@ struct VoxOSApp: App {
         if !ProcessIdentity.isTestHost { MainThreadWatchdog.shared.start() }
 
         let statsMigrationTask = SessionMetricMigrationService.shared.runStatsMigrationIfNeeded(
-            modelContainer: resolvedContainer)
+            modelContainer: resolvedContainer, isPersistentStore: isPersistentStore)
         let mainContext = resolvedContainer.mainContext
         Task { @MainActor in
             await statsMigrationTask?.value
             TranscriptionAutoCleanupService.shared.startMonitoring(modelContext: mainContext)
 
             let tokenBackfillTask = SessionMetricMigrationService.shared.runEnhancementTokenBackfillIfNeeded(
-                modelContainer: resolvedContainer)
+                modelContainer: resolvedContainer, isPersistentStore: isPersistentStore)
             await tokenBackfillTask?.value
         }
     }

@@ -19,6 +19,9 @@ final class LaunchAtLoginManager: ObservableObject {
     private var operationGeneration = 0
     private var pendingEnabledState: Bool?
     private var updateTask: Task<Void, Never>?
+    /// Set by `enableByDefaultIfNeeded`; the one-shot flag is written only once that
+    /// registration has actually been applied, so a failed register is retried next launch.
+    private var shouldMarkDefaultApplied = false
 
     private init() {
         refresh()
@@ -55,19 +58,23 @@ final class LaunchAtLoginManager: ObservableObject {
             return
         }
 
-        let defaults = UserDefaults.standard
-        guard !defaults.bool(forKey: Self.didApplyDefaultKey) else { return }
-        defaults.set(true, forKey: Self.didApplyDefaultKey)
+        guard !UserDefaults.standard.bool(forKey: Self.didApplyDefaultKey) else { return }
 
         logger.info("Registering launch at login for the first run on this machine.")
+        shouldMarkDefaultApplied = true
         setEnabled(true)
     }
 
     /// True only for a copy living in an Applications folder, which is the only place a login
     /// item can point at and still be there next login.
     private static var isInstalledCopy: Bool {
-        let path = Bundle.main.bundleURL.resolvingSymlinksInPath().path
-        return path.hasPrefix("/Applications/") || path.contains("/Applications/")
+        isInstalledPath(Bundle.main.bundleURL.resolvingSymlinksInPath().path, homeDirectory: NSHomeDirectory())
+    }
+
+    /// A prefix test: "/Applications/" or "~/Applications/". A substring test would also accept
+    /// a DerivedData or Downloads path that merely contains an "Applications" folder.
+    nonisolated static func isInstalledPath(_ path: String, homeDirectory: String) -> Bool {
+        path.hasPrefix("/Applications/") || path.hasPrefix(homeDirectory + "/Applications/")
     }
 
     func setEnabled(_ enabled: Bool) {
@@ -108,6 +115,15 @@ final class LaunchAtLoginManager: ObservableObject {
         while let enabled = pendingEnabledState {
             pendingEnabledState = nil
             let result = await Self.updateRegistration(enabled: enabled)
+
+            if shouldMarkDefaultApplied {
+                shouldMarkDefaultApplied = false
+                // A successful register, or the user switching it off before it applied, both
+                // settle the default. Only a failed register leaves it unset so it retries.
+                if !enabled || result.errorDescription == nil {
+                    UserDefaults.standard.set(true, forKey: Self.didApplyDefaultKey)
+                }
+            }
 
             if pendingEnabledState == nil {
                 isEnabled = result.isEnabled

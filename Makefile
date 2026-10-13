@@ -216,12 +216,17 @@ test: check
 	grep -E "[0-9]+: error:|^error:|✘|recorded an issue|Test run|TEST (SUCCEEDED|FAILED)" $(TEST_DERIVED_DATA)/test.log || true; \
 	if [ $$STATUS -ne 0 ] && [ ! -d $(TEST_RESULT_BUNDLE) ]; then \
 		echo "xcodebuild failed before running any test — see $(TEST_DERIVED_DATA)/test.log"; \
+		tccutil reset All com.achyuthkp.VoxOS$(TEST_BUNDLE_ID_SUFFIX) >/dev/null 2>&1 || true; \
 		exit $$STATUS; \
 	fi
-	@./scripts/test-summary.sh $(TEST_RESULT_BUNDLE)
 	@# The test host is a second app to macOS. Whatever it registers in Privacy settings while hosting
 	@# tests is cleared here, so it never leaves a stale "VoxOS" row or re-prompts on the next run.
-	@tccutil reset All com.achyuthkp.VoxOS$(TEST_BUNDLE_ID_SUFFIX) >/dev/null 2>&1 || true
+	@# test-summary.sh exits 1 when a test fails, so the reset runs after it in the same shell and
+	@# the summary's exit code is returned last; a failing run still fails `make test`.
+	@./scripts/test-summary.sh $(TEST_RESULT_BUNDLE); \
+	STATUS=$$?; \
+	tccutil reset All com.achyuthkp.VoxOS$(TEST_BUNDLE_ID_SUFFIX) >/dev/null 2>&1 || true; \
+	exit $$STATUS
 
 # Formatting, configured by .swift-format. swift-format ships inside the Xcode
 # toolchain rather than on PATH, hence `xcrun`.
