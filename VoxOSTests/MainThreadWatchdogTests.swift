@@ -37,6 +37,22 @@ struct MainThreadWatchdogTests {
         #expect(log.contains("main thread stalled"))
         #expect(log.contains("test marker before the stall"), "the trail is in the report")
         #expect(log.contains("recovered after"))
+        #expect(log.contains("main thread stack:"), "the stall names where main was")
+        #expect(
+            log.contains("aBlockedMainThreadIsWrittenToTheLogWithTheTrail"),
+            "the walk reaches the function that blocked main")
+    }
+
+    @Test func symbolsAreDemangledAndUnknownNamesPassThrough() {
+        #expect(MainThreadSampler.demangle("$sSi") == "Swift.Int")
+        #expect(MainThreadSampler.demangle("mach_msg2_trap") == "mach_msg2_trap")
+    }
+
+    @Test func framesNameTheirImage() {
+        let lines = MainThreadSampler.describe([
+            UInt(bitPattern: unsafeBitCast(strlen as @convention(c) (UnsafePointer<CChar>) -> Int, to: Int.self))
+        ])
+        #expect(lines.first?.contains("libsystem") == true)
     }
 
     @Test @MainActor func aResponsiveMainThreadWritesNothing() async throws {

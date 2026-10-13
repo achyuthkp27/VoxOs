@@ -58,6 +58,13 @@ final class MainThreadWatchdog {
     private var lastPong = ProcessInfo.processInfo.systemUptime
     private var stallStart: TimeInterval?
     private var thread: Thread?
+    /// Watchdog thread only. Stacks taken during the current stall, to skip repeats.
+    private var sampler: MainThreadSampler?
+    private var stallSamples = 0
+    private var lastSampleAt: TimeInterval = 0
+    private var lastStackSignature: [UInt] = []
+    static let maxSamplesPerStall = 4
+    static let sampleInterval: TimeInterval = 2
 
     init(logURL: URL = MainThreadWatchdog.defaultLogURL) {
         self.logURL = logURL
@@ -66,6 +73,7 @@ final class MainThreadWatchdog {
     func start() {
         guard thread == nil else { return }
         lastPong = ProcessInfo.processInfo.systemUptime
+        sampler = MainThreadSampler()
         let thread = Thread { [weak self] in
             while !Thread.current.isCancelled {
                 guard let self else { return }
@@ -100,13 +108,21 @@ final class MainThreadWatchdog {
         lock.unlock()
 
         if age > Self.threshold {
-            guard stalled == nil else { return }
+            guard stalled == nil else {
+                sampleIfDue(now: now, age: age)
+                return
+            }
             lock.lock()
             stallStart = now
             lock.unlock()
+            stallSamples = 0
+            lastStackSignature = []
+            // The stack first: by the time the trail is formatted the main thread may have moved on.
+            let stack = takeStack(now: now)
             append(
                 "main thread stalled (\(Int(age * 1000)) ms and counting); recent activity:\n    "
-                    + ActivityTrail.recent().joined(separator: "\n    "))
+                    + ActivityTrail.recent().joined(separator: "\n    ")
+                    + (stack.map { "\n  main thread stack:\n    " + $0.joined(separator: "\n    ") } ?? ""))
         } else if let stalled {
             lock.lock()
             stallStart = nil
@@ -114,6 +130,28 @@ final class MainThreadWatchdog {
             // Measured from the detection, not the last pong: `age` at detection is the true start.
             append("recovered after \(Int((now - stalled) * 1000)) ms since detection")
         }
+    }
+
+    /// A long stall gets further stacks, so a loop shows where it spins and a wait shows what
+    /// it waits on. A stack identical to the previous one is noted, not repeated.
+    private func sampleIfDue(now: TimeInterval, age: TimeInterval) {
+        guard stallSamples < Self.maxSamplesPerStall, now - lastSampleAt >= Self.sampleInterval else { return }
+        guard let stack = takeStack(now: now) else {
+            append("  still stalled at \(Int(age * 1000)) ms, no new stack")
+            return
+        }
+        append("  still stalled at \(Int(age * 1000)) ms; main thread stack:\n    " + stack.joined(separator: "\n    "))
+    }
+
+    /// Nil when sampling failed or the stack has not changed since the last one.
+    private func takeStack(now: TimeInterval) -> [String]? {
+        guard let sampler else { return nil }
+        stallSamples += 1
+        lastSampleAt = now
+        let addresses = sampler.sample()
+        guard !addresses.isEmpty, addresses != lastStackSignature else { return nil }
+        lastStackSignature = addresses
+        return MainThreadSampler.describe(addresses)
     }
 
     /// An event worth a line of its own even when the main thread is fine: the keyboard tap
