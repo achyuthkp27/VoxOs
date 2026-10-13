@@ -115,17 +115,21 @@ struct DashboardPeakHoursCard: View {
 
 /// Hour-of-day labels through the locale's own "j" skeleton, so 24-hour locales never see a
 /// hardcoded "AM"/"PM".
+///
+/// The label is a clock hour, not a moment, so it is formatted in GMT from a fixed reference
+/// day. Building today's date in the current zone gave a skipped hour on a DST change day ("2 AM"
+/// showed as "3 AM" twice), and the static formatter kept whichever zone it was created in.
 private enum DashboardHourLabel {
-    private static let formatter = Formatters.localizedHourFormatter(calendar: .current)
+    private static let formatter: DateFormatter = {
+        var calendar = Calendar.current
+        calendar.timeZone = TimeZone(secondsFromGMT: 0) ?? calendar.timeZone
+        return Formatters.localizedHourFormatter(calendar: calendar)
+    }()
 
     static func string(for hour: Int) -> String {
         let hour = ((hour % 24) + 24) % 24
-        let calendar = Calendar.current
-        let today = calendar.startOfDay(for: Date())
-        guard let date = calendar.date(bySettingHour: hour, minute: 0, second: 0, of: today) else {
-            return "\(hour)"
-        }
-        return formatter.string(from: date)
+        // The reference date is midnight GMT, so this is exactly `hour` o'clock in the formatter's zone.
+        return formatter.string(from: Date(timeIntervalSinceReferenceDate: TimeInterval(hour) * 3600))
     }
 }
 

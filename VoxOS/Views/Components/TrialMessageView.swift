@@ -39,16 +39,7 @@ struct TrialMessageView: View {
                         .font(.app(size: 13, weight: .medium))
                 }
                 .buttonStyle(.bordered)
-
-                Button(action: {
-                    if let url = URL(string: "https://tryvoiceink.com/buy") {
-                        NSWorkspace.shared.open(url)
-                    }
-                }) {
-                    Text("Buy License")
-                        .font(.app(size: 13, weight: .medium))
-                }
-                .buttonStyle(.borderedProminent)
+                // No "Buy License" button: it opened the upstream project's store.
             }
         }
         .padding()

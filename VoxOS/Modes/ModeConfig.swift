@@ -177,7 +177,12 @@ struct ModeConfig: Codable, Identifiable, Equatable {
         isRealtimeTranscriptionEnabled =
             try container.decodeIfPresent(Bool.self, forKey: .isRealtimeTranscriptionEnabled) ?? true
         selectedLanguage = try container.decodeIfPresent(String.self, forKey: .selectedLanguage)
-        isTextFormattingEnabled = try container.decodeIfPresent(Bool.self, forKey: .isTextFormattingEnabled) ?? false
+        // A mode saved before this key existed follows the global setting, as the other context
+        // switches here do. A hardcoded false silently turned formatting off for those modes,
+        // because the global fallback in `ModeRuntimeConfiguration` only applies when there is no mode.
+        isTextFormattingEnabled =
+            try container.decodeIfPresent(Bool.self, forKey: .isTextFormattingEnabled)
+            ?? UserDefaults.standard.bool(forKey: DefaultsKeys.isTextFormattingEnabled)
         useClipboardContext =
             try container.decodeIfPresent(Bool.self, forKey: .useClipboardContext)
             ?? UserDefaults.standard.bool(forKey: DefaultsKeys.useClipboardContext)
@@ -246,6 +251,19 @@ struct ModeConfig: Codable, Identifiable, Equatable {
 
     static func == (lhs: ModeConfig, rhs: ModeConfig) -> Bool {
         lhs.id == rhs.id
+    }
+
+    /// `==` compares identity only, so lists and selections keep tracking a mode while it is
+    /// edited. This compares every persisted field instead, which is what an unsaved-changes
+    /// check needs. Encoding with sorted keys covers fields added later without updating a list.
+    func isContentEqual(to other: ModeConfig) -> Bool {
+        let encoder = JSONEncoder()
+        encoder.outputFormatting = [.sortedKeys]
+        guard let lhs = try? encoder.encode(self), let rhs = try? encoder.encode(other) else {
+            // Treat an encoding failure as a difference so the user is asked rather than losing edits.
+            return false
+        }
+        return lhs == rhs
     }
 }
 

@@ -60,8 +60,14 @@ struct DashboardContent: View {
         self.modelContext = modelContext
         self.licenseState = licenseState
         self.onAddLicenseKey = onAddLicenseKey
-        // The cached snapshot is read in `.task`: on a locale/time-zone mismatch the cache
-        // decodes JSON from disk, which must not happen inside a view initialiser.
+        // A summary already in memory is used at once, so a warm cache never shows the
+        // placeholder for a frame. Only the disk path waits for `.task`: on a locale/time-zone
+        // mismatch the cache decodes JSON from disk, which must not happen inside a view initialiser.
+        if let warm = DashboardStatsCache.shared.inMemorySnapshot() {
+            _statsSummary = State(initialValue: warm.summary)
+            _statsSnapshotGeneratedAt = State(initialValue: warm.metadata?.generatedAt)
+            _hasLoadedStatsSnapshot = State(initialValue: true)
+        }
     }
 
     var body: some View {
@@ -419,8 +425,8 @@ struct DashboardContent: View {
         scheduleDashboardStatsRefresh(allowSkipWhenFresh: false)
     }
 
-    /// Loads the on-disk snapshot off the main thread; the in-memory cache answers at once on
-    /// every later appearance, so this only costs anything the first time.
+    /// Loads the on-disk snapshot off the main thread. A warm in-memory cache is already applied
+    /// in `init`, so this returns at once on every later appearance.
     @MainActor
     private func restoreCachedStatsSnapshot() async {
         guard !hasLoadedStatsSnapshot else { return }

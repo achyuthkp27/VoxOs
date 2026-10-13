@@ -92,6 +92,11 @@ final class DashboardStatsSnapshotStore: @unchecked Sendable {
             summary: summary
         )
 
+        // Cleared here, before the write is queued, not after it lands: a `markStale()` for a
+        // transcription recorded while the write waited on the utility queue was wiped by the
+        // late clear, and the dashboard then trusted a snapshot that was already behind.
+        userDefaults.removeObject(forKey: Self.staleDefaultsKey)
+
         saveQueue.async {
             do {
                 try FileManager.default.createDirectory(
@@ -100,9 +105,10 @@ final class DashboardStatsSnapshotStore: @unchecked Sendable {
                 )
                 let data = try JSONEncoder().encode(snapshot)
                 try data.write(to: snapshotURL, options: [.atomic])
-                userDefaults.removeObject(forKey: Self.staleDefaultsKey)
             } catch {
                 logger.error("Failed to save dashboard stats snapshot: \(error, privacy: .public)")
+                // Nothing on disk reflects this summary, so whatever is there is stale again.
+                userDefaults.set(true, forKey: Self.staleDefaultsKey)
             }
         }
 

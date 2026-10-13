@@ -10,7 +10,9 @@ class MiniWindowManager {
     private var outsideClickMonitor: Any?
     private var followUpFocusCancellable: AnyCancellable?
     /// The pill's size as last laid out by the view. Zero until the view has reported it.
-    private var pillSize: CGSize = .zero
+    private var pillSize: CGSize = .zero {
+        didSet { publishVisibleRegion() }
+    }
 
     private let makeView: (@escaping (CGSize) -> Void) -> AnyView
     private let onCloseTapped: () -> Void
@@ -59,6 +61,7 @@ class MiniWindowManager {
         guard let panel else { return false }
         let shown = panel.show()
         if shown {
+            publishVisibleRegion()
             installOutsideClickMonitor()
             focusPanelWhenFollowUpBecomesAvailable()
         }
@@ -127,6 +130,17 @@ class MiniWindowManager {
         NSRect(x: panelFrame.midX - size.width / 2, y: panelFrame.minY, width: size.width, height: size.height)
     }
 
+    /// Tells AgentSelfGuard which part of this window is the pill, so the pointer over the
+    /// transparent rest of the window is not mistaken for a pointer over VoxOS. The region is
+    /// measured from the window's corner, so it stays right when the pill is dragged.
+    private func publishVisibleRegion() {
+        guard let panel else { return }
+        let region =
+            pillSize == .zero
+            ? nil : AgentSelfGuard.region(of: Self.pillRect(size: pillSize, in: panel.frame), inWindow: panel.frame)
+        AgentSelfGuard.setVisibleRegion(region, ofWindowNumber: panel.windowNumber)
+    }
+
     private func removeOutsideClickMonitor() {
         if let outsideClickMonitor {
             NSEvent.removeMonitor(outsideClickMonitor)
@@ -158,6 +172,7 @@ class MiniWindowManager {
         followUpFocusCancellable?.cancel()
         followUpFocusCancellable = nil
         removeOutsideClickMonitor()
+        if let panel { AgentSelfGuard.setVisibleRegion(nil, ofWindowNumber: panel.windowNumber) }
         panel?.orderOut(nil)
         windowController?.close()
         windowController = nil

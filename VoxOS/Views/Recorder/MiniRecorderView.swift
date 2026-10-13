@@ -1,5 +1,12 @@
 import SwiftUI
 
+/// The Mini pill's motion, outside the generic view so the recorder can wait on it.
+enum MiniRecorderMotion {
+    /// The pill's spring response. RecorderUIManager waits this long after a dismissal before it
+    /// orders the window out, so the pill finishes collapsing instead of vanishing mid-spring.
+    static let collapseDuration: TimeInterval = 0.4
+}
+
 /// The bottom recorder, in the same language as the notch: a black pill holding only the
 /// five-bar wave (white for dictation, plain or AI-enhanced; violet for the Agent). Live words
 /// and agent replies grow the pill upwards; nothing else is written on it.
@@ -77,8 +84,14 @@ struct MiniRecorderView<S: RecorderStateProvider & ObservableObject>: View {
         .onGeometryChange(for: CGSize.self, of: { $0.size }, action: onPillSizeChange)
         .environment(\.colorScheme, .dark)
         .shadow(color: Color.black.opacity(0.35), radius: 14, y: 6)
-        .animation(reduceMotion ? nil : .spring(response: 0.4, dampingFraction: 0.85), value: hasLiveTranscript)
-        .animation(reduceMotion ? nil : .spring(response: 0.4, dampingFraction: 0.85), value: hasAssistantResponse)
+        .animation(
+            reduceMotion ? nil : .spring(response: MiniRecorderMotion.collapseDuration, dampingFraction: 0.85),
+            value: hasLiveTranscript
+        )
+        .animation(
+            reduceMotion ? nil : .spring(response: MiniRecorderMotion.collapseDuration, dampingFraction: 0.85),
+            value: hasAssistantResponse
+        )
         .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .bottom)
     }
 

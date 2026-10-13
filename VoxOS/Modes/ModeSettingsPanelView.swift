@@ -1,3 +1,4 @@
+import AppKit
 import SwiftUI
 import UniformTypeIdentifiers
 
@@ -78,12 +79,26 @@ private struct ModeReorderList: View {
     @State private var dragSourceID: UUID?
     @State private var draggedConfigID: UUID?
     @State private var targetedConfigID: UUID?
-    /// Order being previewed mid-drag. Only the drop commits it, so one drag saves once instead
-    /// of on every row crossed; nil means the list shows what is saved.
-    @State private var pendingOrder: [ModeConfig]?
+    /// Order being previewed mid-drag, as mode ids. Only the drop commits it, so one drag saves
+    /// once instead of on every row crossed; nil means the list shows what is saved. Ids rather
+    /// than copies, so an edit saved elsewhere during the drag is not reverted by the drop.
+    @State private var pendingOrder: [UUID]?
+    /// Clears the drag state once the mouse is released, because SwiftUI reports no drag end and
+    /// a drag cancelled over a row (Escape, or a release outside any target) never drops.
+    @State private var dragEndWatcher: Task<Void, Never>?
 
     private var displayedConfigurations: [ModeConfig] {
-        pendingOrder ?? modeManager.configurations
+        guard let pendingOrder else { return modeManager.configurations }
+        return Self.configurations(modeManager.configurations, orderedBy: pendingOrder)
+    }
+
+    /// The live configurations in `order`. Modes added during the drag keep their saved place at
+    /// the end, and ids of modes removed during the drag are dropped.
+    private static func configurations(_ live: [ModeConfig], orderedBy order: [UUID]) -> [ModeConfig] {
+        let byID = Dictionary(live.map { ($0.id, $0) }, uniquingKeysWith: { first, _ in first })
+        let ordered = order.compactMap { byID[$0] }
+        let orderedIDs = Set(order)
+        return ordered + live.filter { !orderedIDs.contains($0.id) }
     }
 
     var body: some View {
@@ -98,6 +113,7 @@ private struct ModeReorderList: View {
                     .onDrag {
                         dragSourceID = config.id
                         draggedConfigID = config.id
+                        watchForDragEnd()
                         return NSItemProvider(object: config.id.uuidString as NSString)
                     } preview: {
                         ModeReorderDragPreview(config: config)
@@ -110,7 +126,7 @@ private struct ModeReorderList: View {
                             draggedConfigID: $draggedConfigID,
                             targetedConfigID: $targetedConfigID,
                             pendingOrder: $pendingOrder,
-                            savedOrder: modeManager.configurations,
+                            savedOrder: modeManager.configurations.map(\.id),
                             commit: commitPendingOrder
                         )
                     )
@@ -128,16 +144,50 @@ private struct ModeReorderList: View {
                 commit: commitPendingOrder
             )
         )
+        .onDisappear(perform: resetDragState)
     }
 
     private func commitPendingOrder() {
-        if let pendingOrder, pendingOrder.map(\.id) != modeManager.configurations.map(\.id) {
-            modeManager.replaceConfigurations(pendingOrder)
+        if let pendingOrder {
+            // Map onto the live list at drop time, so the saved order carries current contents.
+            let live = modeManager.configurations
+            let reordered = Self.configurations(live, orderedBy: pendingOrder)
+            if reordered.map(\.id) != live.map(\.id) {
+                modeManager.replaceConfigurations(reordered)
+            }
         }
+        resetDragState()
+    }
+
+    private func resetDragState() {
+        dragEndWatcher?.cancel()
+        dragEndWatcher = nil
         pendingOrder = nil
         dragSourceID = nil
         draggedConfigID = nil
         targetedConfigID = nil
+    }
+
+    private func watchForDragEnd() {
+        dragEndWatcher?.cancel()
+        dragEndWatcher = Task { @MainActor in
+            // A drop is delivered on mouse-up, so waiting for two released samples in a row
+            // leaves `performDrop` time to commit first; this only cleans up a drag that ended
+            // without one.
+            var releasedSamples = 0
+            while releasedSamples < 2 {
+                try? await Task.sleep(for: .milliseconds(150))
+                if Task.isCancelled { return }
+                releasedSamples = NSEvent.pressedMouseButtons & 1 == 0 ? releasedSamples + 1 : 0
+            }
+            withAnimation(.smooth(duration: 0.18)) {
+                pendingOrder = nil
+            }
+            dragSourceID = nil
+            draggedConfigID = nil
+            targetedConfigID = nil
+            dragEndWatcher = nil
+        }
     }
 }
 
@@ -318,8 +368,8 @@ private struct ModeReorderDropDelegate: DropDelegate {
     @Binding var dragSourceID: UUID?
     @Binding var draggedConfigID: UUID?
     @Binding var targetedConfigID: UUID?
-    @Binding var pendingOrder: [ModeConfig]?
-    let savedOrder: [ModeConfig]
+    @Binding var pendingOrder: [UUID]?
+    let savedOrder: [UUID]
     let commit: () -> Void
 
     func dropEntered(info: DropInfo) {
@@ -328,8 +378,8 @@ private struct ModeReorderDropDelegate: DropDelegate {
         }
 
         var order = pendingOrder ?? savedOrder
-        guard let fromIndex = order.firstIndex(where: { $0.id == dragSourceID }),
-            let toIndex = order.firstIndex(where: { $0.id == item.id })
+        guard let fromIndex = order.firstIndex(of: dragSourceID),
+            let toIndex = order.firstIndex(of: item.id)
         else {
             return
         }
@@ -366,7 +416,7 @@ private struct ModeReorderDropDelegate: DropDelegate {
 private struct ModeReorderResetDropDelegate: DropDelegate {
     @Binding var draggedConfigID: UUID?
     @Binding var targetedConfigID: UUID?
-    @Binding var pendingOrder: [ModeConfig]?
+    @Binding var pendingOrder: [UUID]?
     let commit: () -> Void
 
     func dropUpdated(info: DropInfo) -> DropProposal? {

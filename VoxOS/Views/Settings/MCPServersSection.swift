@@ -57,6 +57,15 @@ struct MCPServersSection: View {
                 }
             }
             .controlSize(.small)
+            // On this one row rather than the Section: a Section applies its modifiers to every
+            // row, which parsed mcp.json once per server row on each appear and status change.
+            .onReceive(NotificationCenter.default.publisher(for: AgentMCP.statusDidChange)) { _ in
+                refresh()
+            }
+            .onAppear {
+                AgentMCP.warmUp()
+                refresh()
+            }
 
             if let importMessage {
                 Text(importMessage)
@@ -71,13 +80,6 @@ struct MCPServersSection: View {
             )
             .font(.app(.caption))
             .foregroundStyle(.secondary)
-        }
-        .onReceive(NotificationCenter.default.publisher(for: AgentMCP.statusDidChange)) { _ in
-            refresh()
-        }
-        .onAppear {
-            AgentMCP.warmUp()
-            refresh()
         }
     }
 

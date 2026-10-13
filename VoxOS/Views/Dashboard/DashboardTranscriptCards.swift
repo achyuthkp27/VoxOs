@@ -23,7 +23,7 @@ struct DashboardTranscriptCards: View {
             }
             .padding(.vertical, 6)
             .padding(.horizontal, 8)
-            .voiceOSCard()
+            .voiceOSCard(radius: DashboardLayout.cardCornerRadius)
         }
         .frame(maxWidth: .infinity, alignment: .leading)
     }

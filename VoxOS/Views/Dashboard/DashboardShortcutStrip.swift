@@ -71,6 +71,6 @@ struct DashboardShortcutStrip: View {
         .padding(.horizontal, 14)
         .padding(.vertical, 10)
         .frame(maxWidth: .infinity, alignment: .leading)
-        .glassCard(radius: 14)
+        .glassCard(radius: DashboardLayout.cardCornerRadius)
     }
 }

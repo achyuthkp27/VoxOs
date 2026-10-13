@@ -146,7 +146,8 @@ private struct DashboardStatsRefreshButton: View {
     }
 }
 
-private enum DashboardProductivityChartData {
+/// Internal rather than private so the axis rounding can be unit tested.
+enum DashboardProductivityChartData {
     static func visiblePoints(
         for period: DashboardInsightPeriod,
         points: [DashboardProductivityPoint],
@@ -181,8 +182,13 @@ private enum DashboardProductivityChartData {
         let paddedValue = Double(value) * 1.06
         let magnitude = pow(10, max(0, floor(log10(paddedValue)) - 1))
         let step = max(1, Int(magnitude))
+        let bound = max(value, Int(ceil(paddedValue / Double(step))) * step)
 
-        return max(value, Int(ceil(paddedValue / Double(step))) * step)
+        // The labels sit at the quarter gridlines and use integer division. For small bounds a
+        // dropped remainder is a visible offset (a bound of 3 put "2" at two thirds), so round
+        // those up to a multiple of 4, which makes every quarter a whole number.
+        guard bound < 40 else { return bound }
+        return (bound + 3) / 4 * 4
     }
 }
 

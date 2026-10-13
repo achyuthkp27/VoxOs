@@ -68,7 +68,11 @@ class WaveformGenerator {
     }
 }
 
-class AudioPlayerManager: ObservableObject {
+// NSObject only so it can be the player's delegate: `audioPlayerDidFinishPlaying` is the one
+// reliable end-of-playback signal. The 10 Hz timer compared `currentTime >= duration`, but the
+// player rewinds `currentTime` to 0 when it stops, so the tick after the end could miss it and
+// leave the button on "pause" with the timer still running.
+class AudioPlayerManager: NSObject, ObservableObject, AVAudioPlayerDelegate {
     private var audioPlayer: AVAudioPlayer?
     private var timer: Timer?
     @Published var isPlaying = false
@@ -87,6 +91,7 @@ class AudioPlayerManager: ObservableObject {
     func loadAudio(from url: URL) {
         do {
             audioPlayer = try AVAudioPlayer(contentsOf: url)
+            audioPlayer?.delegate = self
             audioPlayer?.enableRate = true
             audioPlayer?.prepareToPlay()
             duration = audioPlayer?.duration ?? 0
@@ -131,14 +136,22 @@ class AudioPlayerManager: ObservableObject {
         currentTime = time
     }
 
+    func audioPlayerDidFinishPlaying(_ player: AVAudioPlayer, successfully flag: Bool) {
+        // Delegate callbacks arrive on the main thread, but the published state is only ever
+        // touched from there, so hop explicitly rather than rely on it.
+        DispatchQueue.main.async { [weak self] in
+            guard let self else { return }
+            self.stopTimer()
+            self.isPlaying = false
+            self.seek(to: 0)
+        }
+    }
+
+    /// Progress only; the end of playback is reported by the delegate above.
     private func startTimer() {
         let timer = Timer(timeInterval: 0.1, repeats: true) { [weak self] _ in
             guard let self = self else { return }
             self.currentTime = self.audioPlayer?.currentTime ?? 0
-            if self.currentTime >= self.duration {
-                self.pause()
-                self.seek(to: 0)
-            }
         }
         // `.common`, not the default mode: a scheduled timer stops firing while the user
         // scrolls, which froze the playhead and the time label mid-playback.
@@ -197,15 +210,18 @@ struct WaveformView: View {
                     .frame(maxWidth: .infinity, maxHeight: .infinity)
                 } else {
                     // Two static bar layers, the played one revealed by a mask: the 10 Hz
-                    // playhead tick then only moves a rectangle instead of rebuilding 200
-                    // gradient-filled capsules.
+                    // playhead tick then only moves a rectangle. Each layer is an equatable view
+                    // that does not read `currentTime`, so a tick skips rebuilding its bars.
                     ZStack(alignment: .leading) {
-                        waveformBars(isPlayed: false, width: geometry.size.width)
+                        barsLayer(isPlayed: false, width: geometry.size.width)
 
-                        waveformBars(isPlayed: true, width: geometry.size.width)
+                        barsLayer(isPlayed: true, width: geometry.size.width)
                             .mask(alignment: .leading) {
+                                // As tall as the whole waveform rather than the bar stack, so a
+                                // bar grown by the hover scale is not clipped back to the unplayed
+                                // colour at its tips.
                                 Rectangle()
-                                    .frame(width: geometry.size.width * playedProgress)
+                                    .frame(width: geometry.size.width * playedProgress, height: geometry.size.height)
                             }
                     }
                     .opacity(0.6)
@@ -260,7 +276,29 @@ struct WaveformView: View {
         .frame(height: 32)
     }
 
-    private func waveformBars(isPlayed: Bool, width: CGFloat) -> some View {
+    private func barsLayer(isPlayed: Bool, width: CGFloat) -> some View {
+        WaveformBarsLayer(
+            samples: samples,
+            isPlayed: isPlayed,
+            width: width,
+            isHovering: isHovering,
+            hoverProgress: width > 0 ? hoverLocation / width : 0
+        )
+        .equatable()
+    }
+}
+
+/// One colour layer of bars. Equatable on its inputs, none of which is the playback time, so
+/// SwiftUI skips its body on a playhead tick and rebuilds it only when the samples, the size or
+/// the hover change.
+private struct WaveformBarsLayer: View, Equatable {
+    let samples: [Float]
+    let isPlayed: Bool
+    let width: CGFloat
+    let isHovering: Bool
+    let hoverProgress: CGFloat
+
+    var body: some View {
         HStack(spacing: 0.5) {
             ForEach(Array(samples.enumerated()), id: \.offset) { index, sample in
                 WaveformBar(
@@ -270,7 +308,7 @@ struct WaveformView: View {
                     totalBars: samples.count,
                     geometryWidth: width,
                     isHovering: isHovering,
-                    hoverProgress: hoverLocation / width
+                    hoverProgress: hoverProgress
                 )
             }
         }

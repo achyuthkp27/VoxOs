@@ -29,7 +29,7 @@ struct DashboardBackgroundTasks: View {
                     }
                 }
                 .padding(.vertical, 4)
-                .glassCard(radius: 18)
+                .glassCard(radius: DashboardLayout.cardCornerRadius)
             }
         }
     }

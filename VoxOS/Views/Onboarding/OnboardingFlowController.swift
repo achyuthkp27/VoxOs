@@ -1,8 +1,10 @@
+import Combine
 import SwiftUI
 
 @MainActor
 final class OnboardingFlowController {
     private unowned let coordinator: OnboardingCoordinator
+    private var installedAppsCancellable: AnyCancellable?
 
     init(coordinator: OnboardingCoordinator) {
         self.coordinator = coordinator
@@ -468,6 +470,12 @@ final class OnboardingFlowController {
         // holding Dictation alone, with Agent absent until the next launch because the guard below
         // is handed no transcription model manager and so can only repair, never create. Seed the
         // whole catalogue; `applyDefaultMode` still picks the default from the step reached.
+        // The Email mode's app triggers need the installed-app list, and scanning /Applications
+        // (with icons) on the main thread here froze onboarding on every experience step. The
+        // warm-up store already scans off-main and caches the result, so install with whatever
+        // it has now and fill the app triggers in once the scan lands.
+        let warmupStore = ModeFormWarmupStore.shared
+        warmupStore.loadInstalledAppsIfNeeded()
         StarterModeFactory.install(
             kinds: StarterModeKind.allCases,
             provider: coordinator.selectedOnboardingProvider,
@@ -475,8 +483,16 @@ final class OnboardingFlowController {
             transcriptionModelName: coordinator.selectedOnboardingTranscriptionModelName
                 ?? StarterModeFactory.defaultTranscriptionModelName,
             isRealtimeTranscriptionEnabled: coordinator.selectedOnboardingTranscriptionUsesRealtime,
-            selectedLanguage: coordinator.selectedOnboardingTranscriptionLanguage
+            selectedLanguage: coordinator.selectedOnboardingTranscriptionLanguage,
+            installedApps: warmupStore.installedApps
         )
+        if warmupStore.installedApps.isEmpty {
+            installedAppsCancellable = warmupStore.$installedApps
+                .first { !$0.isEmpty }
+                .sink { apps in
+                    StarterModeFactory.addMissingEmailAppTriggers(installedApps: apps)
+                }
+        }
 
         removeModeShortcutStorageForPrimaryRecordingSteps(installedSteps)
         applyDefaultMode(for: coordinator.activeExperienceSteps[index])

@@ -5,11 +5,25 @@ struct AudioSetupView: View {
     @ObservedObject private var audioDeviceManager = AudioDeviceManager.shared
     @ObservedObject private var mediaController = MediaController.shared
     @ObservedObject private var playbackController = PlaybackController.shared
-    /// Seeded from the last stored device rather than `.systemDefault`: while Priority Order is on,
-    /// `onAppear` never captures a source, so a view rebuild used to forget the remembered microphone.
-    @State private var microphoneSourceBeforePriorityOrder: MicrophoneSourceSelection =
-        UserDefaults.standard.selectedAudioDeviceUID.map { .device($0) } ?? .systemDefault
+    /// The single-microphone choice to return to when Priority Order is switched off. Persisted,
+    /// because while Priority Order is on `onAppear` never captures a source, so a view rebuild
+    /// would otherwise forget it. See `AudioDeviceManager.singleMicrophoneSourceKey`.
+    @AppStorage(AudioDeviceManager.singleMicrophoneSourceKey) private var storedSingleMicrophoneSource = ""
     @State private var refreshIconRotation = 0.0
+
+    private var microphoneSourceBeforePriorityOrder: MicrophoneSourceSelection {
+        get {
+            if let recorded = MicrophoneSourceSelection(storedValue: storedSingleMicrophoneSource) {
+                return recorded
+            }
+            // Nothing recorded yet (an install from before this key): the last custom device is
+            // the best guess, as it was before.
+            return UserDefaults.standard.selectedAudioDeviceUID.map { .device($0) } ?? .systemDefault
+        }
+        nonmutating set {
+            storedSingleMicrophoneSource = newValue.storedValue
+        }
+    }
 
     var body: some View {
         Form {
@@ -329,6 +343,31 @@ struct AudioSetupView: View {
 private enum MicrophoneSourceSelection: Hashable {
     case systemDefault
     case device(String)
+
+    private static let systemDefaultValue = "systemDefault"
+    private static let devicePrefix = "device:"
+
+    /// nil for an empty or unrecognised value, which means no choice has been recorded.
+    init?(storedValue: String) {
+        if storedValue == Self.systemDefaultValue {
+            self = .systemDefault
+        } else if storedValue.hasPrefix(Self.devicePrefix) {
+            let uid = String(storedValue.dropFirst(Self.devicePrefix.count))
+            guard !uid.isEmpty else { return nil }
+            self = .device(uid)
+        } else {
+            return nil
+        }
+    }
+
+    var storedValue: String {
+        switch self {
+        case .systemDefault:
+            return Self.systemDefaultValue
+        case .device(let uid):
+            return Self.devicePrefix + uid
+        }
+    }
 }
 
 private enum InputRoute: Hashable {

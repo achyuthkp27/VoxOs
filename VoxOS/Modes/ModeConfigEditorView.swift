@@ -20,10 +20,21 @@ struct ModeConfigEditorView: View {
     @State private var promptEditorID = UUID()
     @State private var promptEditorHasUnsavedChanges = false
     @State private var didSaveConfiguration = false
+    /// Set once the mode is deleted, so leaving the editor does not write its shortcut back.
+    @State private var didDeleteConfiguration = false
+    /// `init` runs again on every parent body pass, so the editing baselines below are captured
+    /// once, in `onAppear`, and this flag keeps a later appear from overwriting them.
+    @State private var didCaptureBaseline = false
     /// The mode shortcut as it was when editing began. The recorder writes to `ShortcutStore` the
     /// moment a shortcut is captured, so Cancel has to put this back by hand.
-    private let shortcutAtEditStart: Shortcut?
-    private let shortcutWasClearedAtEditStart: Bool
+    @State private var shortcutAtEditStart: Shortcut?
+    @State private var shortcutWasClearedAtEditStart = false
+    /// The mode shortcut as `ShortcutStore` holds it now, refreshed from its change notification
+    /// so that recording or clearing a shortcut counts as an unsaved change.
+    @State private var currentShortcut: Shortcut?
+    /// What the draft would save once the form has finished normalising it on appear. Until it is
+    /// captured, the draft is not treated as edited.
+    @State private var baselineConfig: ModeConfig?
 
     init(
         mode: ConfigurationMode,
@@ -35,10 +46,8 @@ struct ModeConfigEditorView: View {
         self.modeManager = modeManager
         self.onDismiss = onDismiss
         _hasUnsavedChanges = hasUnsavedChanges
-        let draft = ModeConfigDraft(mode: mode, modeManager: modeManager)
-        _draft = State(initialValue: draft)
-        shortcutAtEditStart = ShortcutStore.shortcut(for: .mode(draft.id))
-        shortcutWasClearedAtEditStart = ShortcutStore.isShortcutCleared(for: .mode(draft.id))
+        // `State` keeps only the first value it is given, so this draft is used once per editor.
+        _draft = State(initialValue: ModeConfigDraft(mode: mode, modeManager: modeManager))
     }
 
     private var unsavedChangesPresent: Bool {
@@ -46,18 +55,15 @@ struct ModeConfigEditorView: View {
             return true
         }
 
-        switch mode {
-        case .add:
-            // Everything else in a new draft is inherited defaults; only what the user typed or
-            // added counts as something worth protecting.
-            return !draft.name.isEmpty || !draft.appConfigs.isEmpty || !draft.websiteConfigs.isEmpty
-                || !draft.triggerGroups.isEmpty || !draft.triggerWords.isEmpty
-        case .edit:
-            // Compare what would be saved with what is saved, not the raw draft: the form
-            // normalises the draft on appear, and that must not read as a user edit.
-            guard let savedConfig = modeManager.getConfiguration(with: draft.id) else { return false }
-            return draft.makeConfig(mode: mode) != savedConfig
+        if didCaptureBaseline && currentShortcut != shortcutAtEditStart {
+            return true
         }
+
+        // Compare what would be saved with what would have been saved before any user edit, for
+        // both new and existing modes. The baseline is taken after the form normalises the draft
+        // on appear, so that normalisation does not read as a user edit.
+        guard let baselineConfig else { return false }
+        return !draft.makeConfig(mode: mode).isContentEqual(to: baselineConfig)
     }
 
     var body: some View {
@@ -87,7 +93,15 @@ struct ModeConfigEditorView: View {
                 )
             }
         }
-        .onAppear(perform: prepareView)
+        .onAppear {
+            prepareView()
+            captureBaselineIfNeeded()
+        }
+        .onReceive(NotificationCenter.default.publisher(for: ShortcutStore.shortcutDidChange)) { notification in
+            let action = ShortcutAction.mode(draft.id)
+            guard (notification.object as? ShortcutAction) == action else { return }
+            currentShortcut = ShortcutStore.shortcut(for: action)
+        }
         .onDisappear(perform: cleanupUnsavedShortcutIfNeeded)
         .onExitCommand(perform: handleExitCommand)
         .onChange(of: unsavedChangesPresent, initial: true) { _, newValue in
@@ -156,6 +170,23 @@ struct ModeConfigEditorView: View {
         }
     }
 
+    private func captureBaselineIfNeeded() {
+        guard !didCaptureBaseline else { return }
+        didCaptureBaseline = true
+
+        let action = ShortcutAction.mode(draft.id)
+        shortcutAtEditStart = ShortcutStore.shortcut(for: action)
+        shortcutWasClearedAtEditStart = ShortcutStore.isShortcutCleared(for: action)
+        currentShortcut = shortcutAtEditStart
+
+        // The form normalises the draft in its own `onAppear` and `onChange` handlers (language
+        // fallback, output rules, AI model), which run after this one. Waiting a few frames lets
+        // them settle; nobody can edit a field that quickly, and until then nothing reads as dirty.
+        DispatchQueue.main.asyncAfter(deadline: .now() + 0.15) {
+            baselineConfig = draft.makeConfig(mode: mode)
+        }
+    }
+
     private func saveConfiguration() {
         let config = draft.makeConfig(mode: mode)
         let validator = ModeValidator(modeManager: modeManager)
@@ -184,6 +215,9 @@ struct ModeConfigEditorView: View {
         let result = modeManager.removeConfiguration(with: draft.id)
         switch result {
         case .removed, .notFound:
+            // The mode is gone, and `removeConfiguration` already dropped its shortcut, so leaving
+            // the editor must not write the shortcut back for an id that no longer exists.
+            didDeleteConfiguration = true
             hasUnsavedChanges = false
             onDismiss()
         case .blockedDefault:
@@ -193,7 +227,7 @@ struct ModeConfigEditorView: View {
     }
 
     private func cleanupUnsavedShortcutIfNeeded() {
-        guard !didSaveConfiguration else {
+        guard !didSaveConfiguration, !didDeleteConfiguration, didCaptureBaseline else {
             return
         }
 

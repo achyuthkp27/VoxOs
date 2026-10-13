@@ -9,17 +9,14 @@ struct NotchRecorderView<S: RecorderStateProvider & ObservableObject>: View {
     let onCloseTapped: () -> Void
     let onAssistantFollowUp: (String) -> Void
     /// The notch of the screen the window was built on. Resolving the screen per render follows
-    /// the key window, which moves the band to another display after a click there.
-    var notchMetricsOverride: (width: CGFloat, height: CGFloat)? = nil
+    /// the key window, which moves the band to another display after a click there. When the
+    /// screen's notch changes, NotchWindowManager.show() builds a new window and view for it.
+    let notchMetrics: (width: CGFloat, height: CGFloat)
     /// Reports the band's laid-out size, so the window manager can tell a click on the band from a
     /// click on the transparent rest of its much larger window.
     var onPillSizeChange: (CGSize) -> Void = { _ in }
     @AppStorage(RecorderDisplaySettingsKeys.showLiveTranscript) private var showLiveTranscript = true
     @AppStorage(DefaultsKeys.notchMaterial) private var notchMaterialRaw = NotchDesign.Material.liquidGlass.rawValue
-    /// Bumped on every screen reconfiguration to invalidate the view. The notch metrics below
-    /// come from AppKit, which SwiftUI cannot observe on its own, so without this the view keeps
-    /// whatever sizes it happened to compute the last time it was rendered.
-    @State private var screenGeneration = 0
     @Environment(\.accessibilityReduceMotion) private var reduceMotion
 
     // MARK: - Display State
@@ -49,35 +46,9 @@ struct NotchRecorderView<S: RecorderStateProvider & ObservableObject>: View {
 
     // MARK: - Screen Geometry
 
-    /// Reads `screenGeneration` so SwiftUI records a dependency on it: the metrics below come
-    /// from AppKit, which it cannot observe, and a view only re-evaluates the parts that depend
-    /// on the state that changed.
-    private var screenMetrics: (width: CGFloat, height: CGFloat) {
-        _ = screenGeneration
-        if let notchMetricsOverride { return notchMetricsOverride }
+    private var notchWidth: CGFloat { notchMetrics.width }
 
-        guard let screen = RecorderScreenResolver.resolve() else { return (180, 37) }
-
-        let width: CGFloat = {
-            if let left = screen.auxiliaryTopLeftArea?.width,
-                let right = screen.auxiliaryTopRightArea?.width
-            {
-                return screen.frame.width - left - right
-            }
-            return 180
-        }()
-
-        let height: CGFloat = {
-            if screen.safeAreaInsets.top > 0 { return screen.safeAreaInsets.top }
-            return NotchDesign.fallbackNotchHeight
-        }()
-
-        return (width, height)
-    }
-
-    private var notchWidth: CGFloat { screenMetrics.width }
-
-    private var notchHeight: CGFloat { screenMetrics.height }
+    private var notchHeight: CGFloat { notchMetrics.height }
 
     // MARK: - Layout Constants
 
@@ -162,11 +133,6 @@ struct NotchRecorderView<S: RecorderStateProvider & ObservableObject>: View {
         .animation(reduceMotion ? nil : pillAnimation, value: displayState)
         // The panel height follows the reply; the band must resize with it, not snap.
         .animation(reduceMotion ? nil : NotchDesign.sizeAnimation, value: assistantPanelHeight)
-        .onReceive(
-            LifecycleObserver.shared.publisher(for: .screenConfigurationChanged)
-        ) { _ in
-            screenGeneration += 1
-        }
     }
 
     // MARK: - Pill

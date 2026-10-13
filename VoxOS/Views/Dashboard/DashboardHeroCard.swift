@@ -51,7 +51,7 @@ struct DashboardHeroCard: View {
         .padding(.vertical, 22)
         .frame(maxWidth: .infinity, minHeight: 160, alignment: .leading)
         .background(DashboardImpactBackground(isLocked: isLocked))
-        .voiceOSCard()
+        .voiceOSCard(radius: DashboardLayout.heroCornerRadius)
     }
 
     private var heroCopy: some View {

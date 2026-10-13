@@ -19,7 +19,8 @@ struct TranscriptionHistoryView: View {
     @State private var displayedTranscriptions: [Transcription] = []
     @State private var isLoading = false
     @State private var hasMoreContent = true
-    @State private var lastTimestamp: Date?
+    /// Where the next page starts; see `HistoryPageCursor` for why it is more than a timestamp.
+    @State private var pageCursor: HistoryPageCursor?
 
     private let exportService = VoxOSCSVExportService()
     private let pageSize = 20
@@ -35,32 +36,10 @@ struct TranscriptionHistoryView: View {
         return descriptor
     }
 
-    private func cursorQueryDescriptor(after timestamp: Date? = nil) -> FetchDescriptor<Transcription> {
-        var descriptor = FetchDescriptor<Transcription>(
-            sortBy: [SortDescriptor(\Transcription.timestamp, order: .reverse)]
-        )
-
-        if let timestamp = timestamp {
-            if !searchText.isEmpty {
-                descriptor.predicate = #Predicate<Transcription> { transcription in
-                    (transcription.text.localizedStandardContains(searchText)
-                        || (transcription.enhancedText?.localizedStandardContains(searchText) ?? false))
-                        && transcription.timestamp < timestamp
-                }
-            } else {
-                descriptor.predicate = #Predicate<Transcription> { transcription in
-                    transcription.timestamp < timestamp
-                }
-            }
-        } else if !searchText.isEmpty {
-            descriptor.predicate = #Predicate<Transcription> { transcription in
-                transcription.text.localizedStandardContains(searchText)
-                    || (transcription.enhancedText?.localizedStandardContains(searchText) ?? false)
-            }
-        }
-
-        descriptor.fetchLimit = pageSize
-        return descriptor
+    /// Built from `lastFetchedSearchText`, not the live field: while the search debounce is
+    /// pending the two differ, and Load More must continue the list that is on screen.
+    private func cursorQueryDescriptor(after cursor: HistoryPageCursor? = nil) -> FetchDescriptor<Transcription> {
+        HistoryPageQuery.descriptor(searchText: lastFetchedSearchText, after: cursor, pageSize: pageSize)
     }
 
     private func openAnalysisPanel() {
@@ -412,10 +391,10 @@ struct TranscriptionHistoryView: View {
         defer { isLoading = false }
 
         do {
-            lastTimestamp = nil
+            pageCursor = nil
             let items = try modelContext.fetch(cursorQueryDescriptor())
             displayedTranscriptions = items
-            lastTimestamp = items.last?.timestamp
+            pageCursor = HistoryPageCursor(after: items, previous: nil)
             hasMoreContent = items.count == pageSize
         } catch {
             logger.error("Error loading transcriptions: \(error, privacy: .public)")
@@ -424,15 +403,15 @@ struct TranscriptionHistoryView: View {
 
     @MainActor
     private func loadMoreContent() async {
-        guard !isLoading, hasMoreContent, let lastTimestamp = lastTimestamp else { return }
+        guard !isLoading, hasMoreContent, let pageCursor else { return }
 
         isLoading = true
         defer { isLoading = false }
 
         do {
-            let newItems = try modelContext.fetch(cursorQueryDescriptor(after: lastTimestamp))
+            let newItems = try modelContext.fetch(cursorQueryDescriptor(after: pageCursor))
             displayedTranscriptions.append(contentsOf: newItems)
-            self.lastTimestamp = newItems.last?.timestamp
+            self.pageCursor = HistoryPageCursor(after: newItems, previous: pageCursor)
             hasMoreContent = newItems.count == pageSize
         } catch {
             logger.error("Error loading more transcriptions: \(error, privacy: .public)")
@@ -442,22 +421,16 @@ struct TranscriptionHistoryView: View {
     @MainActor
     private func resetPagination() {
         displayedTranscriptions = []
-        lastTimestamp = nil
+        pageCursor = nil
         hasMoreContent = true
         isLoading = false
     }
 
-    private func performDeletion(for transcription: Transcription) {
-        if let urlString = transcription.audioFileURL,
-            let url = URL(string: urlString),
-            FileManager.default.fileExists(atPath: url.path)
-        {
-            do {
-                try FileManager.default.removeItem(at: url)
-            } catch {
-                logger.error("Error deleting audio file: \(error.localizedDescription, privacy: .public)")
-            }
-        }
+    /// Removes the record and returns its audio file, which `saveAndReload` deletes only once the
+    /// removal is saved: a leftover file is harmless, a saved record pointing at a missing file
+    /// is a broken row forever.
+    private func performDeletion(for transcription: Transcription) -> URL? {
+        let audioURL = transcription.audioFileURL.flatMap(URL.init(string:))
 
         if selectedTranscription == transcription {
             selectedTranscription = nil
@@ -465,11 +438,13 @@ struct TranscriptionHistoryView: View {
 
         selectedTranscriptions.remove(transcription)
         modelContext.delete(transcription)
+        return audioURL
     }
 
-    private func saveAndReload() async {
+    private func saveAndReload(removingAudioFilesAt audioURLs: [URL]) async {
         do {
             try modelContext.save()
+            removeAudioFiles(at: audioURLs)
             NotificationCenter.default.post(name: .transcriptionDeleted, object: nil)
             await loadInitialContent()
         } catch {
@@ -478,14 +453,22 @@ struct TranscriptionHistoryView: View {
         }
     }
 
-    private func deleteSelectedTranscriptions() {
-        for transcription in selectedTranscriptions {
-            performDeletion(for: transcription)
+    private func removeAudioFiles(at urls: [URL]) {
+        for url in urls where FileManager.default.fileExists(atPath: url.path) {
+            do {
+                try FileManager.default.removeItem(at: url)
+            } catch {
+                logger.error("Error deleting audio file: \(error.localizedDescription, privacy: .public)")
+            }
         }
+    }
+
+    private func deleteSelectedTranscriptions() {
+        let audioURLs = selectedTranscriptions.compactMap { performDeletion(for: $0) }
         selectedTranscriptions.removeAll()
 
         Task {
-            await saveAndReload()
+            await saveAndReload(removingAudioFilesAt: audioURLs)
         }
     }
 
@@ -499,16 +482,9 @@ struct TranscriptionHistoryView: View {
 
     private func selectAllTranscriptions() async {
         do {
-            var allDescriptor = FetchDescriptor<Transcription>()
-
-            if !searchText.isEmpty {
-                allDescriptor.predicate = #Predicate<Transcription> { transcription in
-                    transcription.text.localizedStandardContains(searchText)
-                        || (transcription.enhancedText?.localizedStandardContains(searchText) ?? false)
-                }
-            }
-
-            allDescriptor.propertiesToFetch = [\.id]
+            // The query the list is showing, not the live field: Select All and the bulk delete
+            // that follows must never reach rows the visible list does not match.
+            let allDescriptor = HistoryPageQuery.allMatchingDescriptor(searchText: lastFetchedSearchText)
             let allTranscriptions = try modelContext.fetch(allDescriptor)
             let visibleIds = Set(displayedTranscriptions.map { $0.id })
 

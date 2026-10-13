@@ -333,9 +333,14 @@ struct ConfigurationRow: View {
                     HStack(spacing: 4) {
                         Image(systemName: "cpu")
                             .font(.app(size: 10, weight: .regular))
-                        Text(modelName.count > 20 ? String(modelName.prefix(18)) + "..." : modelName)
-                            .font(.app(.caption))
-                            .lineLimit(1)
+                        // Truncated by width rather than by character count, so wide and narrow
+                        // model names get the same room and the ellipsis is the system's.
+                        MaxWidthLayout(maxWidth: 120) {
+                            Text(modelName)
+                                .font(.app(.caption))
+                                .lineLimit(1)
+                                .truncationMode(.tail)
+                        }
                     }
                     .padding(.horizontal, 6)
                     .padding(.vertical, 2)
@@ -414,10 +419,11 @@ struct ConfigurationRow: View {
 
                 Spacer(minLength: 0)
 
-                if isHovering {
-                    editModeButton
-                        .transition(.opacity)
-                }
+                // Always laid out and only faded, so hovering a row does not reflow its chips.
+                editModeButton
+                    .opacity(isHovering ? 1 : 0)
+                    .allowsHitTesting(isHovering)
+                    .accessibilityHidden(!isHovering)
             }
             .contentShape(Rectangle())
             .onTapGesture {
@@ -494,5 +500,24 @@ struct AppGridItem: View {
             )
         }
         .buttonStyle(.plain)
+    }
+}
+
+/// Caps its content's width without stretching it. `.frame(maxWidth:)` grows a short label up to
+/// the maximum whenever more room is offered, which would leave empty space inside a chip.
+private struct MaxWidthLayout: Layout {
+    let maxWidth: CGFloat
+
+    func sizeThatFits(proposal: ProposedViewSize, subviews: Subviews, cache: inout ()) -> CGSize {
+        guard let content = subviews.first else { return .zero }
+        let width = min(proposal.width ?? maxWidth, maxWidth)
+        return content.sizeThatFits(ProposedViewSize(width: width, height: proposal.height))
+    }
+
+    func placeSubviews(in bounds: CGRect, proposal: ProposedViewSize, subviews: Subviews, cache: inout ()) {
+        subviews.first?.place(
+            at: bounds.origin,
+            proposal: ProposedViewSize(width: bounds.width, height: bounds.height)
+        )
     }
 }

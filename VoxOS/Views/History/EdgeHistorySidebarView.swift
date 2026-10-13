@@ -6,15 +6,19 @@ import SwiftUI
 /// row a round avatar beside a single truncated title line.
 struct EdgeHistorySidebarView: View {
     @Query(Self.recentTranscriptionsDescriptor()) private var transcriptions: [Transcription]
+    @Environment(\.modelContext) private var modelContext
     @State private var searchText = ""
     /// Trimmed search term, updated once per keystroke so the filter never re-normalises it per row.
     @State private var normalizedQuery = ""
+    /// Matches for `query` across the whole history, newest first. `@Query` above is capped at
+    /// `fetchLimit`, so searching only it would never find anything older than that.
+    @State private var searchResults: (query: String, items: [Transcription])?
     let onSelectTranscription: () -> Void
     @Binding var isPinned: Bool
 
     private static let rowLimit = 60
     /// The card shows at most `rowLimit` rows; fetching the whole history to pick 60 was
-    /// wasted work. 200 still leaves plenty of room for search to find older entries.
+    /// wasted work. Search does not use this list: it runs its own predicate fetch.
     private static let fetchLimit = 200
 
     private static func recentTranscriptionsDescriptor() -> FetchDescriptor<Transcription> {
@@ -37,6 +41,11 @@ struct EdgeHistorySidebarView: View {
             return Array(transcriptions.prefix(Self.rowLimit))
         }
         let query = normalizedQuery
+        if let searchResults, searchResults.query == query {
+            return searchResults.items
+        }
+        // Until the whole-history fetch for this query lands, filter what is already loaded so
+        // typing never shows an empty or stale list.
         // Case-insensitive range search instead of lowercasing every transcript per keystroke.
         return
             transcriptions
@@ -93,6 +102,42 @@ struct EdgeHistorySidebarView: View {
         .onChange(of: searchText) { _, newValue in
             normalizedQuery = newValue.trimmingCharacters(in: .whitespacesAndNewlines)
         }
+        // Keyed on the newest row and the count as well, so a transcription added or deleted
+        // while a search is showing refreshes the matches.
+        .task(id: SearchKey(query: normalizedQuery, newestID: transcriptions.first?.id, count: transcriptions.count)) {
+            await refreshSearchResults()
+        }
+    }
+
+    private struct SearchKey: Hashable {
+        let query: String
+        let newestID: UUID?
+        let count: Int
+    }
+
+    private func refreshSearchResults() async {
+        let query = normalizedQuery
+        guard !query.isEmpty else {
+            searchResults = nil
+            return
+        }
+        // A short pause so a burst of keystrokes runs one fetch, not one per character.
+        try? await Task.sleep(for: .milliseconds(150))
+        guard !Task.isCancelled else { return }
+
+        var descriptor = FetchDescriptor<Transcription>(
+            predicate: #Predicate<Transcription> { transcription in
+                transcription.text.localizedStandardContains(query)
+                    || (transcription.enhancedText?.localizedStandardContains(query) ?? false)
+            },
+            sortBy: [SortDescriptor(\Transcription.timestamp, order: .reverse)]
+        )
+        // Newest first and only `rowLimit` rows are shown, so this limit still searches the
+        // whole history; it only stops older matches that would never be displayed.
+        descriptor.fetchLimit = Self.rowLimit
+        // On a failed fetch the list keeps filtering the loaded rows rather than showing nothing.
+        guard let items = try? modelContext.fetch(descriptor) else { return }
+        searchResults = (query: query, items: items)
     }
 
     private var header: some View {

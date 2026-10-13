@@ -40,10 +40,13 @@ class NotchRecorderPanel: KeyablePanel {
         self.isMovable = false
     }
 
+    typealias WindowMetrics = (frame: NSRect, notchWidth: CGFloat, notchHeight: CGFloat)
+
+    /// Metrics for `screen`, or for the usual screen (see RecorderScreenResolver) when it is nil.
     /// Returns `nil` when there is no screen at all, so callers can skip showing the panel
     /// instead of placing it at the global origin.
-    static func calculateWindowMetrics() -> (frame: NSRect, notchWidth: CGFloat, notchHeight: CGFloat)? {
-        guard let screen = RecorderScreenResolver.resolve() else { return nil }
+    static func calculateWindowMetrics(on requestedScreen: NSScreen? = nil) -> WindowMetrics? {
+        guard let screen = requestedScreen ?? RecorderScreenResolver.resolve() else { return nil }
 
         let safeAreaInsets = screen.safeAreaInsets
         let notchHeight: CGFloat = safeAreaInsets.top > 0 ? safeAreaInsets.top : NotchDesign.fallbackNotchHeight
@@ -68,9 +71,10 @@ class NotchRecorderPanel: KeyablePanel {
         return (frame, notchWidth, notchHeight)
     }
 
+    /// `screen` is the screen to appear on; nil uses the usual one.
     @discardableResult
-    func show() -> Bool {
-        guard let metrics = NotchRecorderPanel.calculateWindowMetrics() else {
+    func show(on screen: NSScreen? = nil) -> Bool {
+        guard let metrics = NotchRecorderPanel.calculateWindowMetrics(on: screen) else {
             logger.error("Notch panel show skipped: no screen available")
             return false
         }

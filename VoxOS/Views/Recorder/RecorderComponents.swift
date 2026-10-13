@@ -1,41 +1,5 @@
 import SwiftUI
 
-// MARK: - Icon Toggle Button
-
-struct RecorderToggleButton: View {
-    let isEnabled: Bool
-    let icon: String
-    let disabled: Bool
-    let action: () -> Void
-
-    init(isEnabled: Bool, icon: String, disabled: Bool = false, action: @escaping () -> Void) {
-        self.isEnabled = isEnabled
-        self.icon = icon
-        self.disabled = disabled
-        self.action = action
-    }
-
-    private var isEmoji: Bool {
-        !icon.contains(".") && !icon.contains("-") && icon.unicodeScalars.contains { !$0.isASCII }
-    }
-
-    var body: some View {
-        Button(action: action) {
-            Group {
-                if isEmoji {
-                    Text(icon).font(.app(size: 14, weight: .regular))
-                } else {
-                    Image(systemName: icon).font(.app(size: 13, weight: .regular))
-                }
-            }
-            .foregroundColor(
-                disabled ? Color.primary.opacity(0.3) : (isEnabled ? Color.primary : Color.primary.opacity(0.6)))
-        }
-        .buttonStyle(PlainButtonStyle())
-        .disabled(disabled)
-    }
-}
-
 // MARK: - Close Button
 
 struct RecorderCloseButton: View {
@@ -60,69 +24,6 @@ struct RecorderCloseButton: View {
         }
         .buttonStyle(.plain)
         .help("Close")
-    }
-}
-
-// MARK: - Processing Indicator
-
-struct ProcessingIndicator: View {
-    @State private var rotation: Double = 0
-    let color: Color
-
-    var body: some View {
-        Circle()
-            .trim(from: 0.1, to: 0.9)
-            .stroke(color, lineWidth: 1.5)
-            .frame(width: 12, height: 12)
-            .rotationEffect(.degrees(rotation))
-            .onAppear {
-                withAnimation(.linear(duration: 1).repeatForever(autoreverses: false)) {
-                    rotation = 360
-                }
-            }
-    }
-}
-
-// MARK: - Progress Dot Animation
-
-struct ProgressAnimation: View {
-    let color: Color
-    let animationSpeed: Double
-
-    private let dotCount = 5
-    private let dotSize: CGFloat = 3
-    private let dotSpacing: CGFloat = 2
-
-    @State private var currentDot = 0
-    @State private var timer: Timer?
-
-    init(color: Color = Color.primary, animationSpeed: Double = 0.3) {
-        self.color = color
-        self.animationSpeed = animationSpeed
-    }
-
-    var body: some View {
-        HStack(spacing: dotSpacing) {
-            ForEach(0..<dotCount, id: \.self) { index in
-                RoundedRectangle(cornerRadius: dotSize / 2)
-                    .fill(color.opacity(index <= currentDot ? 0.85 : 0.25))
-                    .frame(width: dotSize, height: dotSize)
-            }
-        }
-        .onAppear { startAnimation() }
-        .onDisappear {
-            timer?.invalidate()
-            timer = nil
-        }
-    }
-
-    private func startAnimation() {
-        timer?.invalidate()
-        currentDot = 0
-        timer = Timer.scheduledTimer(withTimeInterval: animationSpeed, repeats: true) { _ in
-            currentDot = (currentDot + 1) % (dotCount + 2)
-            if currentDot > dotCount { currentDot = -1 }
-        }
     }
 }
 
@@ -170,8 +71,6 @@ struct NotchWave: View {
     @State private var isHoveringPopover = false
     @State private var dismissWorkItem: DispatchWorkItem?
 
-    @Environment(\.accessibilityReduceMotion) private var reduceMotion
-
     private var isProcessing: Bool { state == .transcribing || state == .enhancing || state == .starting }
 
     var body: some View {
@@ -183,24 +82,7 @@ struct NotchWave: View {
                     barSpacing: NotchDesign.barSpacing, minHeight: NotchDesign.barMinHeight,
                     maxHeight: NotchDesign.barMinHeight + NotchDesign.barRange * 0.92 + 1)
             } else {
-                HStack(spacing: NotchDesign.barSpacing) {
-                    ForEach(0..<NotchDesign.barWeights.count, id: \.self) { index in
-                        RoundedRectangle(cornerRadius: NotchDesign.barWidth / 2)
-                            .fill(accent.opacity(isProcessing ? 0.95 : 0.55))
-                            .frame(
-                                width: NotchDesign.barWidth,
-                                height: isProcessing ? NotchDesign.barHeight(at: index) : NotchDesign.barMinHeight - 2
-                            )
-                            // Keyed to the processing state itself: the old flag was set once and
-                            // never changed again, so the bars never moved.
-                            .animation(
-                                isProcessing && !reduceMotion
-                                    ? .easeInOut(duration: 0.55).repeatForever(autoreverses: true).delay(
-                                        Double(index) * 0.1)
-                                    : .easeOut(duration: 0.2),
-                                value: isProcessing)
-                    }
-                }
+                NotchWaveBars(accent: accent, isProcessing: isProcessing)
             }
         }
         .frame(width: NotchDesign.waveformWidth + 4, height: 24)
@@ -232,6 +114,40 @@ struct NotchWave: View {
             dismissWorkItem = work
             DispatchQueue.main.asyncAfter(deadline: .now() + 0.25, execute: work)
         }
+    }
+}
+
+/// The wave's bars while it is not listening: low and dim at rest, breathing while processing.
+private struct NotchWaveBars: View {
+    let accent: Color
+    let isProcessing: Bool
+    /// Mirrors isProcessing. These bars are inserted when recording ends, with isProcessing
+    /// already true, so an animation keyed on isProcessing itself never saw a change and the
+    /// bars stood still. Setting this on appear as well as on change starts the breathing every
+    /// time the bars come in, as AgentOrb does.
+    @State private var breathe = false
+    @Environment(\.accessibilityReduceMotion) private var reduceMotion
+
+    var body: some View {
+        HStack(spacing: NotchDesign.barSpacing) {
+            ForEach(0..<NotchDesign.barWeights.count, id: \.self) { index in
+                RoundedRectangle(cornerRadius: NotchDesign.barWidth / 2)
+                    .fill(accent.opacity(breathe ? 0.95 : 0.55))
+                    .frame(
+                        width: NotchDesign.barWidth,
+                        height: breathe ? NotchDesign.barHeight(at: index) : NotchDesign.barMinHeight - 2
+                    )
+                    // A new value with a plain ease replaces the repeating animation, which is what
+                    // stops the breathing when processing ends.
+                    .animation(
+                        breathe && !reduceMotion
+                            ? .easeInOut(duration: 0.55).repeatForever(autoreverses: true).delay(Double(index) * 0.1)
+                            : .easeOut(duration: 0.2),
+                        value: breathe)
+            }
+        }
+        .onAppear { breathe = isProcessing }
+        .onChange(of: isProcessing) { _, processing in breathe = processing }
     }
 }
 
@@ -298,8 +214,6 @@ struct AssistantPanelView: View {
     @State private var draftMessage = ""
     @FocusState private var isFollowUpFieldFocused: Bool
 
-    /// Measured from the band's frame, which is wider than its body by the shoulders: see AgentComposer.panelInset.
-    private let horizontalPadding: CGFloat = AgentComposer.panelInset
     private let followUpTextColor = AppTheme.Notch.text
     /// The orb is the Agent's presence, and violet means Agent, so a plain Assistant mode shows no orb.
     private var isAgentMode: Bool { modeManager.currentEffectiveConfiguration?.id == StarterModeCatalog.agentId }
@@ -317,13 +231,11 @@ struct AssistantPanelView: View {
     }
 
     var body: some View {
-        VStack(spacing: 14) {
+        AssistantPanelLayout {
             messageList
+        } composer: {
             followUpRow
         }
-        .padding(.horizontal, horizontalPadding)
-        .padding(.top, 8)
-        .padding(.bottom, horizontalPadding)
         .onAppear(perform: focusFollowUpFieldIfAvailable)
         .onChange(of: session.phase) {
             focusFollowUpFieldIfAvailable()

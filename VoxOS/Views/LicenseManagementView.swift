@@ -261,21 +261,12 @@ struct LicenseManagementView: View {
             }
 
             ResourceLinkRow(
-                title: "Affiliate Program",
-                subtitle: "Earn 30% from referrals",
-                systemImage: "link.badge.plus",
-                tint: neutralIconColor
-            ) {
-                openURL("https://github.com/achyuthkp27/VoxOs")
-            }
-
-            ResourceLinkRow(
                 title: "Documentation",
                 subtitle: "Setup, features, and settings",
                 systemImage: "book.fill",
                 tint: neutralIconColor
             ) {
-                openURL("https://tryvoiceink.com/docs")
+                openURL("https://github.com/achyuthkp27/VoxOs#readme")
             }
 
             ResourceLinkRow(
@@ -284,7 +275,8 @@ struct LicenseManagementView: View {
                 systemImage: "video.fill",
                 tint: neutralIconColor
             ) {
-                openURL("https://www.youtube.com/@tryvoiceink/videos")
+                // VoxOS has no video channel; the old link was the upstream project's.
+                openURL("https://github.com/achyuthkp27/VoxOs#readme")
             }
 
             if !isLicensed {

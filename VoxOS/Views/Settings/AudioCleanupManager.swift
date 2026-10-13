@@ -116,38 +116,45 @@ class AudioCleanupManager {
         }
 
         do {
-            // Execute SwiftData operations on the main thread
-            try await MainActor.run {
-                // Create a predicate to find transcriptions with audio files older than the cutoff date
+            // SwiftData work stays on the main context; only ids and URLs leave it.
+            let candidates: [(id: PersistentIdentifier, url: URL)] = try await MainActor.run {
                 let descriptor = FetchDescriptor<Transcription>(
                     predicate: #Predicate<Transcription> { transcription in
                         transcription.timestamp < cutoffDate && transcription.audioFileURL != nil
                     }
                 )
 
-                let transcriptions = try modelContext.fetch(descriptor)
-                var deletedCount = 0
+                return try modelContext.fetch(descriptor).compactMap { transcription in
+                    guard let urlString = transcription.audioFileURL, let url = URL(string: urlString) else {
+                        return nil
+                    }
+                    return (id: transcription.persistentModelID, url: url)
+                }
+            }
+            guard !candidates.isEmpty else { return }
 
-                for transcription in transcriptions {
-                    if let urlString = transcription.audioFileURL,
-                        let url = URL(string: urlString),
-                        FileManager.default.fileExists(atPath: url.path)
-                    {
-                        do {
-                            try FileManager.default.removeItem(at: url)
-                            transcription.audioFileURL = nil
-                            deletedCount += 1
-                        } catch {
-                            // Leave audioFileURL set: the file is still there.
-                            logger.error(
-                                "Could not delete audio file during automatic cleanup: \(error, privacy: .public)")
-                        }
+            // File removal is the slow part of a large sweep and used to run on the main thread
+            // at window appear; do it off the main actor.
+            let deletedIds = await Task.detached(priority: .utility) { () -> [PersistentIdentifier] in
+                var deleted: [PersistentIdentifier] = []
+                for candidate in candidates where FileManager.default.fileExists(atPath: candidate.url.path) {
+                    do {
+                        try FileManager.default.removeItem(at: candidate.url)
+                        deleted.append(candidate.id)
+                    } catch {
+                        // Leave audioFileURL set: the file is still there.
+                        logger.error("Could not delete audio file during automatic cleanup: \(error, privacy: .public)")
                     }
                 }
+                return deleted
+            }.value
+            guard !deletedIds.isEmpty else { return }
 
-                if deletedCount > 0 {
-                    try modelContext.save()
+            try await MainActor.run {
+                for id in deletedIds {
+                    (modelContext.model(for: id) as? Transcription)?.audioFileURL = nil
                 }
+                try modelContext.save()
             }
         } catch {
             // Cleanup is non-critical, so this stays non-fatal — but it ran on a timer with

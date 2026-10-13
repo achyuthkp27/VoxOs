@@ -55,7 +55,9 @@ struct SettingsView: View {
     // is written next to it rather than by the heading it happens to live under.
     private static let shortcutsTerms = [
         "Primary Shortcut", "Secondary Shortcut", "Add Second Shortcut", "Open Keyboard Settings",
-        "Stop Dictation When You Stop Talking", "Press Return After Pasting", "Shortcuts",
+        "Stop Dictation When You Stop Talking", "Press Return After Pasting",
+        "Use the fn key (hold to talk, double-tap for Agent)",
+        "Shortcuts",
     ]
     private static let additionalShortcutsTerms = [
         "Additional Shortcuts", "Paste Last Transcription (Original)", "Paste Last Transcription (Enhanced)",
@@ -73,7 +75,10 @@ struct SettingsView: View {
         "Screen Recording missing", "Agent",
         "Close After Opening Something", "Fall Back To Other Providers", "fallback", "failover",
     ]
-    private static let mcpTerms = ["MCP Servers", "Model Context Protocol", "tools", "integrations"]
+    private static let mcpTerms = [
+        "MCP Servers", "Model Context Protocol", "tools", "integrations", "Open Config", "Import from Claude Desktop",
+        "Reload",
+    ]
     private static let pastingTerms = [
         "Pasting", "Match Writing Style to the App", "Keep Clipboard Content", "Restore Delay", "250ms", "500ms",
         "Paste Method",
@@ -85,7 +90,7 @@ struct SettingsView: View {
     private static let interfaceTerms = [
         "Interface", "Appearance", "Language", "Recorder Position", "Live Text Display",
         "Shows live text while recording with realtime models.",
-        "Edge History", "battery", "hover", "power",
+        "Edge History", "Left-Edge History", "battery", "hover", "power",
         "Notch Material", "Liquid Glass", "Solid Black", "Always-Visible Notch Tab", "notch", "tab",
     ]
     private static let generalTerms = [
@@ -93,7 +98,7 @@ struct SettingsView: View {
         "Check for Updates", "Reset Onboarding",
     ]
     private static let backupTerms = ["Export Settings", "Export", "Import Settings", "Import", "Backup"]
-    private static let diagnosticsTerms = ["Diagnostics"]
+    private static let diagnosticsTerms = ["Diagnostics", "Export Logs", "Show in Finder"]
 
     private static let allTerms = [
         shortcutsTerms,
@@ -332,6 +337,14 @@ struct SettingsView: View {
                             )
                         }
                     }
+                    // On one row rather than the Section: a Section applies its modifiers to every
+                    // row, so the buffer would be re-synced once per row for a single change.
+                    .onChange(of: systemAudioBufferEnabled) { _, _ in
+                        Task { await systemAudioController.syncBufferingWithPreference() }
+                    }
+                    .onChange(of: systemAudioBufferSeconds) { _, _ in
+                        Task { await systemAudioController.syncBufferingWithPreference() }
+                    }
 
                     ExpandableSettingsRow(
                         isExpanded: $isSystemAudioBufferExpanded,
@@ -368,12 +381,6 @@ struct SettingsView: View {
                     )
                     .font(.app(.caption))
                     .foregroundStyle(.secondary)
-                }
-                .onChange(of: systemAudioBufferEnabled) { _, _ in
-                    Task { await systemAudioController.syncBufferingWithPreference() }
-                }
-                .onChange(of: systemAudioBufferSeconds) { _, _ in
-                    Task { await systemAudioController.syncBufferingWithPreference() }
                 }
             }
 

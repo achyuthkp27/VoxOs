@@ -10,9 +10,13 @@ class NotchWindowManager {
     private var outsideClickMonitor: Any?
     private var followUpFocusCancellable: AnyCancellable?
     /// The band's size as last laid out by the view. Zero until the view has reported it.
-    private var pillSize: CGSize = .zero
+    private var pillSize: CGSize = .zero {
+        didSet { publishVisibleRegion() }
+    }
+    /// The screen metrics the hosted view was built for; `show()` rebuilds when they change.
+    private var builtMetrics: NotchRecorderPanel.WindowMetrics?
 
-    private let makeView: ((width: CGFloat, height: CGFloat)?, @escaping (CGSize) -> Void) -> AnyView
+    private let makeView: ((width: CGFloat, height: CGFloat), @escaping (CGSize) -> Void) -> AnyView
     private let onCloseTapped: () -> Void
     private weak var assistantSession: AssistantSession?
     private let logger = Logger(subsystem: "com.achyuthkp.voxos", category: "NotchWindowManager")
@@ -36,7 +40,7 @@ class NotchWindowManager {
                     onRecordButtonTapped: onRecordButtonTapped,
                     onCloseTapped: onCloseTapped,
                     onAssistantFollowUp: onAssistantFollowUp,
-                    notchMetricsOverride: metrics,
+                    notchMetrics: metrics,
                     onPillSizeChange: onPillSizeChange
                 )
             )
@@ -54,12 +58,24 @@ class NotchWindowManager {
     /// the question: a stale window can never survive into a second dictation. The cost is one
     /// NSPanel plus one hosting controller per dictation, which is noise next to starting audio
     /// capture and a transcription session in the same code path.
+    ///
+    /// `screen` places the band on that screen, as when the idle tab on it is clicked; nil uses
+    /// the usual screen (see RecorderScreenResolver).
     @discardableResult
-    func show() -> Bool {
-        if panel == nil { initializeWindow() }
+    func show(on screen: NSScreen? = nil) -> Bool {
+        // The notch width and height are handed to the SwiftUI view once, when the window is
+        // built, while `panel.show()` moves the window to whichever screen holds the key window.
+        // A window built for the notched built-in display and shown on an external one kept the
+        // built-in notch's silhouette, so rebuild whenever the target screen's metrics differ.
+        if panel == nil
+            || Self.needsRebuild(built: builtMetrics, current: NotchRecorderPanel.calculateWindowMetrics(on: screen))
+        {
+            initializeWindow(on: screen)
+        }
         guard let panel else { return false }
-        let shown = panel.show()
+        let shown = panel.show(on: screen)
         if shown {
+            publishVisibleRegion()
             installOutsideClickMonitor()
             focusPanelWhenFollowUpBecomesAvailable()
         }
@@ -84,24 +100,10 @@ class NotchWindowManager {
     }
 
     /// Tears the window down rather than just ordering it out, so `isVisible` is never used as a
-    /// liveness test and no panel is carried across dictations.
-    /// Long enough for the band's close animation (NotchDesign.closeAnimation) to finish.
-    static let closeGrace: TimeInterval = 0.25
-
-    /// The window is released from this manager at once, so a show() that follows builds a fresh
-    /// one, but the old window stays on screen for a moment so the collapse can animate; tearing
-    /// it down immediately cut the animation off every time.
+    /// liveness test and no panel is carried across dictations. The caller waits for the band's
+    /// close animation before calling this (see RecorderUIManager.hideRecorderPanelAfterCollapse).
     func hide() {
-        followUpFocusCancellable?.cancel()
-        followUpFocusCancellable = nil
-        removeOutsideClickMonitor()
-        guard let dying = panel, let controller = windowController else { return }
-        panel = nil
-        windowController = nil
-        DispatchQueue.main.asyncAfter(deadline: .now() + Self.closeGrace) {
-            dying.orderOut(nil)
-            controller.close()
-        }
+        deinitializeWindow()
     }
 
     func destroyWindow() {
@@ -140,11 +142,31 @@ class NotchWindowManager {
     /// A click this close to the band's edge still counts as a click on the band.
     static let outsideClickTolerance: CGFloat = 6
 
+    /// A window built for one set of screen metrics must not be shown with another. With no
+    /// current screen there is nothing to rebuild for; `panel.show()` reports that case itself.
+    static func needsRebuild(
+        built: NotchRecorderPanel.WindowMetrics?, current: NotchRecorderPanel.WindowMetrics?
+    ) -> Bool {
+        guard let built, let current else { return false }
+        return built.frame != current.frame || built.notchWidth != current.notchWidth
+            || built.notchHeight != current.notchHeight
+    }
+
     /// The band hangs from the top of the window, centred on it (see NotchRecorderView.body).
     static func pillRect(size: CGSize, in panelFrame: NSRect) -> NSRect {
         NSRect(
             x: panelFrame.midX - size.width / 2, y: panelFrame.maxY - size.height, width: size.width,
             height: size.height)
+    }
+
+    /// Tells AgentSelfGuard which part of this window is the band, so the pointer over the
+    /// transparent rest of the window is not mistaken for a pointer over VoxOS.
+    private func publishVisibleRegion() {
+        guard let panel else { return }
+        let region =
+            pillSize == .zero
+            ? nil : AgentSelfGuard.region(of: Self.pillRect(size: pillSize, in: panel.frame), inWindow: panel.frame)
+        AgentSelfGuard.setVisibleRegion(region, ofWindowNumber: panel.windowNumber)
     }
 
     private func removeOutsideClickMonitor() {
@@ -157,13 +179,14 @@ class NotchWindowManager {
     // Rebuilding gives the SwiftUI content a new identity, so view-local state inside it is
     // reset — currently the assistant follow-up draft and its focus. The conversation itself
     // lives in `AssistantSession`, which is owned by the engine and survives.
-    private func initializeWindow() {
+    private func initializeWindow(on screen: NSScreen?) {
         deinitializeWindow()
-        guard let metrics = NotchRecorderPanel.calculateWindowMetrics() else {
+        guard let metrics = NotchRecorderPanel.calculateWindowMetrics(on: screen) else {
             logger.error("Notch panel not created: no screen available")
             return
         }
         let newPanel = NotchRecorderPanel(contentRect: metrics.frame)
+        builtMetrics = metrics
         pillSize = .zero
         let view = makeView((width: metrics.notchWidth, height: metrics.notchHeight)) { [weak self] size in
             self?.pillSize = size
@@ -178,10 +201,12 @@ class NotchWindowManager {
         followUpFocusCancellable?.cancel()
         followUpFocusCancellable = nil
         removeOutsideClickMonitor()
+        if let panel { AgentSelfGuard.setVisibleRegion(nil, ofWindowNumber: panel.windowNumber) }
         panel?.orderOut(nil)
         windowController?.close()
         windowController = nil
         panel = nil
+        builtMetrics = nil
     }
 
 }

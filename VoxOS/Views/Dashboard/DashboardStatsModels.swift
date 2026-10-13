@@ -487,6 +487,16 @@ final class DashboardStatsCache: @unchecked Sendable {
         return current
     }
 
+    /// The summary already held in memory, with its metadata, without touching the disk. A view
+    /// can read this in its initialiser to show a warm cache on its first frame; nil means the
+    /// snapshot still has to come from disk through `currentSummary()`.
+    func inMemorySnapshot() -> (summary: DashboardStatsSummary, metadata: DashboardStatsSnapshotStore.Metadata?)? {
+        lock.lock()
+        defer { lock.unlock() }
+        guard let summary else { return nil }
+        return (summary: summary, metadata: snapshotMetadata)
+    }
+
     func currentMetadata() -> DashboardStatsSnapshotStore.Metadata? {
         lock.lock()
         defer { lock.unlock() }

@@ -11,14 +11,15 @@ enum StarterModeFactory {
         transcriptionModelName: String = defaultTranscriptionModelName,
         isRealtimeTranscriptionEnabled: Bool = true,
         selectedLanguage: String = "auto",
-        installedApps: [InstalledAppInfo]? = nil
+        installedApps: [InstalledAppInfo] = []
     ) {
         let manager = ModeManager.shared
         let requestedKinds = Set(kinds)
-        let availableInstalledApps =
-            requestedKinds.contains(.email)
-            ? (installedApps ?? InstalledApps.load())
-            : []
+        // No fallback to `InstalledApps.load()` here: that is a full /Applications scan with icon
+        // loading, and this runs on the main thread on every onboarding step. Callers pass what
+        // the warm-up store has scanned off-main and top the Email mode up afterwards with
+        // `addMissingEmailAppTriggers`.
+        let availableInstalledApps = requestedKinds.contains(.email) ? installedApps : []
 
         // Keep a starter mode the user already has rather than rebuilding it from the
         // catalogue: onboarding calls this on every experience step, and "Reset Onboarding"
@@ -58,6 +59,55 @@ enum StarterModeFactory {
             manager.setActiveConfiguration(defaultConfig)
         }
     }
+
+    /// Onboarding installs the Email mode before the installed-app scan has finished, so its
+    /// trigger group starts out with websites only. Called once the scan lands to add the mail
+    /// apps that are installed. A group that already has apps is the user's, and is left alone.
+    static func addMissingEmailAppTriggers(installedApps: [InstalledAppInfo]) {
+        let manager = ModeManager.shared
+        guard let template = StarterModeCatalog.templates.first(where: { $0.kind == .email }),
+            var config = manager.configurations.first(where: { $0.id == template.id }),
+            let groups = emailTriggerGroupsAddingApps(
+                to: config.triggerGroups ?? [],
+                installedApps: installedApps,
+                existingAppBundleIds: Set(config.allAppConfigs.map(\.bundleIdentifier)),
+                cleanURL: manager.cleanURL
+            )
+        else { return }
+
+        config.triggerGroups = groups
+        manager.updateConfiguration(config)
+    }
+
+    /// The groups with the email template's installed apps filled into its app-less group, or
+    /// `nil` when there is nothing to add.
+    static func emailTriggerGroupsAddingApps(
+        to groups: [ModeTriggerGroup],
+        installedApps: [InstalledAppInfo],
+        existingAppBundleIds: Set<String>,
+        cleanURL: (String) -> String
+    ) -> [ModeTriggerGroup]? {
+        guard !installedApps.isEmpty,
+            let emailTemplate = TriggerTemplateCatalog.templates.first(where: { $0.id == emailTriggerTemplateId }),
+            let groupIndex = groups.firstIndex(where: {
+                $0.templateId == emailTriggerTemplateId && $0.appConfigs.isEmpty
+            })
+        else { return nil }
+
+        let available = emailTemplate.availableGroup(
+            installedApps: installedApps,
+            existingAppBundleIds: existingAppBundleIds,
+            existingWebsites: [],
+            cleanURL: cleanURL
+        )
+        guard !available.appConfigs.isEmpty else { return nil }
+
+        var groups = groups
+        groups[groupIndex].appConfigs = available.appConfigs
+        return groups
+    }
+
+    private static let emailTriggerTemplateId = "email"
 
     static func isInstalled(kind: StarterModeKind) -> Bool {
         guard let template = StarterModeCatalog.templates.first(where: { $0.kind == kind }) else {
@@ -143,7 +193,7 @@ enum StarterModeFactory {
         installedApps: [InstalledAppInfo]
     ) -> [ModeTriggerGroup]? {
         guard kind == .email,
-            let emailTemplate = TriggerTemplateCatalog.templates.first(where: { $0.id == "email" })
+            let emailTemplate = TriggerTemplateCatalog.templates.first(where: { $0.id == emailTriggerTemplateId })
         else {
             return nil
         }

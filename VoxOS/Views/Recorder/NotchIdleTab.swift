@@ -230,7 +230,9 @@ final class NotchIdleTabManager {
             onHoverChange: { [weak self] inside in self?.hoverChanged(inside) },
             onTap: { [weak self] in
                 guard let uiManager = self?.uiManager else { return }
-                Task { @MainActor in await uiManager.toggleRecorderPanel() }
+                // The band opens on the tab's own screen, not on whichever one holds the key window.
+                let screen = self?.screen
+                Task { @MainActor in await uiManager.toggleRecorderPanel(on: screen) }
             })
         newPanel.contentView = NotchRecorderHostingController(rootView: view).view
         panel = newPanel

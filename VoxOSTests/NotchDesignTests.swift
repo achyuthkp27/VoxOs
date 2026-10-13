@@ -117,21 +117,39 @@ struct NotchDesignTests {
         #expect(NotchDesign.glassDarkStop > 0.3 && NotchDesign.glassDarkStop < 0.6)
     }
 
-    @Test func theComposerIsExactlyOneLineTallWithTheOrbInIt() {
-        // Laid out for real: the orb and a line of text in the composer's font, inside the same
-        // chrome the reply panel uses. panelChrome counts minHeight for the composer, so the real
-        // height must be exactly that, or the band and the panel disagree.
-        let composer = HStack(spacing: 6) {
-            AgentOrb(isActive: true)
+    /// The composer as AssistantPanelView builds it: the orb, then a line of text in its font.
+    private func composerRow(orb: Bool) -> some View {
+        HStack(spacing: 6) {
+            if orb { AgentOrb(isActive: true) }
             TextField("", text: .constant("Ask anything")).textFieldStyle(.plain).font(.app(size: 15))
         }
-        .modifier(AgentComposerChrome())
-        .frame(width: 400)
-        let height = NSHostingView(rootView: composer).fittingSize.height
-        #expect(abs(height - AgentComposer.minHeight) < 0.5, "composer laid out at \(height) pt")
+    }
 
-        let orbHeight = NSHostingView(rootView: AgentOrb(isActive: false)).fittingSize.height
-        #expect(orbHeight + 2 * AgentComposer.verticalPadding <= AgentComposer.minHeight + 0.01)
+    @Test func theComposerIsExactlyOneLineTallWithTheOrbInIt() {
+        // Laid out for real and without the one-line clamp, so nothing forces the answer: the orb
+        // and the composer's padding alone must come to the 38 pt that panelChrome counts.
+        let composer = composerRow(orb: true)
+            .modifier(AgentComposerChrome(minHeight: nil))
+            .frame(width: 400)
+        let height = NSHostingView(rootView: composer).fittingSize.height
+        #expect(abs(height - 38) < 0.5, "composer laid out at \(height) pt")
+        #expect(AgentComposer.minHeight == 38)
+    }
+
+    @Test func theReplyPanelIsItsContentPlusTheChromeItCounts() {
+        // The real panel layout around messages of a known height and the real composer. With the
+        // side inset reused at the bottom this came out 18 pt taller than panelHeight(forContent:)
+        // allows, and every reply lost that much of the space measured for it.
+        let contentHeight: CGFloat = 100
+        let panel = AssistantPanelLayout {
+            Color.clear.frame(height: contentHeight)
+        } composer: {
+            composerRow(orb: true).modifier(AgentComposerChrome())
+        }
+        .frame(width: NotchDesign.expandedWidth)
+        let height = NSHostingView(rootView: panel).fittingSize.height
+        let expected = AgentComposer.panelHeight(forContent: contentHeight)
+        #expect(abs(height - expected) < 0.5, "panel laid out at \(height) pt, band sized for \(expected) pt")
     }
 
     @Test func theNotchWindowHoldsTheLargestBandAndItsShadow() {
@@ -165,12 +183,15 @@ struct NotchDesignTests {
             NotchDesign.expanded.bottom - (AgentComposer.panelInset - NotchDesign.expanded.shoulder)
                 == AgentComposer.radius,
             "composer concentric with the bottom corner")
+        // The bottom edge has no shoulder, so the composer sits only the concentric 12 pt above it.
+        #expect(AgentComposer.panelBottomInset == 12)
     }
 
     @Test func replyPanelFollowsItsContentWithinLimits() {
         #expect(
             AgentComposer.panelHeight(forContent: 0) == AgentComposer.panelMinHeight, "never smaller than the floor")
-        #expect(AgentComposer.panelHeight(forContent: 100) == 100 + AgentComposer.panelChrome)
+        // 8 above the messages, 14 between them and the composer, 38 for the composer, 12 below it.
+        #expect(AgentComposer.panelHeight(forContent: 100) == 172)
         #expect(
             AgentComposer.panelHeight(forContent: 1_000) == AgentComposer.panelMaxHeight, "never taller than the cap")
         #expect(AgentComposer.panelChrome > AgentComposer.minHeight, "chrome includes the composer")
