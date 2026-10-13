@@ -9,6 +9,13 @@ enum AgentToolExecutor {
     static let promptMarker = "VOXOS AGENT PROTOCOL"
     static let maxSteps = 14
 
+    static let maxResultChars = 12_000
+
+    static func clipResult(_ json: String) -> String {
+        guard json.count > maxResultChars else { return json }
+        return String(json.prefix(maxResultChars)) + "… [truncated: \(json.count) characters in total]"
+    }
+
     static func isAgentConversation(systemPrompt: String?) -> Bool {
         systemPrompt?.contains(promptMarker) == true
     }
@@ -72,9 +79,11 @@ enum AgentToolExecutor {
             executed.append(call.name)
             if !background, let card = AgentCard.from(tool: call.name, result: result) { AgentCardStore.add(card) }
 
-            let resultJSON =
+            // Resent on every remaining step: an uncapped page dump or file read would blow
+            // the provider's limit on the next call and end the run with a failed request.
+            let resultJSON = clipResult(
                 (try? JSONSerialization.data(withJSONObject: result))
-                .flatMap { String(data: $0, encoding: .utf8) } ?? "{\"error\":\"unserializable result\"}"
+                    .flatMap { String(data: $0, encoding: .utf8) } ?? "{\"error\":\"unserializable result\"}")
 
             messages.append(.assistant(reply))
             messages.append(

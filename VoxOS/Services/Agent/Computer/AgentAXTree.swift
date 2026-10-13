@@ -36,6 +36,9 @@ enum AgentAXTree {
     static func enumerateFrontmost(maxDepth: Int = 14, maxElements: Int = 120) -> [Element] {
         guard AXIsProcessTrusted() else { return [] }
         guard let app = NSWorkspace.shared.frontmostApplication else { return [] }
+        // Our own windows are served in-process on this thread, which builds SwiftUI's
+        // accessibility tree off the main queue and trips SwiftData's queue assert.
+        guard app.processIdentifier != AgentSelfGuard.ownPID else { return [] }
         let axApp = AXUIElementCreateApplication(app.processIdentifier)
         AXUIElementSetMessagingTimeout(axApp, 1.0)
 
@@ -95,16 +98,17 @@ enum AgentAXTree {
     /// inventing spacing from a wrong answer shifts the user's text.
     static func insertionContext() -> (before: Character?, after: Character?)? {
         guard AXIsProcessTrusted(), !AgentSelfGuard.isFrontmost else { return nil }
+        // This runs on the paste path right after a dictation. The default AX timeout is six
+        // seconds per call and an app that is busy (or has a hung AX server) blocks each one, so
+        // bound it like enumerateFrontmost does rather than stall the paste.
         let system = AXUIElementCreateSystemWide()
+        AXUIElementSetMessagingTimeout(system, 1.0)
         guard let focused = axElement(copyAttribute(system, kAXFocusedUIElementAttribute)),
             !AgentSelfGuard.isOwn(focused)
         else {
             return nil
         }
-        // stringFrom yields "" for a non-text element rather than nil, and an empty field has no
-        // neighbouring characters to report either way.
-        let value = stringFrom(copyAttribute(focused, kAXValueAttribute))
-        guard !value.isEmpty else { return nil }
+        AXUIElementSetMessagingTimeout(focused, 1.0)
 
         // Whatever the foreign app returns; some AX bridges hand back an NSValue here, and a
         // force cast trapped mid-dictation.
@@ -117,19 +121,53 @@ enum AgentAXTree {
         // A non-empty selection is about to be replaced, so neither side describes what the
         // inserted text will sit between.
         guard range.length == 0 else { return nil }
+        let caret = range.location
+        guard caret >= 0 else { return nil }
+
+        // Only the two UTF-16 units around the caret are needed. Ask for just that window first:
+        // copying kAXValueAttribute hands over the whole document, which for a long editor
+        // buffer is megabytes marshalled over the AX connection on every paste. Apps that do not
+        // implement the parameterized read fall back to the full value.
+        if let window = stringForRange(focused, location: max(0, caret - 1), length: caret == 0 ? 1 : 2) {
+            let utf16 = Array(window.utf16)
+            let caretInWindow = caret == 0 ? 0 : 1
+            // The app returned fewer units than asked: the caret is at the end, so there is
+            // nothing after it, and (when it returned none) the field is empty.
+            guard !utf16.isEmpty else { return nil }
+            return (before: character(utf16, at: caretInWindow - 1), after: character(utf16, at: caretInWindow))
+        }
+
+        // stringFrom yields "" for a non-text element rather than nil, and an empty field has no
+        // neighbouring characters to report either way.
+        let value = stringFrom(copyAttribute(focused, kAXValueAttribute))
+        guard !value.isEmpty else { return nil }
 
         // AX reports UTF-16 offsets; anything outside the string means the two are out of step
         // and the answer cannot be trusted.
         let utf16 = Array(value.utf16)
-        let caret = range.location
-        guard caret >= 0, caret <= utf16.count else { return nil }
+        guard caret <= utf16.count else { return nil }
 
-        func character(at index: Int) -> Character? {
-            guard index >= 0, index < utf16.count else { return nil }
-            return String(utf16CodeUnits: [utf16[index]], count: 1).first
-        }
+        return (before: character(utf16, at: caret - 1), after: character(utf16, at: caret))
+    }
 
-        return (before: character(at: caret - 1), after: character(at: caret))
+    private static func character(_ utf16: [UInt16], at index: Int) -> Character? {
+        guard index >= 0, index < utf16.count else { return nil }
+        return String(utf16CodeUnits: [utf16[index]], count: 1).first
+    }
+
+    /// `kAXStringForRangeParameterizedAttribute` for a UTF-16 range; nil when the app does not
+    /// support it (or the range is out of bounds), so the caller can fall back to the full value.
+    private static func stringForRange(_ element: AXUIElement, location: Int, length: Int) -> String? {
+        var range = CFRange(location: location, length: length)
+        guard let parameter = AXValueCreate(.cfRange, &range) else { return nil }
+        var value: AnyObject?
+        let status = AXUIElementCopyParameterizedAttributeValue(
+            element, kAXStringForRangeParameterizedAttribute as CFString, parameter, &value)
+        guard status == .success else { return nil }
+        // Some apps answer with an attributed string; either spelling is fine here.
+        if let string = value as? String { return string }
+        if let attributed = value as? NSAttributedString { return attributed.string }
+        return nil
     }
 
     // MARK: - Private

@@ -103,6 +103,14 @@ enum AgentShell {
         let patterns: [(String, String)] = [
             (#"\brm\s+(-[a-z]*r[a-z]*f|-[a-z]*f[a-z]*r|-r\s+-f|-f\s+-r)\b"#, "recursive force-delete"),
             (#"\brm\b.*--no-preserve-root"#, "delete from the filesystem root"),
+            // Long flags in either order: `rm -r --force`, `rm --recursive -f`, `rm --force --recursive`.
+            (
+                #"\brm\b(?=.*\s(-[a-z]*r[a-z]*|--recursive)\b)(?=.*\s(-[a-z]*f[a-z]*|--force)\b)"#,
+                "recursive force-delete"
+            ),
+            (#"\bfind\b.*\s-delete\b"#, "bulk delete"),
+            (#"\brmtree\s*\("#, "recursive delete"),
+            (#"\$\(\s*which\s+(sudo|doas)\s*\)"#, "runs as root"),
             (b + #"sudo\s"#, "runs as root"), (b + #"doas\s"#, "runs as root"),
             (#"\bmkfs(\.|\b)"#, "formats a filesystem"), (#"\bdd\s+.*\bif="#, "raw disk read/write"),
             (#"\bof=/dev/"#, "raw disk write"), (#">\s*/dev/(?!null\b)"#, "writes to a device file"),

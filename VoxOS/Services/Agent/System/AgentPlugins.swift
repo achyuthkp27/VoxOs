@@ -126,6 +126,10 @@ enum AgentPlugins {
             return ["error": "run_type must be one of shell, applescript, open_url"]
         }
         guard !template.isEmpty else { return ["error": "template is required"] }
+        // A URL with a secret in it leaves the machine the moment it is opened.
+        if runType == "open_url", template.contains("{{secret:") {
+            return ["error": "open_url plugins cannot use {{secret:…}}; a secret in a URL is sent to that site"]
+        }
         if runType != "open_url", let risk = AgentShell.riskReason(template) {
             return ["error": "refusing to save a plugin whose command looks risky (\(risk))"]
         }
@@ -156,7 +160,7 @@ enum AgentPlugins {
     private static func substitute(_ template: String, args: [String: Any], runType: String) -> String {
         var s = template
         // {{secret:name}} pulls a value saved with secret_save; it never appears in the prompt.
-        if let regex = try? NSRegularExpression(pattern: #"\{\{secret:([a-zA-Z0-9_.-]+)\}\}"#) {
+        if runType != "open_url", let regex = try? NSRegularExpression(pattern: #"\{\{secret:([a-zA-Z0-9_.-]+)\}\}"#) {
             let ns = s as NSString
             for match in regex.matches(in: s, range: NSRange(location: 0, length: ns.length)).reversed() {
                 let name = ns.substring(with: match.range(at: 1)).lowercased()

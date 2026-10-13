@@ -9,7 +9,11 @@ import SwiftData
 /// to the app-integration tools in `AgentTools.executeBuiltin`.
 extension AgentTools {
 
-    static func execute(name: String, args: [String: Any]) async -> [String: Any] {
+    static func execute(name: String, args rawArgs: [String: Any]) async -> [String: Any] {
+        // Keys starting with "_" are the dispatcher's own (a confirmed replay carries
+        // `_confirmed`). The model never gets to set them: with `_confirmed: true` in a
+        // set_control_mode call, injected page text could unlock takeover by itself.
+        let args = stripReservedArgs(rawArgs)
         if AgentRunScope.isBackground, let reason = AgentRunScope.backgroundBlockReason(tool: name, args: args) {
             return ["error": "blocked in background: \(reason)"]
         }
@@ -102,6 +106,8 @@ extension AgentTools {
     /// Tools that ask for confirmation regardless of mode (they really send something).
     private static func alwaysConfirms(_ name: String, _ args: [String: Any]) -> Bool {
         if name == "messages_send" { return true }
+        // A plugin that embeds a saved secret can send it anywhere; the user sees it first.
+        if name == "plugin_create", ((args["template"] as? String) ?? "").contains("{{secret:") { return true }
         guard ["mail_compose", "gmail_compose", "slack_send"].contains(name) else { return false }
         if let v = args["send"] as? Bool { return v }
         if let v = args["send"] as? Int { return v != 0 }
@@ -136,9 +142,21 @@ extension AgentTools {
             break
         }
         let result = await executeUngated(name: pending.name, args: pending.args)
-        if result["error"] == nil { AgentMacros.record(tool: pending.name, args: pending.args) }
+        // Same filter as the gated path: a confirmed mode switch must not land in a macro,
+        // where replay would loosen the mode with nobody asked.
+        if result["error"] == nil, AgentMacros.isRecordable(pending.name) {
+            AgentMacros.record(tool: pending.name, args: pending.args)
+        }
         return result
     }
+
+    static func stripReservedArgs(_ args: [String: Any]) -> [String: Any] {
+        args.filter { !$0.key.hasPrefix("_") }
+    }
+
+    /// A batch or macro is one model step; without a cap, 1,000 `wait` steps hold the run
+    /// for hours with no way to cancel it.
+    static let maxBatchSteps = 25
 
     private static let untruncatedArgKeys: Set<String> = [
         "command", "script", "js", "template", "text", "to", "body", "url", "path", "from",
@@ -390,6 +408,9 @@ extension AgentTools {
             guard !steps.isEmpty else {
                 return ["error": "actions is required: a list of {\"tool\": ..., \"args\": {...}}"]
             }
+            guard steps.count <= maxBatchSteps else {
+                return ["error": "batch_actions takes at most \(maxBatchSteps) steps; split the work"]
+            }
             let stopOnError = b("stop_on_error", true)
             let dryRun = b("dry_run", false)
             var results: [[String: Any]] = []
@@ -402,7 +423,9 @@ extension AgentTools {
                     results.append(["tool": tool, "would_run": summarize(stepArgs)])
                     continue
                 }
-                let result = await executeUngated(name: tool, args: stepArgs)
+                // Through the gate, not around it: a nested step is still the model acting,
+                // so the control mode and the background block list apply to it too.
+                let result = await execute(name: tool, args: stepArgs)
                 results.append(["tool": tool, "result": result])
                 if result["error"] != nil || result["confirm_required"] != nil {
                     if result["confirm_required"] != nil { AgentPendingAction.clear() }
@@ -449,7 +472,9 @@ extension AgentTools {
                         "blocked: this script looks risky (\(risk)) and was NOT run. The user can enable “Allow risky shell commands” in Settings → Agent.",
                 ]
             }
-            return await MainActor.run { AgentAppleScript.run(script) }
+            // Model-written script, so it may take any amount of time (delay, dialogs, a hung
+            // app): an osascript child with a deadline, never NSAppleScript on main.
+            return await AgentAppleScript.runDetached(script)
         case "read_file":
             return AgentFiles.readFile(path: s("path"))
         case "read_pdf":
@@ -501,8 +526,20 @@ extension AgentTools {
                 return ["error": "no macro named \(s("name"))", "available": AgentMacros.list().map(\.name)]
             }
             var failures: [[String: Any]] = []
-            for (index, step) in macro.steps.enumerated() {
-                let result = await executeUngated(name: step.tool, args: step.args)
+            for (index, step) in macro.steps.enumerated().prefix(maxBatchSteps) {
+                // Replay is ungated by design (the user confirmed these when recording), but a
+                // hand-edited macro file must not smuggle in what recording never captures.
+                guard AgentMacros.isRecordable(step.tool) else {
+                    failures.append(["step": index + 1, "tool": step.tool, "error": "not allowed in a macro"])
+                    continue
+                }
+                if AgentRunScope.isBackground,
+                    let reason = AgentRunScope.backgroundBlockReason(tool: step.tool, args: step.args)
+                {
+                    failures.append(["step": index + 1, "tool": step.tool, "error": "blocked in background: \(reason)"])
+                    continue
+                }
+                let result = await executeUngated(name: step.tool, args: stripReservedArgs(step.args))
                 if let confirmMessage = result["confirm_required"] {
                     // A step that only queues a confirmation (e.g. messages_send) never
                     // actually runs during replay — there's no live turn to say "confirm".

@@ -20,45 +20,115 @@ enum AgentAppleScript {
     /// seconds (a Notes body scan): NSAppleScript would hold the main thread for the duration,
     /// and a stalled main thread is what makes the keyboard tap time out.
     static func runDetached(_ source: String, timeout: TimeInterval = 60) async -> [String: Any] {
-        await withCheckedContinuation { continuation in
-            DispatchQueue.global(qos: .userInitiated).async {
-                let process = Process()
-                process.executableURL = URL(fileURLWithPath: "/usr/bin/osascript")
-                process.arguments = ["-"]
-                let input = Pipe()
-                let output = Pipe()
-                let errors = Pipe()
-                process.standardInput = input
-                process.standardOutput = output
-                process.standardError = errors
-                do {
-                    try process.run()
-                } catch {
-                    continuation.resume(returning: ["error": "could not start osascript: \(error.localizedDescription)"]
-                    )
-                    return
-                }
-                input.fileHandleForWriting.write(Data(source.utf8))
-                try? input.fileHandleForWriting.close()
-                let deadline = DispatchWorkItem { if process.isRunning { process.terminate() } }
-                DispatchQueue.global().asyncAfter(deadline: .now() + timeout, execute: deadline)
-                // Read to EOF before waiting, or a large result fills the pipe and the child never exits.
-                let out = String(decoding: output.fileHandleForReading.readDataToEndOfFile(), as: UTF8.self)
-                let err = String(decoding: errors.fileHandleForReading.readDataToEndOfFile(), as: UTF8.self)
-                process.waitUntilExit()
-                deadline.cancel()
-                let result = out.trimmingCharacters(in: .whitespacesAndNewlines)
-                let message = err.trimmingCharacters(in: .whitespacesAndNewlines)
-                if process.terminationStatus != 0 {
-                    continuation.resume(
-                        returning: [
-                            "error": message.isEmpty ? "AppleScript failed (\(process.terminationStatus))" : message
-                        ])
-                } else {
-                    continuation.resume(returning: ["result": result.isEmpty ? "ok" : result])
+        let run = DetachedAppleScriptRun()
+        // Cancelling the calling task kills `osascript` rather than leaving it running to the timeout.
+        return await withTaskCancellationHandler {
+            await withCheckedContinuation { continuation in
+                DispatchQueue.global(qos: .userInitiated).async {
+                    continuation.resume(returning: run.execute(source, timeout: timeout))
                 }
             }
+        } onCancel: {
+            run.terminate(reason: .cancelled)
         }
+    }
+}
+
+/// One `osascript` child, shared between the reading queue, the timeout and task cancellation,
+/// so each can stop the process and the result can say why it stopped.
+private final class DetachedAppleScriptRun: @unchecked Sendable {
+    enum StopReason {
+        case timedOut
+        case cancelled
+    }
+
+    private let process = Process()
+    private let lock = NSLock()
+    private var stopReason: StopReason?
+
+    private var currentStopReason: StopReason? {
+        lock.withLock { stopReason }
+    }
+
+    func terminate(reason: StopReason) {
+        // A deadline that fires just as the script finishes must not turn its result into a timeout.
+        if reason == .timedOut, !process.isRunning { return }
+        lock.withLock {
+            if stopReason == nil { stopReason = reason }
+        }
+        // `isRunning` is false before launch, so a cancel that arrives that early is applied
+        // right after `run()` instead.
+        if process.isRunning { process.terminate() }
+    }
+
+    func execute(_ source: String, timeout: TimeInterval) -> [String: Any] {
+        process.executableURL = URL(fileURLWithPath: "/usr/bin/osascript")
+        process.arguments = ["-"]
+        let input = Pipe()
+        let output = Pipe()
+        let errors = Pipe()
+        process.standardInput = input
+        process.standardOutput = output
+        process.standardError = errors
+        do {
+            try process.run()
+        } catch {
+            return ["error": "could not start osascript: \(error.localizedDescription)"]
+        }
+        if currentStopReason != nil, process.isRunning {
+            process.terminate()
+        }
+        // The throwing write: if osascript exits before reading, the non-throwing one raises
+        // an uncatchable ObjC exception and takes the app down.
+        try? input.fileHandleForWriting.write(contentsOf: Data(source.utf8))
+        try? input.fileHandleForWriting.close()
+        let deadline = DispatchWorkItem { [self] in terminate(reason: .timedOut) }
+        DispatchQueue.global().asyncAfter(deadline: .now() + timeout, execute: deadline)
+
+        // Both pipes are drained at the same time and to EOF before waiting. Reading stdout first
+        // left stderr unread, so more than a pipe buffer (64 KB) of it blocked the child until the
+        // timeout; not reading at all lets a large result fill the pipe so the child never exits.
+        let errorData = PipeReadResult()
+        let errorRead = DispatchGroup()
+        errorRead.enter()
+        DispatchQueue.global(qos: .userInitiated).async {
+            errorData.set(errors.fileHandleForReading.readDataToEndOfFile())
+            errorRead.leave()
+        }
+        let outData = output.fileHandleForReading.readDataToEndOfFile()
+        errorRead.wait()
+        process.waitUntilExit()
+        deadline.cancel()
+
+        switch currentStopReason {
+        case .timedOut:
+            return ["error": "AppleScript timed out after \(Int(timeout)) s"]
+        case .cancelled:
+            return ["error": "AppleScript was cancelled"]
+        case nil:
+            break
+        }
+
+        let result = String(decoding: outData, as: UTF8.self).trimmingCharacters(in: .whitespacesAndNewlines)
+        let message = String(decoding: errorData.get(), as: UTF8.self).trimmingCharacters(in: .whitespacesAndNewlines)
+        if process.terminationStatus != 0 {
+            return ["error": message.isEmpty ? "AppleScript failed (\(process.terminationStatus))" : message]
+        }
+        return ["result": result.isEmpty ? "ok" : result]
+    }
+}
+
+/// Holds the stderr bytes read on another queue until the reading thread hands them over.
+private final class PipeReadResult: @unchecked Sendable {
+    private let lock = NSLock()
+    private var data = Data()
+
+    func set(_ newValue: Data) {
+        lock.withLock { data = newValue }
+    }
+
+    func get() -> Data {
+        lock.withLock { data }
     }
 }
 
@@ -116,7 +186,7 @@ enum AgentTools {
             }
 
         case "calendar_today":
-            return await MainActor.run { calendarToday() }
+            return await calendarToday()
 
         case "reminders_add":
             return await MainActor.run {
@@ -311,10 +381,10 @@ enum AgentTools {
             }
 
         case "calendar_upcoming":
-            return await MainActor.run { calendarUpcoming(days: i("days", 7)) }
+            return await calendarUpcoming(days: i("days", 7))
 
         case "reminders_list":
-            return await MainActor.run { remindersList(list: s("list")) }
+            return await remindersList(list: s("list"))
 
         case "web_search":
             let query = s("query")
@@ -488,7 +558,12 @@ enum AgentTools {
             return await MainActor.run { AgentCodingSessions.resume(id: s("id")) }
 
         case "messages_recent":
-            return await MainActor.run { AgentMessages.recent(contact: s("contact"), limit: i("limit", 20)) }
+            // A chat.db scan can take seconds; SQLite needs no main thread.
+            let contact = s("contact")
+            let limit = i("limit", 20)
+            return await Task.detached(priority: .userInitiated) {
+                AgentMessages.recent(contact: contact, limit: limit)
+            }.value
 
         default:
             return ["error": "unknown tool: \(name)", "hint": "reply with a plain-text answer if no tool fits"]
@@ -543,8 +618,7 @@ enum AgentTools {
         return AgentAppleScript.run(script)
     }
 
-    @MainActor
-    private static func calendarToday() -> [String: Any] {
+    private static func calendarToday() async -> [String: Any] {
         let script = """
             set output to ""
             set startOfDay to current date
@@ -562,7 +636,7 @@ enum AgentTools {
             if output is "" then return "No events today."
             return output
             """
-        return AgentAppleScript.run(script)
+        return await AgentAppleScript.runDetached(script)
     }
 
     // MARK: - Reminders
@@ -645,6 +719,9 @@ enum AgentTools {
         let deadline = Date().addingTimeInterval(15)
         while Date() < deadline {
             do { try await Task.sleep(nanoseconds: 700_000_000) } catch { return ["error": "cancelled"] }
+            // The compose window lives in a browser. If the user switched to Mail, Slack or
+            // Messages meanwhile, their "Send" button must not be the one pressed.
+            guard await MainActor.run(body: { browserIsFrontmost() }) else { continue }
             let elements = AgentAXTree.enumerateFrontmost(maxDepth: 30, maxElements: 600)
             // Gmail's button is titled "Send ‪(⌘Enter)‬" in most locales; match the prefix.
             if let sendButton = elements.first(where: {
@@ -657,11 +734,18 @@ enum AgentTools {
                 return ["result": "email sent to \(to) via Gmail (clicked Send)"]
             }
         }
-        // Compose window never exposed a Send button (browser AX off, slow login…): try ⌘Return.
-        if AgentInputSynth.pressKey("return", modifiers: ["cmd"]) {
+        // Compose window never exposed a Send button (browser AX off, slow login…): try ⌘Return,
+        // but only into a browser; in any other app it would send whatever is in front.
+        if await MainActor.run(body: { browserIsFrontmost() }), AgentInputSynth.pressKey("return", modifiers: ["cmd"]) {
             return ["result": "pressed ⌘Return in the Gmail compose window; ask the user to check it went out"]
         }
         return ["error": "Gmail compose window did not appear; the draft is open in the browser for the user to send"]
+    }
+
+    @MainActor
+    private static func browserIsFrontmost() -> Bool {
+        guard let bundle = NSWorkspace.shared.frontmostApplication?.bundleIdentifier else { return false }
+        return browserBundleIdentifiers.values.contains(bundle)
     }
 
     // MARK: - Files
@@ -701,8 +785,8 @@ enum AgentTools {
 
     // MARK: - Calendar / Reminders read tools
 
-    @MainActor
-    private static func calendarUpcoming(days: Int) -> [String: Any] {
+    /// Walks every event of every calendar: seconds on a full calendar, so never on main.
+    private static func calendarUpcoming(days: Int) async -> [String: Any] {
         let span = max(1, min(days, 31))
         let script = """
             set output to ""
@@ -721,11 +805,10 @@ enum AgentTools {
             if output is "" then return "No events in the next \(span) days."
             return output
             """
-        return AgentAppleScript.run(script)
+        return await AgentAppleScript.runDetached(script)
     }
 
-    @MainActor
-    private static func remindersList(list: String) -> [String: Any] {
+    private static func remindersList(list: String) async -> [String: Any] {
         let listClause = list.isEmpty ? "default list" : "list \"\(esc(list))\""
         let script = """
             set output to ""
@@ -737,7 +820,7 @@ enum AgentTools {
             if output is "" then return "No open reminders."
             return output
             """
-        return AgentAppleScript.run(script)
+        return await AgentAppleScript.runDetached(script)
     }
 }
 

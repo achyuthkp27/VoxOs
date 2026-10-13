@@ -8,14 +8,21 @@ import PDFKit
 enum AgentFiles {
     private static let maxChars = 12_000
 
+    /// Where credentials live under the home folder. Not a complete list, but the common ones.
+    static let credentialPaths: [String] = [
+        "/Library/Keychains", "/.ssh", "/.aws", "/.netrc", "/.gnupg", "/.config/gh", "/.docker/config.json",
+        "/.kube", "/.npmrc", "/.pypirc", "/Library/Cookies", "/Library/Application Support/Google/Chrome",
+        "/Library/Application Support/Firefox", "/Library/Application Support/BraveSoftware",
+        "/Library/Application Support/Arc", "/Library/Application Support/Microsoft Edge",
+    ]
+
     /// Same boundary as find_files: the user's home folder (plus /tmp and /Applications for reading).
     static func isAllowed(_ path: String, forWriting: Bool) -> Bool {
         let resolved = URL(fileURLWithPath: path).standardizedFileURL.resolvingSymlinksInPath().path
         let home = FileManager.default.homeDirectoryForCurrentUser.standardizedFileURL.resolvingSymlinksInPath().path
         if resolved == home || resolved.hasPrefix(home + "/") {
             // Never hand out credentials.
-            return !resolved.hasPrefix(home + "/Library/Keychains") && !resolved.contains("/.ssh/")
-                && !resolved.hasSuffix("/.ssh")
+            return !credentialPaths.contains { resolved == home + $0 || resolved.hasPrefix(home + $0 + "/") }
         }
         guard !forWriting else { return false }
         return ["/tmp", "/private/tmp", "/Applications"].contains { resolved == $0 || resolved.hasPrefix($0 + "/") }

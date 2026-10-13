@@ -55,6 +55,9 @@ enum AgentQuickIntents {
         "invoice", "report", "spreadsheet", "presentation", "photo", "image", "video", "note", "notes",
     ]
 
+    /// Words that point back at something already said; they never name an app.
+    private static let pronouns: Set<String> = ["it", "this", "that", "them", "these", "those"]
+
     enum AppRequest: Equatable {
         case found(String)
         case notFound(query: String, suggestions: [String])
@@ -71,11 +74,27 @@ enum AgentQuickIntents {
             let rest = words.joined(separator: " ")
             guard !rest.isEmpty, words.count <= 3, !rest.contains("http"), !rest.contains(".") else { return nil }
             let names = installed ?? installedAppNames()
+            // Checked before any loose match: "open it" in a follow-up means the thing just talked
+            // about, and a prefix match turned it into iTerm. A pronoun is never an app. A common
+            // noun such as "notes" or "settings" only counts when it is an app's whole name or one
+            // whole word of it, so "open notes" still opens Notes.
+            if words.count == 1, pronouns.contains(rest) { return nil }
+            if words.count == 1, nonAppWords.contains(rest) {
+                return wholeNameMatch(for: rest, in: names).map(AppRequest.found)
+            }
             if let match = bestMatch(for: rest, in: names) { return .found(match) }
             guard appOnlyVerbs.contains(verb), words.count == 1, !nonAppWords.contains(rest) else { return nil }
             return .notFound(query: rest, suggestions: suggestions(for: rest, in: names))
         }
         return nil
+    }
+
+    /// An app whose whole name is the query, or which has the query as one whole word of its
+    /// name. No prefixes and no misspellings.
+    private static func wholeNameMatch(for query: String, in names: [String]) -> String? {
+        let q = query.lowercased()
+        if let exact = names.first(where: { $0.lowercased() == q }) { return exact }
+        return names.first(where: { $0.lowercased().split(separator: " ").contains(Substring(q)) })
     }
 
     static func bestMatch(for query: String, in names: [String]) -> String? {
@@ -156,6 +175,25 @@ enum AgentQuickIntents {
         guard affirmatives.contains(cleaned) else { return nil }
         if suggestions.count == 1 { return .open(suggestions[0]) }
         return .ask(question: "Which one: \(listPhrase(suggestions))?", suggestions: suggestions)
+    }
+
+    /// The offer made by the last "Did you mean …?", applied to this reply. Taking it forgets it.
+    static func takeFollowUp(reply: String) -> FollowUp? {
+        followUp(reply: reply, suggestions: takePendingSuggestions())
+    }
+
+    /// Answers a follow-up locally when it can, or returns nil for the model to answer.
+    ///
+    /// The pending offer is resolved first. `handle` starts a new request and forgets the offer,
+    /// so running it first turned every "yes" into a question for a model that never saw the
+    /// offer. Only a reply that does not answer the offer runs as a fresh quick intent, which is
+    /// what keeps "open Chrome" typed as a follow-up opening Chrome.
+    static func answerFollowUp(_ reply: String) async -> String? {
+        if let local = takeFollowUp(reply: reply) {
+            AgentAutoClose.beginRun()
+            return await perform(local)
+        }
+        return await handle(reply)
     }
 
     /// Carries out a local follow-up and returns the reply to show.

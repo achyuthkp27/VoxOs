@@ -1,3 +1,4 @@
+import CoreGraphics
 import Foundation
 import Testing
 
@@ -98,6 +99,38 @@ struct AgentQuickIntentFollowUpTests {
         #expect(AgentSelfGuard.ownPID == ProcessInfo.processInfo.processIdentifier)
     }
 
+    @Test @MainActor func onlyTheVisibleBandOfARecorderWindowCountsAsOurs() {
+        // A 700 × 366 notch window at the top of a 1080 pt tall screen, in Cocoa coordinates,
+        // with a 480 × 200 band hanging from its top centre.
+        let cocoaWindow = CGRect(x: 100, y: 714, width: 700, height: 366)
+        let band = NotchWindowManager.pillRect(size: CGSize(width: 480, height: 200), in: cocoaWindow)
+        let region = AgentSelfGuard.region(of: band, inWindow: cocoaWindow)
+        #expect(region == CGRect(x: 110, y: 0, width: 480, height: 200), "measured from the window's top-left")
+
+        // The same window as the window server lists it, in AX's top-left coordinates.
+        let pid: Int32 = 4242
+        let list: [[String: Any]] = [
+            [
+                kCGWindowOwnerPID as String: pid, kCGWindowNumber as String: 7,
+                kCGWindowBounds as String: [
+                    "X": CGFloat(100), "Y": CGFloat(0), "Width": CGFloat(700), "Height": CGFloat(366),
+                ],
+            ],
+            [
+                kCGWindowOwnerPID as String: pid, kCGWindowNumber as String: 8,
+                kCGWindowBounds as String: [
+                    "X": CGFloat(0), "Y": CGFloat(500), "Width": CGFloat(50), "Height": CGFloat(50),
+                ],
+            ],
+        ]
+        let frames = AgentSelfGuard.frames(in: list, ownerPID: pid, regions: [7: region])
+        #expect(frames.contains(CGRect(x: 210, y: 0, width: 480, height: 200)), "the band, placed on the window")
+        #expect(frames.contains(CGRect(x: 0, y: 500, width: 50, height: 50)), "a window with no region counts whole")
+        #expect(AgentSelfGuard.contains(CGPoint(x: 300, y: 100), in: frames), "over the band")
+        #expect(!AgentSelfGuard.contains(CGPoint(x: 150, y: 300), in: frames), "transparent rest of the window")
+        #expect(AgentSelfGuard.frames(in: list, ownerPID: pid + 1, regions: [:]).isEmpty, "other apps' windows")
+    }
+
     @Test func withNothingOfferedAYesIsNotInterpreted() {
         #expect(AgentQuickIntents.followUp(reply: "yes", suggestions: []) == nil)
     }
@@ -112,6 +145,37 @@ struct AgentQuickIntentFollowUpTests {
         AgentQuickIntents.setPendingSuggestions(["Slack"])
         _ = await AgentQuickIntents.handle("what time is it")
         #expect(AgentQuickIntents.takePendingSuggestions().isEmpty)
+    }
+
+    @Test func aYesToAPendingOfferResolvesToTheOfferedApp() {
+        AgentQuickIntents.setPendingSuggestions(["Slack"])
+        #expect(AgentQuickIntents.takeFollowUp(reply: "yes") == .open("Slack"))
+        #expect(AgentQuickIntents.takePendingSuggestions().isEmpty, "taking the answer forgets the offer")
+    }
+
+    @Test func theOfferIsAnsweredBeforeANewQuickIntentCanForgetIt() async {
+        // handle() starts a new request and clears the offer, so if it ran first this "yes" would
+        // find nothing to answer and return nil. Two offers make the local answer a question,
+        // which proves the offer was used without opening any app during the test.
+        AgentQuickIntents.setPendingSuggestions(["Stocks", "App Store"])
+        let reply = await AgentQuickIntents.answerFollowUp("yes")
+        #expect(reply == "Which one: Stocks or App Store?")
+        #expect(AgentQuickIntents.takePendingSuggestions() == ["Stocks", "App Store"], "kept for the answer")
+    }
+
+    @Test func aReplyThatIsNotAnAnswerLeavesTheOfferToTheQuickIntents() {
+        AgentQuickIntents.setPendingSuggestions(["Slack"])
+        #expect(AgentQuickIntents.takeFollowUp(reply: "open chrome") == nil, "falls through to handle()")
+    }
+
+    @Test func pronounsAndCommonNounsNeverPrefixMatchAnApp() {
+        let apps = ["iTerm", "Notes", "System Settings", "Thisapp", "Itsycal", "Docker"]
+        for request in ["open it", "open this", "open that", "open it up", "launch them", "open doc"] {
+            #expect(AgentQuickIntents.appRequest(in: request, installed: apps) == nil, "\"\(request)\"")
+        }
+        // A whole app name still opens, even when it is also a common noun.
+        #expect(AgentQuickIntents.appRequest(in: "open notes", installed: apps) == .found("Notes"))
+        #expect(AgentQuickIntents.appRequest(in: "open settings", installed: apps) == .found("System Settings"))
     }
 
     @Test func askingWhichKeepsTheOffersForTheAnswer() async {
