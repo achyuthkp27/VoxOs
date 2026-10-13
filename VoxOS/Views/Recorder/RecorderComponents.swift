@@ -667,7 +667,8 @@ struct AssistantPanelView: View {
     @State private var draftMessage = ""
     @FocusState private var isFollowUpFieldFocused: Bool
 
-    private let horizontalPadding: CGFloat = 22
+    /// 12 pt in from the band edge: the 19 pt composer then sits concentric with the 31 pt bottom corner.
+    private let horizontalPadding: CGFloat = NotchDesign.expanded.bottom - AgentComposer.radius
     private let followUpTextColor = AppTheme.Notch.text
 
     private var statusText: String? {
@@ -688,7 +689,7 @@ struct AssistantPanelView: View {
         }
         .padding(.horizontal, horizontalPadding)
         .padding(.top, 8)
-        .padding(.bottom, 16)
+        .padding(.bottom, horizontalPadding)
         .frame(height: 300)
         .onAppear(perform: focusFollowUpFieldIfAvailable)
         .onChange(of: session.phase) {
@@ -763,6 +764,8 @@ struct AssistantPanelView: View {
 
     private var followUpRow: some View {
         HStack(spacing: 8) {
+            AgentOrb(isActive: session.isBusy)
+
             ZStack(alignment: .leading) {
                 if shouldShowLiveFollowUpText {
                     Text(liveFollowUpText)
@@ -796,13 +799,13 @@ struct AssistantPanelView: View {
                     .onSubmit(sendDraftMessage)
             }
             .frame(maxWidth: .infinity, alignment: .leading)
-            .padding(.leading, 18)
+            .padding(.leading, 16)
             .padding(.trailing, 8)
-            .padding(.vertical, 9)
-            .frame(minHeight: 46)
-            .background(Capsule().fill(AppTheme.Notch.field))
+            .padding(.vertical, 8)
+            .frame(minHeight: AgentComposer.minHeight)
+            .background(AgentComposer.shape.fill(AppTheme.Notch.field))
             .overlay(
-                Capsule().strokeBorder(
+                AgentComposer.shape.strokeBorder(
                     LinearGradient(
                         colors: [Color.primary.opacity(0.22), AppTheme.Notch.fieldBorder], startPoint: .top,
                         endPoint: .bottom), lineWidth: 1))
