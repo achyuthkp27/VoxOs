@@ -36,7 +36,7 @@ struct AudioVisualizer: View {
             HStack(spacing: barSpacing) {
                 ForEach(0..<barCount, id: \.self) { index in
                     RoundedRectangle(cornerRadius: barWidth / 2)
-                        .fill(color.opacity(0.85))
+                        .fill(color.opacity(0.92))
                         .frame(
                             width: barWidth,
                             height: barHeight(
@@ -45,6 +45,8 @@ struct AudioVisualizer: View {
                                 audioMeter: audioMeter
                             )
                         )
+                        // A soft bloom reads as light, not paint, on the black band.
+                        .shadow(color: color.opacity(0.5), radius: 2.5)
                 }
             }
         }
@@ -55,11 +57,13 @@ struct AudioVisualizer: View {
 
         let time = date.timeIntervalSince1970
         let amplitude = max(0, min(1, pow(audioMeter.averagePower, 0.7)))  // boosted for visibility
-        let wave = sin(time * 8 + phases[index]) * 0.5 + 0.5
-        let centerDistance = abs(Double(index) - Double(barCount) / 2) / max(1, Double(barCount / 2))
-        let centerBoost = 1.0 - (centerDistance * 0.4)
+        // A slow swell with a high floor, so the bars breathe with the voice instead of
+        // flickering; the centre bars carry the most height, like the resting glyph.
+        let wave = 0.65 + 0.35 * (sin(time * 5 + phases[index]) * 0.5 + 0.5)
+        let weights = NotchDesign.barWeights
+        let weight = Double(weights[index % weights.count] / (weights.max() ?? 1))
 
-        return max(minHeight, minHeight + CGFloat(amplitude * wave * centerBoost) * (maxHeight - minHeight))
+        return max(minHeight, minHeight + CGFloat(amplitude * wave * weight) * (maxHeight - minHeight))
     }
 }
 

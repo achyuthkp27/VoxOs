@@ -374,11 +374,12 @@ struct RecorderModeChip: View {
 // MARK: - Mode accent
 
 enum RecorderModeAccent {
-    /// White for plain dictation, blue for AI-enhanced dictation, violet for the Agent.
+    /// White for dictation, with or without AI enhancement; violet for the Agent. Blue for
+    /// enhanced dictation looked like a different product on the black band.
     static func color(for config: ModeConfig?) -> Color {
         guard let config else { return AppTheme.Notch.text }
         if config.id == StarterModeCatalog.agentId { return AppTheme.Recorder.agentAccent }
-        return config.isAIEnhancementEnabled ? AppTheme.Accent.primary : AppTheme.Notch.text
+        return AppTheme.Notch.text
     }
 }
 

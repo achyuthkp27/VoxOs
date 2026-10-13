@@ -15,7 +15,7 @@ It is a fork of VoiceInk (GPL v3) with the cursor-voice tool layer (MIT) ported 
   **⌃⌃** (double-tap Control, `.agentDoubleTap`) opens the Agent. Agent recordings auto-send
   after ~1.4 s of silence (`AgentAutoSend`).
 - **Recorder** — notch (default) or bottom. Both are a black pill with a four-bar wave:
-  white = plain dictation, blue = AI-enhanced dictation, violet = Agent. No text on the pill.
+  white = dictation (plain or AI-enhanced), violet = Agent. No text on the pill.
 - **Recording context snapshot** — selected text, clipboard, screen OCR, the element under the
   pointer and the **writing destination** (app + browser site), captured at recording start.
 - **Writing destination** — category of where text lands (email, chat, AI chat, notes, document,
