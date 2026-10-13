@@ -80,22 +80,21 @@ enum AgentNotes {
         return ["title": parts[0], "body": body, "modified": parts.last ?? "", "truncated": truncated]
     }
 
-    @MainActor
-    static func search(query: String, limit: Int) -> [String: Any] {
+    /// Off the main thread: a body scan of a big library can take seconds.
+    static func search(query: String, limit: Int) async -> [String: Any] {
         let query = query.trimmingCharacters(in: .whitespacesAndNewlines)
         guard !query.isEmpty else { return ["error": "query is required"] }
-        let result = AgentAppleScript.run(searchScript(query: query, limit: limit))
+        let result = await AgentAppleScript.runDetached(searchScript(query: query, limit: limit))
         if let error = result["error"] { return ["error": error] }
         let notes = parseSearch(result["result"] as? String ?? "")
         return notes.isEmpty
             ? ["notes": [], "note": "No notes match \"\(query)\"."] : ["notes": notes, "count": notes.count]
     }
 
-    @MainActor
-    static func read(title: String) -> [String: Any] {
+    static func read(title: String) async -> [String: Any] {
         let title = title.trimmingCharacters(in: .whitespacesAndNewlines)
         guard !title.isEmpty else { return ["error": "title is required"] }
-        let result = AgentAppleScript.run(readScript(title: title))
+        let result = await AgentAppleScript.runDetached(readScript(title: title))
         if let error = result["error"] { return ["error": error] }
         guard let note = parseRead(result["result"] as? String ?? "") else {
             return ["error": "No note titled \"\(title)\"."]

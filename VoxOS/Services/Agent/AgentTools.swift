@@ -15,6 +15,51 @@ enum AgentAppleScript {
         }
         return ["result": result.stringValue ?? "ok"]
     }
+
+    /// Runs the script in an `osascript` child, off the main thread, for scripts that can take
+    /// seconds (a Notes body scan): NSAppleScript would hold the main thread for the duration,
+    /// and a stalled main thread is what makes the keyboard tap time out.
+    static func runDetached(_ source: String, timeout: TimeInterval = 60) async -> [String: Any] {
+        await withCheckedContinuation { continuation in
+            DispatchQueue.global(qos: .userInitiated).async {
+                let process = Process()
+                process.executableURL = URL(fileURLWithPath: "/usr/bin/osascript")
+                process.arguments = ["-"]
+                let input = Pipe()
+                let output = Pipe()
+                let errors = Pipe()
+                process.standardInput = input
+                process.standardOutput = output
+                process.standardError = errors
+                do {
+                    try process.run()
+                } catch {
+                    continuation.resume(returning: ["error": "could not start osascript: \(error.localizedDescription)"]
+                    )
+                    return
+                }
+                input.fileHandleForWriting.write(Data(source.utf8))
+                try? input.fileHandleForWriting.close()
+                let deadline = DispatchWorkItem { if process.isRunning { process.terminate() } }
+                DispatchQueue.global().asyncAfter(deadline: .now() + timeout, execute: deadline)
+                // Read to EOF before waiting, or a large result fills the pipe and the child never exits.
+                let out = String(decoding: output.fileHandleForReading.readDataToEndOfFile(), as: UTF8.self)
+                let err = String(decoding: errors.fileHandleForReading.readDataToEndOfFile(), as: UTF8.self)
+                process.waitUntilExit()
+                deadline.cancel()
+                let result = out.trimmingCharacters(in: .whitespacesAndNewlines)
+                let message = err.trimmingCharacters(in: .whitespacesAndNewlines)
+                if process.terminationStatus != 0 {
+                    continuation.resume(
+                        returning: [
+                            "error": message.isEmpty ? "AppleScript failed (\(process.terminationStatus))" : message
+                        ])
+                } else {
+                    continuation.resume(returning: ["result": result.isEmpty ? "ok" : result])
+                }
+            }
+        }
+    }
 }
 
 /// Voice-agent tools. Ported/adapted from cursor-voice (MIT) NativeConnectors + FileOps.
@@ -422,10 +467,10 @@ enum AgentTools {
 
         case "notes_search":
             let limit = i("limit", AgentNotes.maxResults)
-            return await MainActor.run { AgentNotes.search(query: s("query"), limit: limit) }
+            return await AgentNotes.search(query: s("query"), limit: limit)
 
         case "notes_read":
-            return await MainActor.run { AgentNotes.read(title: s("title")) }
+            return await AgentNotes.read(title: s("title"))
 
         case "reveal_in_finder":
             return await MainActor.run { AgentFiles.reveal(path: s("path")) }
