@@ -194,6 +194,10 @@ final class ShortcutMonitor {
 
     @discardableResult
     private func installEventTapOrScheduleRetry() -> Bool {
+        // The test host registers shortcuts like the app does, but must never own a keyboard tap:
+        // to macOS it is a second app, and the tap raises an Accessibility prompt on every test run.
+        // Tests that exercise the tap build their own monitor, so only the shared one is kept off.
+        if ProcessIdentity.isTestHost, self === Self.shared { return false }
         if installEventTap() {
             stateLock.withLock { tapRetryDelay = Self.initialTapRetryDelay }
             return true
@@ -397,6 +401,9 @@ final class ShortcutMonitor {
         thread.name = "com.achyuthkp.voxos.shortcut-tap"
         // Keyboard delivery for the entire system waits on this thread; it must not be starved.
         thread.qualityOfService = .userInteractive
+        // Compile-heavy load on every core must not delay this thread: WindowServer holds every
+        // keystroke on the machine until the callback returns.
+        thread.threadPriority = 1.0
         stateLock.withLock { tapThread = thread }
         thread.start()
 

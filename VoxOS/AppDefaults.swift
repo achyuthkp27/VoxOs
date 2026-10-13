@@ -16,7 +16,8 @@ enum AppDefaults {
     static func registerDefaults() {
         UserDefaults.standard.register(defaults: [
             // Onboarding & General
-            DefaultsKeys.hasCompletedOnboardingV2: false,
+            // The test host has fresh defaults; without this it opens onboarding, which asks for permissions.
+            DefaultsKeys.hasCompletedOnboardingV2: ProcessIdentity.isTestHost,
             DefaultsKeys.hasPreparedOnboardingV2: false,
 
             // Clipboard
