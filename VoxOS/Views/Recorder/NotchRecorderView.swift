@@ -79,7 +79,9 @@ struct NotchRecorderView<S: RecorderStateProvider & ObservableObject>: View {
     /// The listening band is exactly as tall as the notch: it widens out of it instead of hanging down.
     private let activeHeightBonus: CGFloat = 0
     private let transcriptPanelHeight: CGFloat = 64
-    private let assistantPanelHeight: CGFloat = 300
+    /// Follows the messages: a one-line answer gets a short panel, a long one the full height.
+    @State private var assistantContentHeight: CGFloat = 0
+    private var assistantPanelHeight: CGFloat { AgentComposer.panelHeight(forContent: assistantContentHeight) }
 
     private var mainRowHeight: CGFloat { notchHeight + activeHeightBonus }
 
@@ -306,9 +308,11 @@ struct NotchRecorderView<S: RecorderStateProvider & ObservableObject>: View {
                     liveFollowUpText: liveAssistantFollowUpText,
                     onSend: onAssistantFollowUp
                 )
+                .onPreferenceChange(AssistantContentHeightKey.self) { assistantContentHeight = $0 }
             }
         }
         .frame(height: displayState == .assistant ? assistantPanelHeight : 0)
+        .animation(NotchDesign.sizeAnimation, value: assistantContentHeight)
         .clipped()
     }
 }

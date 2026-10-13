@@ -690,7 +690,6 @@ struct AssistantPanelView: View {
         .padding(.horizontal, horizontalPadding)
         .padding(.top, 8)
         .padding(.bottom, horizontalPadding)
-        .frame(height: 300)
         .onAppear(perform: focusFollowUpFieldIfAvailable)
         .onChange(of: session.phase) {
             focusFollowUpFieldIfAvailable()
@@ -739,6 +738,14 @@ struct AssistantPanelView: View {
                     }
                 }
                 .padding(.vertical, 2)
+                // Messages sit a little further in than the composer, whose radius already
+                // matches the band's corner at this inset.
+                .padding(.horizontal, 4)
+                .background(
+                    GeometryReader { geometry in
+                        Color.clear.preference(key: AssistantContentHeightKey.self, value: geometry.size.height)
+                    }
+                )
             }
             // Replaces the divider that used to sit above this panel: messages scrolling past
             // the top dissolve into the wave row rather than being cut by a line.
@@ -764,44 +771,46 @@ struct AssistantPanelView: View {
 
     private var followUpRow: some View {
         HStack(spacing: 8) {
-            AgentOrb(isActive: session.isBusy)
+            HStack(spacing: 6) {
+                AgentOrb(isActive: session.isBusy)
 
-            ZStack(alignment: .leading) {
-                if shouldShowLiveFollowUpText {
-                    Text(liveFollowUpText)
+                ZStack(alignment: .leading) {
+                    if shouldShowLiveFollowUpText {
+                        Text(liveFollowUpText)
+                            .font(.app(size: 15, weight: .regular))
+                            .foregroundStyle(followUpTextColor)
+                            .lineLimit(1)
+                            .truncationMode(.head)
+                            .allowsHitTesting(false)
+                    }
+
+                    if draftMessage.isEmpty && !shouldShowLiveFollowUpText {
+                        HStack(spacing: 7) {
+                            Text("Type, or hold")
+                            ForEach(Array(followUpShortcutTokens.enumerated()), id: \.offset) { _, token in
+                                ModifierKeyHintBadge(symbol: token)
+                            }
+                            Text("to speak")
+                        }
+                        .font(.app(size: 15, weight: .regular))
+                        .foregroundStyle(AppTheme.Notch.textMuted)
+                        .allowsHitTesting(false)
+                    }
+
+                    TextField("", text: $draftMessage)
+                        .textFieldStyle(.plain)
                         .font(.app(size: 15, weight: .regular))
                         .foregroundStyle(followUpTextColor)
-                        .lineLimit(1)
-                        .truncationMode(.head)
-                        .allowsHitTesting(false)
+                        .tint(followUpTextColor)
+                        .disabled(!session.canSendFollowUp)
+                        .focused($isFollowUpFieldFocused)
+                        .onSubmit(sendDraftMessage)
                 }
-
-                if draftMessage.isEmpty && !shouldShowLiveFollowUpText {
-                    HStack(spacing: 7) {
-                        Text("Type, or hold")
-                        ForEach(Array(followUpShortcutTokens.enumerated()), id: \.offset) { _, token in
-                            ModifierKeyHintBadge(symbol: token)
-                        }
-                        Text("to speak")
-                    }
-                    .font(.app(size: 15, weight: .regular))
-                    .foregroundStyle(AppTheme.Notch.textMuted)
-                    .allowsHitTesting(false)
-                }
-
-                TextField("", text: $draftMessage)
-                    .textFieldStyle(.plain)
-                    .font(.app(size: 15, weight: .regular))
-                    .foregroundStyle(followUpTextColor)
-                    .tint(followUpTextColor)
-                    .disabled(!session.canSendFollowUp)
-                    .focused($isFollowUpFieldFocused)
-                    .onSubmit(sendDraftMessage)
             }
             .frame(maxWidth: .infinity, alignment: .leading)
-            .padding(.leading, 16)
+            .padding(.leading, 6)
             .padding(.trailing, 8)
-            .padding(.vertical, 8)
+            .padding(.vertical, 4)
             .frame(minHeight: AgentComposer.minHeight)
             .background(AgentComposer.shape.fill(AppTheme.Notch.field))
             .overlay(

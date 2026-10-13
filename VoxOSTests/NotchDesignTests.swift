@@ -118,6 +118,15 @@ struct NotchDesignTests {
         #expect(NotchDesign.glassDarkStop > 0.3 && NotchDesign.glassDarkStop < 0.6)
     }
 
+    @Test func replyPanelFollowsItsContentWithinLimits() {
+        #expect(
+            AgentComposer.panelHeight(forContent: 0) == AgentComposer.panelMinHeight, "never smaller than the floor")
+        #expect(AgentComposer.panelHeight(forContent: 100) == 100 + AgentComposer.panelChrome)
+        #expect(
+            AgentComposer.panelHeight(forContent: 1_000) == AgentComposer.panelMaxHeight, "never taller than the cap")
+        #expect(AgentComposer.panelChrome > AgentComposer.minHeight, "chrome includes the composer")
+    }
+
     // MARK: Snapshot (for looking at)
 
     /// Renders each state on a dark wallpaper under a menu bar, so the silhouette can be judged

@@ -6,6 +6,23 @@ enum AgentComposer {
     static let radius: CGFloat = 19
     static let minHeight: CGFloat = 38
     static var shape: RoundedRectangle { RoundedRectangle(cornerRadius: radius, style: .continuous) }
+
+    /// Height of the reply panel for a given height of its messages: enough for the composer and
+    /// one short answer at least, never more than the band should hang down.
+    static let panelMinHeight: CGFloat = 150
+    static let panelMaxHeight: CGFloat = 300
+    /// Top padding, the gap above the composer, the composer, and the bottom inset.
+    static let panelChrome: CGFloat = 8 + 14 + minHeight + 12
+
+    static func panelHeight(forContent contentHeight: CGFloat) -> CGFloat {
+        min(max(contentHeight + panelChrome, panelMinHeight), panelMaxHeight)
+    }
+}
+
+/// The measured height of the reply panel's messages, reported up so the band can fit them.
+struct AssistantContentHeightKey: PreferenceKey {
+    static let defaultValue: CGFloat = 0
+    static func reduce(value: inout CGFloat, nextValue: () -> CGFloat) { value = max(value, nextValue()) }
 }
 
 /// The Agent's presence in the panel: an 18 pt orb in the Agent's violet that breathes while it
