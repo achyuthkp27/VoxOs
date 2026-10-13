@@ -442,6 +442,9 @@ enum AgentTools {
         case "resume_coding_session":
             return await MainActor.run { AgentCodingSessions.resume(id: s("id")) }
 
+        case "messages_recent":
+            return await MainActor.run { AgentMessages.recent(contact: s("contact"), limit: i("limit", 20)) }
+
         default:
             return ["error": "unknown tool: \(name)", "hint": "reply with a plain-text answer if no tool fits"]
         }

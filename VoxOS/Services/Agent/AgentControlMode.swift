@@ -90,7 +90,7 @@ enum AgentControlMode: String, CaseIterable, Identifiable {
         "set_control_mode", "messages_send", "secret_save", "linear_save_token", "remember", "take_screenshot",
         "macro_record_start", "macro_record_stop", "watch_for", "watch_for_audio", "watch_cancel",
         "set_learning_language", "mark_vocabulary_known",
-        "music_play", "music_control", "reveal_in_finder", "resume_coding_session",
+        "music_play", "music_control", "reveal_in_finder", "resume_coding_session", "messages_recent",
     ]
 
     /// How much freedom the mode grants; used to tell a loosening switch from a tightening one.

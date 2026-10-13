@@ -72,6 +72,14 @@ enum AgentToolCatalog {
             ],
             "Coding: coding_sessions {} -> recent Claude Code sessions (id, project, first prompt, last used) · resume_coding_session {\"id\"} -> opens it in Terminal; Codex is not installed"
         ),
+        (
+            "messages",
+            [
+                "imessage", "imessages", "text message", "text messages", "texted", "messages app", "sms",
+                "what did", "texted me", "last message from", "recent messages", "my messages",
+            ],
+            "Messages: messages_recent {\"contact\"?,\"limit\"?} -> recent iMessage/SMS (needs Full Disk Access); contact matches a number, email or chat name"
+        ),
     ]
 
     /// The extra tool docs for the areas `request` mentions, or nil when none apply.
