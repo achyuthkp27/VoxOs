@@ -118,6 +118,16 @@ struct NotchDesignTests {
         #expect(NotchDesign.glassDarkStop > 0.3 && NotchDesign.glassDarkStop < 0.6)
     }
 
+    @Test func replyPanelContentStaysInsideTheBandBody() {
+        // The body is the frame minus a shoulder on each side; content must start inside it.
+        #expect(AgentComposer.panelInset > NotchDesign.expanded.shoulder)
+        #expect(AgentComposer.panelInset == NotchDesign.expanded.shoulder + 12, "12 pt inside the body edge")
+        #expect(
+            NotchDesign.expanded.bottom - (AgentComposer.panelInset - NotchDesign.expanded.shoulder)
+                == AgentComposer.radius,
+            "composer concentric with the bottom corner")
+    }
+
     @Test func replyPanelFollowsItsContentWithinLimits() {
         #expect(
             AgentComposer.panelHeight(forContent: 0) == AgentComposer.panelMinHeight, "never smaller than the floor")

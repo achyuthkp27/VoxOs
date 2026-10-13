@@ -667,8 +667,8 @@ struct AssistantPanelView: View {
     @State private var draftMessage = ""
     @FocusState private var isFollowUpFieldFocused: Bool
 
-    /// 12 pt in from the band edge: the 19 pt composer then sits concentric with the 31 pt bottom corner.
-    private let horizontalPadding: CGFloat = NotchDesign.expanded.bottom - AgentComposer.radius
+    /// Measured from the band's frame, which is wider than its body by the shoulders: see AgentComposer.panelInset.
+    private let horizontalPadding: CGFloat = AgentComposer.panelInset
     private let followUpTextColor = AppTheme.Notch.text
 
     private var statusText: String? {

@@ -9,6 +9,11 @@ enum AgentComposer {
 
     /// Height of the reply panel for a given height of its messages: enough for the composer and
     /// one short answer at least, never more than the band should hang down.
+    /// Inset of the panel's content from the band's frame. The band's scooped shoulders pull its
+    /// sides in by the shoulder radius, so the body edge is that far inside the frame; the
+    /// composer then sits 12 pt inside the body, concentric with the 31 pt bottom corner.
+    static var panelInset: CGFloat { NotchDesign.expanded.shoulder + (NotchDesign.expanded.bottom - radius) }
+
     static let panelMinHeight: CGFloat = 150
     static let panelMaxHeight: CGFloat = 300
     /// Top padding, the gap above the composer, the composer, and the bottom inset.
