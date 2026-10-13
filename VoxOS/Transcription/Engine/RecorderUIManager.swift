@@ -62,6 +62,7 @@ class RecorderUIManager: ObservableObject, RecorderPanelPresenting {
 
     private var notchWindowManager: NotchWindowManager?
     private var miniWindowManager: MiniWindowManager?
+    private var idleTabManager: NotchIdleTabManager?
     private var panelInvalidationTask: Task<Void, Never>?
     private var didSetupNotifications = false
     private var lifecycleCancellable: AnyCancellable?
@@ -82,6 +83,7 @@ class RecorderUIManager: ObservableObject, RecorderPanelPresenting {
         self.engine = engine
         self.recorder = recorder
         setupNotifications()
+        idleTabManager = NotchIdleTabManager(uiManager: self)
     }
 
     // MARK: - Recorder Panel Management

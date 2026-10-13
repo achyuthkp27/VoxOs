@@ -39,6 +39,8 @@ enum DefaultsKeys {
     static let recorderType = "RecorderType"
     /// "liquidGlass" or "solidBlack": the material of the notch recorder.
     static let notchMaterial = "NotchMaterial"
+    /// Keep a slim, clickable tab under the notch between dictations.
+    static let notchIdleTabEnabled = "NotchIdleTabEnabled"
     static let edgeHistoryEnabled = "EdgeHistoryEnabled"
     static let transcriptionPrompt = "TranscriptionPrompt"
     static let currentTranscriptionModel = "CurrentTranscriptionModel"

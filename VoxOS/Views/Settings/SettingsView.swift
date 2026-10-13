@@ -42,6 +42,7 @@ struct SettingsView: View {
     @AppStorage(AgentAutoSend.enabledKey) private var agentAutoSendEnabled = true
     @AppStorage(AgentAutoClose.enabledKey) private var agentAutoCloseEnabled = true
     @AppStorage(DefaultsKeys.notchMaterial) private var notchMaterialRaw = NotchDesign.Material.liquidGlass.rawValue
+    @AppStorage(DefaultsKeys.notchIdleTabEnabled) private var notchIdleTabEnabled = true
     @AppStorage(DictationSend.stopWhenQuietKey) private var dictationStopWhenQuiet = false
     @AppStorage(DictationSend.pressReturnKey) private var dictationPressReturn = false
     @AppStorage(AgentAutoSend.pauseKey) private var agentAutoSendPause = AgentAutoSend.Pause.normal.rawValue
@@ -573,6 +574,15 @@ struct SettingsView: View {
                         }
                     }
                     .pickerStyle(.menu)
+
+                    Toggle(isOn: $notchIdleTabEnabled) {
+                        HStack(spacing: 2) {
+                            Text("Always-Visible Notch Tab")
+                            InfoTip(
+                                "Keeps a slim tab under the notch between dictations. Hover to see it, click to start recording. Only on displays with a notch."
+                            )
+                        }
+                    }
 
                     Toggle(isOn: $showLiveTranscript) {
                         HStack(spacing: 4) {
