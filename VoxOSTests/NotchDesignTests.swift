@@ -106,6 +106,18 @@ struct NotchDesignTests {
         #expect(NotchDesign.waveformWidth == CGFloat(5 * 4 + 4 * 3))
     }
 
+    @Test func liquidGlassIsTheDefaultMaterial() {
+        #expect(NotchDesign.Material.resolve(nil) == .liquidGlass)
+        #expect(NotchDesign.Material.resolve("nonsense") == .liquidGlass, "a bad stored value must not break the notch")
+        #expect(NotchDesign.Material.resolve("solidBlack") == .solidBlack)
+        #expect(NotchDesign.Material.allCases.count == 2)
+        #expect(UserDefaults.standard.string(forKey: DefaultsKeys.notchMaterial) == "liquidGlass", "registered default")
+    }
+
+    @Test func theTopStaysSolidSoItMergesWithThePhysicalNotch() {
+        #expect(NotchDesign.glassDarkStop > 0.3 && NotchDesign.glassDarkStop < 0.6)
+    }
+
     // MARK: Snapshot (for looking at)
 
     /// Renders each state on a dark wallpaper under a menu bar, so the silhouette can be judged

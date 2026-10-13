@@ -37,6 +37,8 @@ enum DefaultsKeys {
     static let isVADEnabled = "IsVADEnabled"
     static let isTextFormattingEnabled = "IsTextFormattingEnabled"
     static let recorderType = "RecorderType"
+    /// "liquidGlass" or "solidBlack": the material of the notch recorder.
+    static let notchMaterial = "NotchMaterial"
     static let edgeHistoryEnabled = "EdgeHistoryEnabled"
     static let transcriptionPrompt = "TranscriptionPrompt"
     static let currentTranscriptionModel = "CurrentTranscriptionModel"

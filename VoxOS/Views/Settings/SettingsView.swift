@@ -41,6 +41,7 @@ struct SettingsView: View {
     @AppStorage(AgentShell.allowRiskyKey) private var agentAllowRiskyShell = false
     @AppStorage(AgentAutoSend.enabledKey) private var agentAutoSendEnabled = true
     @AppStorage(AgentAutoClose.enabledKey) private var agentAutoCloseEnabled = true
+    @AppStorage(DefaultsKeys.notchMaterial) private var notchMaterialRaw = NotchDesign.Material.liquidGlass.rawValue
     @AppStorage(DictationSend.stopWhenQuietKey) private var dictationStopWhenQuiet = false
     @AppStorage(DictationSend.pressReturnKey) private var dictationPressReturn = false
     @AppStorage(AgentAutoSend.pauseKey) private var agentAutoSendPause = AgentAutoSend.Pause.normal.rawValue
@@ -562,6 +563,13 @@ struct SettingsView: View {
                     Picker("Recorder Position", selection: $recorderUIManager.recorderPanelStyle) {
                         ForEach(RecorderPanelStyle.allCases) { style in
                             Text(style.displayName).tag(style)
+                        }
+                    }
+                    .pickerStyle(.menu)
+
+                    Picker("Notch Material", selection: $notchMaterialRaw) {
+                        ForEach(NotchDesign.Material.allCases) { material in
+                            Text(material.displayName).tag(material.rawValue)
                         }
                     }
                     .pickerStyle(.menu)

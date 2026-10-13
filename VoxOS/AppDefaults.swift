@@ -39,6 +39,7 @@ enum AppDefaults {
             DefaultsKeys.selectedLanguage: "en",
             DefaultsKeys.appendTrailingSpace: true,
             DefaultsKeys.recorderType: "notch",
+            DefaultsKeys.notchMaterial: NotchDesign.Material.liquidGlass.rawValue,
             // On by default so the feature is not silently removed; the cost of leaving it on
             // is a global mouse-move monitor, which is why it can be switched off.
             DefaultsKeys.edgeHistoryEnabled: true,

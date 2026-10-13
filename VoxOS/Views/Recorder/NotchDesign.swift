@@ -38,6 +38,28 @@ enum NotchDesign {
 
     // MARK: Material
 
+    /// Liquid Glass is the default. Solid black is the quiet alternative.
+    enum Material: String, CaseIterable, Identifiable {
+        case liquidGlass
+        case solidBlack
+
+        var id: String { rawValue }
+        var displayName: String {
+            switch self {
+            case .liquidGlass: return String(localized: "Liquid Glass")
+            case .solidBlack: return String(localized: "Solid Black")
+            }
+        }
+
+        static func resolve(_ raw: String?) -> Material { raw.flatMap(Material.init(rawValue:)) ?? .liquidGlass }
+    }
+
+    /// How far down the band stays solid black before the glass takes over. The top has to read
+    /// as part of the physical notch, so the glass only shows below it.
+    static let glassDarkStop: CGFloat = 0.48
+    /// Behind the glass, so the band stays readable even over a bright wallpaper.
+    static let glassUnderlay = Color.black.opacity(0.35)
+
     /// Almost opaque, with the faintest blue so it reads as black glass rather than a flat fill.
     static let solid = Color(red: 0, green: 0, blue: 2 / 255, opacity: 0.98)
     static let glassTint = Color(red: 0, green: 0, blue: 5 / 255, opacity: 0.18)

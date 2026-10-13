@@ -9,6 +9,7 @@ struct NotchRecorderView<S: RecorderStateProvider & ObservableObject>: View {
     let onCloseTapped: () -> Void
     let onAssistantFollowUp: (String) -> Void
     @AppStorage(RecorderDisplaySettingsKeys.showLiveTranscript) private var showLiveTranscript = true
+    @AppStorage(DefaultsKeys.notchMaterial) private var notchMaterialRaw = NotchDesign.Material.liquidGlass.rawValue
     /// Bumped on every screen reconfiguration to invalidate the view. The notch metrics below
     /// come from AppKit, which SwiftUI cannot observe on its own, so without this the view keeps
     /// whatever sizes it happened to compute the last time it was rendered.
@@ -165,31 +166,64 @@ struct NotchRecorderView<S: RecorderStateProvider & ObservableObject>: View {
             assistantPanel
         }
         .frame(width: pillWidth, height: pillHeight)
-        // Near-black glass: solid enough to read as part of the physical notch, with a faint sheen
-        // from the top and a cool one-point rim on the lower edge once it is doing something.
-        .background(
-            notchShape.fill(NotchDesign.solid)
-                .overlay(
-                    notchShape.fill(
-                        LinearGradient(
-                            colors: [Color.white.opacity(0.035), .clear], startPoint: .top,
-                            endPoint: UnitPoint(x: 0.5, y: 0.6)))
-                )
-                .overlay(
-                    notchShape.stroke(NotchDesign.rim, lineWidth: NotchDesign.rimWidth)
-                        .mask(
-                            LinearGradient(
-                                colors: [.clear, .white], startPoint: .top, endPoint: UnitPoint(x: 0.5, y: 0.35))
-                        )
-                        .opacity(displayState == .collapsed ? 0 : 1)
-                )
-        )
+        .background(notchBackground)
         .environment(\.colorScheme, .dark)
         .shadow(
             color: Color.black.opacity(activeShadow.opacity), radius: activeShadow.radius, y: activeShadow.y
         )
         .animation(.easeInOut(duration: 0.35), value: isRecording)
         .animation(.easeInOut(duration: 0.35), value: isAgentMode)
+    }
+
+    // MARK: - Material
+
+    private var notchMaterial: NotchDesign.Material { NotchDesign.Material.resolve(notchMaterialRaw) }
+
+    @ViewBuilder
+    private var notchBackground: some View {
+        switch notchMaterial {
+        case .solidBlack: solidBackground
+        case .liquidGlass: glassBackground
+        }
+    }
+
+    /// Near-black, faint sheen from the top, cool rim on the lower edge once it is active.
+    private var solidBackground: some View {
+        notchShape.fill(NotchDesign.solid)
+            .overlay(
+                notchShape.fill(
+                    LinearGradient(
+                        colors: [Color.white.opacity(0.035), .clear], startPoint: .top,
+                        endPoint: UnitPoint(x: 0.5, y: 0.6)))
+            )
+            .overlay(rim)
+    }
+
+    /// Real Liquid Glass below, solid black above. The top stays black so the band reads as part of
+    /// the physical notch, and fades into glass a little under halfway down.
+    private var glassBackground: some View {
+        ZStack {
+            notchShape.fill(NotchDesign.glassUnderlay)
+                .liquidGlass(in: notchShape, tint: NotchDesign.glassTint)
+            notchShape.fill(NotchDesign.solid)
+                .mask(
+                    LinearGradient(
+                        stops: [
+                            .init(color: .white, location: 0),
+                            .init(color: .white, location: NotchDesign.glassDarkStop * 0.4),
+                            .init(color: .clear, location: NotchDesign.glassDarkStop),
+                        ], startPoint: .top, endPoint: .bottom))
+            rim
+        }
+    }
+
+    private var rim: some View {
+        notchShape.stroke(NotchDesign.rim, lineWidth: NotchDesign.rimWidth)
+            .mask(
+                LinearGradient(
+                    colors: [.clear, .white], startPoint: .top, endPoint: UnitPoint(x: 0.5, y: 0.35))
+            )
+            .opacity(displayState == .collapsed ? 0 : 1)
     }
 
     private var isRecording: Bool { stateProvider.recordingState == .recording }
