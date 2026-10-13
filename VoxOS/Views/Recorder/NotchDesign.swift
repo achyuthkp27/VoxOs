@@ -73,7 +73,7 @@ enum NotchDesign {
         let y: CGFloat
     }
     static let restingShadow = Shadow(opacity: 0.25, radius: 3, y: 2)
-    static let activeShadow = Shadow(opacity: 0.28, radius: 6, y: 5)
+    static let activeShadow = Shadow(opacity: 0.30, radius: 10, y: 8)
 
     // MARK: Motion
 
@@ -90,8 +90,8 @@ enum NotchDesign {
     static let barWeights: [CGFloat] = [0.8, 1.1, 1.4, 1.1, 0.8]
     static let barMinHeight: CGFloat = 7
     static let barRange: CGFloat = 10
-    static let barWidth: CGFloat = 4
-    static let barSpacing: CGFloat = 3
+    static let barWidth: CGFloat = 3.5
+    static let barSpacing: CGFloat = 3.5
 
     static func barHeight(at index: Int) -> CGFloat {
         guard barWeights.indices.contains(index), let maxWeight = barWeights.max() else { return barMinHeight }

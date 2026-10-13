@@ -101,9 +101,9 @@ struct NotchDesignTests {
         #expect(NotchDesign.barHeight(at: 99) == NotchDesign.barMinHeight)
     }
 
-    @Test func motionIsQuickToOpenAndShorterToClose() {
-        // Not asserting on Animation values (opaque); this just keeps the durations documented.
-        #expect(NotchDesign.waveformWidth == CGFloat(5 * 4 + 4 * 3))
+    @Test func waveformWidthIsFiveBarsAndFourGaps() {
+        let expected: CGFloat = 5 * 3.5 + 4 * 3.5
+        #expect(NotchDesign.waveformWidth == expected, "five bars and four gaps, 3.5 pt each")
     }
 
     @Test func liquidGlassIsTheDefaultMaterial() {
