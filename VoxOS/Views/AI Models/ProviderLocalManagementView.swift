@@ -23,8 +23,8 @@ struct LocalEnhancementServiceManagementView: View {
     var body: some View {
         VStack(alignment: .leading, spacing: 10) {
             ProviderSectionHeader(
-                title: "Local Enhancement Services",
-                subtitle: "Connect Ollama or configure a CLI command for local enhancement."
+                title: "Local language models",
+                subtitle: "Ollama or a command-line tool — for AI cleanup, the Assistant and the Agent."
             )
             .padding(.top, 8)
 

@@ -21,16 +21,7 @@ struct TranscribeCppModelCardView: View {
                 HStack(spacing: 12) {
                     Label(model.language, systemImage: "globe")
                     Label(model.size, systemImage: "internaldrive")
-                    HStack(spacing: 3) {
-                        Text("Speed")
-                        progressDotsWithNumber(value: model.speed * 10)
-                    }
-                    .fixedSize(horizontal: true, vertical: false)
-                    HStack(spacing: 3) {
-                        Text("Accuracy")
-                        progressDotsWithNumber(value: model.accuracy * 10)
-                    }
-                    .fixedSize(horizontal: true, vertical: false)
+                    Label("On this Mac", systemImage: "lock.shield")
                 }
                 .font(.app(size: 11, weight: .regular))
                 .foregroundColor(Color(.secondaryLabelColor))
@@ -117,10 +108,11 @@ struct TranscribeCppModelCardView: View {
                         Image(systemName: "arrow.down.circle")
                     }
                     .font(.app(size: 12, weight: .medium))
-                    .foregroundColor(.white)
+                    .foregroundColor(AppTheme.Accent.primary)
                     .padding(.horizontal, 12)
                     .padding(.vertical, 6)
-                    .background(Capsule().fill(AppTheme.Accent.primary))
+                    .background(Capsule().fill(AppTheme.Accent.fillSubtle))
+                    .overlay(Capsule().strokeBorder(AppTheme.Accent.border, lineWidth: 1))
                 }
                 .buttonStyle(.plain)
                 .disabled(isDownloading)

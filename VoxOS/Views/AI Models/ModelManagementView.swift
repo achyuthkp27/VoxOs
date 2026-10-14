@@ -123,7 +123,7 @@ struct ModelManagementView: View {
     }
 
     private var headerSection: some View {
-        AppScreenHeader(title: "Model Catalog") {
+        AppScreenHeader(title: "AI Models") {
             settingsButton
         }
     }
@@ -293,14 +293,15 @@ struct ModelManagementView: View {
     private var importLocalModelButton: some View {
         HStack(spacing: 8) {
             Button(action: { presentImportPanel() }) {
-                HStack(spacing: 8) {
+                HStack(spacing: 6) {
                     Image(systemName: "square.and.arrow.down")
-                    Text("Import Local Model…")
-                        .font(.app(size: 12, weight: .semibold))
+                    Text("Import a speech model…")
+                        .font(.app(size: 12, weight: .medium))
                 }
-                .frame(maxWidth: .infinity)
-                .padding(16)
-                .background(AppMaterialCardBackground(cornerRadius: 10))
+                .foregroundStyle(AppTheme.Text.secondary)
+                .padding(.horizontal, 12)
+                .padding(.vertical, 7)
+                .background(Capsule().fill(AppTheme.Surface.control))
             }
             .buttonStyle(.plain)
 
@@ -310,6 +311,7 @@ struct ModelManagementView: View {
             )
             .help("Read more about custom local models")
         }
+        .frame(maxWidth: .infinity, alignment: .leading)
     }
 
     private var intelMacWarningBanner: some View {

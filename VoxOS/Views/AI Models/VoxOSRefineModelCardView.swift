@@ -159,14 +159,11 @@ struct VoxOSRefineModelCardView: View {
                             Image(systemName: "arrow.down.circle")
                         }
                         .font(.app(size: 12, weight: .medium))
-                        .foregroundColor(.white)
+                        .foregroundColor(AppTheme.Accent.primary)
                         .padding(.horizontal, 12)
                         .padding(.vertical, 6)
-                        .background(
-                            Capsule()
-                                .fill(AppTheme.Accent.primary)
-                                .shadow(color: AppTheme.Accent.shadow, radius: 2, x: 0, y: 1)
-                        )
+                        .background(Capsule().fill(AppTheme.Accent.fillSubtle))
+                        .overlay(Capsule().strokeBorder(AppTheme.Accent.border, lineWidth: 1))
                     }
                     .buttonStyle(.plain)
                 }

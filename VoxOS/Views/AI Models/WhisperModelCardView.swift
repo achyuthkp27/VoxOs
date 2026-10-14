@@ -58,25 +58,10 @@ struct WhisperModelCardView: View {
                 .foregroundColor(Color(.secondaryLabelColor))
                 .lineLimit(1)
 
-            // Speed
-            HStack(spacing: 3) {
-                Text("Speed")
-                    .font(.app(size: 11, weight: .medium))
-                    .foregroundColor(Color(.secondaryLabelColor))
-                progressDotsWithNumber(value: model.speed * 10)
-            }
-            .lineLimit(1)
-            .fixedSize(horizontal: true, vertical: false)
-
-            // Accuracy
-            HStack(spacing: 3) {
-                Text("Accuracy")
-                    .font(.app(size: 11, weight: .medium))
-                    .foregroundColor(Color(.secondaryLabelColor))
-                progressDotsWithNumber(value: model.accuracy * 10)
-            }
-            .lineLimit(1)
-            .fixedSize(horizontal: true, vertical: false)
+            Label("On this Mac", systemImage: "lock.shield")
+                .font(.app(size: 11, weight: .regular))
+                .foregroundColor(Color(.secondaryLabelColor))
+                .lineLimit(1)
         }
         .lineLimit(1)
     }
@@ -116,14 +101,11 @@ struct WhisperModelCardView: View {
                         Image(systemName: "arrow.down.circle")
                             .font(.app(size: 12, weight: .medium))
                     }
-                    .foregroundColor(.white)
+                    .foregroundColor(AppTheme.Accent.primary)
                     .padding(.horizontal, 12)
                     .padding(.vertical, 6)
-                    .background(
-                        Capsule()
-                            .fill(AppTheme.Accent.primary)
-                            .shadow(color: AppTheme.Accent.shadow, radius: 2, x: 0, y: 1)
-                    )
+                    .background(Capsule().fill(AppTheme.Accent.fillSubtle))
+                    .overlay(Capsule().strokeBorder(AppTheme.Accent.border, lineWidth: 1))
                 }
                 .buttonStyle(.plain)
                 .disabled(isDownloading)
@@ -214,36 +196,6 @@ struct ImportedWhisperModelCardView: View {
 }
 
 // MARK: - Helper Views and Functions
-
-func progressDotsWithNumber(value: Double) -> some View {
-    HStack(spacing: 4) {
-        progressDots(value: value)
-        Text(String(format: "%.1f", value))
-            .font(.system(size: 10, weight: .medium, design: .monospaced))
-            .foregroundColor(Color(.secondaryLabelColor))
-    }
-}
-
-func progressDots(value: Double) -> some View {
-    // Round to the nearest dot: truncating showed no dots at all for a 1.9 score.
-    let filledDots = min(5, max(0, Int((value / 2).rounded())))
-    return HStack(spacing: 2) {
-        ForEach(0..<5) { index in
-            Circle()
-                .fill(index < filledDots ? performanceColor(value: value / 10) : Color(.quaternaryLabelColor))
-                .frame(width: 6, height: 6)
-        }
-    }
-}
-
-func performanceColor(value: Double) -> Color {
-    switch value {
-    case 0.8...1.0: return AppTheme.Status.positive
-    case 0.6..<0.8: return AppTheme.Data.yellow
-    case 0.4..<0.6: return AppTheme.Status.warningStrong
-    default: return AppTheme.Status.error
-    }
-}
 
 func modelStatusPill(_ text: LocalizedStringKey, systemImage: String) -> some View {
     Label(text, systemImage: systemImage)
