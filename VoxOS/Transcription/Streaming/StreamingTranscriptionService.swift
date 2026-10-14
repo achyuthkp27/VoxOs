@@ -327,7 +327,9 @@ class StreamingTranscriptionService {
             }
 
             if FluidAudioModelManager.isParakeetUnifiedModel(named: model.name) {
-                return FluidAudioUnifiedStreamingProvider()
+                return FluidAudioUnifiedStreamingProvider(dictionaryWords: { [modelContext] in
+                    CustomVocabularyTerms.fetch(from: modelContext)
+                })
             }
 
             guard let fluidAudioService else {

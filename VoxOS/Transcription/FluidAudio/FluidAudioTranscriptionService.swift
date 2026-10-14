@@ -11,6 +11,14 @@ actor FluidAudioTranscriptionService: TranscriptionService {
     private var cachedModels: AsrModels?
     private var loadingTask: (version: AsrModelVersion, task: Task<AsrModels, Error>)?
     private let audioConverter = AudioConverter()
+    /// The user's Dictionary words, read on the main actor where SwiftData lives.
+    private let dictionaryWords: @MainActor () -> [String]
+    /// The Dictionary terms the unified batch manager was last configured to boost.
+    private var unifiedBoostTerms: [String]?
+
+    init(dictionaryWords: @escaping @MainActor () -> [String] = { [] }) {
+        self.dictionaryWords = dictionaryWords
+    }
     private let logger = Logger(subsystem: "com.achyuthkp.voxos", category: "FluidAudioTranscriptionService")
 
     // Chains loadModel()/transcribe() calls so one can't tear down the shared ASR manager
@@ -48,6 +56,7 @@ actor FluidAudioTranscriptionService: TranscriptionService {
         await asrManager?.cleanup()
 
         unifiedAsrManager = nil
+        unifiedBoostTerms = nil
         nemotronAsrManager = nil
         asrManager = nil
         activeVersion = nil
@@ -191,6 +200,7 @@ actor FluidAudioTranscriptionService: TranscriptionService {
                 throw ASRError.notInitialized
             }
 
+            await configureUnifiedBoosting(unifiedAsrManager)
             let speechAudio = try loadAudioSamples(from: audioURL)
             let text = try await unifiedAsrManager.transcribe(speechAudio)
             return (TextNormalizer.shared.normalizeSentence(text), nil)
@@ -243,7 +253,41 @@ actor FluidAudioTranscriptionService: TranscriptionService {
         let tokens = result.tokenTimings?.map {
             SpeakerAttribution.TimedToken(text: $0.token, startTime: $0.startTime, endTime: $0.endTime)
         }
-        return (TextNormalizer.shared.normalizeSentence(result.text), tokens)
+        // Tokens stay the unboosted ones: speaker attribution needs them aligned with the audio.
+        let text = await boosted(result.text, timings: result.tokenTimings, audioURL: audioURL) ?? result.text
+        return (TextNormalizer.shared.normalizeSentence(text), tokens)
+    }
+
+    private func boostTerms() async -> [String] {
+        FluidAudioVocabularyBoost.boostTerms(from: await MainActor.run { dictionaryWords() })
+    }
+
+    /// The transcript rescored toward the Dictionary, or nil when nothing changed or boosting
+    /// is not ready; boosting must never break transcription.
+    private func boosted(_ text: String, timings: [TokenTiming]?, audioURL: URL) async -> String? {
+        let terms = await boostTerms()
+        guard let timings, !timings.isEmpty,
+            let session = await FluidAudioVocabularyBoost.shared.session(for: terms),
+            let samples = try? loadAudioSamples(from: audioURL)
+        else { return nil }
+        let output = await session.rescore(text: text, tokenTimings: timings, audioSamples: samples)
+        return output?.wasModified == true ? output?.text : nil
+    }
+
+    /// The unified manager rescores inside transcribe() once configured; reconfigured only
+    /// when the Dictionary changed.
+    private func configureUnifiedBoosting(_ manager: UnifiedAsrManager) async {
+        let terms = await boostTerms()
+        guard terms != unifiedBoostTerms,
+            let models = await FluidAudioVocabularyBoost.shared.modelsIfReady(for: terms)
+        else { return }
+        do {
+            try await manager.configureVocabularyBoosting(
+                vocabulary: FluidAudioVocabularyBoost.vocabulary(for: terms), ctcModels: models)
+            unifiedBoostTerms = terms
+        } catch {
+            logger.error("Vocabulary boosting not configured: \(error.localizedDescription, privacy: .public)")
+        }
     }
 
     private func loadAudioSamples(from audioURL: URL) throws -> [Float] {

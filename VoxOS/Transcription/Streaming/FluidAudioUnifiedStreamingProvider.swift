@@ -10,7 +10,10 @@ final class FluidAudioUnifiedStreamingProvider: StreamingTranscriptionProvider {
 
     private(set) var transcriptionEvents: AsyncStream<StreamingTranscriptionEvent>
 
-    init() {
+    private let dictionaryWords: @MainActor () -> [String]
+
+    init(dictionaryWords: @escaping @MainActor () -> [String] = { [] }) {
+        self.dictionaryWords = dictionaryWords
         var continuation: AsyncStream<StreamingTranscriptionEvent>.Continuation!
         transcriptionEvents = AsyncStream { continuation = $0 }
         eventsContinuation = continuation
@@ -30,6 +33,17 @@ final class FluidAudioUnifiedStreamingProvider: StreamingTranscriptionProvider {
             continuation?.yield(.partial(text: partial))
         }
         try await manager.loadModels(from: FluidAudioModelManager.parakeetUnifiedCacheDirectory())
+        // Live text stays unboosted; FluidAudio rescores each finalized stretch toward the
+        // Dictionary, so the committed text gets the corrections.
+        let terms = FluidAudioVocabularyBoost.boostTerms(from: await MainActor.run { dictionaryWords() })
+        if let models = await FluidAudioVocabularyBoost.shared.modelsIfReady(for: terms) {
+            do {
+                try await manager.configureVocabularyBoosting(
+                    vocabulary: FluidAudioVocabularyBoost.vocabulary(for: terms), ctcModels: models)
+            } catch {
+                logger.error("Vocabulary boosting not configured: \(error.localizedDescription, privacy: .public)")
+            }
+        }
         self.manager = manager
         eventsContinuation?.yield(.sessionStarted)
         logger.notice("Parakeet Unified streaming started for \(model.displayName, privacy: .public)")
