@@ -88,7 +88,11 @@ class AudioPlayerManager: NSObject, ObservableObject, AVAudioPlayerDelegate {
         didSet { UserDefaults.standard.set(playbackRate, forKey: DefaultsKeys.audioPlaybackRate) }
     }
 
+    /// The file last loaded, so playback can reload it if the player was released meanwhile.
+    private var loadedURL: URL?
+
     func loadAudio(from url: URL) {
+        loadedURL = url
         do {
             audioPlayer = try AVAudioPlayer(contentsOf: url)
             audioPlayer?.delegate = self
@@ -109,9 +113,21 @@ class AudioPlayerManager: NSObject, ObservableObject, AVAudioPlayerDelegate {
         }
     }
 
+    /// The view can disappear and reappear without being rebuilt (a resizing history row did),
+    /// and `cleanup()` releases the player on disappear; playing then did nothing at all while
+    /// the button showed "playing". Reload first, and only report playing when it really started.
     func play() {
-        audioPlayer?.rate = playbackRate
-        audioPlayer?.play()
+        if audioPlayer == nil, let loadedURL { loadAudio(from: loadedURL) }
+        guard let audioPlayer else {
+            logger.error("Playback not started: no audio loaded")
+            return
+        }
+        audioPlayer.rate = playbackRate
+        guard audioPlayer.play() else {
+            logger.error("Playback not started: AVAudioPlayer refused to play")
+            isPlaying = false
+            return
+        }
         isPlaying = true
         startTimer()
     }
@@ -547,7 +563,10 @@ struct AudioPlayerView: View {
         }
         .padding(.top, 8)
         .padding(.bottom, 6)
-        .onAppear {
+        // Keyed on the file, not on appearing: a reused view showing another dictation must
+        // load that dictation's recording, not keep playing the previous one.
+        .task(id: url) {
+            playerManager.cleanup()
             playerManager.loadAudio(from: url)
         }
         .onDisappear {
