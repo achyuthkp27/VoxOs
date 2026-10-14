@@ -74,7 +74,7 @@ struct AIModelRoutingSection: View {
             }
             .labelsHidden()
             .pickerStyle(.menu)
-            .frame(maxWidth: 200)
+            .fixedSize()
 
             if let choice {
                 Picker(
@@ -90,6 +90,7 @@ struct AIModelRoutingSection: View {
                 }
                 .labelsHidden()
                 .pickerStyle(.menu)
+                .fixedSize()
             }
             Spacer(minLength: 0)
         }
