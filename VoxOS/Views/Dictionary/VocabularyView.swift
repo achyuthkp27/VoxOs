@@ -36,55 +36,34 @@ struct VocabularyView: View {
         UserDefaults.standard.set(sortMode.rawValue, forKey: DefaultsKeys.vocabularySortMode)
     }
 
-    private var shouldShowAddButton: Bool {
-        !newWord.isEmpty
-    }
-
     var body: some View {
-        VStack(alignment: .leading, spacing: 12) {
-            HStack(spacing: 8) {
-                TextField("", text: $newWord, prompt: Text("Add word to vocabulary"))
-                    .textFieldStyle(.roundedBorder)
-                    .font(.app(size: 13, weight: .regular))
-                    .onSubmit { addWords() }
-                    .labelsHidden()
-
-                if shouldShowAddButton {
-                    AddIconButton(
-                        helpText: "Add word",
-                        isDisabled: newWord.isEmpty,
-                        action: addWords
-                    )
-                }
+        VStack(alignment: .leading, spacing: 18) {
+            DictionaryComposer(canAdd: !trimmedNewWord.isEmpty, addTitle: "Add", onAdd: addWords) {
+                DictionaryComposerField(
+                    prompt: "Add a name, product or place — commas add several", text: $newWord,
+                    onSubmit: addWords)
             }
-            .animation(.easeInOut(duration: 0.2), value: shouldShowAddButton)
 
-            if !vocabularyWords.isEmpty {
+            if vocabularyWords.isEmpty {
+                DictionaryEmptyState(
+                    title: "Teach VoxOS the words it gets wrong",
+                    detail:
+                        "Names, products and places it mishears. Add each once in its correct spelling — VoxOS listens for it and writes it your way, however it was heard.",
+                    examples: ["Ollama", "Tumkur", "Kubernetes"])
+            } else {
                 VStack(alignment: .leading, spacing: 12) {
-                    Button(action: toggleSort) {
-                        HStack(spacing: 4) {
-                            Text(String(localized: "Vocabulary Words (\(vocabularyWords.count))"))
-                                .font(.app(size: 12, weight: .medium))
-                                .foregroundColor(.secondary)
+                    DictionaryListHeader(
+                        title: vocabularyWords.count == 1
+                            ? String(localized: "1 word") : String(localized: "\(vocabularyWords.count) words"),
+                        sortLabel: sortMode == .wordAsc ? String(localized: "A–Z") : String(localized: "Z–A"),
+                        onToggleSort: toggleSort)
 
-                            Image(systemName: sortMode == .wordAsc ? "chevron.up" : "chevron.down")
-                                .font(.app(.caption))
-                                .foregroundColor(.secondary)
-                        }
-                    }
-                    .buttonStyle(.plain)
-                    .help("Sort alphabetically")
-
-                    FlowLayout(spacing: 8) {
+                    LazyVGrid(columns: [GridItem(.adaptive(minimum: 168), spacing: 10)], spacing: 10) {
                         ForEach(sortedItems) { item in
-                            VocabularyWordView(item: item) {
-                                removeWord(item)
-                            }
+                            VocabularyWordTile(item: item) { removeWord(item) }
                         }
                     }
-                    .padding(.vertical, 4)
                 }
-                .padding(.top, 4)
             }
         }
         .frame(maxWidth: .infinity, alignment: .leading)
@@ -93,6 +72,10 @@ struct VocabularyView: View {
         } message: {
             Text(alertMessage)
         }
+    }
+
+    private var trimmedNewWord: String {
+        newWord.trimmingCharacters(in: .whitespacesAndNewlines)
     }
 
     private func addWords() {
@@ -122,42 +105,71 @@ struct VocabularyView: View {
     }
 }
 
-struct VocabularyWordView: View {
+/// One vocabulary word, with what VoxOS does with it. Words of four or more letters are listened
+/// for by local Parakeet as well as given to AI cleanup; shorter ones misfire on everyday speech,
+/// so they only reach AI cleanup — the tile says which, rather than leaving it to guesswork.
+struct VocabularyWordTile: View {
     let item: VocabularyWord
     let onDelete: () -> Void
-    @State private var isDeleteHovered = false
+    @State private var isHovered = false
+
+    private var isListenedFor: Bool {
+        !FluidAudioVocabularyBoost.boostTerms(from: [item.word]).isEmpty
+    }
 
     var body: some View {
-        HStack(spacing: 6) {
-            Text(item.word)
-                .font(.app(size: 13, weight: .regular))
-                .lineLimit(1)
-                .foregroundColor(.primary)
+        HStack(alignment: .top, spacing: 8) {
+            VStack(alignment: .leading, spacing: 5) {
+                Text(item.word)
+                    .font(.app(size: 14, weight: .semibold))
+                    .foregroundStyle(AppTheme.Text.primary)
+                    .lineLimit(1)
+                    .truncationMode(.tail)
+                    .help(item.word)
+
+                Label {
+                    Text(isListenedFor ? "Listened for" : "AI cleanup only")
+                } icon: {
+                    Image(systemName: isListenedFor ? "waveform" : "text.cursor")
+                }
+                .font(.app(size: 11, weight: .medium))
+                .foregroundStyle(isListenedFor ? AppTheme.Accent.primary : AppTheme.Text.secondary)
+                .help(
+                    isListenedFor
+                        ? "Local Parakeet listens for this word while you speak, and AI cleanup keeps its spelling."
+                        : "Shorter than four letters, so only AI cleanup uses it — listening for very short words misfires on everyday speech."
+                )
+            }
+
+            Spacer(minLength: 0)
 
             Button(action: onDelete) {
-                Image(systemName: "xmark.circle.fill")
-                    .symbolRenderingMode(.hierarchical)
-                    .foregroundStyle(isDeleteHovered ? AppTheme.Status.error : .secondary)
-                    .contentTransition(.symbolEffect(.replace))
+                Image(systemName: "xmark")
+                    .font(.app(size: 10, weight: .bold))
+                    .foregroundStyle(AppTheme.Text.secondary)
+                    .frame(width: 18, height: 18)
+                    .background(Circle().fill(AppTheme.Surface.controlActive))
             }
-            .buttonStyle(.borderless)
-            .help("Remove word")
-            .onHover { hover in
-                withAnimation(.easeInOut(duration: 0.2)) {
-                    isDeleteHovered = hover
-                }
-            }
+            .buttonStyle(.plain)
+            .help("Remove \(item.word)")
+            .opacity(isHovered ? 1 : 0)
+            .accessibilityHidden(!isHovered)
         }
-        .padding(.horizontal, 8)
-        .padding(.vertical, 6)
-        .background {
-            RoundedRectangle(cornerRadius: 6)
-                .fill(AppTheme.Surface.window.opacity(0.4))
+        .padding(.horizontal, 12)
+        .padding(.vertical, 10)
+        .background(
+            RoundedRectangle(cornerRadius: 10, style: .continuous)
+                .fill(isHovered ? AppTheme.Surface.control : AppTheme.Surface.card)
+        )
+        .overlay(
+            RoundedRectangle(cornerRadius: 10, style: .continuous)
+                .stroke(AppTheme.Border.card, lineWidth: 1)
+        )
+        .onHover { hovering in
+            withAnimation(.easeOut(duration: 0.12)) { isHovered = hovering }
         }
-        .overlay {
-            RoundedRectangle(cornerRadius: 6)
-                .stroke(AppTheme.Border.subtle, lineWidth: 1)
+        .contextMenu {
+            Button("Remove \(item.word)", role: .destructive, action: onDelete)
         }
-        .shadow(color: Color.black.opacity(0.05), radius: 2, y: 1)
     }
 }

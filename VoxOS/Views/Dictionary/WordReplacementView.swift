@@ -8,11 +8,6 @@ enum SortMode: String {
     case replacementDesc = "replacementDesc"
 }
 
-enum SortColumn {
-    case original
-    case replacement
-}
-
 struct WordReplacementView: View {
     @Query private var wordReplacements: [WordReplacement]
     @Environment(\.modelContext) private var modelContext
@@ -53,51 +48,44 @@ struct WordReplacementView: View {
         }
     }
 
-    private func toggleSort(for column: SortColumn) {
-        switch column {
-        case .original:
-            sortMode = (sortMode == .originalAsc) ? .originalDesc : .originalAsc
-        case .replacement:
-            sortMode = (sortMode == .replacementAsc) ? .replacementDesc : .replacementAsc
+    private var canAdd: Bool {
+        !originalWord.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty
+            && !replacementWord.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty
+    }
+
+    private var sortLabel: String {
+        switch sortMode {
+        case .originalAsc: return String(localized: "Heard A–Z")
+        case .originalDesc: return String(localized: "Heard Z–A")
+        case .replacementAsc: return String(localized: "Written A–Z")
+        case .replacementDesc: return String(localized: "Written Z–A")
+        }
+    }
+
+    /// Cycles heard A–Z → Z–A → written A–Z → Z–A.
+    private func cycleSort() {
+        switch sortMode {
+        case .originalAsc: sortMode = .originalDesc
+        case .originalDesc: sortMode = .replacementAsc
+        case .replacementAsc: sortMode = .replacementDesc
+        case .replacementDesc: sortMode = .originalAsc
         }
         UserDefaults.standard.set(sortMode.rawValue, forKey: DefaultsKeys.wordReplacementSortMode)
     }
 
-    private var shouldShowAddButton: Bool {
-        !originalWord.isEmpty || !replacementWord.isEmpty
-    }
-
     var body: some View {
-        VStack(alignment: .leading, spacing: 12) {
-            HStack(spacing: 8) {
-                TextField("", text: $originalWord, prompt: Text("Original text (use commas for multiple)"))
-                    .textFieldStyle(.roundedBorder)
-                    .font(.app(size: 13, weight: .regular))
-                    .labelsHidden()
-
+        VStack(alignment: .leading, spacing: 18) {
+            DictionaryComposer(canAdd: canAdd, addTitle: "Add", onAdd: addReplacement) {
+                DictionaryComposerField(prompt: "When VoxOS writes… (commas for several)", text: $originalWord)
                 Image(systemName: "arrow.right")
-                    .foregroundColor(.secondary)
-                    .font(.app(size: 10, weight: .regular))
-                    .frame(width: 10)
-
-                TextField("", text: $replacementWord, prompt: Text("Replacement text"))
-                    .textFieldStyle(.roundedBorder)
-                    .font(.app(size: 13, weight: .regular))
-                    .onSubmit { addReplacement() }
-                    .labelsHidden()
-
-                if shouldShowAddButton {
-                    AddIconButton(
-                        helpText: "Add word replacement",
-                        isDisabled: originalWord.isEmpty || replacementWord.isEmpty,
-                        action: addReplacement
-                    )
-                }
-
+                    .font(.app(size: 11, weight: .semibold))
+                    .foregroundStyle(AppTheme.Text.muted)
+                DictionaryComposerField(prompt: "…write this instead", text: $replacementWord, onSubmit: addReplacement)
                 Button {
                     showInfoPopover.toggle()
                 } label: {
-                    Image(systemName: "info.circle")
+                    Image(systemName: "questionmark.circle")
+                        .foregroundStyle(AppTheme.Text.secondary)
                 }
                 .buttonStyle(.borderless)
                 .help("Word replacement examples")
@@ -105,7 +93,6 @@ struct WordReplacementView: View {
                     WordReplacementInfoPopover()
                 }
             }
-            .animation(.easeInOut(duration: 0.2), value: shouldShowAddButton)
 
             // Rows hold comma-separated trigger lists; the learner compares single triggers.
             LearnedCorrectionsSection(
@@ -116,54 +103,22 @@ struct WordReplacementView: View {
                         .filter { !$0.isEmpty }
                 })
 
-            if !wordReplacements.isEmpty {
-                VStack(spacing: 0) {
-                    HStack(spacing: 8) {
-                        Button(action: { toggleSort(for: .original) }) {
-                            HStack(spacing: 4) {
-                                Text("Original")
-                                    .font(.app(size: 12, weight: .medium))
-                                    .foregroundColor(.secondary)
+            if wordReplacements.isEmpty {
+                DictionaryEmptyState(
+                    title: "Fix the same mistake the same way, every time",
+                    detail:
+                        "An exact swap applied after every transcription — for a phrase VoxOS always gets wrong, or a short code that expands into longer text. For names and terms, Vocabulary usually works better: one entry covers every way a word is misheard.",
+                    examples: ["box os → VoxOS", "my addr → 12 MG Road, Bengaluru"])
+            } else {
+                VStack(alignment: .leading, spacing: 10) {
+                    DictionaryListHeader(
+                        title: wordReplacements.count == 1
+                            ? String(localized: "1 replacement")
+                            : String(localized: "\(wordReplacements.count) replacements"),
+                        sortLabel: sortLabel,
+                        onToggleSort: cycleSort)
 
-                                if sortMode == .originalAsc || sortMode == .originalDesc {
-                                    Image(systemName: sortMode == .originalAsc ? "chevron.up" : "chevron.down")
-                                        .font(.app(.caption))
-                                        .foregroundColor(.secondary)
-                                }
-                            }
-                            .frame(maxWidth: .infinity, alignment: .leading)
-                        }
-                        .buttonStyle(.plain)
-                        .help("Sort by original")
-
-                        Image(systemName: "arrow.right")
-                            .foregroundColor(.secondary)
-                            .font(.app(size: 10, weight: .regular))
-                            .frame(width: 10)
-
-                        Button(action: { toggleSort(for: .replacement) }) {
-                            HStack(spacing: 4) {
-                                Text("Replacement")
-                                    .font(.app(size: 12, weight: .medium))
-                                    .foregroundColor(.secondary)
-
-                                if sortMode == .replacementAsc || sortMode == .replacementDesc {
-                                    Image(systemName: sortMode == .replacementAsc ? "chevron.up" : "chevron.down")
-                                        .font(.app(.caption))
-                                        .foregroundColor(.secondary)
-                                }
-                            }
-                            .frame(maxWidth: .infinity, alignment: .leading)
-                        }
-                        .buttonStyle(.plain)
-                        .help("Sort by replacement")
-                    }
-                    .padding(.horizontal, 4)
-                    .padding(.vertical, 8)
-
-                    Divider()
-
-                    LazyVStack(spacing: 0) {
+                    VStack(spacing: 0) {
                         ForEach(sortedReplacements, id: \.persistentModelID) { replacement in
                             ReplacementRow(
                                 original: replacement.originalText,
@@ -171,14 +126,20 @@ struct WordReplacementView: View {
                                 onDelete: { removeReplacement(replacement) },
                                 onEdit: { editingReplacement = replacement }
                             )
-
                             if replacement.persistentModelID != sortedReplacements.last?.persistentModelID {
-                                Divider()
+                                Divider().opacity(0.5)
                             }
                         }
                     }
+                    .background(
+                        RoundedRectangle(cornerRadius: 10, style: .continuous)
+                            .fill(AppTheme.Surface.card)
+                    )
+                    .overlay(
+                        RoundedRectangle(cornerRadius: 10, style: .continuous)
+                            .stroke(AppTheme.Border.card, lineWidth: 1)
+                    )
                 }
-                .padding(.top, 4)
             }
         }
         .frame(maxWidth: .infinity, alignment: .leading)
@@ -306,67 +267,62 @@ struct WordReplacementInfoPopover: View {
     }
 }
 
+/// One replacement as "heard → written": what VoxOS produced is quiet, what it now writes is the
+/// line's subject. Edit and remove appear on hover so a long list reads as content, not controls.
 struct ReplacementRow: View {
     let original: String
     let replacement: String
     let onDelete: () -> Void
     let onEdit: () -> Void
-    @State private var isEditHovered = false
-    @State private var isDeleteHovered = false
+    @State private var isHovered = false
 
     var body: some View {
-        HStack(spacing: 8) {
+        HStack(spacing: 12) {
             Text(original)
                 .font(.app(size: 13, weight: .regular))
+                .foregroundStyle(AppTheme.Text.secondary)
                 .lineLimit(2)
                 .frame(maxWidth: .infinity, alignment: .leading)
 
             Image(systemName: "arrow.right")
-                .foregroundColor(.secondary)
-                .font(.app(size: 10, weight: .regular))
-                .frame(width: 10)
+                .font(.app(size: 10, weight: .semibold))
+                .foregroundStyle(AppTheme.Text.muted)
 
-            ZStack(alignment: .trailing) {
-                Text(replacement)
-                    .font(.app(size: 13, weight: .regular))
-                    .lineLimit(2)
-                    .truncationMode(.middle)
-                    .frame(maxWidth: .infinity, alignment: .leading)
-                    .padding(.trailing, 50)
+            Text(replacement)
+                .font(.app(size: 14, weight: .semibold))
+                .foregroundStyle(AppTheme.Text.primary)
+                .lineLimit(2)
+                .truncationMode(.middle)
+                .frame(maxWidth: .infinity, alignment: .leading)
 
-                HStack(spacing: 6) {
-                    Button(action: onEdit) {
-                        Image(systemName: "pencil.circle.fill")
-                            .symbolRenderingMode(.hierarchical)
-                            .foregroundColor(isEditHovered ? AppTheme.Accent.primary : .secondary)
-                            .contentTransition(.symbolEffect(.replace))
-                    }
-                    .buttonStyle(.borderless)
-                    .help("Edit replacement")
-                    .onHover { hover in
-                        withAnimation(.easeInOut(duration: 0.2)) {
-                            isEditHovered = hover
-                        }
-                    }
-
-                    Button(action: onDelete) {
-                        Image(systemName: "xmark.circle.fill")
-                            .symbolRenderingMode(.hierarchical)
-                            .foregroundStyle(isDeleteHovered ? AppTheme.Status.error : .secondary)
-                            .contentTransition(.symbolEffect(.replace))
-                    }
-                    .buttonStyle(.borderless)
-                    .help("Remove replacement")
-                    .onHover { hover in
-                        withAnimation(.easeInOut(duration: 0.2)) {
-                            isDeleteHovered = hover
-                        }
-                    }
-                }
+            HStack(spacing: 4) {
+                rowButton("pencil", help: "Edit replacement", action: onEdit)
+                rowButton("trash", help: "Remove replacement", action: onDelete)
             }
-            .frame(maxWidth: .infinity)
+            .opacity(isHovered ? 1 : 0)
         }
-        .padding(.vertical, 8)
-        .padding(.horizontal, 4)
+        .padding(.horizontal, 14)
+        .padding(.vertical, 11)
+        .background(isHovered ? AppTheme.Surface.subtle : Color.clear)
+        .contentShape(Rectangle())
+        .onHover { hovering in
+            withAnimation(.easeOut(duration: 0.12)) { isHovered = hovering }
+        }
+        .contextMenu {
+            Button("Edit…", action: onEdit)
+            Button("Remove", role: .destructive, action: onDelete)
+        }
+    }
+
+    private func rowButton(_ symbol: String, help: LocalizedStringKey, action: @escaping () -> Void) -> some View {
+        Button(action: action) {
+            Image(systemName: symbol)
+                .font(.app(size: 11, weight: .semibold))
+                .foregroundStyle(AppTheme.Text.secondary)
+                .frame(width: 24, height: 22)
+                .background(RoundedRectangle(cornerRadius: 6, style: .continuous).fill(AppTheme.Surface.controlActive))
+        }
+        .buttonStyle(.plain)
+        .help(help)
     }
 }
