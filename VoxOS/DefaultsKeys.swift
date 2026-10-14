@@ -70,7 +70,15 @@ enum DefaultsKeys {
     static let enhancementTimeoutSeconds = "EnhancementTimeoutSeconds"
     static let enhancementRetryOnTimeout = "EnhancementRetryOnTimeout"
     /// Ordered provider names (`AIProvider.rawValue`) the agent may fall back to when the chosen one is down.
+    /// Superseded by `aiFallbackProvider`; read once to migrate its first entry.
     static let aiFallbackProviders = "AIFallbackProviders"
+    /// Global main model (`AIProvider.rawValue` + model). When set, every mode uses it.
+    static let aiMainProvider = "AIMainProvider"
+    static let aiMainModel = "AIMainModel"
+    /// Global fallback model, tried when the main one is down or answers with nothing.
+    static let aiFallbackProvider = "AIFallbackProvider"
+    static let aiFallbackModel = "AIFallbackModel"
+    static let aiFallbackMigrated = "AIFallbackMigrated"
     /// Close the Agent panel by itself after a request that only opened something.
     static let agentAutoCloseAfterOpen = "AgentAutoCloseAfterOpen"
     static let customPrompts = "customPrompts"

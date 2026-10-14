@@ -48,6 +48,20 @@ struct EnhancementRuntimeConfiguration {
             useScreenCaptureContext: useScreenCaptureContext
         )
     }
+
+    /// The same request on another provider/model: the fallback model.
+    func replacingModel(provider: AIProvider, modelName: String) -> EnhancementRuntimeConfiguration {
+        EnhancementRuntimeConfiguration(
+            mode: mode,
+            isEnabled: isEnabled,
+            prompt: prompt,
+            provider: provider,
+            modelName: modelName,
+            useClipboardContext: useClipboardContext,
+            useSelectedTextContext: useSelectedTextContext,
+            useScreenCaptureContext: useScreenCaptureContext
+        )
+    }
 }
 
 struct OutputRuntimeConfiguration {
@@ -148,8 +162,11 @@ enum ModeRuntimeResolver {
         aiService: AIService
     ) -> EnhancementRuntimeConfiguration {
         let mode = mode ?? ModeManager.shared.currentEffectiveConfiguration
+        // The global main model (AI Models) replaces every mode's own choice while it is set
+        // and connected; a main model that is not connected leaves the mode's choice in charge.
+        let main = AIModelRouting.main.flatMap { aiService.connectedProviders.contains($0.provider) ? $0 : nil }
         let provider = resolvedProvider(
-            providerName: mode?.selectedAIProvider,
+            providerName: main?.provider.rawValue ?? mode?.selectedAIProvider,
             aiService: aiService
         )
         let prompt =
@@ -161,7 +178,8 @@ enum ModeRuntimeResolver {
             )
         let modelName = resolvedEnhancementModelName(
             provider: provider,
-            configuredModelName: mode?.selectedAIModel,
+            configuredModelName: main.map { $0.model ?? aiService.selectedModel(for: $0.provider) }
+                ?? mode?.selectedAIModel,
             aiService: aiService
         )
 

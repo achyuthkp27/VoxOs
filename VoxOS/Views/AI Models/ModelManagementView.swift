@@ -92,6 +92,8 @@ struct ModelManagementView: View {
                         intelMacWarningBanner
                     }
 
+                    AIModelRoutingSection()
+
                     availableModelsSection
                 }
                 .padding(.horizontal, 24)

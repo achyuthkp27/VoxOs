@@ -558,6 +558,53 @@ class AIEnhancementService: ObservableObject {
         }
     }
 
+    /// The main request, then the global fallback model (AI Models) when the main one is down
+    /// or answers with nothing. Returns the configuration that answered, so an Agent run keeps
+    /// talking to the model that actually works.
+    private func makeRequestWithFallback(
+        text: String,
+        configuration: EnhancementRuntimeConfiguration,
+        contextSnapshot: RecordingContextSnapshot?
+    ) async throws -> (
+        result: (text: String, systemMessage: String?, userMessage: String?),
+        configuration: EnhancementRuntimeConfiguration
+    ) {
+        let fallbackConfiguration = { () -> EnhancementRuntimeConfiguration? in
+            // VoxOS Refine answers without a prompt; a prompt-based fallback cannot replace it.
+            guard let provider = configuration.provider, provider != .voxOSRefine,
+                let next = AIModelRouting.fallback(
+                    after: provider, model: configuration.modelName,
+                    connected: self.aiService.connectedProviders,
+                    resolveModel: { self.aiService.selectedModel(for: $0) })
+            else { return nil }
+            return configuration.replacingModel(provider: next.provider, modelName: next.model)
+        }
+
+        let result: (text: String, systemMessage: String?, userMessage: String?)
+        do {
+            result = try await makeRequestWithRetry(
+                text: text, configuration: configuration, contextSnapshot: contextSnapshot)
+        } catch {
+            guard AIModelRouting.isFailoverWorthy(error), let fallback = fallbackConfiguration() else { throw error }
+            logger.warning("Main model failed, trying the fallback model")
+            return (
+                try await makeRequestWithRetry(text: text, configuration: fallback, contextSnapshot: contextSnapshot),
+                fallback
+            )
+        }
+
+        if result.text.isEmpty, !text.isEmpty, let fallback = fallbackConfiguration() {
+            logger.warning("Main model sent back an empty reply, trying the fallback model")
+            if let retried = try? await makeRequestWithRetry(
+                text: text, configuration: fallback, contextSnapshot: contextSnapshot),
+                !retried.text.isEmpty
+            {
+                return (retried, fallback)
+            }
+        }
+        return (result, configuration)
+    }
+
     func enhance(
         _ text: String,
         configuration: EnhancementRuntimeConfiguration,
@@ -575,7 +622,7 @@ class AIEnhancementService: ObservableObject {
                     systemMessage: nil, userMessage: text)
             }
 
-            let requestResult = try await makeRequestWithRetry(
+            let (requestResult, configuration) = try await makeRequestWithFallback(
                 text: text,
                 configuration: configuration,
                 contextSnapshot: contextSnapshot

@@ -9,9 +9,9 @@ extension AIService {
     /// a burst of agent tool calls does not surface a raw HTTP error to the user. A timeout is
     /// never retried: the completion may already have run.
     ///
-    /// If the provider is still failing and the user has listed fallback providers
-    /// (`DefaultsKeys.aiFallbackProviders`), the same conversation is replayed on the next one.
-    /// Tool calls are plain-text JSON (ADR 0001), so any provider can continue a run.
+    /// If the provider is still failing, or answers with nothing, and the user has set a
+    /// fallback model (AI Models → Main & Fallback Model), the same conversation is replayed
+    /// on it. Tool calls are plain-text JSON (ADR 0001), so any provider can continue a run.
     func completeChat(
         provider: AIProvider,
         modelName: String?,
@@ -19,44 +19,44 @@ extension AIService {
         systemPrompt: String? = nil,
         timeout: TimeInterval = 30
     ) async throws -> String {
-        let primaryError: LLMKitError
+        let fallback = AIModelRouting.fallback(
+            after: provider, model: modelName, connected: connectedProviders,
+            resolveModel: { self.selectedModel(for: $0) })
+
+        let reply: String
         do {
-            return try await completeChatHonouringRetryAfter(
+            reply = try await completeChatHonouringRetryAfter(
                 provider: provider, modelName: modelName, messages: messages,
                 systemPrompt: systemPrompt, timeout: timeout)
-        } catch let error as LLMKitError {
-            primaryError = error
-        }
-
-        guard AIProviderFallback.isFailoverWorthy(primaryError) else {
-            throw Self.friendlyChatError(primaryError, modelName: modelName)
-        }
-        let fallbacks = AIProviderFallback.candidates(
-            primary: provider,
-            configuredOrder: UserDefaults.standard.stringArray(forKey: DefaultsKeys.aiFallbackProviders) ?? [],
-            connected: connectedProviders)
-
-        for fallback in fallbacks {
-            // A cancelled run must not keep spending calls on the remaining providers.
+        } catch let mainError as LLMKitError {
+            guard AIModelRouting.isFailoverWorthy(mainError), let fallback else {
+                throw Self.friendlyChatError(mainError, modelName: modelName)
+            }
+            // A cancelled run must not spend a call on the fallback.
             try Task.checkCancellation()
             if !AgentRunScope.isBackground {
-                AgentProgress.set("\(provider.rawValue) is unavailable, trying \(fallback.rawValue)…")
+                AgentProgress.set("\(provider.rawValue) is unavailable, trying \(fallback.model)…")
             }
             do {
-                // The fallback uses its own selected model: the primary's model name means nothing there.
                 return try await completeChatHonouringRetryAfter(
-                    provider: fallback, modelName: nil, messages: messages,
+                    provider: fallback.provider, modelName: fallback.model, messages: messages,
                     systemPrompt: systemPrompt, timeout: timeout)
             } catch is CancellationError {
                 throw CancellationError()
             } catch {
-                // Rate-limited, misconfigured or down: this fallback is no help, try the next one.
-                continue
+                // The error worth showing is the main model's, not the fallback's: that is the
+                // one the user can act on (wait out the limit, pick another model).
+                throw Self.friendlyChatError(mainError, modelName: modelName)
             }
         }
-        // Every fallback failed too. The error worth showing is the chosen provider's: that is the
-        // one the user can act on (wait out the limit, pick another model).
-        throw Self.friendlyChatError(primaryError, modelName: modelName)
+
+        // Some models (gpt-oss on Groq) answer with nothing at all; the fallback gets one try.
+        guard reply.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty, let fallback else { return reply }
+        try Task.checkCancellation()
+        let retried = try? await completeChatHonouringRetryAfter(
+            provider: fallback.provider, modelName: fallback.model, messages: messages,
+            systemPrompt: systemPrompt, timeout: timeout)
+        return retried ?? reply
     }
 
     private func completeChatHonouringRetryAfter(

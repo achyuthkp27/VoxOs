@@ -359,6 +359,14 @@ struct ModeConfigFormView: View {
             if draft.isAIEnhancementEnabled {
                 let providerOptions = aiProviderOptions
 
+                if let main = AIModelRouting.main, providerOptions.contains(main.provider) {
+                    Text(
+                        "Using the main model from AI Models (\(main.provider.rawValue)). The choice below applies again when the main model is set back to “Each mode's own”."
+                    )
+                    .font(.app(.caption))
+                    .foregroundStyle(.secondary)
+                }
+
                 if providerOptions.isEmpty {
                     LabeledContent("AI Provider") {
                         Text("No providers connected")
