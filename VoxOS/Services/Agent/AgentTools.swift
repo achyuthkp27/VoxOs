@@ -363,10 +363,23 @@ enum AgentTools {
         case "type_text":
             let text = s("text")
             guard !text.isEmpty else { return ["error": "text is required"] }
+            // A just-opened app often shows a file picker or an empty window, not a text field
+            // (TextEdit opens to its Open panel). Pasting there "succeeds" and the model reports
+            // text that was never typed, so say what has focus instead.
+            if let target = await MainActor.run(body: { AgentAXTree.focusedTarget() }),
+                !AgentAXTree.acceptsTyping(role: target.role)
+            {
+                let app = await MainActor.run { NSWorkspace.shared.frontmostApplication?.localizedName ?? "the app" }
+                let window = target.windowTitle.isEmpty ? "" : " in the window “\(target.windowTitle)”"
+                return [
+                    "error":
+                        "not typed: in \(app) the focus is on a \(target.role)\(window), not a text field. Put the cursor in a text field or document first — for a new document press hotkey cmd+n, or click the field — then call type_text again."
+                ]
+            }
             let pasteTask = await MainActor.run { CursorPaster.startPasteAtCursor(text) }
             let pasted = await pasteTask.value.didPostPasteCommand
             return pasted
-                ? ["result": "typed text at cursor"]
+                ? ["result": "typed text at the cursor in \(await MainActor.run { NSWorkspace.shared.frontmostApplication?.localizedName ?? "the front app" })"]
                 : [
                     "error":
                         "could not paste at the cursor (no text field focused, or Accessibility permission missing)"

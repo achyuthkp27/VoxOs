@@ -90,6 +90,41 @@ enum AgentAXTree {
         return stringFrom(copyAttribute(focused, kAXValueAttribute))
     }
 
+    /// What keyboard input would land in right now: the focused element's role and its window.
+    struct FocusedTarget: Equatable {
+        let role: String
+        let windowTitle: String
+    }
+
+    /// nil when it cannot be told (no Accessibility permission, VoxOS itself in front, or an app
+    /// that exposes no focused element) — callers then type as before rather than guess.
+    static func focusedTarget() -> FocusedTarget? {
+        guard AXIsProcessTrusted(), !AgentSelfGuard.isFrontmost else { return nil }
+        let system = AXUIElementCreateSystemWide()
+        AXUIElementSetMessagingTimeout(system, 1.0)
+        guard let focused = axElement(copyAttribute(system, kAXFocusedUIElementAttribute)),
+            !AgentSelfGuard.isOwn(focused)
+        else { return nil }
+        AXUIElementSetMessagingTimeout(focused, 1.0)
+        let role = stringFrom(copyAttribute(focused, kAXRoleAttribute))
+        guard !role.isEmpty else { return nil }
+        let window = axElement(copyAttribute(focused, kAXWindowAttribute))
+        let title = window.map { stringFrom(copyAttribute($0, kAXTitleAttribute)) } ?? ""
+        return FocusedTarget(role: role, windowTitle: title)
+    }
+
+    /// Roles that never take typed text. Only these block typing: an unknown role (custom views,
+    /// web content, terminals) still gets the text, since a wrong refusal is worse than a miss.
+    static let nonTextRoles: Set<String> = [
+        "AXList", "AXOutline", "AXTable", "AXRow", "AXCell", "AXBrowser", "AXButton", "AXMenuButton",
+        "AXPopUpButton", "AXCheckBox", "AXRadioButton", "AXWindow", "AXSheet", "AXToolbar", "AXImage",
+        "AXSplitGroup", "AXTabGroup", "AXMenu", "AXMenuItem", "AXMenuBar",
+    ]
+
+    static func acceptsTyping(role: String) -> Bool {
+        !nonTextRoles.contains(role)
+    }
+
     /// The characters either side of the insertion point in the focused text field.
     ///
     /// Returns nil when there is no usable answer — no Accessibility permission, no focused text
