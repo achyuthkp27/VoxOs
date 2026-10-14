@@ -9,19 +9,20 @@ struct AppSidebar: View {
     var body: some View {
         VStack(spacing: 0) {
             brand
-                .padding(.top, 34)
-                .padding(.bottom, 22)
+                .padding(.top, 30)
+                .padding(.bottom, 18)
 
             LiquidGlassContainer(spacing: 8) {
-                VStack(spacing: 0) {
-                    sidebarSection(ViewType.primaryItems)
+                VStack(alignment: .leading, spacing: 14) {
+                    sidebarSection("Use", ViewType.useItems)
+                    sidebarSection("Set up", ViewType.setupItems)
                     Spacer(minLength: 16)
-                    sidebarSection(ViewType.secondaryItems)
-                        .padding(.bottom, 14)
+                    sidebarSection(nil, ViewType.secondaryItems)
+                        .padding(.bottom, 12)
                 }
             }
         }
-        .frame(width: 208)
+        .frame(width: 200)
         .frame(maxHeight: .infinity)
         .liquidGlass(cornerRadius: 24)
         .padding(.leading, 10)
@@ -36,19 +37,29 @@ struct AppSidebar: View {
             Image(nsImage: NSApp.applicationIconImage)
                 .resizable()
                 .scaledToFit()
-                .frame(width: 36, height: 36)
-                .shadow(color: .black.opacity(0.25), radius: 4, y: 2)
+                .frame(width: 28, height: 28)
+                .shadow(color: .black.opacity(0.2), radius: 3, y: 1)
             Text("VoxOS")
-                .font(.app(size: 22, weight: .bold))
-                .tracking(-0.3)
+                .font(.app(size: 17, weight: .semibold))
+                .tracking(-0.2)
             Spacer(minLength: 0)
         }
         .foregroundStyle(AppTheme.Text.primary)
         .padding(.horizontal, 18)
     }
 
-    private func sidebarSection(_ items: [ViewType]) -> some View {
-        VStack(spacing: 3) {
+    /// Grouped by what you do there: pages you use day to day, and pages you set VoxOS up in.
+    private func sidebarSection(_ title: LocalizedStringKey?, _ items: [ViewType]) -> some View {
+        VStack(alignment: .leading, spacing: 2) {
+            if let title {
+                Text(title)
+                    .font(.app(size: 10.5, weight: .semibold))
+                    .foregroundStyle(AppTheme.Text.muted)
+                    .textCase(.uppercase)
+                    .tracking(0.6)
+                    .padding(.horizontal, 10)
+                    .padding(.bottom, 4)
+            }
             ForEach(items) { viewType in
                 SidebarItemButton(
                     viewType: viewType,
@@ -73,9 +84,9 @@ extension ViewType {
         }
     }
 
-    fileprivate static let primaryItems: [ViewType] = [
-        .dashboard, .modes, .transcribeAudio, .history, .dictionary, .models, .audio,
-    ]
+    fileprivate static let useItems: [ViewType] = [.dashboard, .history, .transcribeAudio]
+    fileprivate static let setupItems: [ViewType] = [.modes, .dictionary, .models, .audio]
+    fileprivate static var primaryItems: [ViewType] { useItems + setupItems }
     fileprivate static let secondaryItems: [ViewType] = [.settings]
     /// Reachable by navigation but deliberately absent from the sidebar (personal build: no licensing).
     fileprivate static let hiddenItems: [ViewType] = [.license]
@@ -111,26 +122,29 @@ private struct SidebarItemButton: View {
 
     var body: some View {
         Button(action: action) {
-            HStack(spacing: 10) {
+            HStack(spacing: 9) {
                 Image(systemName: viewType.icon)
-                    .font(.app(size: 14, weight: .medium))
+                    .font(.app(size: 13, weight: .medium))
                     .symbolRenderingMode(.hierarchical)
-                    .frame(width: 20)
+                    .foregroundStyle(isSelected ? AppTheme.Accent.primary : AppTheme.Text.secondary)
+                    .frame(width: 18)
 
                 Text(viewType.title)
-                    .font(.app(size: 13.5, weight: isSelected ? .semibold : .medium))
+                    .font(.app(size: 13, weight: isSelected ? .semibold : .regular))
+                    .foregroundStyle(AppTheme.Text.primary)
                     .lineLimit(1)
 
                 Spacer(minLength: 0)
             }
-            .foregroundStyle(isSelected ? Color.white : AppTheme.Text.primary)
-            .padding(.horizontal, 12)
-            .frame(height: 34)
+            .padding(.horizontal, 10)
+            .frame(height: 30)
             .frame(maxWidth: .infinity, alignment: .leading)
             .background {
-                if isHovering, !isSelected { Capsule().fill(AppTheme.Surface.subtle) }
+                if isHovering, !isSelected {
+                    RoundedRectangle(cornerRadius: 8, style: .continuous).fill(AppTheme.Surface.subtle)
+                }
             }
-            .contentShape(Capsule())
+            .contentShape(RoundedRectangle(cornerRadius: 8, style: .continuous))
             .modifier(SelectionGlass(isSelected: isSelected, namespace: namespace))
         }
         .buttonStyle(.plain)
@@ -143,8 +157,8 @@ private struct SidebarItemButton: View {
 
 }
 
-/// Selection sits inside the glass sidebar, so it is a plain tinted capsule (glass does not
-/// nest); `matchedGeometryEffect` keeps the slide between rows.
+/// Selection sits inside the glass sidebar, so it is a plain tinted shape (glass does not nest);
+/// `matchedGeometryEffect` keeps the slide between rows.
 private struct SelectionGlass: ViewModifier {
     let isSelected: Bool
     let namespace: Namespace.ID
@@ -152,10 +166,10 @@ private struct SelectionGlass: ViewModifier {
     func body(content: Content) -> some View {
         content.background {
             if isSelected {
-                Capsule()
-                    .fill(AppTheme.Accent.primary.opacity(0.85))
-                    .overlay(Capsule().strokeBorder(Color.white.opacity(0.18), lineWidth: 1))
-                    .shadow(color: AppTheme.Accent.primary.opacity(0.35), radius: 8, y: 2)
+                // A quiet tint rather than a saturated, glowing capsule: the page is the subject,
+                // the sidebar only says where you are.
+                RoundedRectangle(cornerRadius: 8, style: .continuous)
+                    .fill(AppTheme.Accent.fill)
                     .matchedGeometryEffect(id: "sidebar-selection", in: namespace)
             }
         }
