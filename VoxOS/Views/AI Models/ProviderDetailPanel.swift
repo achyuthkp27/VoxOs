@@ -71,7 +71,7 @@ struct ProviderDetailPanel: View {
 
             Button(action: onClose) {
                 Image(systemName: "xmark")
-                    .font(.app(size: 14, weight: .medium))
+                    .font(.app(size: 13, weight: .medium))
                     .foregroundStyle(.secondary)
                     .padding(6)
                     .background(AppTheme.Surface.card)
@@ -259,7 +259,7 @@ struct ProviderDetailPanel: View {
 
     private func providerDetailIcon(_ systemName: String) -> some View {
         Image(systemName: systemName)
-            .font(.app(size: 14, weight: .semibold))
+            .font(.app(size: 13, weight: .semibold))
             .foregroundStyle(.primary)
             .frame(width: 30, height: 30)
             .background(

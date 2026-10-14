@@ -87,7 +87,7 @@ struct AppScreenHeader<Trailing: View>: View {
             VStack(alignment: .leading, spacing: 2) {
                 HStack(spacing: 8) {
                     Text(title)
-                        .font(.appDisplay(size: 30, weight: .regular))
+                        .font(.appDisplay(size: 28, weight: .light))
                         .tracking(-0.3)
                         .foregroundColor(.primary)
 

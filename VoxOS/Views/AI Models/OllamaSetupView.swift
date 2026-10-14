@@ -211,7 +211,7 @@ struct OllamaSetupView: View {
     private var header: some View {
         VStack(alignment: .leading, spacing: 4) {
             Text("Local LLM Setup")
-                .font(.app(size: 15, weight: .semibold))
+                .font(.app(size: 14, weight: .semibold))
             Text("Ollama models used for AI enhancement and the Agent. Speech-to-text models are managed separately.")
                 .font(.app(.caption))
                 .foregroundStyle(.secondary)

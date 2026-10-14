@@ -144,18 +144,18 @@ struct EdgeHistorySidebarView: View {
         HStack(spacing: 10) {
             HStack(spacing: 10) {
                 Image(systemName: "magnifyingglass")
-                    .font(.app(size: 15, weight: .medium))
+                    .font(.app(size: 14, weight: .medium))
                     .foregroundStyle(Self.caption)
                 ZStack(alignment: .leading) {
                     if searchText.isEmpty {
                         Text("Search")
-                            .font(.app(size: 16))
+                            .font(.app(size: 14))
                             .foregroundStyle(Self.caption)
                             .allowsHitTesting(false)
                     }
                     TextField("", text: $searchText)
                         .textFieldStyle(.plain)
-                        .font(.app(size: 16))
+                        .font(.app(size: 14))
                         .foregroundStyle(Self.title)
                         .tint(.white)
                 }
@@ -169,7 +169,7 @@ struct EdgeHistorySidebarView: View {
                 withAnimation(.snappy(duration: 0.2)) { isPinned.toggle() }
             } label: {
                 Image(systemName: isPinned ? "lock.fill" : "lock.open")
-                    .font(.app(size: 15, weight: .medium))
+                    .font(.app(size: 14, weight: .medium))
                     .foregroundStyle(isPinned ? Color.white : Self.title.opacity(0.85))
                     .frame(width: 46, height: 46)
                     .background(Circle().fill(isPinned ? AppTheme.Accent.primary : Self.pill))
@@ -190,7 +190,7 @@ struct EdgeHistorySidebarView: View {
             LazyVStack(alignment: .leading, spacing: 0, pinnedViews: []) {
                 if groups.isEmpty {
                     Text("No history yet")
-                        .font(.app(size: 14))
+                        .font(.app(size: 13))
                         .foregroundStyle(Self.caption)
                         .frame(maxWidth: .infinity)
                         .padding(.top, 32)
@@ -242,7 +242,7 @@ private struct EdgeHistoryRow: View {
             HStack(spacing: 14) {
                 EdgeHistoryAvatar(emoji: transcription.modeEmoji)
                 Text(displayTitle)
-                    .font(.app(size: 17))
+                    .font(.app(size: 15))
                     .foregroundStyle(Color.white.opacity(0.95))
                     .lineLimit(1)
                     .truncationMode(.tail)
@@ -290,7 +290,7 @@ private struct EdgeHistoryAvatar: View {
             if let emoji, !emoji.isEmpty,
                 emoji.unicodeScalars.contains(where: { $0.properties.isEmoji && $0.value > 0x7F })
             {
-                Text(emoji).font(.system(size: 15))
+                Text(emoji).font(.system(size: 14))
             }
         }
         .frame(width: 34, height: 34)

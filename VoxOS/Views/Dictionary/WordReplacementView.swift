@@ -290,7 +290,7 @@ struct ReplacementRow: View {
                 .foregroundStyle(AppTheme.Text.muted)
 
             Text(replacement)
-                .font(.app(size: 14, weight: .semibold))
+                .font(.app(size: 13, weight: .semibold))
                 .foregroundStyle(AppTheme.Text.primary)
                 .lineLimit(2)
                 .truncationMode(.middle)

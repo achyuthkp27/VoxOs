@@ -51,7 +51,7 @@ private struct ModelSettingsTabBar: View {
                             .symbolRenderingMode(.hierarchical)
 
                         Text(LocalizedStringKey(tab.rawValue))
-                            .font(.system(size: 14, weight: selection == tab ? .semibold : .medium))
+                            .font(.system(size: 13, weight: selection == tab ? .semibold : .medium))
                     }
                     .foregroundStyle(selection == tab ? Color.primary : Color.secondary)
                     .frame(maxWidth: .infinity)

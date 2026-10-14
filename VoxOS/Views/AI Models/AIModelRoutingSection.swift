@@ -152,7 +152,7 @@ struct AIModelRoutingSection: View {
 
                 VStack(alignment: .leading, spacing: 2) {
                     Text(modelLabel(current, slot: slot))
-                        .font(.app(size: 15, weight: .semibold))
+                        .font(.app(size: 14, weight: .semibold))
                         .foregroundStyle(current == nil ? AppTheme.Text.secondary : AppTheme.Text.primary)
                         .lineLimit(1)
                         .truncationMode(.middle)

@@ -106,7 +106,7 @@ struct AudioTranscribeView: View {
             .scaleEffect(isDropTargeted && !reduceMotion ? 1.06 : 1)
 
             Text("Drop audio or video files here")
-                .font(.app(size: 17, weight: .semibold))
+                .font(.app(size: 15, weight: .semibold))
                 .foregroundStyle(AppTheme.Text.primary)
 
             Text("or")

@@ -1,4 +1,5 @@
 import AppKit
+import SwiftData
 import SwiftUI
 
 /// The app's navigation: a glass column that names every page under what it is for, or, when
@@ -12,7 +13,27 @@ struct AppSidebar: View {
     @Binding var selectedView: ViewType
     @AppStorage(Self.collapsedKey) private var isCollapsed = false
     @Environment(\.accessibilityReduceMotion) private var reduceMotion
+    @Environment(\.modelContext) private var modelContext
     @Namespace private var selection
+    @Query private var vocabularyWords: [VocabularyWord]
+    @Query private var wordReplacements: [WordReplacement]
+    @ObservedObject private var modeManager = ModeManager.shared
+    /// Counted, not fetched: History can hold thousands of records.
+    @State private var historyCount: Int?
+
+    /// Light counts beside the pages that hold lists, as native Mac sidebars show them.
+    private func count(for viewType: ViewType) -> Int? {
+        switch viewType {
+        case .modes: return modeManager.configurations.count
+        case .history: return historyCount
+        case .dictionary: return vocabularyWords.count + wordReplacements.count
+        default: return nil
+        }
+    }
+
+    private func refreshHistoryCount() {
+        historyCount = try? modelContext.fetchCount(FetchDescriptor<Transcription>())
+    }
 
     var body: some View {
         VStack(spacing: 0) {
@@ -43,6 +64,11 @@ struct AppSidebar: View {
         .padding(.vertical, 10)
         .onAppear {
             ViewType.assertSidebarItemsCoverAllCases()
+            refreshHistoryCount()
+        }
+        // Recount after any save, so a new dictation or a deleted one shows at once.
+        .onReceive(NotificationCenter.default.publisher(for: ModelContext.didSave)) { _ in
+            refreshHistoryCount()
         }
     }
 
@@ -58,7 +84,7 @@ struct AppSidebar: View {
             HStack(spacing: 10) {
                 appIcon
                 Text(verbatim: "VoxOS")
-                    .font(.app(size: 16, weight: .semibold))
+                    .font(.app(size: 14, weight: .semibold))
                     .tracking(-0.2)
                     .foregroundStyle(AppTheme.Text.primary)
                     .lineLimit(1)
@@ -124,6 +150,7 @@ struct AppSidebar: View {
                     viewType: viewType,
                     isSelected: selectedView == viewType,
                     isCollapsed: isCollapsed,
+                    count: count(for: viewType),
                     namespace: selection
                 ) {
                     withAnimation(reduceMotion ? nil : .snappy(duration: 0.28)) { selectedView = viewType }
@@ -235,6 +262,7 @@ private struct SidebarItemButton: View {
     let viewType: ViewType
     let isSelected: Bool
     let isCollapsed: Bool
+    let count: Int?
     let namespace: Namespace.ID
     let action: () -> Void
     @State private var isHovering = false
@@ -261,14 +289,24 @@ private struct SidebarItemButton: View {
 
                     Spacer(minLength: 4)
 
-                    if let shortcutLabel = viewType.shortcutLabel {
-                        Text(verbatim: shortcutLabel)
-                            .font(.appMono(size: 10.5, weight: .medium))
-                            .foregroundStyle(AppTheme.Text.muted)
-                            .fixedSize()
-                            .opacity(isSelected || isHovering ? 1 : 0)
-                            .accessibilityHidden(true)
+                    // The count rests in the slot; the shortcut takes its place on hover or
+                    // selection, when it is the more useful thing to know.
+                    ZStack(alignment: .trailing) {
+                        if let count, count > 0 {
+                            Text(verbatim: "\(count)")
+                                .font(.appMono(size: 10.5, weight: .medium))
+                                .foregroundStyle(AppTheme.Text.muted)
+                                .opacity(isSelected || isHovering ? 0 : 1)
+                        }
+                        if let shortcutLabel = viewType.shortcutLabel {
+                            Text(verbatim: shortcutLabel)
+                                .font(.appMono(size: 10.5, weight: .medium))
+                                .foregroundStyle(AppTheme.Text.muted)
+                                .opacity(isSelected || isHovering ? 1 : 0)
+                                .accessibilityHidden(true)
+                        }
                     }
+                    .fixedSize()
                 }
             }
             .padding(.horizontal, isCollapsed ? 0 : 10)

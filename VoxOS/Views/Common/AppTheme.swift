@@ -227,7 +227,7 @@ struct VoiceOSKeycap: View {
 
     var body: some View {
         VStack(spacing: 2) {
-            Text(symbol).font(.app(size: 15, weight: .medium))
+            Text(symbol).font(.app(size: 14, weight: .medium))
             Text(label).font(.app(size: 10.5, weight: .medium))
             if let detail { Text(detail).font(.app(size: 8.5)).foregroundStyle(AppTheme.Text.muted) }
         }

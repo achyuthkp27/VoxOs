@@ -145,7 +145,7 @@ struct ModeView: View {
                                             Text(
                                                 "Set how VoxOS transcribes and formats your speech, then start dictating in any app."
                                             )
-                                            .font(.app(size: 14, weight: .regular))
+                                            .font(.app(size: 13, weight: .regular))
                                             .foregroundColor(.secondary)
                                             .multilineTextAlignment(.center)
                                             .lineSpacing(2)
@@ -248,7 +248,7 @@ struct SectionHeader: View {
 
     var body: some View {
         Text(title)
-            .font(.app(size: 16, weight: .bold))
+            .font(.app(size: 14, weight: .bold))
             .frame(maxWidth: .infinity, alignment: .leading)
             .padding(.bottom, 8)
     }

@@ -53,7 +53,7 @@ struct DictionaryComposerField: View {
     var body: some View {
         TextField("", text: $text, prompt: Text(prompt).foregroundColor(AppTheme.Text.secondary))
             .textFieldStyle(.plain)
-            .font(.app(size: 14, weight: .regular))
+            .font(.app(size: 13, weight: .regular))
             .labelsHidden()
             .onSubmit(onSubmit)
     }
@@ -68,7 +68,7 @@ struct DictionaryEmptyState: View {
     var body: some View {
         VStack(alignment: .leading, spacing: 10) {
             Text(title)
-                .font(.app(size: 15, weight: .semibold))
+                .font(.app(size: 14, weight: .semibold))
                 .foregroundStyle(AppTheme.Text.primary)
             Text(detail)
                 .font(.app(size: 13, weight: .regular))

@@ -123,7 +123,7 @@ private struct CustomEnhancementModelRow: View {
     var body: some View {
         HStack(spacing: 12) {
             Image(systemName: "sparkles")
-                .font(.app(size: 15, weight: .semibold))
+                .font(.app(size: 14, weight: .semibold))
                 .foregroundStyle(.secondary)
                 .frame(width: 28, height: 28)
                 .background(
@@ -159,7 +159,7 @@ private struct CustomEnhancementModelRow: View {
                 Button("Delete", role: .destructive, action: onDelete)
             } label: {
                 Image(systemName: "ellipsis.circle")
-                    .font(.app(size: 14, weight: .regular))
+                    .font(.app(size: 13, weight: .regular))
             }
             .menuStyle(.borderlessButton)
             .menuIndicator(.hidden)
@@ -762,7 +762,7 @@ private struct CustomModelEditorHeader: View {
 
             Button(action: onClose) {
                 Image(systemName: "xmark")
-                    .font(.app(size: 14, weight: .medium))
+                    .font(.app(size: 13, weight: .medium))
                     .foregroundColor(.secondary)
                     .padding(6)
                     .background(AppTheme.Surface.card)

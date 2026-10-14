@@ -135,14 +135,14 @@ struct TranscriptionReviewSection: View {
     private var editor: some View {
         VStack(alignment: .leading, spacing: 12) {
             Text("Correct the text")
-                .font(.app(size: 15, weight: .semibold))
+                .font(.app(size: 14, weight: .semibold))
             Text(
                 "Change it to exactly what you meant. VoxOS saves your version and suggests the words to learn."
             )
             .font(.app(size: 12, weight: .regular))
             .foregroundStyle(AppTheme.Text.secondary)
             TextEditor(text: $draft)
-                .font(.app(size: 14, weight: .regular))
+                .font(.app(size: 13, weight: .regular))
                 .scrollContentBackground(.hidden)
                 .padding(8)
                 .background(RoundedRectangle(cornerRadius: 8, style: .continuous).fill(AppTheme.Surface.subtle))

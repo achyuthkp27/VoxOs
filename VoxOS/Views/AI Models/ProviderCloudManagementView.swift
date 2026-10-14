@@ -249,7 +249,7 @@ private struct ProviderListRow: View {
 
                 VStack(alignment: .leading, spacing: 3) {
                     Text(descriptor.displayName)
-                        .font(.app(size: 14, weight: .semibold))
+                        .font(.app(size: 13, weight: .semibold))
                         .foregroundStyle(AppTheme.Text.primary)
 
                     Text(capabilitySummary)

@@ -41,12 +41,12 @@ struct TriggerTemplateRow: View {
 
                 if isAdded {
                     Image(systemName: "checkmark.circle.fill")
-                        .font(.app(size: 16, weight: .medium))
+                        .font(.app(size: 14, weight: .medium))
                         .foregroundStyle(Color.accentColor)
                         .frame(width: 22, height: 22)
                 } else if !isDisabled {
                     Image(systemName: "plus.circle.fill")
-                        .font(.app(size: 14, weight: .medium))
+                        .font(.app(size: 13, weight: .medium))
                         .symbolRenderingMode(.hierarchical)
                         .foregroundStyle(.secondary)
                         .frame(width: 22, height: 22)

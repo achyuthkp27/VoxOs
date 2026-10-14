@@ -203,7 +203,7 @@ struct TranscriptionHistoryView: View {
                             .font(.app(size: 40, weight: .regular))
                             .foregroundColor(.secondary)
                         Text("No transcriptions")
-                            .font(.app(size: 14, weight: .medium))
+                            .font(.app(size: 13, weight: .medium))
                             .foregroundColor(.secondary)
                     }
                     .frame(maxWidth: .infinity, maxHeight: .infinity)
@@ -271,7 +271,7 @@ struct TranscriptionHistoryView: View {
                                 .font(.app(size: 18, weight: .medium))
                                 .foregroundColor(.secondary)
                             Text("Select a transcription to view details")
-                                .font(.app(size: 14, weight: .regular))
+                                .font(.app(size: 13, weight: .regular))
                                 .foregroundColor(.secondary)
                         }
 
@@ -303,7 +303,7 @@ struct TranscriptionHistoryView: View {
                         .font(.app(size: 40, weight: .regular))
                         .foregroundColor(.secondary)
                     Text("No Metadata")
-                        .font(.app(size: 14, weight: .medium))
+                        .font(.app(size: 13, weight: .medium))
                         .foregroundColor(.secondary)
                 }
                 .frame(maxWidth: .infinity, maxHeight: .infinity)
@@ -341,7 +341,7 @@ struct TranscriptionHistoryView: View {
                     openAnalysisPanel()
                 }) {
                     Image(systemName: "chart.bar.xaxis")
-                        .font(.app(size: 14, weight: .regular))
+                        .font(.app(size: 13, weight: .regular))
                         .foregroundColor(.secondary)
                 }
                 .buttonStyle(.plain)
@@ -351,7 +351,7 @@ struct TranscriptionHistoryView: View {
                     exportService.exportTranscriptionsToCSV(transcriptions: Array(selectedTranscriptions))
                 }) {
                     Image(systemName: "square.and.arrow.up")
-                        .font(.app(size: 14, weight: .regular))
+                        .font(.app(size: 13, weight: .regular))
                         .foregroundColor(.secondary)
                 }
                 .buttonStyle(.plain)
@@ -359,7 +359,7 @@ struct TranscriptionHistoryView: View {
 
                 Button(action: { showDeleteConfirmation = true }) {
                     Image(systemName: "trash")
-                        .font(.app(size: 14, weight: .regular))
+                        .font(.app(size: 13, weight: .regular))
                         .foregroundColor(.secondary)
                 }
                 .buttonStyle(.plain)

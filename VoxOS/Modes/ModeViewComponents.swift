@@ -312,7 +312,7 @@ private struct ModeListRow: View {
                     VStack(alignment: .leading, spacing: 3) {
                         HStack(spacing: 6) {
                             Text(config.name)
-                                .font(.app(size: 14, weight: .semibold))
+                                .font(.app(size: 13, weight: .semibold))
                                 .foregroundStyle(AppTheme.Text.primary)
                                 .lineLimit(1)
                             if config.isDefault {
@@ -459,7 +459,7 @@ struct ModeAppIcon: View {
                 .frame(width: 20, height: 20)
         } else {
             Image(systemName: "app.fill")
-                .font(.app(size: 14, weight: .regular))
+                .font(.app(size: 13, weight: .regular))
                 .foregroundColor(.secondary)
                 .frame(width: 20, height: 20)
         }

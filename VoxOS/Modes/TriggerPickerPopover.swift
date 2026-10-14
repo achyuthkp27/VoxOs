@@ -268,7 +268,7 @@ struct TriggerPickerPopover: View {
 
                 if !isSelected && !isUnavailable {
                     Image(systemName: "plus.circle.fill")
-                        .font(.app(size: 14, weight: .medium))
+                        .font(.app(size: 13, weight: .medium))
                         .symbolRenderingMode(.hierarchical)
                         .foregroundStyle(.secondary)
                 }
@@ -316,7 +316,7 @@ struct TriggerPickerPopover: View {
 
                 if isSelected {
                     Image(systemName: "checkmark.circle.fill")
-                        .font(.app(size: 14, weight: .semibold))
+                        .font(.app(size: 13, weight: .semibold))
                         .foregroundStyle(Color.accentColor)
                 }
             }

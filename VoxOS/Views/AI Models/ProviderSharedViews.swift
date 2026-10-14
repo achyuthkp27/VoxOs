@@ -199,7 +199,7 @@ struct ModelIconTile: View {
 
     var body: some View {
         Image(systemName: systemName)
-            .font(.app(size: 15, weight: .medium))
+            .font(.app(size: 14, weight: .medium))
             .symbolRenderingMode(.hierarchical)
             .foregroundStyle(tint)
             .frame(width: ModelRowMetrics.iconSize, height: ModelRowMetrics.iconSize)
@@ -249,7 +249,7 @@ struct ModelListRow<Badges: View, Trailing: View, Footer: View>: View {
             VStack(alignment: .leading, spacing: 3) {
                 HStack(spacing: 6) {
                     Text(name)
-                        .font(.app(size: 14, weight: .semibold))
+                        .font(.app(size: 13, weight: .semibold))
                         .foregroundStyle(AppTheme.Text.primary)
                         .lineLimit(1)
                     badges

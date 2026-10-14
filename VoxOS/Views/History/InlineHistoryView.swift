@@ -316,7 +316,7 @@ struct InlineHistoryView: View {
                 .font(.app(size: 28, weight: .regular))
                 .foregroundStyle(AppTheme.Text.muted)
             Text(isFiltering ? "No transcriptions match" : "No transcriptions yet")
-                .font(.app(size: 15, weight: .medium))
+                .font(.app(size: 14, weight: .medium))
                 .foregroundStyle(AppTheme.Text.primary)
             Text(
                 isFiltering

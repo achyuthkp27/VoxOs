@@ -335,7 +335,7 @@ struct ModelManagementView: View {
     private var intelMacWarningBanner: some View {
         HStack(spacing: 10) {
             Image(systemName: "exclamationmark.triangle.fill")
-                .font(.app(size: 14, weight: .semibold))
+                .font(.app(size: 13, weight: .semibold))
                 .foregroundColor(AppTheme.Status.warningStrong)
 
             Text("Local models don't work reliably on Intel Macs")

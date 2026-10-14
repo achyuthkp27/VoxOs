@@ -254,11 +254,11 @@ struct DictionaryQuickAddView: View {
     private var vocabularyInput: some View {
         HStack(spacing: 11) {
             Image(systemName: "character.book.closed.fill")
-                .font(.app(size: 14, weight: .regular))
+                .font(.app(size: 13, weight: .regular))
                 .foregroundStyle(.secondary)
             TextField("", text: $wordInput, prompt: Text("e.g. Prakash, VoxOS").foregroundColor(.secondary))
                 .textFieldStyle(.roundedBorder)
-                .font(.app(size: 14, weight: .regular))
+                .font(.app(size: 13, weight: .regular))
                 .focused($focusedField, equals: .word)
                 .onSubmit { submitVocabulary() }
         }
@@ -275,7 +275,7 @@ struct DictionaryQuickAddView: View {
                     .frame(width: 56, alignment: .trailing)
                 TextField("", text: $originalInput, prompt: Text("e.g. my email, my mail").foregroundColor(.secondary))
                     .textFieldStyle(.roundedBorder)
-                    .font(.app(size: 14, weight: .regular))
+                    .font(.app(size: 13, weight: .regular))
                     .focused($focusedField, equals: .original)
                     .onSubmit { focusedField = .replacement }
             }
@@ -290,7 +290,7 @@ struct DictionaryQuickAddView: View {
                     prompt: Text("e.g. support@tryvoiceink.com").foregroundColor(.secondary)
                 )
                 .textFieldStyle(.roundedBorder)
-                .font(.app(size: 14, weight: .regular))
+                .font(.app(size: 13, weight: .regular))
                 .focused($focusedField, equals: .replacement)
                 .onSubmit { submitReplacement() }
             }

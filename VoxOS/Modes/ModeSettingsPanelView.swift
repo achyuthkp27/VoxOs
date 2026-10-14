@@ -21,7 +21,7 @@ struct ModeSettingsPanelView: View {
                 Spacer()
                 Button(action: onDismiss) {
                     Image(systemName: "xmark")
-                        .font(.app(size: 14, weight: .medium))
+                        .font(.app(size: 13, weight: .medium))
                         .foregroundColor(.secondary)
                         .padding(6)
                         .background(AppTheme.Surface.card)
@@ -211,7 +211,7 @@ private struct ModeReorderRow: View {
 
             VStack(alignment: .leading, spacing: 3) {
                 Text(config.name)
-                    .font(.app(size: 14, weight: .semibold))
+                    .font(.app(size: 13, weight: .semibold))
                     .lineLimit(1)
                     .truncationMode(.tail)
 
@@ -350,7 +350,7 @@ private struct ModeReorderDragPreview: View {
             ModeIconView(icon: config.icon, size: config.icon.kind == .emoji ? 18 : 14)
 
             Text(config.name)
-                .font(.app(size: 14, weight: .semibold))
+                .font(.app(size: 13, weight: .semibold))
                 .lineLimit(1)
         }
         .padding(.horizontal, 14)

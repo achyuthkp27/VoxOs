@@ -32,7 +32,7 @@ struct ModePopover: View {
                         VStack(alignment: .center, spacing: 8) {
                             Image(systemName: "sparkles")
                                 .foregroundColor(AppTheme.Text.secondary)
-                                .font(.app(size: 16, weight: .regular))
+                                .font(.app(size: 14, weight: .regular))
                             Text("No Modes Available")
                                 .foregroundColor(AppTheme.Text.primary)
                                 .font(.app(size: 13, weight: .regular))

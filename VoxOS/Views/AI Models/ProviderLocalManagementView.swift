@@ -298,7 +298,7 @@ private struct LocalProviderDisclosureRow<Content: View>: View {
 
                     VStack(alignment: .leading, spacing: 3) {
                         title
-                            .font(.app(size: 14, weight: .semibold))
+                            .font(.app(size: 13, weight: .semibold))
                             .foregroundStyle(AppTheme.Text.primary)
 
                         subtitle

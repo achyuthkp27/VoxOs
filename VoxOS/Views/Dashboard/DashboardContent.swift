@@ -891,7 +891,7 @@ private struct DashboardNotice: View {
     var body: some View {
         HStack(alignment: .center, spacing: 12) {
             Image(systemName: icon)
-                .font(.app(size: 15, weight: .medium))
+                .font(.app(size: 14, weight: .medium))
                 .foregroundStyle(AppTheme.Status.warning)
                 .frame(width: 24)
                 .accessibilityHidden(true)

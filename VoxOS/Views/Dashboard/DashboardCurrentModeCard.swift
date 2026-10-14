@@ -40,7 +40,7 @@ struct DashboardCurrentModeCard: View {
 
                 VStack(alignment: .leading, spacing: 3) {
                     Text(verbatim: mode.name)
-                        .font(.app(size: 15, weight: .semibold))
+                        .font(.app(size: 14, weight: .semibold))
                         .foregroundStyle(AppTheme.Text.primary)
                         .lineLimit(1)
 

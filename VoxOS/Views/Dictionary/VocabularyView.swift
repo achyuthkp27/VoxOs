@@ -121,7 +121,7 @@ struct VocabularyWordTile: View {
         HStack(alignment: .top, spacing: 8) {
             VStack(alignment: .leading, spacing: 5) {
                 Text(item.word)
-                    .font(.app(size: 14, weight: .semibold))
+                    .font(.app(size: 13, weight: .semibold))
                     .foregroundStyle(AppTheme.Text.primary)
                     .lineLimit(1)
                     .truncationMode(.tail)
