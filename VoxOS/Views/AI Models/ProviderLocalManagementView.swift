@@ -11,6 +11,7 @@ struct LocalEnhancementServiceManagementView: View {
     @State private var selectedOllamaModel =
         UserDefaults.standard.string(forKey: DefaultsKeys.ollamaSelectedModel) ?? "mistral"
     @State private var ollamaUserRefreshError: String?
+    @State private var isShowingOllamaSetup = false
     @State private var localCLICommandTemplate = ""
     @State private var localCLITimeoutSeconds = LocalCLIService.defaultTimeoutSeconds
     @State private var isSyncingLocalCLIState = false
@@ -141,6 +142,24 @@ struct LocalEnhancementServiceManagementView: View {
                     }
                 }
             }
+
+            Divider()
+                .padding(.leading, LocalProviderMetrics.labelWidth + 12)
+
+            LocalProviderFormRow(title: "Manage") {
+                Button("Set Up Ollama…") {
+                    isShowingOllamaSetup = true
+                }
+                .buttonStyle(.bordered)
+                .controlSize(.small)
+            }
+        }
+        .sheet(isPresented: $isShowingOllamaSetup) {
+            selectedOllamaModel = aiService.selectedModel(for: .ollama)
+            ollamaBaseURL = UserDefaults.standard.string(forKey: DefaultsKeys.ollamaBaseURL) ?? ollamaBaseURL
+        } content: {
+            OllamaSetupView()
+                .environmentObject(aiService)
         }
     }
 
