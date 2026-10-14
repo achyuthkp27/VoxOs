@@ -63,6 +63,7 @@ enum DefaultsKeys {
     static let ollamaBaseURL = "ollamaBaseURL"
     static let ollamaSelectedModel = "ollamaSelectedModel"
     static let openRouterModels = "openRouterModels"
+    static let openCodeModels = "openCodeModels"
 
     // MARK: Enhancement
     static let skipShortEnhancement = "SkipShortEnhancement"

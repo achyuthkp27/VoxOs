@@ -77,7 +77,8 @@ enum AIProvider: String, CaseIterable {
         case .mistral:
             return "mistral-small-latest"
         case .openCode:
-            return "deepseek-v4-flash"
+            // Only a fallback name until OpenCode's own list has been fetched.
+            return "nemotron-3.5-lightning-free"
         case .elevenLabs:
             return "scribe_v2"
         case .deepgram:
@@ -149,24 +150,8 @@ enum AIProvider: String, CaseIterable {
                 "mistral-large-latest",
             ]
         case .openCode:
-            return [
-                "deepseek-v4-flash",
-                "deepseek-v4.1-flash",
-                "deepseek-v4-pro",
-                "kimi-k3",
-                "kimi-k2.6",
-                "kimi-k2.7-code",
-                "glm-5.3",
-                "glm-5.3-flash",
-                "qwen3.8-max",
-                "minimax-m3",
-                "mistral-large-4",
-                "big-pickle",
-                "nemotron-3.5-lightning-free",
-                "nemotron-3-ultra-free",
-                "mimo-v2.6-flash-free",
-                "ling-3.1-flash-free",
-            ]
+            // Read from OpenCode once a key is saved (AIService.fetchOpenCodeModels).
+            return []
         case .elevenLabs:
             return ["scribe_v2"]
         case .deepgram:
@@ -268,6 +253,8 @@ class AIService: ObservableObject {
     private var voxOSRefineObserver: AnyCancellable?
 
     @Published private var openRouterModels: [String] = []
+    @Published private var openCodeModels: [String] =
+        UserDefaults.standard.stringArray(forKey: DefaultsKeys.openCodeModels) ?? []
     @Published private(set) var isOllamaRefreshing = false
 
     var connectedProviders: [AIProvider] {
@@ -337,6 +324,8 @@ class AIService: ObservableObject {
             return ollamaService.availableModels.map { $0.name }
         } else if provider == .openRouter {
             return openRouterModels
+        } else if provider == .openCode {
+            return openCodeModels
         } else if provider == .custom {
             return CustomAIProviderManager.shared.availableModelNames
         }
@@ -398,10 +387,13 @@ class AIService: ObservableObject {
             DispatchQueue.main.async {
                 self?.reloadSelectedProviderConfiguration()
             }
+            Task { await self?.fetchOpenCodeModels() }
         }
 
-        // The test host is a separate app to macOS; it must not start Claude processes.
+        // The test host is a separate app to macOS; it must not start Claude processes or
+        // reach out to providers.
         if !ProcessIdentity.isTestHost {
+            Task { [weak self] in await self?.fetchOpenCodeModels() }
             LocalCLIWarmClaude.shared.startMonitoring { [weak self] in self?.localCLICommandTemplate ?? "" }
         }
     }
@@ -563,6 +555,17 @@ class AIService: ObservableObject {
             result = await AssemblyAIClient.verifyAPIKey(key)
         case .openRouter:
             result = await OpenRouterClient.verifyAPIKey(key)
+        case .openCode:
+            // OpenCode lists its models to anyone, so the list cannot prove a key. A one-token
+            // request to a free model does: a bad key is refused, and a good one passes even in
+            // a new workspace whose paid models are still disabled.
+            let freeModel =
+                (try? await OpenCodeModelsClient.fetchModels(apiKey: key))?.first(where: OpenCodeModelsClient.isFree)
+                ?? provider.defaultModel
+            guard let baseURL = URL(string: provider.baseURL) else {
+                return (false, "Invalid or missing base URL configuration")
+            }
+            result = await OpenAILLMClient.verifyAPIKey(baseURL: baseURL, apiKey: key, model: freeModel)
         case .openAI:
             result = await OpenAILLMClient.verifyAPIKey(key)
         case .gemini:
@@ -730,6 +733,19 @@ class AIService: ObservableObject {
         }
         objectWillChange.send()
         NotificationCenter.default.post(name: .AppSettingsDidChange, object: nil)
+    }
+
+    /// Replaces the OpenCode model list with what OpenCode serves for the saved key; on failure
+    /// the last good list is kept rather than emptied.
+    func fetchOpenCodeModels() async {
+        guard let key = APIKeyManager.shared.getAPIKey(forProvider: AIProvider.openCode.rawValue), !key.isEmpty,
+            let models = try? await OpenCodeModelsClient.fetchModels(apiKey: key)
+        else { return }
+        await MainActor.run {
+            self.openCodeModels = models
+            UserDefaults.standard.set(models, forKey: DefaultsKeys.openCodeModels)
+            self.objectWillChange.send()
+        }
     }
 
     func fetchOpenRouterModels() async {
