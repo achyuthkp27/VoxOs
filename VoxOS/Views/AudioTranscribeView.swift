@@ -13,13 +13,26 @@ struct AudioTranscribeView: View {
     @State private var isDropTargeted = false
     @State private var showModePopover = false
     @State private var expandedItemId: UUID?
+    @Environment(\.accessibilityReduceMotion) private var reduceMotion
 
     private var selectedMode: ModeConfig? {
         modeManager.currentEffectiveConfiguration
     }
 
+    /// The spec's card radius; `AppTheme.Radius.card` is the older, rounder glass value.
+    private static let cardRadius: CGFloat = 14
+    private static let supportedFormats =
+        "WAV · MP3 · M4A · AIFF · MP4 · MOV · AAC · FLAC · CAF · AMR · OGG · OPUS · 3GP"
+
     var body: some View {
-        Group {
+        VStack(spacing: 0) {
+            AppScreenHeader(title: "Transcribe Audio") {
+                HStack(spacing: 10) {
+                    languageLabel
+                    modePicker
+                }
+            }
+
             if transcriptionManager.queue.isEmpty {
                 emptyStateView
             } else {
@@ -50,52 +63,87 @@ struct AudioTranscribeView: View {
         }
     }
 
+    // MARK: - Language
+
+    /// Files are transcribed in the selected mode's language; shown here so the choice is not a
+    /// surprise. It is changed in the mode itself.
+    @ViewBuilder
+    private var languageLabel: some View {
+        if let selectedMode {
+            HStack(spacing: 5) {
+                Image(systemName: "globe")
+                    .font(.app(size: 11, weight: .medium))
+                Text(languageName(for: selectedMode.selectedLanguage))
+                    .font(.appMono(size: 11, weight: .medium))
+                    .lineLimit(1)
+            }
+            .foregroundStyle(AppTheme.Text.secondary)
+            .help("Language comes from the selected mode")
+        }
+    }
+
+    private func languageName(for code: String?) -> String {
+        guard let code, code != "auto" else { return String(localized: "Auto-detect") }
+        return Locale.current.localizedString(forLanguageCode: code) ?? code.uppercased()
+    }
+
     // MARK: - Empty State
 
     private var emptyStateView: some View {
-        VStack(spacing: 0) {
-            Spacer()
+        VStack(spacing: 16) {
+            Spacer(minLength: 0)
 
             ZStack {
-                RoundedRectangle(cornerRadius: 12)
-                    .fill(AppTheme.Surface.window.opacity(0.4))
-                    .overlay(
-                        RoundedRectangle(cornerRadius: 12)
-                            .strokeBorder(
-                                style: StrokeStyle(lineWidth: 2, dash: [8])
-                            )
-                            .foregroundColor(isDropTargeted ? AppTheme.Accent.primary : .gray.opacity(0.5))
-                    )
-                    .animation(.easeInOut(duration: 0.15), value: isDropTargeted)
-
-                VStack(spacing: 14) {
-                    Image(systemName: "arrow.down.doc")
-                        .font(.app(size: 32, weight: .regular))
-                        .foregroundColor(isDropTargeted ? AppTheme.Accent.primary : .gray)
-
-                    Text("Drop audio or video files here")
-                        .font(.app(.headline))
-
-                    Text("or")
-                        .foregroundColor(.secondary)
-
-                    Button("Choose Files") {
-                        selectFiles()
-                    }
-                    .buttonStyle(.bordered)
-                }
-                .padding(32)
+                Circle()
+                    .fill(AppTheme.Accent.fillSubtle)
+                Circle()
+                    .strokeBorder(AppTheme.Accent.border, lineWidth: 1)
+                Image(systemName: "waveform")
+                    .font(.app(size: 24, weight: .medium))
+                    .foregroundStyle(AppTheme.Accent.primary)
             }
-            .frame(maxWidth: 480, maxHeight: 200)
+            .frame(width: 64, height: 64)
+            .scaleEffect(isDropTargeted && !reduceMotion ? 1.06 : 1)
 
-            Text("Supports WAV, MP3, M4A, AIFF, MP4, MOV, AAC, FLAC, CAF, AMR, OGG, OPUS, 3GP")
-                .font(.app(.caption))
-                .foregroundColor(.secondary)
-                .padding(.top, 12)
+            Text("Drop audio or video files here")
+                .font(.app(size: 17, weight: .semibold))
+                .foregroundStyle(AppTheme.Text.primary)
 
-            Spacer()
+            Text("or")
+                .font(.app(size: 13))
+                .foregroundStyle(AppTheme.Text.muted)
+
+            Button("Choose files") {
+                selectFiles()
+            }
+            .buttonStyle(.borderedProminent)
+            .tint(AppTheme.Accent.primary)
+            .controlSize(.large)
+
+            Text(Self.supportedFormats)
+                .font(.appMono(size: 11, weight: .medium))
+                .foregroundStyle(AppTheme.Text.muted)
+                .multilineTextAlignment(.center)
+                .padding(.top, 6)
+
+            Spacer(minLength: 0)
         }
-        .padding()
+        .padding(32)
+        .frame(maxWidth: .infinity, maxHeight: .infinity)
+        .background(
+            RoundedRectangle(cornerRadius: Self.cardRadius, style: .continuous)
+                .fill(isDropTargeted ? AppTheme.Accent.fillSubtle : AppTheme.Surface.card)
+        )
+        .overlay(
+            RoundedRectangle(cornerRadius: Self.cardRadius, style: .continuous)
+                .strokeBorder(
+                    isDropTargeted ? AppTheme.Accent.primary : AppTheme.Border.control,
+                    style: StrokeStyle(lineWidth: 1.5, dash: [7, 5])
+                )
+        )
+        .animation(reduceMotion ? nil : .easeInOut(duration: 0.15), value: isDropTargeted)
+        .padding(.horizontal, 24)
+        .padding(.bottom, 24)
     }
 
     // MARK: - Queue Form View
@@ -134,8 +182,8 @@ struct AudioTranscribeView: View {
             .scrollContentBackground(.hidden)
             .safeAreaInset(edge: .bottom) {
                 Text("Drop files anywhere to add more")
-                    .font(.app(.caption))
-                    .foregroundColor(.secondary)
+                    .font(.appMono(size: 11, weight: .medium))
+                    .foregroundStyle(AppTheme.Text.muted)
                     .frame(maxWidth: .infinity)
                     .padding(.vertical, 8)
             }
@@ -148,77 +196,20 @@ struct AudioTranscribeView: View {
         HStack(spacing: 10) {
             let count = transcriptionManager.queue.count
             Text(String(localized: "\(count) files"))
-                .font(.app(.subheadline))
-                .foregroundColor(.secondary)
+                .font(.appMono(size: 11, weight: .medium))
+                .textCase(.uppercase)
+                .tracking(0.6)
+                .foregroundStyle(AppTheme.Text.secondary)
+
+            Spacer()
 
             Button {
                 selectFiles()
             } label: {
-                HStack(spacing: 4) {
-                    Image(systemName: "plus")
-                        .font(.app(size: 12, weight: .medium))
-                    Text("Add")
-                        .font(.app(size: 12, weight: .medium))
-                }
-                .foregroundColor(.secondary)
-                .padding(.horizontal, 10)
-                .padding(.vertical, 5)
-                .background(
-                    Capsule()
-                        .fill(AppTheme.Surface.controlActive)
-                )
+                Label("Add", systemImage: "plus")
             }
-            .buttonStyle(.plain)
+            .buttonStyle(.bordered)
             .help("Add files")
-
-            Spacer()
-
-            modePicker
-
-            if transcriptionManager.isProcessingQueue {
-                Button {
-                    transcriptionManager.cancelProcessing()
-                } label: {
-                    HStack(spacing: 4) {
-                        Image(systemName: "stop.fill")
-                            .font(.app(size: 10, weight: .medium))
-                        Text("Cancel")
-                            .font(.app(size: 12, weight: .medium))
-                    }
-                    .foregroundColor(AppTheme.Status.error)
-                    .padding(.horizontal, 10)
-                    .padding(.vertical, 5)
-                    .background(
-                        Capsule()
-                            .fill(AppTheme.Status.error.opacity(0.12))
-                    )
-                }
-                .buttonStyle(.plain)
-                .help("Cancel transcription")
-            } else if transcriptionManager.hasPendingItems {
-                Button {
-                    startProcessing()
-                } label: {
-                    HStack(spacing: 4) {
-                        Image(systemName: "play.fill")
-                            .font(.app(size: 10, weight: .medium))
-                        Text("Start")
-                            .font(.app(size: 12, weight: .semibold))
-                    }
-                    .foregroundColor(.white)
-                    .padding(.horizontal, 12)
-                    .padding(.vertical, 6)
-                    .background(
-                        Capsule()
-                            .fill(AppTheme.Accent.primary)
-                            .shadow(color: AppTheme.Accent.shadow, radius: 2, x: 0, y: 1)
-                    )
-                }
-                .buttonStyle(.plain)
-                .disabled(selectedMode == nil)
-                .opacity(selectedMode == nil ? 0.5 : 1.0)
-                .help(selectedMode == nil ? "Select an enabled mode to start" : "Start transcription")
-            }
 
             Button {
                 withAnimation(.easeInOut(duration: 0.2)) {
@@ -226,32 +217,45 @@ struct AudioTranscribeView: View {
                     expandedItemId = nil
                 }
             } label: {
-                HStack(spacing: 4) {
-                    Image(systemName: "xmark.bin")
-                        .font(.app(size: 12, weight: .medium))
-                    Text("Clear")
-                        .font(.app(size: 12, weight: .medium))
-                }
-                .foregroundColor(.secondary)
-                .padding(.horizontal, 10)
-                .padding(.vertical, 5)
-                .background(
-                    Capsule()
-                        .fill(AppTheme.Surface.controlActive)
-                )
+                Label("Clear", systemImage: "xmark.bin")
             }
-            .buttonStyle(.plain)
+            .buttonStyle(.bordered)
             .help("Clear all items")
+
+            if transcriptionManager.isProcessingQueue {
+                Button {
+                    transcriptionManager.cancelProcessing()
+                } label: {
+                    Label("Cancel", systemImage: "stop.fill")
+                }
+                .buttonStyle(.bordered)
+                .tint(AppTheme.Status.error)
+                .help("Cancel transcription")
+            } else if transcriptionManager.hasPendingItems {
+                Button {
+                    startProcessing()
+                } label: {
+                    Label("Start", systemImage: "play.fill")
+                }
+                .buttonStyle(.borderedProminent)
+                .tint(AppTheme.Accent.primary)
+                .disabled(selectedMode == nil)
+                .help(selectedMode == nil ? "Select an enabled mode to start" : "Start transcription")
+            }
         }
+        .controlSize(.small)
+        .font(.app(size: 12, weight: .medium))
         .padding(.horizontal, 24)
-        .padding(.vertical, 10)
+        .padding(.bottom, 10)
     }
 
     private var modePicker: some View {
         HStack(spacing: 6) {
             Text("Mode")
-                .font(.app(size: 12, weight: .semibold))
-                .foregroundColor(.secondary)
+                .font(.appMono(size: 11, weight: .medium))
+                .textCase(.uppercase)
+                .tracking(0.6)
+                .foregroundStyle(AppTheme.Text.secondary)
                 .lineLimit(1)
                 .fixedSize(horizontal: true, vertical: false)
 
@@ -282,11 +286,11 @@ struct AudioTranscribeView: View {
                     .frame(maxWidth: 160, alignment: .leading)
                     .background(
                         Capsule()
-                            .fill(AppTheme.Surface.subtle)
+                            .fill(AppTheme.Surface.card)
                     )
                     .overlay(
                         Capsule()
-                            .stroke(AppTheme.Accent.fillSubtle, lineWidth: 1)
+                            .strokeBorder(AppTheme.Border.card, lineWidth: 1)
                     )
                 }
                 .buttonStyle(.plain)
@@ -313,10 +317,10 @@ struct AudioTranscribeView: View {
     // MARK: - Drop Overlay
 
     private var dropOverlay: some View {
-        RoundedRectangle(cornerRadius: 12)
-            .strokeBorder(AppTheme.Accent.primary, style: StrokeStyle(lineWidth: 2, dash: [8]))
+        RoundedRectangle(cornerRadius: Self.cardRadius, style: .continuous)
+            .strokeBorder(AppTheme.Accent.primary, style: StrokeStyle(lineWidth: 1.5, dash: [7, 5]))
             .background(
-                RoundedRectangle(cornerRadius: 12)
+                RoundedRectangle(cornerRadius: Self.cardRadius, style: .continuous)
                     .fill(AppTheme.Accent.fillSubtle)
             )
             .overlay {

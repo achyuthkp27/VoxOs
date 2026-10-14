@@ -26,10 +26,11 @@ struct HistoryPageCursor: Equatable {
 }
 
 enum HistoryPageQuery {
-    /// One page of history, newest first, optionally filtered by `searchText` and starting
-    /// after `cursor`.
+    /// One page of history, newest first, optionally filtered by `searchText` and by the mode
+    /// that produced it (`modeName`, nil for every mode), and starting after `cursor`.
     static func descriptor(
         searchText: String,
+        modeName: String? = nil,
         after cursor: HistoryPageCursor?,
         pageSize: Int
     ) -> FetchDescriptor<Transcription> {
@@ -38,7 +39,9 @@ enum HistoryPageQuery {
         )
         let query = searchText
 
-        if let cursor {
+        if let modeName {
+            descriptor.predicate = modePredicate(query: query, modeName: modeName, after: cursor)
+        } else if let cursor {
             let timestamp = cursor.timestamp
             let loadedIDs = cursor.loadedIDsAtTimestamp
             if !query.isEmpty {
@@ -65,12 +68,14 @@ enum HistoryPageQuery {
         return descriptor
     }
 
-    /// Every transcription matching `searchText`, or all of them when it is empty. Used by
-    /// Select All, so it must match the query the list is showing.
-    static func allMatchingDescriptor(searchText: String) -> FetchDescriptor<Transcription> {
+    /// Every transcription matching `searchText` (and `modeName` when set), or all of them when
+    /// both are empty. Used by Select All, so it must match the query the list is showing.
+    static func allMatchingDescriptor(searchText: String, modeName: String? = nil) -> FetchDescriptor<Transcription> {
         var descriptor = FetchDescriptor<Transcription>()
         let query = searchText
-        if !query.isEmpty {
+        if let modeName {
+            descriptor.predicate = modePredicate(query: query, modeName: modeName, after: nil)
+        } else if !query.isEmpty {
             descriptor.predicate = #Predicate<Transcription> { transcription in
                 transcription.text.localizedStandardContains(query)
                     || (transcription.enhancedText?.localizedStandardContains(query) ?? false)
@@ -78,5 +83,43 @@ enum HistoryPageQuery {
         }
         descriptor.propertiesToFetch = [\.id]
         return descriptor
+    }
+
+    /// The same filters as above, limited to transcriptions made in `modeName`. Kept apart so
+    /// the unfiltered predicates, which every History view uses, stay exactly as they were.
+    private static func modePredicate(
+        query: String,
+        modeName: String,
+        after cursor: HistoryPageCursor?
+    ) -> Predicate<Transcription> {
+        let mode: String? = modeName
+        if let cursor {
+            let timestamp = cursor.timestamp
+            let loadedIDs = cursor.loadedIDsAtTimestamp
+            if !query.isEmpty {
+                return #Predicate<Transcription> { transcription in
+                    transcription.modeName == mode
+                        && (transcription.text.localizedStandardContains(query)
+                            || (transcription.enhancedText?.localizedStandardContains(query) ?? false))
+                        && (transcription.timestamp < timestamp
+                            || (transcription.timestamp == timestamp && !loadedIDs.contains(transcription.id)))
+                }
+            }
+            return #Predicate<Transcription> { transcription in
+                transcription.modeName == mode
+                    && (transcription.timestamp < timestamp
+                        || (transcription.timestamp == timestamp && !loadedIDs.contains(transcription.id)))
+            }
+        }
+        if !query.isEmpty {
+            return #Predicate<Transcription> { transcription in
+                transcription.modeName == mode
+                    && (transcription.text.localizedStandardContains(query)
+                        || (transcription.enhancedText?.localizedStandardContains(query) ?? false))
+            }
+        }
+        return #Predicate<Transcription> { transcription in
+            transcription.modeName == mode
+        }
     }
 }

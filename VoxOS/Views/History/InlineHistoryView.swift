@@ -6,9 +6,15 @@ private let logger = Logger(subsystem: "com.achyuthkp.voxos", category: "InlineH
 
 struct InlineHistoryView: View {
     @Environment(\.modelContext) private var modelContext
+    @Environment(\.accessibilityReduceMotion) private var reduceMotion
+    @ObservedObject private var modeManager = ModeManager.shared
     @State private var searchText = ""
     @State private var lastFetchedSearchText = ""
-    @State private var expandedId: UUID?
+    /// The mode chosen in the filter menu, nil for every mode.
+    @State private var modeFilter: String?
+    /// The mode filter the list on screen was fetched with; Load More and Select All read this,
+    /// like `lastFetchedSearchText`, so they continue the list that is showing.
+    @State private var lastFetchedModeFilter: String?
     @State private var selectedTranscriptions: Set<Transcription> = []
     @State private var showDeleteConfirmation = false
     @State private var isPanelPresented = false
@@ -38,16 +44,49 @@ struct InlineHistoryView: View {
     /// Built from `lastFetchedSearchText`, not the live field: while the search debounce is
     /// pending the two differ, and Load More must continue the list that is on screen.
     private func cursorQueryDescriptor(after cursor: HistoryPageCursor? = nil) -> FetchDescriptor<Transcription> {
-        HistoryPageQuery.descriptor(searchText: lastFetchedSearchText, after: cursor, pageSize: pageSize)
+        HistoryPageQuery.descriptor(
+            searchText: lastFetchedSearchText,
+            modeName: lastFetchedModeFilter,
+            after: cursor,
+            pageSize: pageSize
+        )
     }
 
     private var allSelected: Bool {
         !displayedTranscriptions.isEmpty && displayedTranscriptions.allSatisfy { selectedTranscriptions.contains($0) }
     }
 
+    private var isSelecting: Bool {
+        !selectedTranscriptions.isEmpty
+    }
+
+    private var isFiltering: Bool {
+        !searchText.isEmpty || modeFilter != nil
+    }
+
     private var panelTranscription: Transcription? {
         guard let id = panelTranscriptionId else { return nil }
         return displayedTranscriptions.first { $0.id == id }
+    }
+
+    /// The row whose details are open, highlighted in the list.
+    private var openedTranscriptionId: UUID? {
+        guard isPanelPresented, panelMode == .detail || panelMode == .info else { return nil }
+        return panelTranscriptionId
+    }
+
+    /// Names offered by the filter menu: every mode the user has, plus the one being filtered on
+    /// if it has since been renamed or deleted, so the menu can always show the current choice.
+    private var filterModeNames: [String] {
+        var names = modeManager.configurations.map(\.name)
+        if let modeFilter, !names.contains(modeFilter) {
+            names.append(modeFilter)
+        }
+        return names
+    }
+
+    private var dayGroups: [HistoryDayGroup] {
+        HistoryDayGroup.group(displayedTranscriptions)
     }
 
     private func openPanel(mode: InlineHistoryPanelMode, transcriptionID: UUID? = nil) {
@@ -64,22 +103,33 @@ struct InlineHistoryView: View {
 
     var body: some View {
         VStack(spacing: 0) {
-            topBar
-            Divider()
+            AppScreenHeader(title: "History") {
+                AppIconButton(
+                    systemName: "gearshape",
+                    help: "History settings",
+                    size: 30,
+                    iconSize: 13,
+                    cornerRadius: AppTheme.Radius.pill
+                ) {
+                    openPanel(mode: .historySettings)
+                }
+            }
+
+            filterBar
 
             if displayedTranscriptions.isEmpty && !isLoading {
                 emptyStateView
             } else {
-                cardListView
+                dayListView
             }
 
-            if !selectedTranscriptions.isEmpty {
+            if isSelecting {
                 Divider()
                 selectionBar
                     .transition(.move(edge: .bottom).combined(with: .opacity))
             }
         }
-        .animation(.easeInOut(duration: 0.2), value: selectedTranscriptions.isEmpty)
+        .animation(reduceMotion ? nil : .easeInOut(duration: 0.2), value: selectedTranscriptions.isEmpty)
         .frame(maxWidth: .infinity, maxHeight: .infinity)
         .sidePanel(
             isPresented: .init(
@@ -87,7 +137,8 @@ struct InlineHistoryView: View {
                 set: { newValue in
                     if !newValue { closePanel() }
                 }
-            )
+            ),
+            width: 440
         ) {
             panelContent
         }
@@ -121,6 +172,14 @@ struct InlineHistoryView: View {
             resetPagination()
             await loadInitialContent()
         }
+        .onChange(of: modeFilter) { _, newFilter in
+            // A menu choice is one deliberate change, so it fetches at once, without a debounce.
+            lastFetchedModeFilter = newFilter
+            Task {
+                resetPagination()
+                await loadInitialContent()
+            }
+        }
         .onChange(of: latestTranscriptionIndicator.first?.id) { oldId, newId in
             guard isViewCurrentlyVisible else { return }
             if newId != oldId {
@@ -132,45 +191,83 @@ struct InlineHistoryView: View {
         }
     }
 
-    // MARK: - Top Bar
+    // MARK: - Filter Bar
 
-    private var topBar: some View {
+    private var filterBar: some View {
         HStack(spacing: 10) {
-            HStack(spacing: 6) {
+            HStack(spacing: 8) {
                 Image(systemName: "magnifyingglass")
-                    .foregroundColor(.secondary)
-                    .font(.app(size: 12, weight: .regular))
-                TextField("Search transcriptions...", text: $searchText)
+                    .foregroundStyle(AppTheme.Text.muted)
+                    .font(.app(size: 12, weight: .medium))
+                TextField("Search transcriptions…", text: $searchText)
                     .textFieldStyle(.plain)
                     .font(.app(size: 13, weight: .regular))
+                if !searchText.isEmpty {
+                    Button {
+                        searchText = ""
+                    } label: {
+                        Image(systemName: "xmark.circle.fill")
+                            .foregroundStyle(AppTheme.Text.muted)
+                    }
+                    .buttonStyle(.plain)
+                    .help("Clear search")
+                }
             }
-            .padding(.horizontal, 10)
-            .padding(.vertical, 6)
+            .padding(.horizontal, 12)
+            .frame(height: 32)
             .background(
-                Capsule()
+                RoundedRectangle(cornerRadius: 10, style: .continuous)
                     .fill(AppTheme.Surface.card)
+                    .overlay(
+                        RoundedRectangle(cornerRadius: 10, style: .continuous)
+                            .strokeBorder(AppTheme.Border.card, lineWidth: 1)
+                    )
             )
             .frame(maxWidth: .infinity)
 
-            AppIconButton(
-                systemName: "gearshape",
-                help: "History settings",
-                size: 30,
-                iconSize: 13,
-                cornerRadius: AppTheme.Radius.pill
-            ) {
-                openPanel(mode: .historySettings)
-            }
+            modeFilterMenu
         }
         .padding(.horizontal, 24)
-        .padding(.vertical, 10)
+        .padding(.bottom, 14)
+    }
+
+    private var modeFilterMenu: some View {
+        Menu {
+            Picker("Mode", selection: $modeFilter) {
+                Text("All modes").tag(String?.none)
+                Divider()
+                ForEach(filterModeNames, id: \.self) { name in
+                    Text(name).tag(String?.some(name))
+                }
+            }
+            .pickerStyle(.inline)
+            .labelsHidden()
+        } label: {
+            HStack(spacing: 6) {
+                if let modeFilter {
+                    Circle()
+                        .fill(ModeSpectrum.color(forModeNamed: modeFilter, in: modeManager.configurations))
+                        .frame(width: 7, height: 7)
+                    Text(modeFilter)
+                        .lineLimit(1)
+                } else {
+                    Image(systemName: "line.3.horizontal.decrease")
+                    Text("All")
+                }
+            }
+            .font(.app(size: 12, weight: .medium))
+        }
+        .menuStyle(.button)
+        .buttonStyle(.bordered)
+        .fixedSize()
+        .help("Show transcriptions from one mode")
     }
 
     private var selectionBar: some View {
         HStack(spacing: 16) {
             Text(String(format: String(localized: "%lld selected"), Int64(selectedTranscriptions.count)))
-                .font(.app(size: 13, weight: .medium))
-                .foregroundColor(.secondary)
+                .font(.appMono(size: 11, weight: .medium))
+                .foregroundStyle(AppTheme.Text.secondary)
 
             Spacer()
 
@@ -178,26 +275,18 @@ struct InlineHistoryView: View {
                 openPanel(mode: .analysis)
             }) {
                 Label("Analyze", systemImage: "chart.bar.xaxis")
-                    .font(.app(size: 12, weight: .medium))
             }
-            .buttonStyle(.plain)
-            .foregroundColor(.secondary)
 
             Button(action: {
                 exportService.exportTranscriptionsToCSV(transcriptions: Array(selectedTranscriptions))
             }) {
                 Label("Export", systemImage: "square.and.arrow.up")
-                    .font(.app(size: 12, weight: .medium))
             }
-            .buttonStyle(.plain)
-            .foregroundColor(.secondary)
 
-            Button(action: { showDeleteConfirmation = true }) {
+            Button(role: .destructive, action: { showDeleteConfirmation = true }) {
                 Label("Delete", systemImage: "trash")
-                    .font(.app(size: 12, weight: .medium))
             }
-            .buttonStyle(.plain)
-            .foregroundColor(AppTheme.Status.error.opacity(0.80))
+            .foregroundStyle(AppTheme.Status.error)
 
             Divider()
                 .frame(height: 16)
@@ -206,70 +295,79 @@ struct InlineHistoryView: View {
                 Button("Deselect All") {
                     selectedTranscriptions.removeAll()
                 }
-                .font(.app(size: 12, weight: .medium))
-                .buttonStyle(.plain)
-                .foregroundColor(.secondary)
             } else {
                 Button("Select All") {
                     Task { await selectAllTranscriptions() }
                 }
-                .font(.app(size: 12, weight: .medium))
-                .buttonStyle(.plain)
-                .foregroundColor(.secondary)
             }
         }
+        .buttonStyle(.borderless)
+        .font(.app(size: 12, weight: .medium))
         .padding(.horizontal, 24)
         .padding(.vertical, 10)
-        .background(
-            AppTheme.Surface.window
-                .shadow(color: Color.black.opacity(0.1), radius: 3, y: -2)
-        )
     }
 
     // MARK: - Empty State
 
     private var emptyStateView: some View {
-        VStack(spacing: 12) {
+        VStack(spacing: 10) {
             Spacer()
-            Image(systemName: "doc.text.magnifyingglass")
-                .font(.app(size: 40, weight: .regular))
-                .foregroundColor(.secondary)
-            Text(searchText.isEmpty ? "No transcriptions yet" : "No results found")
-                .font(.app(size: 16, weight: .medium))
-                .foregroundColor(.secondary)
-            Text(searchText.isEmpty ? "Your transcription history will appear here" : "Try a different search term")
-                .font(.app(size: 13, weight: .regular))
-                .foregroundColor(.secondary.opacity(0.8))
+            Image(systemName: isFiltering ? "magnifyingglass" : "waveform")
+                .font(.app(size: 28, weight: .regular))
+                .foregroundStyle(AppTheme.Text.muted)
+            Text(isFiltering ? "No transcriptions match" : "No transcriptions yet")
+                .font(.app(size: 15, weight: .medium))
+                .foregroundStyle(AppTheme.Text.primary)
+            Text(
+                isFiltering
+                    ? "Try other words, or set the filter back to All."
+                    : "Press your dictation shortcut and speak. Each dictation is kept here."
+            )
+            .font(.app(size: 13, weight: .regular))
+            .foregroundStyle(AppTheme.Text.secondary)
+            .multilineTextAlignment(.center)
             Spacer()
         }
+        .padding(.horizontal, 24)
         .frame(maxWidth: .infinity, maxHeight: .infinity)
     }
 
-    // MARK: - Card List
+    // MARK: - Day List
 
-    private var cardListView: some View {
-        Form {
-            ForEach(displayedTranscriptions) { transcription in
-                Section {
-                    HistoryCardRow(
-                        transcription: transcription,
-                        isExpanded: expandedId == transcription.id,
-                        isChecked: selectedTranscriptions.contains(transcription),
-                        onToggleExpand: {
-                            withAnimation(.easeInOut(duration: 0.2)) {
-                                expandedId = expandedId == transcription.id ? nil : transcription.id
+    private var dayListView: some View {
+        ScrollView {
+            LazyVStack(alignment: .leading, spacing: 20) {
+                ForEach(dayGroups) { group in
+                    VStack(alignment: .leading, spacing: 8) {
+                        Text(group.title)
+                            .font(.appMono(size: 11, weight: .medium))
+                            .textCase(.uppercase)
+                            .tracking(0.6)
+                            .foregroundStyle(AppTheme.Text.secondary)
+                            .padding(.leading, 4)
+
+                        VStack(spacing: 0) {
+                            ForEach(Array(group.items.enumerated()), id: \.element.id) { index, transcription in
+                                if index > 0 {
+                                    Divider()
+                                        .padding(.leading, 40)
+                                }
+                                historyRow(for: transcription)
                             }
-                        },
-                        onToggleCheck: { toggleSelection(transcription) },
-                        onShowInfo: {
-                            openPanel(mode: .info, transcriptionID: transcription.id)
                         }
-                    )
+                        .background(
+                            RoundedRectangle(cornerRadius: HistoryRowMetrics.cardRadius, style: .continuous)
+                                .fill(AppTheme.Surface.card)
+                        )
+                        .overlay(
+                            RoundedRectangle(cornerRadius: HistoryRowMetrics.cardRadius, style: .continuous)
+                                .strokeBorder(AppTheme.Border.card, lineWidth: 1)
+                        )
+                        .clipShape(RoundedRectangle(cornerRadius: HistoryRowMetrics.cardRadius, style: .continuous))
+                    }
                 }
-            }
 
-            if hasMoreContent {
-                Section {
+                if hasMoreContent {
                     Button(action: {
                         Task { await loadMoreContent() }
                     }) {
@@ -277,19 +375,30 @@ struct InlineHistoryView: View {
                             if isLoading {
                                 ProgressView().controlSize(.small)
                             }
-                            Text(isLoading ? "Loading..." : "Load More")
-                                .font(.app(size: 13, weight: .medium))
+                            Text(isLoading ? "Loading…" : "Load more")
                         }
-                        .frame(maxWidth: .infinity)
-                        .padding(.vertical, 4)
                     }
-                    .buttonStyle(.plain)
+                    .buttonStyle(.bordered)
                     .disabled(isLoading)
+                    .frame(maxWidth: .infinity)
                 }
             }
+            .padding(.horizontal, 24)
+            .padding(.bottom, 24)
         }
-        .formStyle(.grouped)
-        .scrollContentBackground(.hidden)
+    }
+
+    private func historyRow(for transcription: Transcription) -> some View {
+        HistoryRow(
+            transcription: transcription,
+            modeColor: ModeSpectrum.color(forModeNamed: transcription.modeName, in: modeManager.configurations),
+            isChecked: selectedTranscriptions.contains(transcription),
+            isSelecting: isSelecting,
+            isOpen: openedTranscriptionId == transcription.id,
+            onOpen: { openPanel(mode: .detail, transcriptionID: transcription.id) },
+            onToggleCheck: { toggleSelection(transcription) },
+            onShowInfo: { openPanel(mode: .info, transcriptionID: transcription.id) }
+        )
     }
 
     // MARK: - Side Panel
@@ -297,6 +406,8 @@ struct InlineHistoryView: View {
     @ViewBuilder
     private var panelContent: some View {
         switch panelMode {
+        case .detail:
+            detailPanelContent
         case .info:
             infoPanelContent
         case .analysis:
@@ -309,6 +420,32 @@ struct InlineHistoryView: View {
             .id(selectedTranscriptions.count)
         case .historySettings:
             HistorySettingsPanel(onClose: closePanel)
+        }
+    }
+
+    private var detailPanelContent: some View {
+        VStack(spacing: 0) {
+            AppPanelHeader(title: "Transcription", onClose: closePanel)
+
+            if let transcription = panelTranscription {
+                HistoryDetailMeta(
+                    transcription: transcription,
+                    modeColor: ModeSpectrum.color(
+                        forModeNamed: transcription.modeName, in: modeManager.configurations)
+                )
+                .padding(.horizontal, 20)
+                .padding(.top, 12)
+
+                TranscriptionDetailView(
+                    transcription: transcription,
+                    onInfoTap: { openPanel(mode: .info, transcriptionID: transcription.id) }
+                )
+                // A fresh view per transcription: the audio player loads its file on appear, so
+                // reusing one view across rows would keep playing the previous recording.
+                .id(transcription.id)
+            } else {
+                Spacer()
+            }
         }
     }
 
@@ -384,9 +521,6 @@ struct InlineHistoryView: View {
     private func performDeletion(for transcription: Transcription) -> URL? {
         let audioURL = transcription.audioFileURL.flatMap(URL.init(string:))
 
-        if expandedId == transcription.id {
-            expandedId = nil
-        }
         if panelTranscriptionId == transcription.id {
             panelTranscriptionId = nil
             closePanel()
@@ -428,7 +562,10 @@ struct InlineHistoryView: View {
         do {
             // The query the list is showing, not the live field: Select All and the bulk delete
             // that follows must never reach rows the visible list does not match.
-            let allDescriptor = HistoryPageQuery.allMatchingDescriptor(searchText: lastFetchedSearchText)
+            let allDescriptor = HistoryPageQuery.allMatchingDescriptor(
+                searchText: lastFetchedSearchText,
+                modeName: lastFetchedModeFilter
+            )
             let allTranscriptions = try modelContext.fetch(allDescriptor)
             let visibleIds = Set(displayedTranscriptions.map { $0.id })
 
@@ -448,142 +585,191 @@ struct InlineHistoryView: View {
 }
 
 private enum InlineHistoryPanelMode {
+    case detail
     case info
     case analysis
     case historySettings
 }
 
-// MARK: - History Card Row
+private enum HistoryRowMetrics {
+    /// The spec's card radius; `AppTheme.Radius.card` is the older, rounder glass value.
+    static let cardRadius: CGFloat = 14
+}
 
-private struct HistoryCardRow: View {
+// MARK: - Day Groups
+
+/// One day of history: the list shows each under a mono day header, newest day first.
+private struct HistoryDayGroup: Identifiable {
+    let day: Date
+    var items: [Transcription]
+
+    var id: Date { day }
+
+    /// "Today · 14 Oct 2026", "Yesterday · …", or the weekday for older days.
+    var title: String {
+        let calendar = Calendar.current
+        let date = day.formatted(.dateTime.day().month(.abbreviated).year())
+        let name: String
+        if calendar.isDateInToday(day) {
+            name = String(localized: "Today")
+        } else if calendar.isDateInYesterday(day) {
+            name = String(localized: "Yesterday")
+        } else {
+            name = day.formatted(.dateTime.weekday(.wide))
+        }
+        return "\(name) · \(date)"
+    }
+
+    /// Groups an already newest-first list by calendar day, keeping its order.
+    static func group(_ transcriptions: [Transcription]) -> [HistoryDayGroup] {
+        let calendar = Calendar.current
+        var groups: [HistoryDayGroup] = []
+        for transcription in transcriptions {
+            let day = calendar.startOfDay(for: transcription.timestamp)
+            if let last = groups.indices.last, groups[last].day == day {
+                groups[last].items.append(transcription)
+            } else {
+                groups.append(HistoryDayGroup(day: day, items: [transcription]))
+            }
+        }
+        return groups
+    }
+}
+
+// MARK: - History Row
+
+private struct HistoryRow: View {
     let transcription: Transcription
-    let isExpanded: Bool
+    let modeColor: Color
     let isChecked: Bool
-    let onToggleExpand: () -> Void
+    let isSelecting: Bool
+    let isOpen: Bool
+    let onOpen: () -> Void
     let onToggleCheck: () -> Void
     let onShowInfo: () -> Void
 
-    @State private var selectedTab: TranscriptionTab = .original
+    @State private var isHovering = false
 
-    private var displayText: String {
-        switch selectedTab {
-        case .original:
-            return transcription.text
-        case .enhanced:
-            return transcription.enhancedText ?? ""
-        }
+    /// One line: what was written, with line breaks folded so the row never grows.
+    private var previewText: String {
+        let text = transcription.enhancedText ?? transcription.text
+        return text.split(whereSeparator: \.isNewline).joined(separator: " ")
     }
 
-    private var hasAudioFile: Bool {
-        if let urlString = transcription.audioFileURL,
-            let url = URL(string: urlString),
-            FileManager.default.fileExists(atPath: url.path)
-        {
-            return true
-        }
-        return false
+    /// The checkbox replaces the mode dot while selecting, or under the pointer.
+    private var showsCheckbox: Bool {
+        isSelecting || isChecked || isHovering
+    }
+
+    private var rowFill: Color {
+        if isOpen || isChecked { return AppTheme.Selection.fill }
+        return isHovering ? AppTheme.Surface.subtle : .clear
     }
 
     var body: some View {
-        VStack(alignment: .leading, spacing: 0) {
-            HStack(spacing: 10) {
-                Toggle(
-                    "",
-                    isOn: Binding(
-                        get: { isChecked },
-                        set: { _ in onToggleCheck() }
+        HStack(spacing: 12) {
+            ZStack {
+                if showsCheckbox {
+                    Toggle(
+                        "",
+                        isOn: Binding(
+                            get: { isChecked },
+                            set: { _ in onToggleCheck() }
+                        )
                     )
-                )
-                .toggleStyle(CircularCheckboxStyle())
-                .labelsHidden()
-
-                VStack(alignment: .leading, spacing: 4) {
-                    Text(transcription.timestamp, format: .dateTime.month(.abbreviated).day().hour().minute())
-                        .font(.app(size: 11, weight: .medium))
-                        .foregroundColor(.secondary)
-
-                    if !isExpanded {
-                        Text(transcription.enhancedText ?? transcription.text)
-                            .font(.app(size: 13, weight: .regular))
-                            .lineLimit(2)
-                            .foregroundColor(.primary)
-                    }
+                    .toggleStyle(CircularCheckboxStyle())
+                    .labelsHidden()
+                    .help(isChecked ? "Deselect" : "Select")
+                } else {
+                    Circle()
+                        .fill(modeColor)
+                        .frame(width: 8, height: 8)
+                        .help(transcription.modeName ?? String(localized: "No mode"))
                 }
-
-                Spacer()
-
-                Image(systemName: "chevron.right")
-                    .font(.app(.caption2, weight: .semibold))
-                    .foregroundColor(.secondary)
-                    .rotationEffect(.degrees(isExpanded ? 90 : 0))
-                    .animation(.easeInOut(duration: 0.2), value: isExpanded)
             }
-            .contentShape(Rectangle())
-            .onTapGesture { onToggleExpand() }
+            .frame(width: 18, height: 18)
 
-            if isExpanded {
-                expandedContent
-                    .padding(.top, 10)
-            }
+            Text(previewText)
+                .font(.app(size: 13, weight: .regular))
+                .foregroundStyle(AppTheme.Text.primary)
+                .lineLimit(1)
+                .truncationMode(.tail)
+                .frame(maxWidth: .infinity, alignment: .leading)
+
+            Text(transcription.timestamp, format: .dateTime.hour().minute())
+                .font(.appMono(size: 11, weight: .medium))
+                .foregroundStyle(AppTheme.Text.muted)
+
+            rowMenu
+                .opacity(isHovering || isOpen ? 1 : 0)
+                .allowsHitTesting(isHovering || isOpen)
         }
+        .padding(.leading, 12)
+        .padding(.trailing, 8)
+        .frame(minHeight: 40)
+        .background(rowFill)
+        .contentShape(Rectangle())
+        .onTapGesture {
+            if isSelecting { onToggleCheck() } else { onOpen() }
+        }
+        .onHover { isHovering = $0 }
+        .accessibilityElement(children: .combine)
+        .accessibilityAddTraits(.isButton)
+        .accessibilityAction(named: Text("Open")) { onOpen() }
     }
 
-    // MARK: - Expanded Content
-
-    private var expandedContent: some View {
-        VStack(alignment: .leading, spacing: 8) {
-            // Tabs
-            if transcription.enhancedText != nil {
-                HStack(spacing: 4) {
-                    ForEach(TranscriptionTab.allCases, id: \.self) { tab in
-                        Button {
-                            withAnimation(.easeInOut(duration: 0.15)) {
-                                selectedTab = tab
-                            }
-                        } label: {
-                            Text(LocalizedStringKey(tab.rawValue))
-                                .font(.app(size: 11, weight: .medium))
-                                .foregroundColor(selectedTab == tab ? .primary : .secondary)
-                                .padding(.horizontal, 10)
-                                .padding(.vertical, 4)
-                                .background(
-                                    Capsule()
-                                        .fill(selectedTab == tab ? AppTheme.Surface.controlActive : Color.clear)
-                                )
-                        }
-                        .buttonStyle(.plain)
-                    }
-                    Spacer()
-                }
+    private var rowMenu: some View {
+        Menu {
+            Button("Open") { onOpen() }
+            Button("Copy text") {
+                let pasteboard = NSPasteboard.general
+                pasteboard.clearContents()
+                pasteboard.setString(transcription.enhancedText ?? transcription.text, forType: .string)
             }
+            Button("Show info") { onShowInfo() }
+            Divider()
+            Button(isChecked ? "Deselect" : "Select") { onToggleCheck() }
+        } label: {
+            Image(systemName: "ellipsis")
+                .font(.app(size: 12, weight: .semibold))
+                .foregroundStyle(AppTheme.Text.secondary)
+                .frame(width: 24, height: 24)
+                .contentShape(Rectangle())
+        }
+        .menuStyle(.borderlessButton)
+        .menuIndicator(.hidden)
+        .fixedSize()
+        .help("More")
+    }
+}
 
-            ScrollView {
-                MarkdownContentView(
-                    displayText,
-                    fontSize: 14,
-                    foregroundColor: AppTheme.Text.primary
-                )
-            }
-            .frame(maxHeight: 350)
-            .hoverCopyButton(textToCopy: displayText)
+// MARK: - Detail Meta
 
-            if hasAudioFile, let urlString = transcription.audioFileURL,
-                let url = URL(string: urlString)
-            {
-                Divider()
-                AudioPlayerView(url: url, transcription: transcription, onInfoTap: onShowInfo)
-                    .padding(.vertical, 4)
-            } else {
-                HStack {
-                    Spacer()
-                    Button(action: onShowInfo) {
-                        Image(systemName: "info.circle")
-                            .font(.app(size: 14, weight: .medium))
-                            .foregroundColor(.secondary)
-                    }
-                    .buttonStyle(.plain)
-                    .help("View details")
-                }
+/// The line above a transcription's details: when it was made and by which mode.
+private struct HistoryDetailMeta: View {
+    let transcription: Transcription
+    let modeColor: Color
+
+    var body: some View {
+        HStack(spacing: 8) {
+            Circle()
+                .fill(modeColor)
+                .frame(width: 8, height: 8)
+            Text(transcription.modeName ?? String(localized: "No mode"))
+                .font(.app(size: 12, weight: .medium))
+                .foregroundStyle(AppTheme.Text.primary)
+                .lineLimit(1)
+            Spacer(minLength: 8)
+            Text(
+                transcription.timestamp,
+                format: .dateTime.day().month(.abbreviated).year().hour().minute()
+            )
+            .font(.appMono(size: 11, weight: .medium))
+            .foregroundStyle(AppTheme.Text.secondary)
+            if transcription.duration > 0 {
+                Text(transcription.duration.formatTiming())
+                    .font(.appMono(size: 11, weight: .medium))
+                    .foregroundStyle(AppTheme.Text.muted)
             }
         }
     }

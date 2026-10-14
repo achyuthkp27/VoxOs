@@ -60,10 +60,10 @@ struct TranscriptionDetailView: View {
                         .padding(.horizontal, 10)
                         .padding(.vertical, 6)
                         .background(
-                            RoundedRectangle(cornerRadius: AppTheme.Radius.card, style: .continuous)
-                                .fill(AppTheme.Surface.materialCard)
+                            RoundedRectangle(cornerRadius: DetailCardMetrics.radius, style: .continuous)
+                                .fill(AppTheme.Surface.card)
                                 .overlay {
-                                    RoundedRectangle(cornerRadius: AppTheme.Radius.card, style: .continuous)
+                                    RoundedRectangle(cornerRadius: DetailCardMetrics.radius, style: .continuous)
                                         .strokeBorder(AppTheme.Border.card, lineWidth: 1)
                                 }
                         )
@@ -86,7 +86,7 @@ struct TranscriptionDetailView: View {
                     Image(systemName: showsDiff ? "chevron.down" : "chevron.right")
                         .font(.app(size: 9, weight: .semibold))
                     Text(diff.summary)
-                        .font(.app(size: 11, weight: .medium))
+                        .font(.appMono(size: 11, weight: .medium))
                     Spacer()
                 }
                 .foregroundColor(AppTheme.Text.secondary)
@@ -104,54 +104,57 @@ struct TranscriptionDetailView: View {
     }
 }
 
+private enum DetailCardMetrics {
+    /// The spec's card radius; `AppTheme.Radius.card` is the older, rounder glass value.
+    static let radius: CGFloat = 14
+}
+
+/// One version of the text as a full-width card under a mono eyebrow. The enhanced version's
+/// eyebrow takes the accent, since it is the text that was actually pasted.
 private struct MessageBubble: View {
     let label: LocalizedStringKey
     let text: String
     let isEnhanced: Bool
 
     var body: some View {
-        HStack(alignment: .bottom) {
-            if isEnhanced { Spacer(minLength: 60) }
-
-            VStack(alignment: isEnhanced ? .leading : .trailing, spacing: 4) {
+        VStack(alignment: .leading, spacing: 6) {
+            HStack(spacing: 5) {
+                if isEnhanced {
+                    Image(systemName: "sparkles")
+                        .font(.app(size: 9, weight: .semibold))
+                }
                 Text(label)
-                    .font(.app(size: 9, weight: .medium))
-                    .foregroundColor(AppTheme.Text.muted)
-                    .padding(.horizontal, 12)
-
-                ScrollView {
-                    MarkdownContentView(
-                        text,
-                        fontSize: 14,
-                        foregroundColor: AppTheme.Text.primary,
-                        alignment: isEnhanced ? .leading : .trailing
-                    )
-                    .padding(.horizontal, 12)
-                    .padding(.vertical, 10)
-                }
-                .frame(maxHeight: 350)
-                .background {
-                    if isEnhanced {
-                        RoundedRectangle(cornerRadius: AppTheme.Radius.card, style: .continuous)
-                            .fill(AppTheme.Surface.subtle)
-                            .overlay {
-                                RoundedRectangle(cornerRadius: AppTheme.Radius.card, style: .continuous)
-                                    .strokeBorder(AppTheme.Border.tint, lineWidth: 1)
-                            }
-                    } else {
-                        RoundedRectangle(cornerRadius: AppTheme.Radius.card, style: .continuous)
-                            .fill(AppTheme.Surface.materialCard)
-                            .overlay(
-                                RoundedRectangle(cornerRadius: AppTheme.Radius.card, style: .continuous)
-                                    .strokeBorder(AppTheme.Border.subtle, lineWidth: 1)
-                            )
-                    }
-                }
-                .hoverCopyButton(textToCopy: text)
+                    .font(.appMono(size: 11, weight: .medium))
+                    .textCase(.uppercase)
+                    .tracking(0.6)
             }
+            .foregroundStyle(isEnhanced ? AppTheme.Accent.primary : AppTheme.Text.secondary)
+            .padding(.leading, 4)
 
-            if !isEnhanced { Spacer(minLength: 60) }
+            ScrollView {
+                MarkdownContentView(
+                    text,
+                    fontSize: 14,
+                    foregroundColor: AppTheme.Text.primary,
+                    alignment: .leading
+                )
+                .frame(maxWidth: .infinity, alignment: .leading)
+                .padding(.horizontal, 14)
+                .padding(.vertical, 12)
+            }
+            .frame(maxHeight: 350)
+            .background(
+                RoundedRectangle(cornerRadius: DetailCardMetrics.radius, style: .continuous)
+                    .fill(AppTheme.Surface.card)
+                    .overlay(
+                        RoundedRectangle(cornerRadius: DetailCardMetrics.radius, style: .continuous)
+                            .strokeBorder(
+                                isEnhanced ? AppTheme.Accent.border : AppTheme.Border.card,
+                                lineWidth: 1
+                            )
+                    )
+            )
+            .hoverCopyButton(textToCopy: text)
         }
     }
-
 }

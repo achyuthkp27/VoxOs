@@ -17,7 +17,7 @@ struct CustomSoundSettingsView: View {
 
     var body: some View {
         Group {
-            LabeledContent("Start Sound") {
+            LabeledContent("Start sound") {
                 soundControls(for: .start)
             }
             .alert(alertTitle, isPresented: alertPresented(for: .start)) {
@@ -26,7 +26,9 @@ struct CustomSoundSettingsView: View {
                 Text(alertMessage)
             }
 
-            LabeledContent("Stop Sound") {
+            Divider()
+
+            LabeledContent("Stop sound") {
                 soundControls(for: .stop)
             }
             .alert(alertTitle, isPresented: alertPresented(for: .stop)) {

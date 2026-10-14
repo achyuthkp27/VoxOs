@@ -25,44 +25,40 @@ struct AudioSetupView: View {
         }
     }
 
+    /// Below this content width the two columns stack.
+    private static let twoColumnMinWidth: CGFloat = 640
+    @State private var contentWidth: CGFloat = 0
+
     var body: some View {
-        Form {
-            Section {
-                inputSettingsRows
-            } header: {
-                Text("Audio Input")
-            }
+        ScrollView {
+            VStack(alignment: .leading, spacing: 0) {
+                AppScreenHeader(title: "Audio")
 
-            if usesPriorityOrder {
-                Section {
-                    priorityOrderRows
-                } header: {
-                    Text("Priority Order")
+                Group {
+                    if contentWidth >= Self.twoColumnMinWidth {
+                        HStack(alignment: .top, spacing: 16) {
+                            inputColumn
+                                .frame(maxWidth: .infinity)
+                            recordingColumn
+                                .frame(maxWidth: .infinity)
+                        }
+                    } else {
+                        VStack(spacing: 20) {
+                            inputColumn
+                            recordingColumn
+                        }
+                    }
                 }
-            }
-
-            Section {
-                CustomSoundSettingsView()
-            } header: {
-                Text("Recording Sounds")
-            }
-
-            Section {
-                Toggle("Mute Audio While Recording", isOn: $mediaController.isSystemMuteEnabled)
-
-                Toggle("Pause Media While Recording", isOn: $playbackController.isPauseMediaEnabled)
-
-                LabeledContent("Resume Delay") {
-                    resumeDelayMenu
-                        .disabled(!canEditResumeDelay)
+                .padding(.horizontal, 24)
+                .padding(.bottom, 24)
+                .onGeometryChange(for: CGFloat.self) { proxy in
+                    proxy.size.width
+                } action: { width in
+                    contentWidth = width
                 }
-                .foregroundStyle(canEditResumeDelay ? .primary : .secondary)
-            } header: {
-                Text("Recording Behavior")
             }
         }
-        .formStyle(.grouped)
-        .scrollContentBackground(.hidden)
+        .labeledContentStyle(AudioSettingsRowStyle())
         .onAppear {
             if !usesPriorityOrder {
                 microphoneSourceBeforePriorityOrder = currentMicrophoneSource
@@ -70,53 +66,131 @@ struct AudioSetupView: View {
         }
     }
 
-    @ViewBuilder
-    private var inputSettingsRows: some View {
-        Picker("Microphone Mode", selection: inputRouteSelection) {
-            Text("Selected Microphone").tag(InputRoute.singleMicrophone)
-            Text("Priority Order").tag(InputRoute.priorityOrder)
-        }
-        .pickerStyle(.menu)
+    private var inputColumn: some View {
+        VStack(alignment: .leading, spacing: 20) {
+            AudioSettingsCard(title: "Audio input") {
+                inputSettingsRows
+            }
 
-        if !usesPriorityOrder {
-            Picker("Microphone", selection: microphoneSourceSelection) {
-                Text(systemDefaultSourceTitle).tag(MicrophoneSourceSelection.systemDefault)
-
-                ForEach(audioDeviceManager.availableDevices, id: \.uid) { device in
-                    Text(device.name).tag(MicrophoneSourceSelection.device(device.uid))
+            if usesPriorityOrder {
+                AudioSettingsCard(title: "Priority order") {
+                    priorityOrderRows
                 }
             }
-            .pickerStyle(.menu)
         }
+    }
 
-        Button {
-            refreshMicrophones()
-        } label: {
-            Label {
-                Text("Refresh Microphones")
-            } icon: {
-                Image(systemName: "arrow.clockwise")
-                    .rotationEffect(.degrees(refreshIconRotation))
+    private var recordingColumn: some View {
+        VStack(alignment: .leading, spacing: 20) {
+            AudioSettingsCard(title: "Recording sounds") {
+                CustomSoundSettingsView()
+            }
+
+            AudioSettingsCard(title: "Recording behavior") {
+                LabeledContent("Mute audio while recording") {
+                    Toggle("Mute audio while recording", isOn: $mediaController.isSystemMuteEnabled)
+                        .toggleStyle(.switch)
+                        .controlSize(.small)
+                        .labelsHidden()
+                }
+
+                Divider()
+
+                LabeledContent("Pause media while recording") {
+                    Toggle("Pause media while recording", isOn: $playbackController.isPauseMediaEnabled)
+                        .toggleStyle(.switch)
+                        .controlSize(.small)
+                        .labelsHidden()
+                }
+
+                Divider()
+
+                LabeledContent("Resume delay") {
+                    resumeDelayMenu
+                        .disabled(!canEditResumeDelay)
+                }
+                .foregroundStyle(canEditResumeDelay ? AppTheme.Text.primary : AppTheme.Text.secondary)
             }
         }
-        .buttonStyle(.borderless)
-        .help("Refresh Microphones")
+    }
+
+    @ViewBuilder
+    private var inputSettingsRows: some View {
+        LabeledContent("Microphone mode") {
+            Picker("Microphone mode", selection: inputRouteSelection) {
+                Text("Selected microphone").tag(InputRoute.singleMicrophone)
+                Text("Priority order").tag(InputRoute.priorityOrder)
+            }
+            .pickerStyle(.menu)
+            .labelsHidden()
+            .fixedSize()
+        }
+
+        if !usesPriorityOrder {
+            Divider()
+
+            LabeledContent("Microphone") {
+                Picker("Microphone", selection: microphoneSourceSelection) {
+                    Text(systemDefaultSourceTitle).tag(MicrophoneSourceSelection.systemDefault)
+
+                    ForEach(audioDeviceManager.availableDevices, id: \.uid) { device in
+                        Text(device.name).tag(MicrophoneSourceSelection.device(device.uid))
+                    }
+                }
+                .pickerStyle(.menu)
+                .labelsHidden()
+                .frame(maxWidth: 220)
+            }
+        }
+
+        Divider()
+
+        LabeledContent {
+            Button {
+                refreshMicrophones()
+            } label: {
+                Label {
+                    Text("Refresh")
+                } icon: {
+                    Image(systemName: "arrow.clockwise")
+                        .rotationEffect(.degrees(refreshIconRotation))
+                }
+            }
+            .buttonStyle(.bordered)
+            .controlSize(.small)
+            .help("Refresh Microphones")
+        } label: {
+            VStack(alignment: .leading, spacing: 2) {
+                Text("Microphones")
+                Text(String(format: String(localized: "%lld found"), Int64(audioDeviceManager.availableDevices.count)))
+                    .font(.appMono(size: 11, weight: .medium))
+                    .foregroundStyle(AppTheme.Text.muted)
+            }
+        }
     }
 
     @ViewBuilder
     private var priorityOrderRows: some View {
         if prioritizedDevicesInDisplayOrder.isEmpty {
             Text("Add microphones in the order VoxOS should try them.")
-                .foregroundStyle(.secondary)
+                .font(.app(size: 13))
+                .foregroundStyle(AppTheme.Text.secondary)
+                .padding(.vertical, 8)
         } else {
             ForEach(prioritizedDevicesInDisplayOrder) { device in
+                if device.id != prioritizedDevicesInDisplayOrder.first?.id {
+                    Divider()
+                }
                 priorityDeviceRow(for: device)
+                    .padding(.vertical, 8)
             }
         }
 
         if !availableDevicesNotInPriorityOrder.isEmpty {
             ForEach(availableDevicesNotInPriorityOrder, id: \.uid) { device in
+                Divider()
                 availablePriorityDeviceRow(for: device)
+                    .padding(.vertical, 8)
             }
         }
     }
@@ -170,7 +244,7 @@ struct AudioSetupView: View {
 
         return HStack(spacing: 8) {
             Text("\(prioritizedDevice.priority + 1)")
-                .font(.body.monospacedDigit())
+                .font(.appMono(size: 12, weight: .medium))
                 .foregroundStyle(.secondary)
                 .frame(width: 22, alignment: .leading)
 
@@ -373,4 +447,56 @@ private enum MicrophoneSourceSelection: Hashable {
 private enum InputRoute: Hashable {
     case singleMicrophone
     case priorityOrder
+}
+
+// MARK: - Cards
+
+/// A grouped card from the design spec: a mono eyebrow over a 14pt-radius card whose rows are
+/// separated by dividers the caller places.
+private struct AudioSettingsCard<Content: View>: View {
+    let title: LocalizedStringKey
+    @ViewBuilder let content: () -> Content
+
+    private static var radius: CGFloat { 14 }
+
+    var body: some View {
+        VStack(alignment: .leading, spacing: 8) {
+            Text(title)
+                .font(.appMono(size: 11, weight: .medium))
+                .textCase(.uppercase)
+                .tracking(0.6)
+                .foregroundStyle(AppTheme.Text.secondary)
+                .padding(.leading, 4)
+
+            VStack(alignment: .leading, spacing: 0) {
+                content()
+            }
+            .font(.app(size: 13))
+            .padding(.horizontal, 16)
+            .padding(.vertical, 6)
+            .frame(maxWidth: .infinity, alignment: .leading)
+            .background(
+                RoundedRectangle(cornerRadius: Self.radius, style: .continuous)
+                    .fill(AppTheme.Surface.card)
+            )
+            .overlay(
+                RoundedRectangle(cornerRadius: Self.radius, style: .continuous)
+                    .strokeBorder(AppTheme.Border.card, lineWidth: 1)
+            )
+        }
+    }
+}
+
+/// Label on the left, control on the right, one row of a settings card.
+private struct AudioSettingsRowStyle: LabeledContentStyle {
+    func makeBody(configuration: Configuration) -> some View {
+        HStack(spacing: 12) {
+            configuration.label
+                .lineLimit(2)
+            Spacer(minLength: 12)
+            configuration.content
+        }
+        .frame(minHeight: 28)
+        .padding(.vertical, 8)
+    }
 }
