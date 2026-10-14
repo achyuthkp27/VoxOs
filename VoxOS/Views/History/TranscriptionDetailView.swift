@@ -44,6 +44,8 @@ struct TranscriptionDetailView: View {
                     if let diff, diff.hasChanges {
                         changesSection(diff)
                     }
+
+                    TranscriptionReviewSection(transcription: transcription)
                 }
                 .padding(16)
             }

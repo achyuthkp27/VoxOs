@@ -100,6 +100,8 @@ enum DefaultsKeys {
     static let vocabularySortMode = "vocabularySortMode"
     static let wordReplacementSortMode = "wordReplacementSortMode"
     static let dismissedCorrectionSuggestions = "dismissedCorrectionSuggestions"
+    /// History → Review suggestions the user said were not mishearings.
+    static let dismissedReviewSuggestions = "dismissedReviewSuggestions"
 
     // MARK: Licensing
     static let voxOSLicenseRequiresActivation = "VoxOSLicenseRequiresActivation"
