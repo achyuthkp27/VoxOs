@@ -15,6 +15,7 @@ struct ProviderDetailPanel: View {
     @State private var verificationDetailMessage: String?
     @State private var verificationSucceeded = false
     @State private var isShowingRemoveAPIKeyConfirmation = false
+    @State private var isChangingAPIKey = false
     @State private var activeDescriptorID = ""
 
     private var isConfigured: Bool {
@@ -87,7 +88,7 @@ struct ProviderDetailPanel: View {
     private var apiKeySection: some View {
         ProviderConfigurationGroup(title: "Connection") {
             VStack(alignment: .leading, spacing: 8) {
-                if isConfigured {
+                if isConfigured && !isChangingAPIKey {
                     verifiedAPIKeyRow
                 } else {
                     apiKeyInputRow
@@ -136,6 +137,16 @@ struct ProviderDetailPanel: View {
             }
 
             Spacer(minLength: 12)
+
+            Button {
+                isChangingAPIKey = true
+            } label: {
+                Text("Change")
+                    .font(.app(size: 12, weight: .medium))
+            }
+            .buttonStyle(.bordered)
+            .controlSize(.small)
+            .help("Replace API key")
 
             Button {
                 isShowingRemoveAPIKeyConfirmation = true
@@ -205,6 +216,18 @@ struct ProviderDetailPanel: View {
                 .controlSize(.small)
                 .disabled(apiKey.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty || isVerifying)
                 .opacity(apiKey.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty || isVerifying ? 0.55 : 1)
+
+                if isChangingAPIKey {
+                    Button {
+                        cancelChangingAPIKey()
+                    } label: {
+                        Text("Cancel")
+                            .font(.app(size: 12, weight: .medium))
+                    }
+                    .buttonStyle(.bordered)
+                    .controlSize(.small)
+                    .disabled(isVerifying)
+                }
             }
 
             if let consoleURL = descriptor.apiConsoleURL {
@@ -432,6 +455,7 @@ struct ProviderDetailPanel: View {
         verificationMessage = nil
         verificationDetailMessage = nil
         isShowingRemoveAPIKeyConfirmation = false
+        isChangingAPIKey = false
     }
 
     private func verificationModel(for provider: AIProvider) -> String {
@@ -485,6 +509,7 @@ struct ProviderDetailPanel: View {
                         aiService.isAPIKeyValid = true
                     }
                     apiKey = ""
+                    isChangingAPIKey = false
                     verificationMessage = nil
                     verificationDetailMessage = nil
                     transcriptionModelManager.refreshAllAvailableModels()
@@ -498,9 +523,19 @@ struct ProviderDetailPanel: View {
         }
     }
 
+    // The saved key was never touched while editing, so cancelling only clears the draft.
+    private func cancelChangingAPIKey() {
+        isChangingAPIKey = false
+        apiKey = ""
+        verificationSucceeded = isConfigured
+        verificationMessage = nil
+        verificationDetailMessage = nil
+    }
+
     private func removeAPIKey() {
         APIKeyManager.shared.deleteAPIKey(forProvider: descriptor.providerKey)
         apiKey = ""
+        isChangingAPIKey = false
         verificationSucceeded = false
         verificationMessage = nil
         verificationDetailMessage = nil
