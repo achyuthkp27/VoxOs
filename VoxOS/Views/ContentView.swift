@@ -44,14 +44,21 @@ struct ContentView: View {
         HStack(spacing: 6) {
             AppSidebar(selectedView: $navigation.selectedView)
 
-            detailContent
+            VStack(spacing: 0) {
+                AppTopBar(selectedView: $navigation.selectedView)
+                    // Its results drop down over the page below.
+                    .zIndex(1)
+
+                detailContent
+            }
         }
         .frame(width: AppWindowLayout.width)
         .frame(minHeight: AppWindowLayout.minimumHeight)
-        // Liquid Glass reads the wallpaper and the system appearance; nothing is forced.
-        .glassWindowBackground()
+        // The one ambient glow in the app lives here; it follows the system appearance.
+        .background(ShellGround().ignoresSafeArea())
         // Forms and lists drop their opaque ground so the glass shows through everywhere.
         .scrollContentBackground(.hidden)
+        .overlay { LaunchSplash() }
         .onAppear {
             logger.notice("ContentView appeared")
         }
