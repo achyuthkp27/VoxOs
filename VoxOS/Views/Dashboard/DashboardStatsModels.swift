@@ -278,6 +278,37 @@ struct DashboardStatsSummary: Codable, Equatable, Sendable {
     /// Words per mode over the last seven days, largest first. Optional so a snapshot written
     /// before it existed still decodes.
     var lastSevenDayModeShares: [DashboardModeShare]?
+    /// Words per mode over the last thirty days, largest first.
+    var lastThirtyDayModeShares: [DashboardModeShare]?
+    /// One entry per calendar day for the last `dailyActivityDayCount` days, oldest first and
+    /// ending today. Covers a range and the period before it, and the five-week heatmap.
+    var dailyActivity: [DashboardDailyActivity]?
+}
+
+/// One calendar day of dictation: words, sessions and seconds spoken.
+struct DashboardDailyActivity: Codable, Equatable, Identifiable, Sendable {
+    var id: Date { date }
+    let date: Date
+    var words: Int = 0
+    var count: Int = 0
+    var duration: TimeInterval = 0
+}
+
+/// The span the Dashboard's figures cover.
+enum DashboardRange: Int, CaseIterable, Identifiable, Sendable {
+    case lastSevenDays = 7
+    case lastThirtyDays = 30
+
+    var id: Self { self }
+
+    var dayCount: Int { rawValue }
+
+    var title: LocalizedStringKey {
+        switch self {
+        case .lastSevenDays: return "Last 7 days"
+        case .lastThirtyDays: return "Last 30 days"
+        }
+    }
 }
 
 /// One mode's part of the week's dictation, by the mode name stored on each session. A nil
@@ -290,8 +321,59 @@ struct DashboardModeShare: Codable, Equatable, Identifiable, Sendable {
 }
 
 extension DashboardStatsSummary {
-    var sevenDayModeShares: [DashboardModeShare] {
-        lastSevenDayModeShares ?? []
+    /// Two thirty-day periods: a range and the one before it.
+    static let dailyActivityDayCount = 60
+
+    /// The days of a range, oldest first, ending today.
+    func days(in range: DashboardRange) -> [DashboardDailyActivity] {
+        Array((dailyActivity ?? []).suffix(range.dayCount))
+    }
+
+    /// The same number of days just before the range; empty when the series is too short.
+    func previousDays(in range: DashboardRange) -> [DashboardDailyActivity] {
+        let all = dailyActivity ?? []
+        guard all.count >= range.dayCount * 2 else { return [] }
+        return Array(all.dropLast(range.dayCount).suffix(range.dayCount))
+    }
+
+    func totals(in range: DashboardRange) -> DashboardMetricTotals {
+        Self.sum(days(in: range))
+    }
+
+    /// Nil when there is no earlier period to compare with.
+    func previousTotals(in range: DashboardRange) -> DashboardMetricTotals? {
+        let previous = previousDays(in: range)
+        return previous.isEmpty ? nil : Self.sum(previous)
+    }
+
+    func modeShares(in range: DashboardRange) -> [DashboardModeShare] {
+        switch range {
+        case .lastSevenDays: return lastSevenDayModeShares ?? []
+        case .lastThirtyDays: return lastThirtyDayModeShares ?? []
+        }
+    }
+
+    func peakHours(in range: DashboardRange) -> DashboardPeakHoursSummary {
+        switch range {
+        case .lastSevenDays: return lastSevenDayPeakHours
+        case .lastThirtyDays: return lastThirtyDayPeakHours
+        }
+    }
+
+    /// Thirty days once there is dictation older than a week to fill them; seven before that,
+    /// so a new user's chart is not mostly empty.
+    var defaultRange: DashboardRange {
+        let month = days(in: .lastThirtyDays)
+        let olderThanAWeek = month.dropLast(DashboardRange.lastSevenDays.dayCount)
+        return olderThanAWeek.contains { $0.count > 0 } ? .lastThirtyDays : .lastSevenDays
+    }
+
+    private static func sum(_ days: [DashboardDailyActivity]) -> DashboardMetricTotals {
+        days.reduce(into: DashboardMetricTotals()) { totals, day in
+            totals.count += day.count
+            totals.words += day.words
+            totals.duration += day.duration
+        }
     }
 
     var total: DashboardMetricTotals {
@@ -412,60 +494,6 @@ enum DashboardTimeSaving {
 
     static func timeSaved(words: Int, duration: TimeInterval) -> TimeInterval {
         max(estimatedTypingTime(words: words) - duration, 0)
-    }
-}
-
-enum DashboardProgressBenchmark {
-    enum Equivalence {
-        case matched(title: String)
-        case repeated(title: String, count: Int)
-        case remaining(words: Int, title: String)
-    }
-
-    private struct Milestone {
-        let title: LocalizedStringResource
-        let wordCount: Int
-
-        var localizedTitle: String {
-            String(localized: title)
-        }
-    }
-
-    private static let repeatBenchmark = Milestone(
-        title: "Tolstoy's War and Peace",
-        wordCount: 700_000
-    )
-
-    private static let oneTimeMilestones = [
-        Milestone(title: "The Metamorphosis", wordCount: 21_180),
-        Milestone(title: "Animal Farm", wordCount: 29_966),
-        Milestone(title: "The Great Gatsby", wordCount: 47_094),
-        Milestone(title: "Homer's Iliad", wordCount: 114_715),
-        Milestone(title: "Homer's Odyssey", wordCount: 121_365),
-        Milestone(title: "Homer's Iliad and Odyssey", wordCount: 236_080),
-    ]
-
-    static func equivalence(for words: Int) -> Equivalence {
-        if words >= repeatBenchmark.wordCount {
-            let wholeMultiple = words / repeatBenchmark.wordCount
-
-            if wholeMultiple >= 2 {
-                return .repeated(title: repeatBenchmark.localizedTitle, count: wholeMultiple)
-            }
-
-            return .matched(title: repeatBenchmark.localizedTitle)
-        }
-
-        if let milestone = oneTimeMilestones.last(where: { words >= $0.wordCount }) {
-            return .matched(title: milestone.localizedTitle)
-        }
-
-        guard let firstMilestone = oneTimeMilestones.first else {
-            return .remaining(words: 0, title: "")
-        }
-
-        let remainingWords = firstMilestone.wordCount - words
-        return .remaining(words: remainingWords, title: firstMilestone.localizedTitle)
     }
 }
 

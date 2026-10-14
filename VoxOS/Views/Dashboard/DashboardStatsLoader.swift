@@ -55,6 +55,7 @@ enum DashboardStatsLoader {
             var allTimePeakHours: [Int: DashboardPeakHourAccumulator] = [:]
             var allTimeMonthWords: [Date: Int] = [:]
             var lastSevenDayModes: [String: DashboardModeShareAccumulator] = [:]
+            var lastThirtyDayModes: [String: DashboardModeShareAccumulator] = [:]
             var firstMetricDate: Date?
             let windows = DashboardPeriodWindows()
             let now = windows.now
@@ -66,6 +67,12 @@ enum DashboardStatsLoader {
                 dayCount: 30, now: now, calendar: calendar, labelStyle: .dayOfMonth)
             var thisYearProductivity = Self.monthlyProductivityPoints(
                 from: windows.thisYearStart, through: now, calendar: calendar)
+            var dailyActivity = Self.dailyActivity(
+                dayCount: DashboardStatsSummary.dailyActivityDayCount, now: now, calendar: calendar)
+            let dailyActivityIndices = Dictionary(
+                uniqueKeysWithValues: dailyActivity.enumerated().map { index, day in
+                    (day.date, index)
+                })
             let todayHourIndices = Dictionary(
                 uniqueKeysWithValues: todayProductivity.enumerated().map { index, point in
                     (startOfHour(for: point.date, calendar: calendar), index)
@@ -146,6 +153,11 @@ enum DashboardStatsLoader {
                     if let monthIndex = thirtyDayIndices[metricDay] {
                         lastThirtyDayProductivity[monthIndex].words += metric.wordCount
                     }
+                    if let dayIndex = dailyActivityIndices[metricDay] {
+                        dailyActivity[dayIndex].words += metric.wordCount
+                        dailyActivity[dayIndex].count += 1
+                        dailyActivity[dayIndex].duration += metric.audioDuration
+                    }
                     if windows.thisYearInterval.contains(metric.timestamp) {
                         let metricMonth = startOfMonth(for: metric.timestamp, calendar: calendar)
                         if let thisYearIndex = thisYearMonthIndices[metricMonth] {
@@ -197,6 +209,8 @@ enum DashboardStatsLoader {
                             enhancementTokenUsage: &lastThirtyDayEnhancementTokenUsage
                         )
                         addPeakHour(for: metric, hour: metricHour, day: metricDay, to: &lastThirtyDayPeakHours)
+                        lastThirtyDayModes[sanitizedModelName(metric.modeName) ?? "", default: .init()].add(
+                            words: metric.wordCount)
                     }
                     if windows.thisYearInterval.contains(metric.timestamp) {
                         addModelPerformance(
@@ -308,7 +322,9 @@ enum DashboardStatsLoader {
                 lastThirtyDayPeakHours: Self.peakHoursSummary(from: lastThirtyDayPeakHours),
                 thisYearPeakHours: Self.peakHoursSummary(from: thisYearPeakHours),
                 allTimePeakHours: Self.peakHoursSummary(from: allTimePeakHours),
-                lastSevenDayModeShares: Self.modeShares(from: lastSevenDayModes)
+                lastSevenDayModeShares: Self.modeShares(from: lastSevenDayModes),
+                lastThirtyDayModeShares: Self.modeShares(from: lastThirtyDayModes),
+                dailyActivity: dailyActivity
             )
         }
 
@@ -407,6 +423,17 @@ enum DashboardStatsLoader {
                 label: labelFormatter.string(from: date),
                 accessibilityLabel: accessibilityFormatter.string(from: date)
             )
+        }
+    }
+
+    /// Empty days from `dayCount - 1` days ago through today, keyed by start of day.
+    private static func dailyActivity(dayCount: Int, now: Date, calendar: Calendar) -> [DashboardDailyActivity] {
+        let todayStart = calendar.startOfDay(for: now)
+        return (0..<dayCount).reversed().compactMap { daysAgo in
+            guard let date = calendar.date(byAdding: .day, value: -daysAgo, to: todayStart) else {
+                return nil
+            }
+            return DashboardDailyActivity(date: calendar.startOfDay(for: date))
         }
     }
 

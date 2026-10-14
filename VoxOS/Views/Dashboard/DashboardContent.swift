@@ -33,6 +33,8 @@ struct DashboardContent: View {
     @State private var isModelUsagePanelPresented = false
     @State private var isInsightsViewPresented = false
     @State private var selectedInsightPeriod: DashboardInsightPeriod = .allTime
+    /// Nil until the user picks a range; until then the summary's default applies.
+    @State private var selectedRange: DashboardRange?
     @State private var isAccessibilityEnabled = ProcessIdentity.isTestHost ? false : AXIsProcessTrusted()
     @EnvironmentObject private var updaterViewModel: UpdaterViewModel
     @ObservedObject private var modeManager = ModeManager.shared
@@ -135,14 +137,15 @@ struct DashboardContent: View {
         }
     }
 
-    /// Top to bottom: who and when, anything blocking dictation, the hero (time saved and the
-    /// week's prism) beside the current mode, quick actions, running Agent jobs, recent
-    /// dictations, then four compact glance cards.
+    /// Top to bottom: greeting with the current-mode chip, anything blocking dictation, words
+    /// dictated over the range, four stat tiles, "By mode" beside "Activity", running Agent jobs,
+    /// recent dictations, then the quick-action keys and footer.
     private func dashboardMainContent(availableWidth: CGFloat) -> some View {
-        VStack(alignment: .leading, spacing: DashboardLayout.sectionSpacing) {
+        VStack(alignment: .leading, spacing: DashboardLayout.gridSpacing) {
             licenseStatusMessage
 
             greetingHeader
+                .padding(.bottom, 6)
 
             if !isAccessibilityEnabled || !modeManager.hasEnabledConfiguration {
                 nameEditorDismissArea {
@@ -167,13 +170,29 @@ struct DashboardContent: View {
             }
 
             nameEditorDismissArea {
-                heroRow(availableWidth: availableWidth)
+                DashboardWordsCard(
+                    state: statsState,
+                    range: rangeBinding,
+                    days: statsSummary.days(in: effectiveRange),
+                    totals: rangeTotals,
+                    previousTotals: statsSummary.previousTotals(in: effectiveRange),
+                    isRetrying: isDashboardStatsRefreshing,
+                    onRetry: refreshDashboardStats
+                )
             }
 
             nameEditorDismissArea {
-                DashboardShortcutStrip(
-                    columnCount: DashboardLayout.quickActionColumnCount(for: availableWidth)
+                DashboardStatTiles(
+                    isLoaded: statsState.isLoaded,
+                    days: statsSummary.days(in: effectiveRange),
+                    totals: rangeTotals,
+                    previousTotals: statsSummary.previousTotals(in: effectiveRange),
+                    columnCount: DashboardLayout.statColumnCount(for: availableWidth)
                 )
+            }
+
+            nameEditorDismissArea {
+                breakdownPanels(availableWidth: availableWidth)
             }
 
             DashboardBackgroundTasks()
@@ -182,31 +201,63 @@ struct DashboardContent: View {
                 DashboardTranscriptCards(transcriptions: recentDashboardTranscriptions)
             }
 
-            nameEditorDismissArea {
-                VStack(alignment: .leading, spacing: DashboardLayout.labelSpacing) {
-                    DashboardSectionLabel("At a glance")
+            Spacer(minLength: 8)
 
-                    DashboardGlanceGrid(
-                        today: statsSummary.totals(for: .today),
-                        allTime: statsSummary.total,
-                        peakHours: statsSummary.allTimePeakHours,
-                        isLoaded: hasLoadedStatsSnapshot,
-                        columnCount: DashboardLayout.glanceColumnCount(for: availableWidth)
-                    )
-                }
+            nameEditorDismissArea {
+                bottomBar(availableWidth: availableWidth)
+            }
+        }
+        .frame(width: availableWidth, alignment: .topLeading)
+    }
+
+    /// Wide: "By mode" and "Activity" side by side at one height. Narrow: stacked.
+    @ViewBuilder
+    private func breakdownPanels(availableWidth: CGFloat) -> some View {
+        let isLoaded = statsState.isLoaded
+        let modes = DashboardModeBreakdown(
+            shares: statsSummary.modeShares(in: effectiveRange),
+            isLoaded: isLoaded
+        )
+        let activity = DashboardActivityHeatmap(
+            days: statsSummary.dailyActivity ?? [],
+            peakHours: statsSummary.peakHours(in: effectiveRange),
+            isLoaded: isLoaded
+        )
+
+        if DashboardLayout.isWide(availableWidth) {
+            HStack(alignment: .top, spacing: DashboardLayout.gridSpacing) {
+                modes
+                activity
+            }
+            .fixedSize(horizontal: false, vertical: true)
+        } else {
+            VStack(spacing: DashboardLayout.gridSpacing) {
+                modes
+                activity
+            }
+        }
+    }
+
+    /// The quick-action keys on the left and the footer buttons on the right; stacked when the
+    /// two do not fit on one line.
+    private func bottomBar(availableWidth: CGFloat) -> some View {
+        ViewThatFits(in: .horizontal) {
+            HStack(alignment: .center, spacing: DashboardLayout.gridSpacing) {
+                DashboardShortcutStrip()
+                    .fixedSize(horizontal: true, vertical: false)
+                Spacer(minLength: 0)
+                footerActionsView
             }
 
-            Spacer(minLength: DashboardLayout.footerTopSpacing)
-
-            nameEditorDismissArea {
+            VStack(alignment: .leading, spacing: 12) {
+                DashboardShortcutStrip()
                 HStack {
                     Spacer()
                     footerActionsView
                 }
-                .frame(maxWidth: .infinity)
             }
         }
-        .frame(width: availableWidth, alignment: .topLeading)
+        .frame(width: availableWidth, alignment: .leading)
     }
 
     private var recentDashboardTranscriptions: [Transcription] {
@@ -232,6 +283,37 @@ struct DashboardContent: View {
         }
 
         return text.range(of: "Transcription Failed:", options: [.caseInsensitive, .anchored]) == nil
+    }
+
+    private var effectiveRange: DashboardRange {
+        selectedRange ?? statsSummary.defaultRange
+    }
+
+    private var rangeBinding: Binding<DashboardRange> {
+        Binding(
+            get: { effectiveRange },
+            set: { selectedRange = $0 }
+        )
+    }
+
+    private var rangeTotals: DashboardMetricTotals {
+        statsSummary.totals(in: effectiveRange)
+    }
+
+    private var statsState: DashboardStatsState {
+        if showsStatsLoadError {
+            return .failed
+        }
+
+        guard hasLoadedStatsSnapshot else {
+            return .loading
+        }
+
+        guard statsSummary.totalCount > 0 else {
+            return .empty(shortcut: ShortcutStore.shortcut(for: .primaryRecording)?.displayString)
+        }
+
+        return .loaded
     }
 
     private var selectedProductivityPoints: [DashboardProductivityPoint] {
@@ -275,10 +357,6 @@ struct DashboardContent: View {
         hasLoadedStatsSnapshot && statsSummary.totalDuration >= Self.insightsUnlockDuration
     }
 
-    private var shouldShowLockedInsightsState: Bool {
-        hasLoadedStatsSnapshot && !canViewInsights
-    }
-
     private var canViewPeakHours: Bool {
         hasLoadedStatsSnapshot && selectedTotals.duration >= Self.peakHoursUnlockDuration && selectedPeakHours.hasData
     }
@@ -293,64 +371,9 @@ struct DashboardContent: View {
         !hasLoadedStatsSnapshot || statsSummary.totalCount < Self.automaticStatsRefreshMetricLimit
     }
 
-    /// A failed load with no cached snapshot to fall back on: the hero card turns its action
-    /// into a retry.
+    /// A failed load with no cached snapshot to fall back on: the hero offers a retry.
     private var showsStatsLoadError: Bool {
         didStatsLoadFail && !hasLoadedStatsSnapshot
-    }
-
-    private var heroAction: DashboardHeroAction? {
-        if showsStatsLoadError {
-            return DashboardHeroAction(
-                title: "Try again",
-                icon: "arrow.clockwise",
-                help: String(localized: "Try loading your stats again"),
-                isEnabled: !isDashboardStatsRefreshing,
-                perform: refreshDashboardStats
-            )
-        }
-
-        // Nothing to analyse yet: the first-run copy is the call to action.
-        guard hasLoadedStatsSnapshot, statsSummary.totalCount > 0 else {
-            return nil
-        }
-
-        return DashboardHeroAction(
-            title: canViewInsights ? "View insights" : "Insights locked",
-            icon: canViewInsights ? "arrow.right" : "lock.fill",
-            help: canViewInsights
-                ? String(localized: "Charts, peak hours and model usage")
-                : String(localized: "Keep dictating to unlock these stats."),
-            isEnabled: canViewInsights,
-            perform: openInsightsIfAvailable
-        )
-    }
-
-    private var heroState: DashboardHeroState {
-        if showsStatsLoadError {
-            return .failed
-        }
-
-        guard hasLoadedStatsSnapshot else {
-            return .loading
-        }
-
-        if shouldShowLockedInsightsState {
-            return .locked
-        }
-
-        guard statsSummary.totalCount > 0 else {
-            return .firstRun(shortcut: ShortcutStore.shortcut(for: .primaryRecording)?.displayString)
-        }
-
-        let week = statsSummary.recentSevenDays
-        return .active(
-            totalWords: statsSummary.totalWords,
-            totalSaved: allTimeSaved,
-            weekWords: week.words,
-            weekSessions: week.count,
-            previousWeekWords: statsSummary.previousSevenDayWords
-        )
     }
 
     private var accessibilityReminder: some View {
@@ -364,37 +387,34 @@ struct DashboardContent: View {
         )
     }
 
-    /// "☀ Good morning, Name" in the display serif, the name editable in place, and today's
-    /// date as a mono chip on the right.
+    /// "Good morning, Name" in the display serif with the name editable in place, today's date
+    /// in mono under it, and the current-mode chip on the right.
     private var greetingHeader: some View {
         HStack(alignment: .center, spacing: 12) {
-            HStack(alignment: .firstTextBaseline, spacing: 8) {
-                Image(systemName: greetingSymbol)
-                    .font(.app(size: 20, weight: .regular))
+            VStack(alignment: .leading, spacing: 4) {
+                HStack(alignment: .firstTextBaseline, spacing: 8) {
+                    Text("\(greetingText),")
+                        .font(displayNameFont)
+                        .foregroundStyle(AppTheme.Text.primary)
+                        .onTapGesture(perform: dismissDisplayNameEditorIfNeeded)
+
+                    displayNameView
+                }
+                .lineLimit(1)
+                .minimumScaleFactor(0.72)
+
+                Text(verbatim: headerDate)
+                    .font(.appMono(size: 11, weight: .medium))
                     .foregroundStyle(AppTheme.Text.secondary)
-                    .accessibilityHidden(true)
-
-                Text("\(greetingText),")
-                    .font(displayNameFont)
-                    .foregroundStyle(AppTheme.Text.primary)
+                    .textCase(.uppercase)
+                    .tracking(0.6)
+                    .lineLimit(1)
                     .onTapGesture(perform: dismissDisplayNameEditorIfNeeded)
-
-                displayNameView
             }
-            .lineLimit(1)
-            .minimumScaleFactor(0.72)
 
             dismissingSpacer
 
-            Text(verbatim: headerDate)
-                .font(.appMono(size: 12, weight: .medium))
-                .foregroundStyle(AppTheme.Text.secondary)
-                .lineLimit(1)
-                .fixedSize()
-                .padding(.horizontal, 10)
-                .frame(height: 26)
-                .background(DashboardInsightCardBackground(cornerRadius: 13))
-                .onTapGesture(perform: dismissDisplayNameEditorIfNeeded)
+            DashboardModeChip()
         }
         .frame(maxWidth: .infinity, alignment: .leading)
     }
@@ -649,37 +669,21 @@ struct DashboardContent: View {
         )
     }
 
-    /// Wide: the hero and the current-mode card side by side at one height. Narrow: stacked.
-    @ViewBuilder
-    private func heroRow(availableWidth: CGFloat) -> some View {
-        if DashboardLayout.isWide(availableWidth) {
-            HStack(alignment: .top, spacing: DashboardLayout.columnSpacing) {
-                heroCard(isSplit: DashboardLayout.isHeroSplit(availableWidth))
-
-                DashboardCurrentModeCard()
-                    .frame(width: DashboardLayout.currentModeCardWidth)
-            }
-            .fixedSize(horizontal: false, vertical: true)
-        } else {
-            VStack(spacing: DashboardLayout.columnSpacing) {
-                heroCard(isSplit: false)
-                DashboardCurrentModeCard()
-            }
-        }
-    }
-
-    private func heroCard(isSplit: Bool) -> some View {
-        DashboardHeroCard(
-            state: heroState,
-            days: statsSummary.lastSevenDayProductivity,
-            modeShares: statsSummary.sevenDayModeShares,
-            isSplit: isSplit,
-            action: heroAction
-        )
-    }
-
     private var footerActionsView: some View {
-        HStack(alignment: .center, spacing: 12) {
+        HStack(alignment: .center, spacing: 10) {
+            if canViewInsights {
+                Button(action: openInsightsIfAvailable) {
+                    footerActionLabel(
+                        icon: "chart.xyaxis.line",
+                        title: "More insights",
+                        color: AppTheme.Text.secondary
+                    )
+                }
+                .buttonStyle(.plain)
+                .fixedSize(horizontal: true, vertical: true)
+                .help("Charts by period, peak hours and model usage")
+            }
+
             if let availableUpdate = updaterViewModel.availableUpdate {
                 Button(action: updaterViewModel.checkForUpdates) {
                     footerActionLabel(
@@ -853,29 +857,11 @@ struct DashboardContent: View {
         }
     }
 
-    private var greetingSymbol: String {
-        let hour = Calendar.current.component(.hour, from: Date())
-
-        switch hour {
-        case 5..<17:
-            return "sun.max"
-        case 17..<21:
-            return "sun.horizon"
-        default:
-            return "moon.stars"
-        }
-    }
-
-    /// The date, not a pep talk: "Tue, 14 Oct", ordered for the user's locale.
+    /// The date, not a pep talk: "Tuesday 14 October", ordered for the user's locale.
     private var headerDate: String {
-        Date().formatted(.dateTime.weekday(.abbreviated).day().month(.abbreviated))
+        Date().formatted(.dateTime.weekday(.wide).day().month(.wide))
     }
 
-    // MARK: - Computed Metrics
-
-    private var allTimeSaved: TimeInterval {
-        DashboardTimeSaving.timeSaved(words: statsSummary.totalWords, duration: statsSummary.totalDuration)
-    }
 }
 
 /// Something that stops dictation from working, with the one action that fixes it. Warning

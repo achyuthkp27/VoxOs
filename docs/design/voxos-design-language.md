@@ -30,6 +30,10 @@ Sentence case, from the user's side, plain verbs ("Change mode", "Drop audio or 
 Empty states say what to do. Errors say what happened and how to fix it.
 
 ## Signature
-The prism: on the Dashboard, the week's dictation enters as a white waveform and splits into
-mode-coloured bands sized by each mode's share. Everywhere else, mode colour ties a dictation back
-to the mode that produced it.
+Mode colour is the prism: your voice splits into modes, and each mode keeps its colour wherever it
+appears — the "By mode" bars on the Dashboard, the dots in History, the icon tiles in Modes.
+
+## Dashboard structure (from the reference dashboards)
+Serif greeting with a mode chip; one hero metric (words dictated, range picker, change pill, a wide
+thin accent line chart); four equal stat tiles with sparklines; "By mode" bars beside an "Activity"
+calendar heatmap; recent dictations; quick-action keys on one line.

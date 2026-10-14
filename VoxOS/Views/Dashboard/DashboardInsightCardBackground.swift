@@ -2,20 +2,12 @@ import SwiftUI
 
 /// The one card surface on the Dashboard and Insights pages: a faint fill and a hairline over the
 /// window glass. No gradients, glows or shadows, so the content is the only thing that stands out.
-/// The hero alone may take a flat, very soft violet tint (`isTinted`).
 struct DashboardInsightCardBackground: View {
     var cornerRadius: CGFloat = DashboardLayout.cardCornerRadius
-    var isTinted: Bool = false
 
     var body: some View {
         RoundedRectangle(cornerRadius: cornerRadius, style: .continuous)
             .fill(AppTheme.Surface.card)
-            .overlay {
-                if isTinted {
-                    RoundedRectangle(cornerRadius: cornerRadius, style: .continuous)
-                        .fill(AppTheme.Surface.tinted)
-                }
-            }
             .overlay(
                 RoundedRectangle(cornerRadius: cornerRadius, style: .continuous)
                     .strokeBorder(AppTheme.Border.card, lineWidth: 1)
@@ -24,11 +16,12 @@ struct DashboardInsightCardBackground: View {
 }
 
 extension View {
-    /// Pads the content and sets it on the shared Dashboard card surface.
-    func dashboardCard(padding: CGFloat = DashboardLayout.cardPadding) -> some View {
+    /// Pads the content and sets it on the shared Dashboard card surface. `fillsHeight` lets
+    /// cards in one row stretch to the tallest, so their edges line up.
+    func dashboardCard(padding: CGFloat = DashboardLayout.cardPadding, fillsHeight: Bool = false) -> some View {
         self
             .padding(padding)
-            .frame(maxWidth: .infinity, alignment: .topLeading)
+            .frame(maxWidth: .infinity, maxHeight: fillsHeight ? .infinity : nil, alignment: .topLeading)
             .background(DashboardInsightCardBackground())
     }
 }

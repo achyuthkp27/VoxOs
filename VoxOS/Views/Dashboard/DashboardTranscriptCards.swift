@@ -1,24 +1,41 @@
 import SwiftUI
 
+/// The last few dictations as compact rows: the mode's colour, one line of text and the time.
+/// Click a row to read it in full; hover to copy. "See all" opens History.
 struct DashboardTranscriptCards: View {
     let transcriptions: [Transcription]
 
     var body: some View {
         VStack(alignment: .leading, spacing: DashboardLayout.labelSpacing) {
-            DashboardSectionLabel("Recent dictations")
+            DashboardSectionLabel(title: "Recent dictations") {
+                Button {
+                    MainWindowNavigation.shared.navigate(to: .history)
+                } label: {
+                    HStack(spacing: 3) {
+                        Text("See all")
+                        Image(systemName: "chevron.right")
+                            .font(.app(size: 9, weight: .semibold))
+                    }
+                    .font(.app(size: 12, weight: .medium))
+                    .foregroundStyle(AppTheme.Text.secondary)
+                    .contentShape(Rectangle())
+                }
+                .buttonStyle(.plain)
+                .help("Open History")
+            }
 
             if transcriptions.isEmpty {
                 emptyState
             } else {
                 VStack(spacing: 0) {
                     ForEach(Array(transcriptions.enumerated()), id: \.element.id) { index, transcription in
-                        DashboardTranscriptCardRow(transcription: transcription)
+                        DashboardTranscriptRow(transcription: transcription)
 
                         if index < transcriptions.count - 1 {
                             Divider()
                                 .overlay(AppTheme.Border.subtle)
-                                .padding(.leading, 50)
-                                .padding(.trailing, 8)
+                                .padding(.leading, 31)
+                                .padding(.trailing, 12)
                         }
                     }
                 }
@@ -29,145 +46,114 @@ struct DashboardTranscriptCards: View {
     }
 
     private var emptyState: some View {
-        VStack(alignment: .leading, spacing: 4) {
-            Text("Nothing here yet")
-                .font(.app(size: 13, weight: .semibold))
-                .foregroundStyle(AppTheme.Text.primary)
-
-            Text("Your last five dictations show up here. Click one to read it in full, or hover to copy it.")
-                .font(.app(size: 12, weight: .regular))
-                .foregroundStyle(AppTheme.Text.secondary)
-                .fixedSize(horizontal: false, vertical: true)
-        }
-        .dashboardCard()
+        Text("Nothing here yet. Your last five dictations show up here.")
+            .font(.app(size: 12, weight: .regular))
+            .foregroundStyle(AppTheme.Text.secondary)
+            .fixedSize(horizontal: false, vertical: true)
+            .dashboardCard()
     }
 }
 
-private struct DashboardTranscriptCardRow: View {
-    private static let iconFrameSize: CGFloat = 30
-    private static let rowSpacing: CGFloat = 12
-    private static let copyButtonSize: CGFloat = 28
-    private static let copyButtonTopInset: CGFloat = 12
-    private static let copyButtonTrailingInset: CGFloat = 6
-
+private struct DashboardTranscriptRow: View {
     let transcription: Transcription
+
     @State private var isHovering = false
     @State private var isExpanded = false
 
-    private var previewText: String {
-        Self.normalizedPreviewText(displayText)
+    private var displayText: String {
+        if let enhancedText = transcription.enhancedText, Self.isUsableEnhancedText(enhancedText) {
+            return enhancedText
+        }
+        return transcription.text
     }
 
     private var copyText: String {
         displayText.trimmingCharacters(in: .whitespacesAndNewlines)
     }
 
-    private var displayText: String {
-        if let enhancedText = transcription.enhancedText,
-            Self.isUsableEnhancedText(enhancedText)
-        {
-            return enhancedText
-        }
-
-        return transcription.text
+    private var previewText: String {
+        displayText
+            .components(separatedBy: .whitespacesAndNewlines)
+            .filter { !$0.isEmpty }
+            .joined(separator: " ")
     }
 
-    private var metadataText: String {
-        transcription.timestamp.formatted(.relative(presentation: .named))
-    }
-
-    private var modeIcon: ModeIcon {
-        guard let iconValue = transcription.modeEmoji?.trimmingCharacters(in: .whitespacesAndNewlines),
-            !iconValue.isEmpty
-        else {
-            return .symbol("doc.text")
-        }
-
-        if Self.isLikelySymbolName(iconValue) {
-            return .symbol(iconValue)
-        }
-
-        return .emoji(iconValue)
+    private var modeColor: Color {
+        ModeSpectrum.color(forModeNamed: transcription.modeName)
     }
 
     var body: some View {
-        ZStack(alignment: .topTrailing) {
-            rowContent
-                .frame(maxWidth: .infinity, alignment: .leading)
-                .padding(.vertical, 10)
-                .padding(.horizontal, 8)
-                .contentShape(Rectangle())
-                .onTapGesture {
-                    isExpanded.toggle()
-                }
-                .accessibilityAddTraits(.isButton)
+        HStack(alignment: .firstTextBaseline, spacing: 12) {
+            Circle()
+                .fill(modeColor)
+                .frame(width: 7, height: 7)
+                .alignmentGuide(.firstTextBaseline) { dimensions in dimensions[VerticalAlignment.center] + 4 }
+                .help(Text(verbatim: transcription.modeName ?? String(localized: "No mode recorded")))
+                .accessibilityHidden(true)
 
-            CopyIconButton(textToCopy: copyText, accessibilityLabel: "Copy transcript")
-                .frame(width: Self.copyButtonSize, height: Self.copyButtonSize)
-                .opacity(isHovering ? 1 : 0)
-                .allowsHitTesting(isHovering)
-                .padding(.top, Self.copyButtonTopInset)
-                .padding(.trailing, Self.copyButtonTrailingInset)
+            Text(verbatim: isExpanded ? copyText : previewText)
+                .font(.app(size: 13, weight: .regular))
+                .foregroundStyle(AppTheme.Text.primary)
+                .lineLimit(isExpanded ? nil : 1)
+                .truncationMode(.tail)
+                .frame(maxWidth: .infinity, alignment: .leading)
+
+            ZStack(alignment: .trailing) {
+                Text(verbatim: Self.timeText(for: transcription.timestamp))
+                    .font(.appMono(size: 11, weight: .regular))
+                    .foregroundStyle(AppTheme.Text.secondary)
+                    .lineLimit(1)
+                    .fixedSize()
+                    .opacity(isHovering ? 0 : 1)
+
+                CopyIconButton(textToCopy: copyText, accessibilityLabel: "Copy transcript")
+                    .frame(width: 24, height: 20)
+                    .opacity(isHovering ? 1 : 0)
+                    .allowsHitTesting(isHovering)
+            }
+            .frame(minWidth: 52, alignment: .trailing)
         }
+        .padding(.horizontal, 12)
+        .padding(.vertical, 9)
+        .background(
+            RoundedRectangle(cornerRadius: 9, style: .continuous)
+                .fill(isHovering ? AppTheme.Surface.subtle : Color.clear)
+        )
         .contentShape(Rectangle())
+        .onTapGesture { isExpanded.toggle() }
         .onHover { hovering in
             withAnimation(.easeInOut(duration: 0.15)) {
                 isHovering = hovering
             }
         }
         .accessibilityElement(children: .combine)
-        .accessibilityLabel("Transcript from \(metadataText)")
-        .accessibilityValue(isExpanded ? copyText : previewText)
+        .accessibilityAddTraits(.isButton)
+        .accessibilityLabel(Text("Dictation from \(Self.timeText(for: transcription.timestamp))"))
+        .accessibilityValue(Text(verbatim: isExpanded ? copyText : previewText))
     }
 
-    private var rowContent: some View {
-        HStack(alignment: .top, spacing: Self.rowSpacing) {
-            ModeIconView(
-                icon: modeIcon,
-                size: modeIcon.kind == .emoji ? 16 : 14,
-                color: AppTheme.Text.secondary.opacity(0.82)
-            )
-            .frame(width: Self.iconFrameSize, height: Self.iconFrameSize)
-            .padding(.top, 3)
-
-            VStack(alignment: .leading, spacing: 5) {
-                Text(metadataText)
-                    .font(.app(size: 12, weight: .semibold))
-                    .foregroundStyle(AppTheme.Text.secondary)
-                    .lineLimit(1)
-                    .frame(maxWidth: .infinity, alignment: .leading)
-
-                Text(isExpanded ? copyText : previewText)
-                    .font(.app(size: 13, weight: .regular))
-                    .foregroundStyle(AppTheme.Text.primary)
-                    .lineLimit(isExpanded ? nil : 2)
-                    .frame(maxWidth: .infinity, alignment: .leading)
-            }
-            .frame(maxWidth: .infinity, alignment: .leading)
-            .layoutPriority(1)
+    /// "10:42" today, "Mon" within the week, "12 Oct" before that.
+    private static func timeText(for date: Date) -> String {
+        let calendar = Calendar.current
+        if calendar.isDateInToday(date) {
+            return date.formatted(date: .omitted, time: .shortened)
         }
+        if calendar.isDateInYesterday(date) {
+            return String(localized: "Yesterday")
+        }
+        if let days = calendar.dateComponents(
+            [.day], from: calendar.startOfDay(for: date), to: calendar.startOfDay(for: Date())
+        ).day,
+            days < 7
+        {
+            return date.formatted(.dateTime.weekday(.abbreviated))
+        }
+        return date.formatted(.dateTime.day().month(.abbreviated))
     }
 
     private static func isUsableEnhancedText(_ text: String) -> Bool {
         let trimmed = text.trimmingCharacters(in: .whitespacesAndNewlines)
         guard !trimmed.isEmpty else { return false }
-
         return trimmed.range(of: "Enhancement failed:", options: [.caseInsensitive, .anchored]) == nil
-    }
-
-    private static func normalizedPreviewText(_ text: String) -> String {
-        text
-            .components(separatedBy: .whitespacesAndNewlines)
-            .filter { !$0.isEmpty }
-            .joined(separator: " ")
-    }
-
-    private static func isLikelySymbolName(_ value: String) -> Bool {
-        let symbolNameCharacters = CharacterSet(
-            charactersIn: "ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789._")
-
-        return value.unicodeScalars.allSatisfy { scalar in
-            symbolNameCharacters.contains(scalar)
-        }
     }
 }
