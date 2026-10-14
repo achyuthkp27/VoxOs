@@ -54,6 +54,7 @@ enum DashboardStatsLoader {
             var thisYearPeakHours: [Int: DashboardPeakHourAccumulator] = [:]
             var allTimePeakHours: [Int: DashboardPeakHourAccumulator] = [:]
             var allTimeMonthWords: [Date: Int] = [:]
+            var lastSevenDayModes: [String: DashboardModeShareAccumulator] = [:]
             var firstMetricDate: Date?
             let windows = DashboardPeriodWindows()
             let now = windows.now
@@ -181,6 +182,8 @@ enum DashboardStatsLoader {
                             enhancementTokenUsage: &lastSevenDayEnhancementTokenUsage
                         )
                         addPeakHour(for: metric, hour: metricHour, day: metricDay, to: &lastSevenDayPeakHours)
+                        lastSevenDayModes[sanitizedModelName(metric.modeName) ?? "", default: .init()].add(
+                            words: metric.wordCount)
                     }
                     if windows.recentThirtyDayInterval.contains(metric.timestamp) {
                         addModelPerformance(
@@ -304,7 +307,8 @@ enum DashboardStatsLoader {
                 lastSevenDayPeakHours: Self.peakHoursSummary(from: lastSevenDayPeakHours),
                 lastThirtyDayPeakHours: Self.peakHoursSummary(from: lastThirtyDayPeakHours),
                 thisYearPeakHours: Self.peakHoursSummary(from: thisYearPeakHours),
-                allTimePeakHours: Self.peakHoursSummary(from: allTimePeakHours)
+                allTimePeakHours: Self.peakHoursSummary(from: allTimePeakHours),
+                lastSevenDayModeShares: Self.modeShares(from: lastSevenDayModes)
             )
         }
 
@@ -506,6 +510,22 @@ enum DashboardStatsLoader {
         }
     }
 
+    private static func modeShares(from modes: [String: DashboardModeShareAccumulator]) -> [DashboardModeShare] {
+        modes
+            .map { name, accumulator in
+                DashboardModeShare(
+                    modeName: name.isEmpty ? nil : name,
+                    words: accumulator.words,
+                    sessionCount: accumulator.sessionCount
+                )
+            }
+            .sorted { lhs, rhs in
+                if lhs.words != rhs.words { return lhs.words > rhs.words }
+                if lhs.sessionCount != rhs.sessionCount { return lhs.sessionCount > rhs.sessionCount }
+                return (lhs.modeName ?? "") < (rhs.modeName ?? "")
+            }
+    }
+
     private static func addPeakHour(
         for metric: SessionMetric,
         hour: Int,
@@ -631,6 +651,16 @@ private struct EnhancementTokenUsageAccumulator {
             sessionCount: sessionCount,
             estimatedTokens: estimatedTokens
         )
+    }
+}
+
+private struct DashboardModeShareAccumulator {
+    var words = 0
+    var sessionCount = 0
+
+    mutating func add(words: Int) {
+        self.words += max(words, 0)
+        sessionCount += 1
     }
 }
 

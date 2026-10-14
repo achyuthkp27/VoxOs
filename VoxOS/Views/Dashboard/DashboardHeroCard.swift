@@ -9,9 +9,14 @@ enum DashboardHeroState: Equatable {
     case locked
     /// No dictation recorded yet. Carries the recording shortcut so the copy can name the key.
     case firstRun(shortcut: String?)
-    /// Dictated before, but not in the last seven days.
-    case quietWeek(allTimeWords: Int, allTimeSaved: TimeInterval)
-    case week(words: Int, saved: TimeInterval, sessions: Int, previousWeekWords: Int)
+    /// Dictated before. All-time figures lead; the week drives the prism and its caption.
+    case active(
+        totalWords: Int,
+        totalSaved: TimeInterval,
+        weekWords: Int,
+        weekSessions: Int,
+        previousWeekWords: Int
+    )
 }
 
 struct DashboardHeroAction {
@@ -22,48 +27,68 @@ struct DashboardHeroAction {
     let perform: () -> Void
 }
 
-/// The page's one statement: what VoxOS did for you in the last seven days, as a sentence, beside
-/// the week drawn as a voice waveform. The waveform is the page's only accent colour.
+/// The page's one statement: the time VoxOS has saved you, with the week drawn as the prism
+/// beside (wide) or under (narrow) it. The saved figure is the only accent-coloured text.
 struct DashboardHeroCard: View {
-    private static let sentenceSize: CGFloat = 22
+    private static let headlineSize: CGFloat = 26
 
     let state: DashboardHeroState
     let days: [DashboardProductivityPoint]
-    let isWide: Bool
+    let modeShares: [DashboardModeShare]
+    /// True when the card is wide enough to sit the prism beside the copy.
+    let isSplit: Bool
     let action: DashboardHeroAction?
 
     var body: some View {
         Group {
-            if isWide {
-                HStack(alignment: .center, spacing: 36) {
+            if isSplit {
+                HStack(alignment: .center, spacing: 28) {
                     copy
-                    DashboardWeekWaveform(days: days, isActive: showsActivity)
-                        .frame(width: 236, height: 112)
+                    prism
+                        .frame(minWidth: 220, maxWidth: 340)
                 }
             } else {
-                VStack(alignment: .leading, spacing: 22) {
+                VStack(alignment: .leading, spacing: 20) {
                     copy
-                    DashboardWeekWaveform(days: days, isActive: showsActivity)
-                        .frame(height: 92)
+                    prism
                 }
             }
         }
-        .dashboardCard(padding: DashboardLayout.heroPadding)
+        .padding(DashboardLayout.heroPadding)
+        .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .topLeading)
+        .background(DashboardInsightCardBackground(isTinted: true))
         .animation(.easeOut(duration: 0.2), value: state)
     }
 
-    private var showsActivity: Bool {
-        if case .week = state { return true }
+    private var weekIsActive: Bool {
+        if case .active(_, _, let weekWords, let weekSessions, _) = state {
+            return weekWords > 0 || weekSessions > 0
+        }
         return false
+    }
+
+    private var prism: some View {
+        VStack(alignment: .leading, spacing: 8) {
+            DashboardSectionLabel("Last 7 days by mode")
+
+            DashboardPrism(days: days, shares: modeShares, isActive: weekIsActive)
+                .frame(height: isSplit ? 118 : 104)
+
+            if let weekCaption {
+                Text(weekCaption)
+                    .font(.app(size: 12, weight: .regular))
+                    .foregroundStyle(AppTheme.Text.secondary)
+                    .lineLimit(2)
+                    .fixedSize(horizontal: false, vertical: true)
+            }
+        }
     }
 
     private var copy: some View {
         VStack(alignment: .leading, spacing: 10) {
-            DashboardSectionLabel(eyebrow)
-
-            Text(sentence)
+            Text(headline)
                 .fixedSize(horizontal: false, vertical: true)
-                .frame(maxWidth: 560, alignment: .leading)
+                .frame(maxWidth: 520, alignment: .leading)
                 .contentTransition(.opacity)
 
             if let detail {
@@ -71,7 +96,7 @@ struct DashboardHeroCard: View {
                     .font(.app(size: 13, weight: .regular))
                     .foregroundStyle(AppTheme.Text.secondary)
                     .fixedSize(horizontal: false, vertical: true)
-                    .frame(maxWidth: 560, alignment: .leading)
+                    .frame(maxWidth: 520, alignment: .leading)
             }
 
             if let action {
@@ -85,62 +110,49 @@ struct DashboardHeroCard: View {
                 .buttonStyle(.voiceOSCompact)
                 .disabled(!action.isEnabled)
                 .help(action.help)
-                .padding(.top, 6)
+                .padding(.top, 4)
             }
         }
         .frame(maxWidth: .infinity, alignment: .leading)
     }
 
-    private var eyebrow: LocalizedStringKey {
-        switch state {
-        case .firstRun: return "Get started"
-        default: return "Last 7 days"
-        }
-    }
-
-    /// The sentence in secondary text with its figures lifted to primary, so the numbers carry the
-    /// hierarchy without a second colour.
-    private var sentence: AttributedString {
-        let figures: [String]
+    /// The serif headline with its figure lifted into the accent, so the number carries the
+    /// hierarchy.
+    private var headline: AttributedString {
+        let figure: String?
         let plain: String
 
         switch state {
         case .loading:
-            figures = []
+            figure = nil
             plain = String(localized: "Adding up your dictation…")
         case .failed:
-            figures = []
+            figure = nil
             plain = String(localized: "Your stats couldn’t be loaded.")
         case .locked:
-            figures = []
+            figure = nil
             plain = String(localized: "Keep dictating to unlock your stats.")
         case .firstRun:
-            figures = []
+            figure = nil
             plain = String(localized: "Your first dictation is one shortcut away.")
-        case .quietWeek:
-            figures = []
-            plain = String(localized: "Nothing dictated in the last 7 days.")
-        case .week(let words, let saved, _, _):
-            let wordsText = Self.wordsText(words)
-            if saved >= 60 {
-                let savedText = Formatters.formattedSavedTime(saved)
-                figures = [wordsText, savedText]
-                plain = String(localized: "You dictated \(wordsText) and saved \(savedText) of typing.")
+        case .active(let totalWords, let totalSaved, _, _, _):
+            if totalSaved >= 60 {
+                let savedText = Formatters.formattedSavedTime(totalSaved)
+                figure = savedText
+                plain = String(localized: "You have saved \(savedText) with VoxOS")
             } else {
-                figures = [wordsText]
-                plain = String(localized: "You dictated \(wordsText).")
+                let wordsText = Self.wordsText(totalWords)
+                figure = wordsText
+                plain = String(localized: "You have dictated \(wordsText) with VoxOS")
             }
         }
 
         var text = AttributedString(plain)
-        text.font = Font.app(size: Self.sentenceSize, weight: .medium)
-        text.foregroundColor = figures.isEmpty ? AppTheme.Text.primary : AppTheme.Text.secondary
+        text.font = Font.appDisplay(size: Self.headlineSize)
+        text.foregroundColor = AppTheme.Text.primary
 
-        for figure in figures {
-            if let range = text.range(of: figure) {
-                text[range].font = Font.app(size: Self.sentenceSize, weight: .semibold)
-                text[range].foregroundColor = AppTheme.Text.primary
-            }
+        if let figure, let range = text.range(of: figure) {
+            text[range].foregroundColor = AppTheme.Accent.primary
         }
 
         return text
@@ -165,15 +177,38 @@ struct DashboardHeroCard: View {
                 localized:
                     "Click into any text field, hold \(shortcut) and speak, then let go to paste. Words and time saved add up here."
             )
-        case .quietWeek(let words, let saved):
-            let wordsText = Self.wordsText(words)
-            guard saved >= 60 else {
-                return String(localized: "So far you’ve dictated \(wordsText) with VoxOS.")
+        case .active(let totalWords, _, _, _, _):
+            let dictated = String(
+                localized: "Dictated \(Formatters.formattedCompactNumber(totalWords)) words")
+            guard let comparison = Self.bookComparison(totalWords) else { return dictated }
+            return "\(dictated) · \(comparison)"
+        }
+    }
+
+    /// Under the prism: how this week compares with the one before.
+    private var weekCaption: String? {
+        switch state {
+        case .active(_, _, let weekWords, let weekSessions, let previousWeekWords):
+            guard weekSessions > 0 else {
+                return String(localized: "Nothing dictated in the last 7 days.")
             }
-            return String(
-                localized: "So far you’ve dictated \(wordsText) and saved \(Formatters.formattedSavedTime(saved)).")
-        case .week(let words, _, let sessions, let previousWeekWords):
-            return Self.weekDetail(words: words, sessions: sessions, previousWeekWords: previousWeekWords)
+            return Self.weekDetail(words: weekWords, sessions: weekSessions, previousWeekWords: previousWeekWords)
+        case .firstRun:
+            return String(localized: "Your week shows up here, split by the mode you used.")
+        case .loading, .failed, .locked:
+            return nil
+        }
+    }
+
+    private static func bookComparison(_ words: Int) -> String? {
+        switch DashboardProgressBenchmark.equivalence(for: words) {
+        case .matched(let title):
+            return String(localized: "as long as \(title)")
+        case .repeated(let title, let count):
+            return String(localized: "\(title), \(Formatters.formattedNumber(count)) times over")
+        case .remaining(let remaining, let title):
+            guard remaining > 0, !title.isEmpty else { return nil }
+            return String(localized: "\(Formatters.formattedNumber(remaining)) words from \(title)")
         }
     }
 
@@ -183,10 +218,11 @@ struct DashboardHeroCard: View {
     }
 
     private static func weekDetail(words: Int, sessions: Int, previousWeekWords: Int) -> String {
-        let count = Formatters.formattedNumber(sessions)
+        let wordsText = wordsText(words)
         let sessionsText =
             sessions == 1
-            ? String(localized: "Across 1 session") : String(localized: "Across \(count) sessions")
+            ? String(localized: "\(wordsText) in 1 session")
+            : String(localized: "\(wordsText) in \(Formatters.formattedNumber(sessions)) sessions")
 
         guard previousWeekWords > 0 else {
             return String(localized: "\(sessionsText).")
@@ -200,76 +236,7 @@ struct DashboardHeroCard: View {
         }
 
         return change > 0
-            ? String(localized: "\(sessionsText), \(percent)% more words than the 7 days before.")
-            : String(localized: "\(sessionsText), \(percent)% fewer words than the 7 days before.")
-    }
-}
-
-/// Seven days as a mirrored voice waveform: one bar per day, its height the words dictated that
-/// day. With no activity it is a flat line, which reads as silence rather than as a broken chart.
-private struct DashboardWeekWaveform: View {
-    private static let restingHeight: CGFloat = 4
-    private static let labelHeight: CGFloat = 16
-
-    let days: [DashboardProductivityPoint]
-    let isActive: Bool
-
-    private var maxWords: Int {
-        max(days.map(\.words).max() ?? 0, 1)
-    }
-
-    var body: some View {
-        VStack(spacing: 8) {
-            GeometryReader { geometry in
-                HStack(alignment: .center, spacing: 0) {
-                    ForEach(Array(days.enumerated()), id: \.element.id) { index, day in
-                        Capsule(style: .continuous)
-                            .fill(barColor(for: day, isToday: index == days.count - 1))
-                            .frame(width: barWidth(in: geometry.size.width))
-                            .frame(height: barHeight(for: day, available: geometry.size.height))
-                            .frame(maxWidth: .infinity, maxHeight: .infinity)
-                            .help(Text(verbatim: "\(day.accessibilityLabel): \(Formatters.formattedNumber(day.words))"))
-                    }
-                }
-            }
-
-            HStack(spacing: 0) {
-                ForEach(Array(days.enumerated()), id: \.element.id) { index, day in
-                    Text(verbatim: day.label)
-                        .font(.app(size: 10, weight: index == days.count - 1 ? .semibold : .medium))
-                        .foregroundStyle(index == days.count - 1 ? AppTheme.Text.secondary : AppTheme.Text.muted)
-                        .lineLimit(1)
-                        .frame(maxWidth: .infinity)
-                }
-            }
-            .frame(height: Self.labelHeight)
-        }
-        .animation(.easeOut(duration: 0.35), value: days.map(\.words))
-        .accessibilityElement(children: .ignore)
-        .accessibilityLabel("Words dictated each day, last 7 days")
-        .accessibilityValue(accessibilityValue)
-    }
-
-    private func barWidth(in width: CGFloat) -> CGFloat {
-        let slot = width / CGFloat(max(days.count, 1))
-        return min(max(slot * 0.42, 6), 16)
-    }
-
-    private func barHeight(for day: DashboardProductivityPoint, available: CGFloat) -> CGFloat {
-        guard isActive, day.words > 0 else { return Self.restingHeight }
-        // Square root keeps a light day visible next to a heavy one.
-        let share = (Double(day.words) / Double(maxWords)).squareRoot()
-        return max(Self.restingHeight * 2, available * CGFloat(share))
-    }
-
-    private func barColor(for day: DashboardProductivityPoint, isToday: Bool) -> Color {
-        guard isActive, day.words > 0 else { return AppTheme.Border.control }
-        return isToday ? AppTheme.Accent.primary : AppTheme.Accent.primary.opacity(0.55)
-    }
-
-    private var accessibilityValue: String {
-        days
-            .map { "\($0.accessibilityLabel) \(Formatters.formattedNumber($0.words))" }
-            .joined(separator: ", ")
+            ? String(localized: "\(sessionsText), \(percent)% more than the 7 days before.")
+            : String(localized: "\(sessionsText), \(percent)% fewer than the 7 days before.")
     }
 }

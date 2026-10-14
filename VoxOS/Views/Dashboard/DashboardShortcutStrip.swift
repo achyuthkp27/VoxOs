@@ -1,8 +1,11 @@
 import SwiftUI
 
-/// "How do I use this" at a glance: the live recording shortcut and what a hold, a tap and a
+/// Quick actions: the live recording shortcuts as keycap tiles, and what a hold, a tap and a
 /// double-tap do. Reads the stored shortcuts so it never lies about the keys.
 struct DashboardShortcutStrip: View {
+    /// Tiles per row: three on a full-width page, fewer when the window is narrow.
+    var columnCount: Int = 3
+
     @ObservedObject private var modeManager = ModeManager.shared
 
     private var primary: Shortcut? { ShortcutStore.shortcut(for: .primaryRecording) }
@@ -15,7 +18,7 @@ struct DashboardShortcutStrip: View {
 
     var body: some View {
         VStack(alignment: .leading, spacing: DashboardLayout.labelSpacing) {
-            DashboardSectionLabel("Shortcuts")
+            DashboardSectionLabel("Quick actions")
 
             if primary == nil && dictateAndSend == nil && agentTap == nil {
                 Text("No recording shortcut is set yet. Add one in Settings to start dictating.")
@@ -23,60 +26,72 @@ struct DashboardShortcutStrip: View {
                     .foregroundStyle(AppTheme.Text.secondary)
                     .dashboardCard()
             } else {
-                chips
+                tiles
             }
         }
         .frame(maxWidth: .infinity, alignment: .leading)
     }
 
-    private var chips: some View {
+    private var tiles: some View {
         LazyVGrid(
-            columns: [GridItem(.adaptive(minimum: 260), spacing: DashboardLayout.columnSpacing)],
+            columns: Array(
+                repeating: GridItem(.flexible(), spacing: DashboardLayout.columnSpacing, alignment: .top),
+                count: max(columnCount, 1)
+            ),
             alignment: .leading,
             spacing: DashboardLayout.columnSpacing
         ) {
             if let primary {
-                chip(keys: [primary.displayString], title: "Hold to dictate", detail: "Release to paste")
-                chip(keys: [primary.displayString], title: "Tap for hands-free", detail: "Tap again to stop")
+                tile(keys: [primary.displayString], title: "Hold to dictate", detail: "Release to paste")
+                tile(keys: [primary.displayString], title: "Tap for hands-free", detail: "Tap again to stop")
             }
             if let dictateAndSend {
-                chip(
-                    keys: [dictateAndSend.displayString], title: "Hold to dictate and send",
+                tile(
+                    keys: [dictateAndSend.displayString], title: "Dictate and send",
                     detail: "Presses Return after pasting")
             }
+            if let agentShortcut, hasAgentMode {
+                tile(keys: [agentShortcut.displayString], title: "Hold for Agent", detail: "Direct to Agent mode")
+            }
             if let agentTap {
-                chip(
+                tile(
                     keys: [agentTap.displayString, agentTap.displayString],
                     title: "Double-tap for Agent",
                     detail: "Say what to do; it sends when you pause")
-            }
-            if let agentShortcut, hasAgentMode {
-                chip(keys: [agentShortcut.displayString], title: "Hold for Agent", detail: "Direct to Agent mode")
             }
         }
         .frame(maxWidth: .infinity, alignment: .leading)
     }
 
-    private func chip(keys: [String], title: LocalizedStringKey, detail: LocalizedStringKey) -> some View {
-        HStack(spacing: 12) {
+    /// A keycap row over a two-line caption, so the key reads first.
+    private func tile(keys: [String], title: LocalizedStringKey, detail: LocalizedStringKey) -> some View {
+        VStack(alignment: .leading, spacing: 10) {
             HStack(spacing: 4) {
                 ForEach(Array(keys.enumerated()), id: \.offset) { _, key in
                     Text(key)
-                        .font(.app(size: 12, weight: .semibold))
+                        .font(.appMono(size: 12, weight: .semibold))
                         .foregroundStyle(AppTheme.Text.primary)
                         .fixedSize()
-                        .padding(.horizontal, 7)
-                        .frame(minWidth: 28, minHeight: 24)
+                        .padding(.horizontal, 8)
+                        .frame(minWidth: 30, minHeight: 26)
                         .background(
-                            RoundedRectangle(cornerRadius: 6, style: .continuous)
+                            RoundedRectangle(cornerRadius: 7, style: .continuous)
                                 .fill(AppTheme.Surface.control)
                         )
                         .overlay(
-                            RoundedRectangle(cornerRadius: 6, style: .continuous)
+                            RoundedRectangle(cornerRadius: 7, style: .continuous)
                                 .strokeBorder(AppTheme.Border.control, lineWidth: 1)
                         )
+                        .overlay(alignment: .bottom) {
+                            // A keycap's lower lip, drawn as a hairline rather than a shadow.
+                            RoundedRectangle(cornerRadius: 7, style: .continuous)
+                                .fill(AppTheme.Border.control)
+                                .frame(height: 2)
+                                .padding(.horizontal, 3)
+                        }
                 }
             }
+
             VStack(alignment: .leading, spacing: 2) {
                 Text(title)
                     .font(.app(size: 13, weight: .semibold))
@@ -86,8 +101,9 @@ struct DashboardShortcutStrip: View {
                     .foregroundStyle(AppTheme.Text.secondary)
             }
             .lineLimit(1)
-            .frame(maxWidth: .infinity, alignment: .leading)
         }
-        .dashboardCard(padding: 12)
+        .frame(maxWidth: .infinity, alignment: .leading)
+        .dashboardCard(padding: 14)
+        .accessibilityElement(children: .combine)
     }
 }

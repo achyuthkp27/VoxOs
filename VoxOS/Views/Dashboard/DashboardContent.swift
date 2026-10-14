@@ -6,8 +6,7 @@ import os
 struct DashboardContent: View {
     private let logger = Logger(subsystem: "com.achyuthkp.voxos", category: "DashboardContent")
     private static let fallbackDisplayName = String(localized: "there")
-    private static let displayNameFontSize: CGFloat = 28
-    private static let displayNameFontWeight: NSFont.Weight = .bold
+    private static let displayNameFontSize: CGFloat = 30
     private static let displayNameMinWidth: CGFloat = 72
     private static let displayNameMaxWidth: CGFloat = 280
     private static let displayNameHorizontalPadding: CGFloat = 8
@@ -136,8 +135,9 @@ struct DashboardContent: View {
         }
     }
 
-    /// Top to bottom: who and when, anything blocking dictation, the week in one sentence, four
-    /// glance cards, then running Agent jobs, recent dictations and the shortcut reference.
+    /// Top to bottom: who and when, anything blocking dictation, the hero (time saved and the
+    /// week's prism) beside the current mode, quick actions, running Agent jobs, recent
+    /// dictations, then four compact glance cards.
     private func dashboardMainContent(availableWidth: CGFloat) -> some View {
         VStack(alignment: .leading, spacing: DashboardLayout.sectionSpacing) {
             licenseStatusMessage
@@ -167,17 +167,13 @@ struct DashboardContent: View {
             }
 
             nameEditorDismissArea {
-                VStack(spacing: DashboardLayout.columnSpacing) {
-                    heroSection(isWide: DashboardLayout.isWide(availableWidth))
+                heroRow(availableWidth: availableWidth)
+            }
 
-                    DashboardGlanceGrid(
-                        today: statsSummary.totals(for: .today),
-                        allTime: statsSummary.total,
-                        peakHours: statsSummary.allTimePeakHours,
-                        isLoaded: hasLoadedStatsSnapshot,
-                        columnCount: DashboardLayout.glanceColumnCount(for: availableWidth)
-                    )
-                }
+            nameEditorDismissArea {
+                DashboardShortcutStrip(
+                    columnCount: DashboardLayout.quickActionColumnCount(for: availableWidth)
+                )
             }
 
             DashboardBackgroundTasks()
@@ -187,7 +183,17 @@ struct DashboardContent: View {
             }
 
             nameEditorDismissArea {
-                DashboardShortcutStrip()
+                VStack(alignment: .leading, spacing: DashboardLayout.labelSpacing) {
+                    DashboardSectionLabel("At a glance")
+
+                    DashboardGlanceGrid(
+                        today: statsSummary.totals(for: .today),
+                        allTime: statsSummary.total,
+                        peakHours: statsSummary.allTimePeakHours,
+                        isLoaded: hasLoadedStatsSnapshot,
+                        columnCount: DashboardLayout.glanceColumnCount(for: availableWidth)
+                    )
+                }
             }
 
             Spacer(minLength: DashboardLayout.footerTopSpacing)
@@ -310,8 +316,8 @@ struct DashboardContent: View {
         }
 
         return DashboardHeroAction(
-            title: canViewInsights ? "See insights" : "Insights locked",
-            icon: canViewInsights ? "chevron.right" : "lock.fill",
+            title: canViewInsights ? "View insights" : "Insights locked",
+            icon: canViewInsights ? "arrow.right" : "lock.fill",
             help: canViewInsights
                 ? String(localized: "Charts, peak hours and model usage")
                 : String(localized: "Keep dictating to unlock these stats."),
@@ -338,14 +344,11 @@ struct DashboardContent: View {
         }
 
         let week = statsSummary.recentSevenDays
-        guard week.count > 0 else {
-            return .quietWeek(allTimeWords: statsSummary.totalWords, allTimeSaved: allTimeSaved)
-        }
-
-        return .week(
-            words: week.words,
-            saved: DashboardTimeSaving.timeSaved(words: week.words, duration: week.duration),
-            sessions: week.count,
+        return .active(
+            totalWords: statsSummary.totalWords,
+            totalSaved: allTimeSaved,
+            weekWords: week.words,
+            weekSessions: week.count,
             previousWeekWords: statsSummary.previousSevenDayWords
         )
     }
@@ -361,32 +364,37 @@ struct DashboardContent: View {
         )
     }
 
+    /// "☀ Good morning, Name" in the display serif, the name editable in place, and today's
+    /// date as a mono chip on the right.
     private var greetingHeader: some View {
-        VStack(alignment: .leading, spacing: 4) {
+        HStack(alignment: .center, spacing: 12) {
             HStack(alignment: .firstTextBaseline, spacing: 8) {
+                Image(systemName: greetingSymbol)
+                    .font(.app(size: 20, weight: .regular))
+                    .foregroundStyle(AppTheme.Text.secondary)
+                    .accessibilityHidden(true)
+
                 Text("\(greetingText),")
                     .font(displayNameFont)
                     .foregroundStyle(AppTheme.Text.primary)
                     .onTapGesture(perform: dismissDisplayNameEditorIfNeeded)
 
                 displayNameView
-
-                dismissingSpacer
             }
-            .frame(maxWidth: .infinity, alignment: .leading)
             .lineLimit(1)
             .minimumScaleFactor(0.72)
 
-            HStack(alignment: .top, spacing: 0) {
-                Text(headerSubtitle)
-                    .font(.app(size: 13, weight: .medium))
-                    .foregroundStyle(AppTheme.Text.secondary)
-                    .lineLimit(2)
+            dismissingSpacer
 
-                Spacer(minLength: 0)
-            }
-            .contentShape(Rectangle())
-            .onTapGesture(perform: dismissDisplayNameEditorIfNeeded)
+            Text(verbatim: headerDate)
+                .font(.appMono(size: 12, weight: .medium))
+                .foregroundStyle(AppTheme.Text.secondary)
+                .lineLimit(1)
+                .fixedSize()
+                .padding(.horizontal, 10)
+                .frame(height: 26)
+                .background(DashboardInsightCardBackground(cornerRadius: 13))
+                .onTapGesture(perform: dismissDisplayNameEditorIfNeeded)
         }
         .frame(maxWidth: .infinity, alignment: .leading)
     }
@@ -427,7 +435,7 @@ struct DashboardContent: View {
     }
 
     private var displayNameFont: Font {
-        .app(size: Self.displayNameFontSize, weight: .bold)
+        .appDisplay(size: Self.displayNameFontSize)
     }
 
     private var dismissingSpacer: some View {
@@ -641,11 +649,31 @@ struct DashboardContent: View {
         )
     }
 
-    private func heroSection(isWide: Bool) -> some View {
+    /// Wide: the hero and the current-mode card side by side at one height. Narrow: stacked.
+    @ViewBuilder
+    private func heroRow(availableWidth: CGFloat) -> some View {
+        if DashboardLayout.isWide(availableWidth) {
+            HStack(alignment: .top, spacing: DashboardLayout.columnSpacing) {
+                heroCard(isSplit: DashboardLayout.isHeroSplit(availableWidth))
+
+                DashboardCurrentModeCard()
+                    .frame(width: DashboardLayout.currentModeCardWidth)
+            }
+            .fixedSize(horizontal: false, vertical: true)
+        } else {
+            VStack(spacing: DashboardLayout.columnSpacing) {
+                heroCard(isSplit: false)
+                DashboardCurrentModeCard()
+            }
+        }
+    }
+
+    private func heroCard(isSplit: Bool) -> some View {
         DashboardHeroCard(
             state: heroState,
             days: statsSummary.lastSevenDayProductivity,
-            isWide: isWide,
+            modeShares: statsSummary.sevenDayModeShares,
+            isSplit: isSplit,
             action: heroAction
         )
     }
@@ -727,16 +755,19 @@ struct DashboardContent: View {
 
     private var displayNameFieldWidth: CGFloat {
         let name = isEditingDisplayName ? displayNameDraft : defaultedDisplayName
-        let measuredWidth = (name as NSString).size(
-            withAttributes: [
-                .font: NSFont.systemFont(ofSize: Self.displayNameFontSize, weight: Self.displayNameFontWeight)
-            ]
-        ).width
+        let measuredWidth = (name as NSString).size(withAttributes: [.font: Self.displayNameNSFont]).width
         return min(
             max(measuredWidth + (Self.displayNameHorizontalPadding * 2) + 6, Self.displayNameMinWidth),
             Self.displayNameMaxWidth
         )
     }
+
+    /// The AppKit twin of `Font.appDisplay`, so the name field is measured in the face it is drawn in.
+    private static let displayNameNSFont: NSFont = {
+        let base = NSFont.systemFont(ofSize: displayNameFontSize, weight: .regular)
+        guard let serif = base.fontDescriptor.withDesign(.serif) else { return base }
+        return NSFont(descriptor: serif, size: displayNameFontSize) ?? base
+    }()
 
     private var defaultedDisplayName: String {
         let storedName = sanitizedDisplayName(dashboardDisplayName)
@@ -822,9 +853,22 @@ struct DashboardContent: View {
         }
     }
 
-    /// The date, not a pep talk: the hero already says how the week went.
-    private var headerSubtitle: String {
-        Date().formatted(.dateTime.weekday(.wide).day().month(.wide))
+    private var greetingSymbol: String {
+        let hour = Calendar.current.component(.hour, from: Date())
+
+        switch hour {
+        case 5..<17:
+            return "sun.max"
+        case 17..<21:
+            return "sun.horizon"
+        default:
+            return "moon.stars"
+        }
+    }
+
+    /// The date, not a pep talk: "Tue, 14 Oct", ordered for the user's locale.
+    private var headerDate: String {
+        Date().formatted(.dateTime.weekday(.abbreviated).day().month(.abbreviated))
     }
 
     // MARK: - Computed Metrics

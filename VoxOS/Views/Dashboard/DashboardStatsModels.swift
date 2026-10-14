@@ -275,9 +275,25 @@ struct DashboardStatsSummary: Codable, Equatable, Sendable {
     var lastThirtyDayPeakHours: DashboardPeakHoursSummary = .empty
     var thisYearPeakHours: DashboardPeakHoursSummary = .empty
     var allTimePeakHours: DashboardPeakHoursSummary = .empty
+    /// Words per mode over the last seven days, largest first. Optional so a snapshot written
+    /// before it existed still decodes.
+    var lastSevenDayModeShares: [DashboardModeShare]?
+}
+
+/// One mode's part of the week's dictation, by the mode name stored on each session. A nil
+/// name is a dictation made before modes were recorded; it is drawn as the default beam.
+struct DashboardModeShare: Codable, Equatable, Identifiable, Sendable {
+    var id: String { modeName ?? "" }
+    let modeName: String?
+    let words: Int
+    let sessionCount: Int
 }
 
 extension DashboardStatsSummary {
+    var sevenDayModeShares: [DashboardModeShare] {
+        lastSevenDayModeShares ?? []
+    }
+
     var total: DashboardMetricTotals {
         DashboardMetricTotals(count: totalCount, words: totalWords, duration: totalDuration)
     }

@@ -1,7 +1,7 @@
 import SwiftUI
 
-/// Four equal cards under the hero: today, speaking pace, busiest time and all time. Each is a
-/// label, one figure and one line of context, so the row reads at a glance.
+/// Four compact equal cards at the foot of the page: today, speaking pace, busiest time and all
+/// time. Each is a label, one figure and one line of context, so the row reads at a glance.
 struct DashboardGlanceGrid: View {
     let today: DashboardMetricTotals
     let allTime: DashboardMetricTotals
@@ -165,11 +165,11 @@ private struct DashboardGlanceCard<Accessory: View>: View {
             }
 
             Text(value)
-                .font(.app(size: 22, weight: .semibold).monospacedDigit())
+                .font(.appMono(size: 17, weight: .semibold))
                 .foregroundStyle(AppTheme.Text.primary)
                 .lineLimit(1)
                 .minimumScaleFactor(0.6)
-                .padding(.top, 12)
+                .padding(.top, 8)
                 .contentTransition(.numericText())
 
             if let detail {
@@ -178,15 +178,15 @@ private struct DashboardGlanceCard<Accessory: View>: View {
                     .foregroundStyle(AppTheme.Text.secondary)
                     .lineLimit(2)
                     .fixedSize(horizontal: false, vertical: true)
-                    .padding(.top, 4)
+                    .padding(.top, 3)
             }
 
-            Spacer(minLength: 12)
+            Spacer(minLength: 8)
 
             accessory()
         }
-        .frame(maxWidth: .infinity, minHeight: 104, maxHeight: .infinity, alignment: .topLeading)
-        .dashboardCard()
+        .frame(maxWidth: .infinity, minHeight: 78, maxHeight: .infinity, alignment: .topLeading)
+        .dashboardCard(padding: 14)
         .accessibilityElement(children: .combine)
     }
 }

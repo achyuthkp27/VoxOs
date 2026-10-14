@@ -34,7 +34,8 @@ final class DashboardStatsSnapshotStore: @unchecked Sendable {
         let summary: DashboardStatsSummary
     }
 
-    private static let currentVersion = 1
+    // 2: adds the week's mode shares; older snapshots are reloaded so the prism is not empty.
+    private static let currentVersion = 2
     private static let staleDefaultsKey = "dashboardStatsSnapshotStale"
     private let logger = Logger(subsystem: "com.achyuthkp.voxos", category: "DashboardStatsSnapshotStore")
     private let fileManager: FileManager
