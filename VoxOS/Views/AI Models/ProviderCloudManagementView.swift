@@ -14,6 +14,7 @@ struct CloudProviderManagementView: View {
             .groq,
             .mistral,
             .cerebras,
+            .openCode,
         ]
 
         var descriptors = enhancementProviders.map { aiProvider in
@@ -42,7 +43,7 @@ struct CloudProviderManagementView: View {
         }
 
         let preferredOrder = [
-            "Groq", "Cerebras", "Gemini", "OpenAI", "OpenRouter", "Anthropic", "Mistral",
+            "Groq", "Cerebras", "Gemini", "OpenAI", "OpenRouter", "OpenCode", "Anthropic", "Mistral",
             "Deepgram", "ElevenLabs", "Soniox", "Speechmatics", "AssemblyAI", "xAI", "Cartesia",
         ]
 
@@ -147,6 +148,8 @@ struct ProviderDescriptor: Identifiable {
             return URL(string: "https://platform.openai.com/api-keys")
         case "openrouter":
             return URL(string: "https://openrouter.ai/keys")
+        case "opencode":
+            return URL(string: "https://opencode.ai/docs/zen/")
         case "anthropic":
             return URL(string: "https://console.anthropic.com/settings/keys")
         case "mistral":

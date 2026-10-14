@@ -10,6 +10,7 @@ enum AIProvider: String, CaseIterable {
     case openAI = "OpenAI"
     case openRouter = "OpenRouter"
     case mistral = "Mistral"
+    case openCode = "OpenCode"
     case elevenLabs = "ElevenLabs"
     case deepgram = "Deepgram"
     case soniox = "Soniox"
@@ -36,6 +37,10 @@ enum AIProvider: String, CaseIterable {
             return "https://openrouter.ai/api/v1/chat/completions"
         case .mistral:
             return "https://api.mistral.ai/v1/chat/completions"
+        case .openCode:
+            // OpenCode's pay-as-you-go gateway; only its OpenAI-compatible models are offered,
+            // since the Claude/GPT/Gemini ones there use other request formats.
+            return "https://opencode.ai/inference/v1/chat/completions"
         case .elevenLabs:
             return "https://api.elevenlabs.io/v1/speech-to-text"
         case .deepgram:
@@ -71,6 +76,8 @@ enum AIProvider: String, CaseIterable {
             return "gpt-5.6-luna"
         case .mistral:
             return "mistral-small-latest"
+        case .openCode:
+            return "deepseek-v4-flash"
         case .elevenLabs:
             return "scribe_v2"
         case .deepgram:
@@ -140,6 +147,25 @@ enum AIProvider: String, CaseIterable {
                 "mistral-small-latest",
                 "mistral-medium-latest",
                 "mistral-large-latest",
+            ]
+        case .openCode:
+            return [
+                "deepseek-v4-flash",
+                "deepseek-v4.1-flash",
+                "deepseek-v4-pro",
+                "kimi-k3",
+                "kimi-k2.6",
+                "kimi-k2.7-code",
+                "glm-5.3",
+                "glm-5.3-flash",
+                "qwen3.8-max",
+                "minimax-m3",
+                "mistral-large-4",
+                "big-pickle",
+                "nemotron-3.5-lightning-free",
+                "nemotron-3-ultra-free",
+                "mimo-v2.6-flash-free",
+                "ling-3.1-flash-free",
             ]
         case .elevenLabs:
             return ["scribe_v2"]
