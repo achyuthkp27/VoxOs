@@ -29,16 +29,17 @@ enum AgentRunScope {
         case "mail_compose", "gmail_compose", "slack_send":
             return sends
                 ? "sending needs the user's confirmation; leave a draft instead and say so in the final reply"
-                : askBeforeActingReason(tool)
+                : askBeforeActingReason(tool, args)
         default:
-            return askBeforeActingReason(tool)
+            return askBeforeActingReason(tool, args)
         }
     }
 }
 
 extension AgentRunScope {
-    fileprivate static func askBeforeActingReason(_ tool: String) -> String? {
-        guard AgentControlMode.current == .askBeforeAction, AgentControlMode.isMutating(tool) else { return nil }
+    fileprivate static func askBeforeActingReason(_ tool: String, _ args: [String: Any]) -> String? {
+        guard AgentControlMode.isMutating(tool), AgentControlMode.mode(forTool: tool, args: args) == .askBeforeAction
+        else { return nil }
         return "ask-before-acting is on, so background tasks can only look, not act"
     }
 }

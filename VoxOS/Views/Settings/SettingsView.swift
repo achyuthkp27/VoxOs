@@ -70,7 +70,7 @@ struct SettingsView: View {
         "Capturing system audio…",
     ]
     private static let agentTerms = [
-        "Control Mode", "Send When You Stop Talking", "Pause Before Sending", "Allow Risky Shell Commands", "Plugins",
+        "Control Mode", "Set a Mode for an App", "per-app", "Send When You Stop Talking", "Pause Before Sending", "Allow Risky Shell Commands", "Plugins",
         "Open Plugins Folder", "Permissions", "Accessibility", "Accessibility missing", "Screen Recording",
         "Screen Recording missing", "Agent",
         "Close After Opening Something", "Fall Back To Other Providers", "fallback", "failover",
@@ -396,6 +396,8 @@ struct SettingsView: View {
                     Text((AgentControlMode(rawValue: agentControlModeRaw) ?? .takeover).summary)
                         .font(.app(.caption))
                         .foregroundStyle(.secondary)
+
+                    AgentAppModeOverridesRows()
 
                     Toggle(isOn: $agentAutoSendEnabled) {
                         HStack(spacing: 2) {

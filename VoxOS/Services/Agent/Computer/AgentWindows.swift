@@ -32,6 +32,7 @@ enum AgentWindows {
         guard !trimmed.isEmpty else { return ["error": "name is required"] }
         if let running = matchRunning(trimmed) {
             running.activate(options: [.activateAllWindows])
+            AgentFrontmostApp.set(running.bundleIdentifier)
             return ["result": "opened \(running.localizedName ?? trimmed)"]
         }
         let workspace = NSWorkspace.shared
@@ -56,6 +57,7 @@ enum AgentWindows {
             return ["error": "could not find an app named \(trimmed) — try the exact name or its bundle id"]
         }
         workspace.openApplication(at: appURL, configuration: NSWorkspace.OpenConfiguration()) { _, _ in }
+        AgentFrontmostApp.set(Bundle(url: appURL)?.bundleIdentifier)
         return ["result": "opened \(appURL.deletingPathExtension().lastPathComponent)"]
     }
 
@@ -63,6 +65,7 @@ enum AgentWindows {
     static func activateApp(query: String) -> [String: Any] {
         guard let app = matchRunning(query) else { return ["error": "no running app matching \"\(query)\""] }
         app.activate(options: [.activateAllWindows])
+        AgentFrontmostApp.set(app.bundleIdentifier)
         return ["ok": true, "activated": app.localizedName ?? query]
     }
 

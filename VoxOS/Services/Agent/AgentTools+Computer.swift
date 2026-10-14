@@ -26,13 +26,12 @@ extension AgentTools {
 
         // set_control_mode must stay reachable from every mode — otherwise a user who says
         // "switch to observe only" has no voice command left to undo it.
+        // The mode is the target app's own when the user gave it one (Settings → Agent),
+        // otherwise the global mode; tools that are not about one app always use the global.
         if AgentControlMode.isMutating(name), name != "set_control_mode" {
-            switch AgentControlMode.current {
+            switch AgentControlMode.mode(forTool: name, args: args) {
             case .observeOnly:
-                return [
-                    "error":
-                        "blocked: the agent is in observe-only mode and cannot \(name). The user can switch modes in Settings → Agent or by saying “act freely”."
-                ]
+                return ["error": observeOnlyMessage(name: name, args: args)]
             case .askBeforeAction where !alwaysConfirms(name, args):
                 AgentPendingAction.set(name: name, args: args)
                 return [
@@ -100,6 +99,18 @@ extension AgentTools {
         return await executeBuiltin(name: name, args: args)
     }
 
+    private static func observeOnlyMessage(name: String, args: [String: Any]) -> String {
+        if let bundleID = AgentControlMode.targetBundleID(forTool: name, args: args),
+            AgentControlMode.appOverrides[bundleID] == .observeOnly
+        {
+            let app = AgentAppResolver.displayName(forBundleID: bundleID)
+            return
+                "blocked: the agent is set to observe only in \(app) and cannot \(name) there. The user can change this in Settings → Agent."
+        }
+        return
+            "blocked: the agent is in observe-only mode and cannot \(name). The user can switch modes in Settings → Agent or by saying “act freely”."
+    }
+
     /// The built-in plugin management tools share the `plugin_` prefix with user manifests.
     static let builtinPluginTools: Set<String> = ["plugin_list", "plugin_create", "plugin_delete"]
 
@@ -123,7 +134,12 @@ extension AgentTools {
         }
         // The mode switch itself must stay confirmable from observe-only, or "act freely" can
         // never be confirmed and Settings becomes the only way out.
-        if AgentControlMode.current == .observeOnly, pending.name != "set_control_mode" {
+        // The stricter of the app the action was held for and the app it would land in now:
+        // focus may have moved, or the user may have tightened that app since.
+        let modeNow = AgentControlMode.stricter(
+            AgentControlMode.effectiveMode(forBundleID: pending.bundleID),
+            AgentControlMode.mode(forTool: pending.name, args: pending.args))
+        if modeNow == .observeOnly, pending.name != "set_control_mode" {
             return ["error": "observe-only mode: nothing can be confirmed"]
         }
         let arg = { (key: String) -> String in (pending.args[key] as? String) ?? "" }
@@ -539,6 +555,16 @@ extension AgentTools {
                     failures.append(["step": index + 1, "tool": step.tool, "error": "blocked in background: \(reason)"])
                     continue
                 }
+                // macro_run itself passed the global gate; a step aimed at an app the user set
+                // stricter than that (observe, or ask with nobody here to answer) does not run.
+                let stepMode = AgentControlMode.mode(forTool: step.tool, args: step.args)
+                if stepMode == .observeOnly || stepMode.rank < AgentControlMode.current.rank {
+                    failures.append([
+                        "step": index + 1, "tool": step.tool,
+                        "error": "not run: the target app is set to \(stepMode.rawValue) in Settings → Agent",
+                    ])
+                    continue
+                }
                 let result = await executeUngated(name: step.tool, args: stripReservedArgs(step.args))
                 if let confirmMessage = result["confirm_required"] {
                     // A step that only queues a confirmation (e.g. messages_send) never
@@ -608,7 +634,9 @@ extension AgentTools {
             return ["ok": true, "mode": mode.rawValue, "note": mode.summary]
 
         case "get_control_mode":
-            return ["mode": AgentControlMode.current.rawValue]
+            var result: [String: Any] = ["mode": AgentControlMode.current.rawValue]
+            if let overrides = AgentControlMode.overridesSummary() { result["app_overrides"] = overrides }
+            return result
 
         // MARK: System audio (what the Mac is playing)
         case "system_audio_start":

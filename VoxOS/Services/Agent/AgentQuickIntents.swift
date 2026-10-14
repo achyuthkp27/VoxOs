@@ -16,6 +16,7 @@ enum AgentQuickIntents {
         setPendingSuggestions([])
         switch appRequest(in: lower) {
         case .found(let app):
+            if let blocked = blockedOpenReply(app) { return blocked }
             let result = await MainActor.run { AgentWindows.openApp(name: app) }
             if let error = result["error"] as? String { return "Couldn't open \(app): \(error)" }
             AgentAutoClose.recordQuickLaunch()
@@ -200,6 +201,7 @@ enum AgentQuickIntents {
     static func perform(_ followUp: FollowUp) async -> String {
         switch followUp {
         case .open(let app):
+            if let blocked = blockedOpenReply(app) { return blocked }
             let result = await MainActor.run { AgentWindows.openApp(name: app) }
             if let error = result["error"] as? String { return "Couldn't open \(app): \(error)" }
             AgentAutoClose.recordQuickLaunch()
@@ -207,6 +209,22 @@ enum AgentQuickIntents {
         case .ask(let question, let suggestions):
             setPendingSuggestions(suggestions)
             return question
+        }
+    }
+
+    /// A quick launch is the open_app tool without the model, so it obeys the same control
+    /// mode (the app's own, else the global): observe-only refuses, ask-before-acting holds it
+    /// for "confirm". Returns the reply to show when the app may not open right now.
+    static func blockedOpenReply(_ app: String) -> String? {
+        let args: [String: Any] = ["name": app]
+        switch AgentControlMode.mode(forTool: "open_app", args: args) {
+        case .takeover:
+            return nil
+        case .observeOnly:
+            return "The Agent is set to observe only, so I won't open \(app)."
+        case .askBeforeAction:
+            AgentPendingAction.set(name: "open_app", args: args)
+            return "Ready to open \(app). Say “confirm” or “cancel”."
         }
     }
 

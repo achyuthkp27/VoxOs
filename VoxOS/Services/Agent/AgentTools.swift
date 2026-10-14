@@ -826,7 +826,7 @@ enum AgentTools {
 
 /// Holds an action that must be confirmed by voice before it executes.
 enum AgentPendingAction {
-    private static var pending: (name: String, args: [String: Any], run: UUID, createdAt: Date)?
+    private static var pending: (name: String, args: [String: Any], run: UUID, createdAt: Date, bundleID: String?)?
     private static var currentRun = UUID()
     private static let lock = NSLock()
     /// A pending action older than this is discarded rather than confirmed.
@@ -839,15 +839,18 @@ enum AgentPendingAction {
         currentRun = UUID()
     }
 
+    /// Remembers which app the action was aimed at when it was held, so a later "confirm"
+    /// is checked against that app too — focus may have moved to another app in between.
     static func set(name: String, args: [String: Any]) {
+        let bundleID = AgentControlMode.targetBundleID(forTool: name, args: args)
         lock.lock()
         defer { lock.unlock() }
-        pending = (name, args, currentRun, Date())
+        pending = (name, args, currentRun, Date(), bundleID)
     }
 
     /// Consumes the pending action only when it is eligible: created in an earlier run and
     /// not yet expired. A same-run attempt leaves it in place for the user's real answer.
-    static func take() -> (name: String, args: [String: Any])? {
+    static func take() -> (name: String, args: [String: Any], bundleID: String?)? {
         lock.lock()
         defer { lock.unlock() }
         guard let value = pending else { return nil }
@@ -857,7 +860,7 @@ enum AgentPendingAction {
         }
         guard value.run != currentRun else { return nil }
         pending = nil
-        return (value.name, value.args)
+        return (value.name, value.args, value.bundleID)
     }
 
     static func clear() {

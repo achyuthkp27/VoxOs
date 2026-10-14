@@ -29,12 +29,11 @@ extension VoxOSEngine {
         // before anything else can forget it (see AgentQuickIntents.answerFollowUp).
         // "open Chrome" typed as a follow-up must open Chrome, not be narrated by the model.
         //
-        // Only in an Agent conversation, and never in observe-only mode — the same gate the
-        // first request goes through in AIEnhancementService. Without it a follow-up in a plain
-        // assistant chat, or with the Agent told to look but not act, still launched apps.
-        let quickIntentsAllowed =
-            AgentToolExecutor.isAgentConversation(systemPrompt: assistantSession.systemPrompt)
-            && AgentControlMode.current != .observeOnly
+        // Only in an Agent conversation — the same gate the first request goes through in
+        // AIEnhancementService. Without it a follow-up in a plain assistant chat launched apps.
+        // The control mode (global or the app's own) is checked where the app is opened, in
+        // AgentQuickIntents.blockedOpenReply.
+        let quickIntentsAllowed = AgentToolExecutor.isAgentConversation(systemPrompt: assistantSession.systemPrompt)
         if quickIntentsAllowed, let quick = await AgentQuickIntents.answerFollowUp(trimmed) {
             guard assistantSession.hasMessage(id: userMessage.id) else { return }
             assistantSession.finishFollowUp(quick)

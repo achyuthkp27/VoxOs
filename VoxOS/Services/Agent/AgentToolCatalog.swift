@@ -108,6 +108,11 @@ enum AgentToolCatalog {
             "# Agent state",
             "- control mode: \(AgentControlMode.current.rawValue) — \(AgentControlMode.current.summary)",
         ]
+        if let overrides = AgentControlMode.overridesSummary() {
+            lines.append(
+                "- per-app control modes (clicks, typing and keys follow the app in front; open/activate follow the app named): \(overrides)"
+            )
+        }
         if let paused = AgentPausedTask.peek() {
             lines.append(
                 "- RESUMING a paused task. You asked the user: \"\(paused.question)\". Treat <TRANSCRIPT> as their answer and continue the task."

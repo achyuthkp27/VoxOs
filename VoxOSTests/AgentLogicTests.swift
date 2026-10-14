@@ -303,6 +303,138 @@ struct AgentLogicTests {
         AgentControlMode.current = .takeover
     }
 
+    // MARK: Per-app control modes
+
+    /// A bundle id no real app has, so nothing a test lets through can act on the Mac.
+    private static let fakeApp = "com.example.voxos-test.fake"
+
+    /// Runs `body` with the given global mode and overrides, then puts both back.
+    private func withModes(
+        global: AgentControlMode, overrides: [String: AgentControlMode], _ body: () async -> Void
+    ) async {
+        let savedGlobal = AgentControlMode.current
+        let savedOverrides = AgentControlMode.appOverrides
+        AgentControlMode.current = global
+        AgentControlMode.appOverrides = overrides
+        AgentPendingAction.clear()
+        await body()
+        AgentPendingAction.clear()
+        AgentControlMode.current = savedGlobal
+        AgentControlMode.appOverrides = savedOverrides
+    }
+
+    @Test func appOverrideReplacesGlobalModeForThatAppOnly() async {
+        await withModes(global: .takeover, overrides: [Self.fakeApp: .observeOnly]) {
+            #expect(AgentControlMode.effectiveMode(forBundleID: Self.fakeApp) == .observeOnly)
+            #expect(AgentControlMode.effectiveMode(forBundleID: "com.example.other") == .takeover)
+            #expect(AgentControlMode.effectiveMode(forBundleID: nil) == .takeover)
+        }
+    }
+
+    @Test func unknownOverrideValuesAreDropped() async {
+        await withModes(global: .takeover, overrides: [:]) {
+            UserDefaults.standard.set([Self.fakeApp: "nonsense"], forKey: AgentControlMode.appOverridesKey)
+            #expect(AgentControlMode.appOverrides.isEmpty, "a value we cannot read must not count as any mode")
+        }
+    }
+
+    @Test func toolsAreKeyedToTheRightApp() async {
+        _ = AgentFrontmostApp.bundleID  // starts the observer, which seeds the real frontmost app
+        AgentFrontmostApp.set(Self.fakeApp)
+        #expect(AgentControlMode.targetBundleID(forTool: "type_text", args: [:]) == Self.fakeApp)
+        #expect(AgentControlMode.targetBundleID(forTool: "click_element", args: [:]) == Self.fakeApp)
+        #expect(AgentControlMode.targetBundleID(forTool: "slack_send", args: [:]) == "com.tinyspeck.slackmacgap")
+        #expect(AgentControlMode.targetBundleID(forTool: "open_app", args: ["name": Self.fakeApp]) == Self.fakeApp)
+        for tool in ["run_shell", "run_applescript", "move_file", "clipboard_write", "plugin_create"] {
+            #expect(AgentControlMode.targetBundleID(forTool: tool, args: [:]) == nil, "\(tool) is global only")
+        }
+        #expect(
+            AgentControlMode.targetBundleID(forTool: "open_app", args: ["name": "No Such App Xyzzy"]) == nil,
+            "an unresolved name falls back to the global mode, never the frontmost app")
+    }
+
+    @Test func appObserveOnlyBlocksUIActionsButNotGlobalTools() async {
+        await withModes(global: .takeover, overrides: [Self.fakeApp: .observeOnly]) {
+            _ = AgentFrontmostApp.bundleID
+            AgentFrontmostApp.set(Self.fakeApp)
+            let typed = await AgentTools.execute(name: "type_text", args: ["text": "x"])
+            #expect((typed["error"] as? String)?.contains("observe only") == true)
+            #expect(AgentControlMode.mode(forTool: "run_shell", args: [:]) == .takeover)
+        }
+    }
+
+    @Test func appAskBeforeActingHoldsTheAction() async {
+        await withModes(global: .takeover, overrides: [Self.fakeApp: .askBeforeAction]) {
+            AgentPendingAction.beginRun()
+            let opened = await AgentTools.execute(name: "open_app", args: ["name": Self.fakeApp])
+            #expect(opened["confirm_required"] != nil)
+            #expect(AgentPendingAction.isWaitingForConfirmation)
+        }
+    }
+
+    @Test func appTakeoverLoosensOnlyThatApp() async {
+        await withModes(global: .observeOnly, overrides: [Self.fakeApp: .takeover]) {
+            _ = AgentFrontmostApp.bundleID
+            AgentFrontmostApp.set(Self.fakeApp)
+            #expect(AgentControlMode.mode(forTool: "type_text", args: [:]) == .takeover)
+            #expect(AgentControlMode.mode(forTool: "run_shell", args: [:]) == .observeOnly)
+            #expect(AgentControlMode.mode(forTool: "set_window_bounds", args: ["app": "No Such App Xyzzy"]) == .observeOnly)
+        }
+    }
+
+    @Test func confirmUsesTheStricterOfHeldAndCurrentMode() async {
+        await withModes(global: .takeover, overrides: [Self.fakeApp: .askBeforeAction]) {
+            AgentPendingAction.beginRun()
+            let held = await AgentTools.execute(name: "open_app", args: ["name": Self.fakeApp])
+            #expect(held["confirm_required"] != nil)
+            // The user tightens the app before saying "confirm".
+            AgentControlMode.setOverride(.observeOnly, forBundleID: Self.fakeApp)
+            AgentPendingAction.beginRun()
+            let confirmed = await AgentTools.execute(name: "confirm_action", args: [:])
+            #expect((confirmed["error"] as? String)?.contains("observe-only") == true)
+        }
+    }
+
+    @Test func quickLaunchFollowsTheControlMode() async {
+        await withModes(global: .takeover, overrides: [Self.fakeApp: .observeOnly]) {
+            #expect(AgentQuickIntents.blockedOpenReply(Self.fakeApp)?.contains("observe only") == true)
+            #expect(!AgentPendingAction.isWaitingForConfirmation)
+
+            AgentControlMode.setOverride(.askBeforeAction, forBundleID: Self.fakeApp)
+            #expect(AgentQuickIntents.blockedOpenReply(Self.fakeApp) != nil)
+            #expect(AgentPendingAction.isWaitingForConfirmation, "ask-before-acting holds the launch for confirm")
+            AgentPendingAction.clear()
+
+            AgentControlMode.setOverride(.takeover, forBundleID: Self.fakeApp)
+            #expect(AgentQuickIntents.blockedOpenReply(Self.fakeApp) == nil)
+        }
+        await withModes(global: .observeOnly, overrides: [:]) {
+            #expect(
+                AgentQuickIntents.blockedOpenReply(Self.fakeApp) != nil,
+                "the global observe-only mode stops a quick launch too")
+        }
+    }
+
+    @Test func backgroundTasksRespectAppAskMode() async {
+        await withModes(global: .takeover, overrides: [Self.fakeApp: .askBeforeAction]) {
+            _ = AgentFrontmostApp.bundleID
+            AgentFrontmostApp.set(Self.fakeApp)
+            #expect(AgentRunScope.backgroundBlockReason(tool: "click_element", args: ["name": "OK"]) != nil)
+            #expect(AgentRunScope.backgroundBlockReason(tool: "read_screen", args: [:]) == nil)
+        }
+    }
+
+    @Test func runtimeSectionListsAppOverrides() async {
+        await withModes(global: .takeover, overrides: [Self.fakeApp: .observeOnly]) {
+            let section = AgentToolCatalog.runtimeSection()
+            #expect(section.contains("per-app control modes"))
+            #expect(section.contains("\(Self.fakeApp) = observe_only"))
+        }
+        await withModes(global: .takeover, overrides: [:]) {
+            #expect(!AgentToolCatalog.runtimeSection().contains("per-app control modes"))
+        }
+    }
+
     // MARK: App deep links
 
     @Test func appLinksAreWellFormed() {
