@@ -15,6 +15,10 @@ enum ShellCommandEnvironment {
         "LC_CTYPE",
     ]
 
+    /// The PATH commands run with: what the user's own shell sets up, interactive config
+    /// (`.zshrc`, `.bashrc`, fish config) included, plus the usual per-user install folders.
+    /// GUI apps get a bare PATH, and installers put CLIs in different places on every Mac
+    /// (`~/.local/bin` added only in `.zshrc`, Homebrew, bun, cargo…), so one source is never enough.
     static func preferredPATH(fallback: String?) -> String {
         shellPathQueue.sync {
             if let cachedPreferredPATH {
@@ -22,26 +26,49 @@ enum ShellCommandEnvironment {
             }
 
             let fallbackPATH = fallback?.isEmpty == false ? fallback! : defaultPATH
-            let loginShellPATH = discoverPATHFromShell(arguments: ["-lc", pathDiscoveryCommand])
-            if let loginShellPATH,
-                loginShellPATH != fallbackPATH || fallbackPATH != defaultPATH
-            {
-                cachedPreferredPATH = loginShellPATH
-                return loginShellPATH
-            }
-
-            if let interactiveLoginShellPATH = discoverPATHFromShell(arguments: ["-ilc", pathDiscoveryCommand]) {
-                cachedPreferredPATH = interactiveLoginShellPATH
-                return interactiveLoginShellPATH
-            }
-
-            if let loginShellPATH {
-                cachedPreferredPATH = loginShellPATH
-                return loginShellPATH
-            }
-
-            return fallbackPATH
+            let shell = userLoginShell()
+            let interactivePATH = discoverPATHFromShell(shell: shell, arguments: ["-ilc"])
+            let loginPATH = discoverPATHFromShell(shell: shell, arguments: ["-lc"])
+            let merged = mergedPATH(
+                discovered: [interactivePATH, loginPATH, fallbackPATH, defaultPATH],
+                knownDirectories: existingKnownDirectories())
+            cachedPreferredPATH = merged
+            return merged
         }
+    }
+
+    /// Joins PATH strings in priority order, then appends known install folders that are still
+    /// missing. Duplicates and empty entries are dropped; the first occurrence wins.
+    static func mergedPATH(discovered: [String?], knownDirectories: [String]) -> String {
+        var seen = Set<String>()
+        var entries: [String] = []
+        let candidates = discovered.compactMap { $0 }.flatMap { $0.split(separator: ":").map(String.init) }
+        for entry in candidates + knownDirectories {
+            let trimmed = entry.trimmingCharacters(in: .whitespaces)
+            guard !trimmed.isEmpty, seen.insert(trimmed).inserted else { continue }
+            entries.append(trimmed)
+        }
+        return entries.joined(separator: ":")
+    }
+
+    /// Where CLI installers commonly put binaries for one user; only folders that exist are added.
+    private static func existingKnownDirectories() -> [String] {
+        let home = NSHomeDirectory()
+        return [
+            "\(home)/.local/bin", "\(home)/.claude/local", "/opt/homebrew/bin", "/opt/homebrew/sbin",
+            "/usr/local/bin", "\(home)/.bun/bin", "\(home)/.cargo/bin", "\(home)/.npm-global/bin",
+            "\(home)/.volta/bin", "\(home)/.deno/bin", "\(home)/go/bin", "\(home)/bin",
+        ].filter { FileManager.default.fileExists(atPath: $0) }
+    }
+
+    /// The user's login shell from the user database (not `$SHELL`, which a GUI app may not
+    /// have), falling back to zsh.
+    private static func userLoginShell() -> String {
+        if let entry = getpwuid(getuid()), let shell = entry.pointee.pw_shell {
+            let path = String(cString: shell)
+            if FileManager.default.isExecutableFile(atPath: path) { return path }
+        }
+        return "/bin/zsh"
     }
 
     static func commandEnvironment(
@@ -74,13 +101,18 @@ enum ShellCommandEnvironment {
     }
 
     private static let defaultPATH = "/usr/bin:/bin:/usr/sbin:/sbin"
-    private static let pathDiscoveryCommand =
-        "echo __VOXOS_PATH_START__; print -r -- $PATH; echo __VOXOS_PATH_END__"
+    /// fish keeps PATH as a list; every other shell VoxOS expects (zsh, bash, sh) has it as a string.
+    private static func pathDiscoveryCommand(for shell: String) -> String {
+        if shell.hasSuffix("/fish") {
+            return "echo __VOXOS_PATH_START__; string join : $PATH; echo __VOXOS_PATH_END__"
+        }
+        return "echo __VOXOS_PATH_START__; printf '%s\\n' \"$PATH\"; echo __VOXOS_PATH_END__"
+    }
 
-    private static func discoverPATHFromShell(arguments: [String]) -> String? {
+    private static func discoverPATHFromShell(shell: String, arguments: [String]) -> String? {
         let process = Process()
-        process.executableURL = URL(fileURLWithPath: "/bin/zsh")
-        process.arguments = arguments
+        process.executableURL = URL(fileURLWithPath: shell)
+        process.arguments = arguments + [pathDiscoveryCommand(for: shell)]
 
         let stdoutPipe = Pipe()
         let stderrPipe = Pipe()
