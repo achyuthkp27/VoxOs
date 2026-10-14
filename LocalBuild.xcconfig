@@ -17,3 +17,8 @@ PROVISIONING_PROFILE_SPECIFIER =
 
 // Add LOCAL_BUILD compilation flag so Swift code can use #if LOCAL_BUILD
 SWIFT_ACTIVE_COMPILATION_CONDITIONS = $(inherited) LOCAL_BUILD
+
+// FluidAudio ≥ 0.17 links the prebuilt NemoTextProcessing.xcframework, whose module map sits in
+// Headers/CNemoTextProcessing/. Explicit module builds look for it at include/module.modulemap
+// and fail; the implicit module build finds it.
+SWIFT_ENABLE_EXPLICIT_MODULES = NO

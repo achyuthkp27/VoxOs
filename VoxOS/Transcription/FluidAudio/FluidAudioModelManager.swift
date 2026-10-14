@@ -31,6 +31,7 @@ class FluidAudioModelManager: ObservableObject {
     nonisolated private static let modelVersionMap: [String: AsrModelVersion] = [
         "parakeet-tdt-0.6b-v2": .v2,
         "parakeet-tdt-0.6b-v3": .v3,
+        "parakeet-ultra-0.6b": .ultra,
     ]
 
     private enum FluidAudioModelKind {
@@ -138,7 +139,7 @@ class FluidAudioModelManager: ObservableObject {
     nonisolated static func languageHint(from languageCode: String?, for modelName: String) -> Language? {
         guard !isParakeetUnifiedModel(named: modelName),
             !isNemotronModel(named: modelName),
-            asrVersion(for: modelName) == .v3,
+            [.v3, .ultra].contains(asrVersion(for: modelName)),
             let languageCode,
             languageCode != "auto"
         else { return nil }
@@ -286,6 +287,8 @@ class FluidAudioModelManager: ObservableObject {
             return .parakeetV2
         case .v3:
             return .parakeetV3
+        case .ultra:
+            return .parakeetUltra
         default:
             return nil
         }
