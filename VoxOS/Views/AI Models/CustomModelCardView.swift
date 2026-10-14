@@ -1,76 +1,26 @@
 import AppKit
 import SwiftUI
 
-// MARK: - Custom Model Card View
+// MARK: - Custom Model Row
+/// A custom transcription model. The Custom tab lists these one after another, so the row
+/// carries its own card until that tab groups them.
 struct CustomModelCardView: View {
     let model: CustomCloudModel
     var deleteAction: () -> Void
     var editAction: (CustomCloudModel) -> Void
 
     var body: some View {
-        VStack(alignment: .leading, spacing: 0) {
-            // Main card content
-            HStack(alignment: .top, spacing: 16) {
-                VStack(alignment: .leading, spacing: 6) {
-                    headerSection
-                    metadataSection
-                    descriptionSection
-                }
-                .frame(maxWidth: .infinity, alignment: .leading)
+        ModelListRow(
+            systemImage: "waveform",
+            name: model.displayName,
+            meta: [model.modelName, model.language, String(localized: "OpenAI compatible")],
+            description: Text(model.description)
+        ) {
+            ModelInUseBadge(modelName: model.name)
+        } trailing: {
+            modelStatusPill("Configured", systemImage: "checkmark.circle.fill")
 
-                actionSection
-            }
-            .padding(16)
-        }
-        .background(AppMaterialCardBackground())
-    }
-
-    private var headerSection: some View {
-        HStack(alignment: .firstTextBaseline) {
-            Text(model.displayName)
-                .font(.app(size: 13, weight: .semibold))
-                .foregroundColor(Color(.labelColor))
-
-            Spacer()
-        }
-    }
-
-    private var metadataSection: some View {
-        HStack(spacing: 12) {
-            Label(model.modelName, systemImage: "cube")
-                .font(.app(size: 11, weight: .regular))
-                .foregroundColor(Color(.secondaryLabelColor))
-                .lineLimit(1)
-
-            // Language
-            Label(model.language, systemImage: "globe")
-                .font(.app(size: 11, weight: .regular))
-                .foregroundColor(Color(.secondaryLabelColor))
-                .lineLimit(1)
-
-            // OpenAI Compatible
-            Label("OpenAI Compatible", systemImage: "checkmark.seal")
-                .font(.app(size: 11, weight: .regular))
-                .foregroundColor(Color(.secondaryLabelColor))
-                .lineLimit(1)
-        }
-        .lineLimit(1)
-    }
-
-    private var descriptionSection: some View {
-        Text(model.description)
-            .font(.app(size: 11, weight: .regular))
-            .foregroundColor(Color(.secondaryLabelColor))
-            .lineLimit(2)
-            .fixedSize(horizontal: false, vertical: true)
-            .padding(.top, 4)
-    }
-
-    private var actionSection: some View {
-        HStack(spacing: 8) {
-            modelStatusPill("Configured", systemImage: "checkmark.circle")
-
-            Menu {
+            ModelRowMenu {
                 Button {
                     editAction(model)
                 } label: {
@@ -82,13 +32,16 @@ struct CustomModelCardView: View {
                 } label: {
                     Label("Delete Model", systemImage: "trash")
                 }
-            } label: {
-                Image(systemName: "ellipsis.circle")
-                    .font(.app(size: 14, weight: .regular))
             }
-            .menuStyle(.borderlessButton)
-            .menuIndicator(.hidden)
-            .frame(width: 20, height: 20)
+        } footer: {
         }
+        .background(
+            RoundedRectangle(cornerRadius: 14, style: .continuous)
+                .fill(AppTheme.Surface.card)
+        )
+        .overlay(
+            RoundedRectangle(cornerRadius: 14, style: .continuous)
+                .stroke(AppTheme.Border.card, lineWidth: 1)
+        )
     }
 }

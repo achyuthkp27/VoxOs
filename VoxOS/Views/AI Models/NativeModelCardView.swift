@@ -1,80 +1,22 @@
 import AppKit
 import SwiftUI
 
-// MARK: - Native Apple Model Card View
+// MARK: - Native Apple Model Row
 struct NativeAppleModelCardView: View {
     let model: NativeAppleModel
 
     var body: some View {
-        HStack(alignment: .top, spacing: 16) {
-            // Main Content
-            VStack(alignment: .leading, spacing: 6) {
-                headerSection
-                metadataSection
-                descriptionSection
-            }
-            .frame(maxWidth: .infinity, alignment: .leading)
-
-            // Action Controls
-            actionSection
-        }
-        .padding(16)
-        .background(AppMaterialCardBackground())
-    }
-
-    private var headerSection: some View {
-        HStack(alignment: .firstTextBaseline) {
-            Text(model.displayName)
-                .font(.app(size: 14, weight: .semibold))
-                .foregroundColor(Color(.labelColor))
-
+        ModelListRow(
+            systemImage: "apple.logo",
+            iconTint: AppTheme.Text.primary,
+            name: model.displayName,
+            meta: [model.language, String(localized: "macOS 26+"), String(localized: "On this Mac")],
+            description: Text(model.description)
+        ) {
             ModelInUseBadge(modelName: model.name)
-
-            Spacer()
-        }
-    }
-
-    private var metadataSection: some View {
-        HStack(spacing: 12) {
-            // Native Apple
-            Label("Native Apple", systemImage: "apple.logo")
-                .font(.app(size: 11, weight: .regular))
-                .foregroundColor(Color(.secondaryLabelColor))
-                .lineLimit(1)
-
-            // Language
-            Label(model.language, systemImage: "globe")
-                .font(.app(size: 11, weight: .regular))
-                .foregroundColor(Color(.secondaryLabelColor))
-                .lineLimit(1)
-
-            // On-Device
-            Label("On-Device", systemImage: "checkmark.shield")
-                .font(.app(size: 11, weight: .regular))
-                .foregroundColor(Color(.secondaryLabelColor))
-                .lineLimit(1)
-
-            // Requires macOS 26+
-            Label("macOS 26+", systemImage: "macbook")
-                .font(.app(size: 11, weight: .regular))
-                .foregroundColor(Color(.secondaryLabelColor))
-                .lineLimit(1)
-        }
-        .lineLimit(1)
-    }
-
-    private var descriptionSection: some View {
-        Text(model.description)
-            .font(.app(size: 11, weight: .regular))
-            .foregroundColor(Color(.secondaryLabelColor))
-            .lineLimit(2)
-            .fixedSize(horizontal: false, vertical: true)
-            .padding(.top, 4)
-    }
-
-    private var actionSection: some View {
-        HStack(spacing: 8) {
-            modelStatusPill("Built in", systemImage: "checkmark.circle")
+        } trailing: {
+            modelStatusPill("Built in", systemImage: "checkmark.circle.fill")
+        } footer: {
         }
     }
 }

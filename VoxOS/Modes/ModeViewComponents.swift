@@ -98,6 +98,7 @@ struct ModeConfigurationsGrid: View {
                         }
                         ModeListRow(
                             config: entry.config,
+                            tint: ModeSpectrum.color(for: entry.config, in: modeManager.configurations),
                             facts: entry.facts,
                             shared: shared,
                             promptTitle: resolver.promptTitle(for: entry.config),
@@ -107,12 +108,12 @@ struct ModeConfigurationsGrid: View {
                     }
                 }
                 .background(
-                    RoundedRectangle(cornerRadius: 12, style: .continuous)
+                    RoundedRectangle(cornerRadius: 14, style: .continuous)
                         .fill(AppTheme.Surface.card)
                 )
-                .clipShape(RoundedRectangle(cornerRadius: 12, style: .continuous))
+                .clipShape(RoundedRectangle(cornerRadius: 14, style: .continuous))
                 .overlay(
-                    RoundedRectangle(cornerRadius: 12, style: .continuous)
+                    RoundedRectangle(cornerRadius: 14, style: .continuous)
                         .stroke(AppTheme.Border.card, lineWidth: 1)
                 )
             }
@@ -126,14 +127,14 @@ private struct ModeListEntry: Identifiable {
     var id: UUID { config.id }
 }
 
-/// The small uppercase label above the list, in the Dictionary page's style.
+/// The mono eyebrow above the list, as on the other pages.
 private struct ModeListSectionLabel: View {
     let count: Int
 
     var body: some View {
         HStack {
             Text(count == 1 ? String(localized: "1 mode") : String(localized: "\(count) modes"))
-                .font(.app(size: 11, weight: .semibold))
+                .font(.appMono(size: 11, weight: .medium))
                 .foregroundStyle(AppTheme.Text.secondary)
                 .textCase(.uppercase)
                 .tracking(0.6)
@@ -253,13 +254,14 @@ struct DefaultModeIndicator: View {
     }
 }
 
-/// One mode as a sentence: its name, when it kicks in and what it does, plus accent chips for
-/// any setting that differs from the shared line.
+/// One mode: a tile in the mode's spectrum colour, its name, what it does and when it kicks in,
+/// plus accent chips for any setting that differs from the shared line.
 private struct ModeListRow: View {
     /// Where the name starts, so dividers line up with the text rather than the icon.
-    static let textInset: CGFloat = 14 + 30 + 12
+    static let textInset: CGFloat = 14 + 34 + 12
 
     let config: ModeConfig
+    let tint: Color
     let facts: ModeListFacts
     let shared: ModeSharedSettings
     let promptTitle: String?
@@ -267,39 +269,47 @@ private struct ModeListRow: View {
     let onEdit: () -> Void
     @State private var isHovering = false
 
-    private var summary: String {
-        let trigger = ModeListPhrasing.trigger(
+    private var purpose: String {
+        ModeListPhrasing.purpose(
+            outputMode: config.outputMode,
+            usesAI: config.isAIEnhancementEnabled,
+            promptTitle: promptTitle,
+            isAgent: AgentModeGuard.isAgent(config.id)
+        )
+    }
+
+    /// When the mode runs, plus the full action (prompt name, auto-send) for the tooltip.
+    private var trigger: String {
+        ModeListPhrasing.trigger(
             isDefault: config.isDefault,
             appNames: config.allAppConfigs.map(\.appName),
             websites: config.allURLConfigs.map(\.url),
             triggerWords: config.triggerWords,
             shortcut: ShortcutStore.shortcut(for: .mode(config.id))
         )
-        let action = ModeListPhrasing.action(
+    }
+
+    private var action: String {
+        ModeListPhrasing.action(
             outputMode: config.outputMode,
             usesAI: config.isAIEnhancementEnabled,
             promptTitle: promptTitle,
             autoSendKey: config.autoSendKey
         )
-        return "\(trigger) · \(action)"
     }
 
     var body: some View {
         HStack(spacing: 12) {
             Button(action: onEdit) {
                 HStack(spacing: 12) {
-                    ModeIconView(icon: config.icon, size: config.icon.kind == .emoji ? 16 : 13)
-                        .frame(width: 30, height: 30)
+                    ModeIconView(icon: config.icon, size: config.icon.kind == .emoji ? 17 : 14, color: tint)
+                        .frame(width: 34, height: 34)
                         .background(
-                            RoundedRectangle(cornerRadius: 8, style: .continuous)
-                                .fill(AppTheme.Surface.control)
-                        )
-                        .overlay(
-                            RoundedRectangle(cornerRadius: 8, style: .continuous)
-                                .stroke(AppTheme.Border.card, lineWidth: 1)
+                            RoundedRectangle(cornerRadius: 9, style: .continuous)
+                                .fill(tint.opacity(0.18))
                         )
 
-                    VStack(alignment: .leading, spacing: 2) {
+                    VStack(alignment: .leading, spacing: 3) {
                         HStack(spacing: 6) {
                             Text(config.name)
                                 .font(.app(size: 14, weight: .semibold))
@@ -309,11 +319,17 @@ private struct ModeListRow: View {
                                 DefaultModeIndicator()
                             }
                         }
-                        Text(summary)
-                            .font(.app(size: 12, weight: .regular))
+                        Text(purpose)
+                            .font(.app(size: 12.5, weight: .regular))
                             .foregroundStyle(AppTheme.Text.secondary)
                             .lineLimit(1)
                             .truncationMode(.tail)
+                        Text(trigger)
+                            .font(.app(size: 11.5, weight: .regular))
+                            .foregroundStyle(AppTheme.Text.muted)
+                            .lineLimit(1)
+                            .truncationMode(.tail)
+                            .help(action)
                     }
                     .layoutPriority(1)
 
@@ -341,7 +357,7 @@ private struct ModeListRow: View {
         }
         .padding(.leading, 14)
         .padding(.trailing, 12)
-        .padding(.vertical, 10)
+        .padding(.vertical, 11)
         .background(isHovering ? AppTheme.Surface.subtle : Color.clear)
         .onHover { hovering in
             withAnimation(.easeInOut(duration: 0.12)) {

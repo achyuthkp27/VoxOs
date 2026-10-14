@@ -50,7 +50,7 @@ struct AIModelRoutingSection: View {
         VStack(alignment: .leading, spacing: 12) {
             HStack(spacing: 4) {
                 Text("Your setup")
-                    .font(.app(size: 11, weight: .semibold))
+                    .font(.appMono(size: 11, weight: .medium))
                     .foregroundStyle(AppTheme.Text.secondary)
                     .textCase(.uppercase)
                     .tracking(0.6)
@@ -132,9 +132,10 @@ struct AIModelRoutingSection: View {
                     Image(systemName: slot.symbol)
                         .font(.app(size: 12, weight: .semibold))
                         .foregroundStyle(current == nil ? AppTheme.Text.secondary : AppTheme.Accent.primary)
-                        .frame(width: 26, height: 26)
+                        .frame(width: 28, height: 28)
                         .background(
-                            Circle().fill(current == nil ? AppTheme.Surface.control : AppTheme.Accent.fillSubtle))
+                            RoundedRectangle(cornerRadius: 8, style: .continuous)
+                                .fill(current == nil ? AppTheme.Surface.control : AppTheme.Accent.fill))
                     VStack(alignment: .leading, spacing: 1) {
                         Text(slot.title)
                             .font(.app(size: 12, weight: .semibold))

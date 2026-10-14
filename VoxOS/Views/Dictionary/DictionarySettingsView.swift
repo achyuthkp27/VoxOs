@@ -89,8 +89,8 @@ struct DictionarySettingsView: View {
     /// full-width pills that out-shouted the content they switch between.
     private var sectionSelector: some View {
         Picker("", selection: $selectedSection.animation(.easeInOut(duration: 0.16))) {
-            Text("Vocabulary  \(vocabularyWords.count)").tag(DictionarySection.spellings)
-            Text("Replacements  \(wordReplacements.count)").tag(DictionarySection.replacements)
+            Text("Vocabulary \(vocabularyWords.count)").tag(DictionarySection.spellings)
+            Text("Replacements \(wordReplacements.count)").tag(DictionarySection.replacements)
         }
         .pickerStyle(.segmented)
         .labelsHidden()

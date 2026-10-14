@@ -8,42 +8,18 @@ struct TranscribeCppModelCardView: View {
     private var isDownloading: Bool { modelManager.isModelDownloading(model) }
 
     var body: some View {
-        HStack(alignment: .top, spacing: 16) {
-            VStack(alignment: .leading, spacing: 6) {
-                HStack(alignment: .firstTextBaseline) {
-                    Text(model.displayName)
-                        .font(.app(size: 14, weight: .semibold))
-                        .foregroundColor(Color(.labelColor))
-
-                    ModelInUseBadge(modelName: model.name)
-
-                    Spacer()
-                }
-
-                HStack(spacing: 12) {
-                    Label(model.language, systemImage: "globe")
-                    Label(model.size, systemImage: "internaldrive")
-                    Label("On this Mac", systemImage: "lock.shield")
-                }
-                .font(.app(size: 11, weight: .regular))
-                .foregroundColor(Color(.secondaryLabelColor))
-                .lineLimit(1)
-
-                Text(model.description)
-                    .font(.app(size: 11, weight: .regular))
-                    .foregroundColor(Color(.secondaryLabelColor))
-                    .lineLimit(2)
-                    .fixedSize(horizontal: false, vertical: true)
-                    .padding(.top, 4)
-
-                progressSection
-            }
-            .frame(maxWidth: .infinity, alignment: .leading)
-
+        ModelListRow(
+            systemImage: "waveform",
+            name: model.displayName,
+            meta: [model.language, model.size, String(localized: "On this Mac")],
+            description: Text(model.description)
+        ) {
+            ModelInUseBadge(modelName: model.name)
+        } trailing: {
             actionSection
+        } footer: {
+            progressSection
         }
-        .padding(16)
-        .background(AppMaterialCardBackground())
     }
 
     @ViewBuilder
@@ -63,61 +39,42 @@ struct TranscribeCppModelCardView: View {
                     Spacer()
 
                     Text(status.fractionCompleted, format: .percent.precision(.fractionLength(0)))
-                        .fontDesign(.monospaced)
+                        .font(.appMono(size: 11, weight: .medium))
                 }
                 .font(.app(size: 11, weight: .medium))
-                .foregroundColor(Color(.secondaryLabelColor))
+                .foregroundStyle(AppTheme.Text.secondary)
 
                 ProgressView(value: status.fractionCompleted)
                     .progressViewStyle(.linear)
+                    .tint(AppTheme.Accent.primary)
             }
             .frame(maxWidth: .infinity, alignment: .leading)
-            .padding(.top, 8)
+            .padding(.top, 6)
             .animation(.smooth, value: status.fractionCompleted)
         }
     }
 
+    @ViewBuilder
     private var actionSection: some View {
-        HStack(spacing: 8) {
-            if isDownloaded && !isDownloading {
-                modelStatusPill("Downloaded", systemImage: "checkmark.circle")
+        if isDownloaded && !isDownloading {
+            modelStatusPill("Downloaded", systemImage: "checkmark.circle.fill")
 
-                Menu {
-                    Button(role: .destructive) {
-                        modelManager.deleteModel(model)
-                    } label: {
-                        Label("Delete Model", systemImage: "trash")
-                    }
-
-                    Button {
-                        modelManager.showModelInFinder(model)
-                    } label: {
-                        Label("Show in Finder", systemImage: "folder")
-                    }
+            ModelRowMenu {
+                Button(role: .destructive) {
+                    modelManager.deleteModel(model)
                 } label: {
-                    Image(systemName: "ellipsis.circle")
-                        .font(.app(size: 14, weight: .regular))
+                    Label("Delete Model", systemImage: "trash")
                 }
-                .menuStyle(.borderlessButton)
-                .menuIndicator(.hidden)
-                .frame(width: 20, height: 20)
-            } else {
+
                 Button {
-                    Task { await modelManager.downloadModel(model) }
+                    modelManager.showModelInFinder(model)
                 } label: {
-                    HStack(spacing: 4) {
-                        Text(LocalizedStringKey(isDownloading ? "Downloading..." : "Download"))
-                        Image(systemName: "arrow.down.circle")
-                    }
-                    .font(.app(size: 12, weight: .medium))
-                    .foregroundColor(AppTheme.Accent.primary)
-                    .padding(.horizontal, 12)
-                    .padding(.vertical, 6)
-                    .background(Capsule().fill(AppTheme.Accent.fillSubtle))
-                    .overlay(Capsule().strokeBorder(AppTheme.Accent.border, lineWidth: 1))
+                    Label("Show in Finder", systemImage: "folder")
                 }
-                .buttonStyle(.plain)
-                .disabled(isDownloading)
+            }
+        } else {
+            ModelDownloadButton(isDownloading: isDownloading) {
+                Task { await modelManager.downloadModel(model) }
             }
         }
     }

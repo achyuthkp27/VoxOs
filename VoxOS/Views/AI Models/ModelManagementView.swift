@@ -241,34 +241,41 @@ struct ModelManagementView: View {
         }
     }
 
-    /// Split by job: what hears you, and what writes for you. They used to share one list, which
-    /// put a text-cleanup model between two speech models.
+    /// Split by job: what hears you, and what writes for you. Each job is one grouped list of
+    /// rows, so the catalogue reads as a list instead of a stack of tall cards.
     private var localModelsSection: some View {
-        VStack(alignment: .leading, spacing: 12) {
+        let speechModels = appleSpeechModels + downloadableLocalModels
+
+        return VStack(alignment: .leading, spacing: 10) {
             localGroupHeader(
                 "Speech models", detail: "Turn your voice into text. Each mode picks one in Modes.",
                 trailing: AnyView(importLocalModelButton))
 
-            ForEach(appleSpeechModels, id: \.id) { model in
-                localModelCard(model)
-            }
-
-            ForEach(downloadableLocalModels, id: \.id) { model in
-                localModelCard(model)
+            ModelListGroup {
+                ForEach(Array(speechModels.enumerated()), id: \.element.id) { index, model in
+                    if index > 0 {
+                        ModelListDivider()
+                    }
+                    localModelCard(model)
+                }
             }
 
             localGroupHeader(
                 "Language models", detail: "Clean up text, and run the Assistant and the Agent.", trailing: nil
             )
-            .padding(.top, 14)
+            .padding(.top, 16)
 
-            VoxOSRefineModelCardView(
-                service: voxOSRefineService,
-                deleteAction: confirmDeleteVoxOSRefineModel
-            )
+            ModelListGroup {
+                VoxOSRefineModelCardView(
+                    service: voxOSRefineService,
+                    deleteAction: confirmDeleteVoxOSRefineModel
+                )
 
-            LocalEnhancementServiceManagementView()
-                .environmentObject(aiService)
+                ModelListDivider()
+
+                LocalEnhancementServiceManagementView()
+                    .environmentObject(aiService)
+            }
         }
         .frame(maxWidth: .infinity, alignment: .leading)
     }
@@ -277,17 +284,11 @@ struct ModelManagementView: View {
         -> some View
     {
         HStack(alignment: .bottom) {
-            VStack(alignment: .leading, spacing: 3) {
-                Text(title)
-                    .font(.app(size: 17, weight: .semibold))
-                    .foregroundStyle(AppTheme.Text.primary)
-                Text(detail)
-                    .font(.app(size: 12, weight: .regular))
-                    .foregroundStyle(AppTheme.Text.secondary)
-            }
+            ProviderSectionHeader(title: title, subtitle: detail)
             Spacer()
             trailing
         }
+        .padding(.horizontal, 4)
     }
 
     private func localModelCard(_ model: any TranscriptionModel) -> some View {
@@ -317,17 +318,11 @@ struct ModelManagementView: View {
     private var importLocalModelButton: some View {
         HStack(spacing: 8) {
             Button(action: { presentImportPanel() }) {
-                HStack(spacing: 6) {
-                    Image(systemName: "square.and.arrow.down")
-                    Text("Import a speech model…")
-                        .font(.app(size: 12, weight: .medium))
-                }
-                .foregroundStyle(AppTheme.Text.secondary)
-                .padding(.horizontal, 12)
-                .padding(.vertical, 7)
-                .background(Capsule().fill(AppTheme.Surface.control))
+                Label("Import a speech model…", systemImage: "square.and.arrow.down")
+                    .font(.app(size: 12, weight: .medium))
             }
-            .buttonStyle(.plain)
+            .buttonStyle(.bordered)
+            .controlSize(.small)
 
             InfoTip(
                 "Add a custom fine-tuned whisper model to use with VoxOS. Select the downloaded .bin file.",

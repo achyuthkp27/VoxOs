@@ -20,39 +20,34 @@ struct LocalEnhancementServiceManagementView: View {
         !localCLICommandTemplate.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty
     }
 
+    /// Rows only: the AI Models page puts them in the Language models group, under VoxOS Refine.
     var body: some View {
-        VStack(alignment: .leading, spacing: 10) {
-            ProviderSectionHeader(
-                title: "On this Mac",
-                subtitle: "Ollama models, or a command-line tool such as Claude Code."
-            )
-            .padding(.top, 8)
-
+        VStack(alignment: .leading, spacing: 0) {
             VStack(spacing: 0) {
                 LocalProviderDisclosureRow(
                     title: Text(verbatim: "Ollama"),
                     subtitle: ollamaModelNames.isEmpty ? Text("Local server") : Text(localModelCountLabel),
                     systemImage: "server.rack",
                     statusTitle: ollamaStatusTitle,
+                    isConnected: aiService.connectedProviders.contains(.ollama),
                     isExpanded: $isOllamaExpanded
                 ) {
                     ollamaConfiguration
                 }
 
-                Divider()
-                    .padding(.leading, 58)
+                ModelListDivider()
 
                 LocalProviderDisclosureRow(
                     title: Text("CLI Provider"),
                     subtitle: Text("Claude, Codex, scripts, or any command"),
                     systemImage: "terminal",
                     statusTitle: isLocalCLIConfigured ? Text("Configured") : Text("Not configured"),
+                    isConnected: isLocalCLIConfigured,
                     isExpanded: $isLocalCLIExpanded
                 ) {
                     localCLIConfiguration
                 }
             }
-            .background(AppMaterialCardBackground(cornerRadius: 11))
         }
         .onAppear {
             selectedOllamaModel = aiService.selectedModel(for: .ollama)
@@ -269,6 +264,7 @@ private struct LocalProviderDisclosureRow<Content: View>: View {
     let subtitle: Text
     let systemImage: String
     let statusTitle: Text
+    let isConnected: Bool
     @Binding var isExpanded: Bool
     let content: () -> Content
 
@@ -277,6 +273,7 @@ private struct LocalProviderDisclosureRow<Content: View>: View {
         subtitle: Text,
         systemImage: String,
         statusTitle: Text,
+        isConnected: Bool,
         isExpanded: Binding<Bool>,
         @ViewBuilder content: @escaping () -> Content
     ) {
@@ -284,6 +281,7 @@ private struct LocalProviderDisclosureRow<Content: View>: View {
         self.subtitle = subtitle
         self.systemImage = systemImage
         self.statusTitle = statusTitle
+        self.isConnected = isConnected
         self._isExpanded = isExpanded
         self.content = content
     }
@@ -295,56 +293,54 @@ private struct LocalProviderDisclosureRow<Content: View>: View {
                     isExpanded.toggle()
                 }
             } label: {
-                HStack(spacing: 12) {
-                    Image(systemName: systemImage)
-                        .font(.app(size: 14, weight: .medium))
-                        .symbolRenderingMode(.hierarchical)
-                        .foregroundStyle(.secondary)
-                        .frame(width: 30, height: 30)
-                        .background(
-                            RoundedRectangle(cornerRadius: 7)
-                                .fill(AppTheme.Surface.control)
-                                .overlay(
-                                    RoundedRectangle(cornerRadius: 7)
-                                        .stroke(AppTheme.Border.control.opacity(0.3), lineWidth: 1)
-                                )
-                        )
+                HStack(spacing: ModelRowMetrics.spacing) {
+                    ModelIconTile(systemName: systemImage)
 
-                    VStack(alignment: .leading, spacing: 2) {
+                    VStack(alignment: .leading, spacing: 3) {
                         title
-                            .font(.app(size: 13, weight: .semibold))
-                            .foregroundStyle(.primary)
+                            .font(.app(size: 14, weight: .semibold))
+                            .foregroundStyle(AppTheme.Text.primary)
 
                         subtitle
-                            .font(.app(size: 11, weight: .regular))
-                            .foregroundStyle(.secondary)
+                            .font(.app(size: 11.5, weight: .medium))
+                            .foregroundStyle(AppTheme.Text.secondary)
                             .lineLimit(1)
                     }
 
                     Spacer(minLength: 12)
 
-                    statusTitle
-                        .font(.app(.caption))
-                        .foregroundStyle(.secondary)
-                        .lineLimit(1)
+                    HStack(spacing: 5) {
+                        Circle()
+                            .fill(isConnected ? AppTheme.Status.success : AppTheme.Text.muted)
+                            .frame(width: 6, height: 6)
+                        statusTitle
+                            .font(.app(size: 11, weight: .medium))
+                            .foregroundStyle(isConnected ? AppTheme.Status.success : AppTheme.Text.secondary)
+                            .lineLimit(1)
+                    }
+                    .padding(.horizontal, 8)
+                    .padding(.vertical, 3)
+                    .background(
+                        Capsule().fill(isConnected ? AppTheme.Status.success.opacity(0.12) : AppTheme.Surface.control)
+                    )
 
                     Image(systemName: "chevron.right")
                         .font(.app(size: 11, weight: .semibold))
-                        .foregroundStyle(.tertiary)
+                        .foregroundStyle(AppTheme.Text.muted)
                         .rotationEffect(.degrees(isExpanded ? 90 : 0))
                 }
                 .contentShape(Rectangle())
-                .padding(.horizontal, 14)
-                .padding(.vertical, 11)
+                .padding(.horizontal, ModelRowMetrics.horizontalPadding)
+                .padding(.vertical, 12)
             }
             .buttonStyle(.plain)
 
             if isExpanded {
-                Divider()
-                    .padding(.leading, 58)
+                ModelListDivider()
 
                 content()
-                    .padding(.horizontal, 14)
+                    .padding(.leading, ModelRowMetrics.textInset)
+                    .padding(.trailing, ModelRowMetrics.horizontalPadding)
                     .padding(.top, 12)
                     .padding(.bottom, 14)
                     .transition(.opacity)

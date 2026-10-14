@@ -1,7 +1,8 @@
 import SwiftUI
 
-/// The one input on each Dictionary tab: a quiet field set into the page with a plain Add
-/// button, instead of a stock bordered field whose blue focus ring was the loudest thing on screen.
+/// The one input on each Dictionary tab: a search-styled field set into the page with a plain
+/// Add button, instead of a stock bordered field whose blue focus ring was the loudest thing on
+/// screen.
 struct DictionaryComposer<Fields: View>: View {
     let canAdd: Bool
     let addTitle: LocalizedStringKey
@@ -10,10 +11,10 @@ struct DictionaryComposer<Fields: View>: View {
 
     var body: some View {
         HStack(spacing: 10) {
-            Image(systemName: "plus")
-                .font(.app(size: 12, weight: .semibold))
+            Image(systemName: "plus.magnifyingglass")
+                .font(.app(size: 13, weight: .medium))
                 .foregroundStyle(AppTheme.Text.secondary)
-                .frame(width: 16)
+                .frame(width: 18)
 
             fields()
 
@@ -30,13 +31,14 @@ struct DictionaryComposer<Fields: View>: View {
         }
         .padding(.leading, 14)
         .padding(.trailing, 8)
-        .padding(.vertical, 8)
+        .padding(.vertical, 9)
+        .frame(minHeight: 42)
         .background(
-            RoundedRectangle(cornerRadius: 10, style: .continuous)
+            RoundedRectangle(cornerRadius: 12, style: .continuous)
                 .fill(AppTheme.Surface.subtle)
         )
         .overlay(
-            RoundedRectangle(cornerRadius: 10, style: .continuous)
+            RoundedRectangle(cornerRadius: 12, style: .continuous)
                 .stroke(AppTheme.Border.card, lineWidth: 1)
         )
     }
@@ -101,7 +103,7 @@ struct DictionaryListHeader: View {
     var body: some View {
         HStack {
             Text(title)
-                .font(.app(size: 11, weight: .semibold))
+                .font(.appMono(size: 11, weight: .medium))
                 .foregroundStyle(AppTheme.Text.secondary)
                 .textCase(.uppercase)
                 .tracking(0.6)
@@ -111,7 +113,7 @@ struct DictionaryListHeader: View {
                     Text(sortLabel)
                     Image(systemName: "arrow.up.arrow.down")
                 }
-                .font(.app(size: 11, weight: .medium))
+                .font(.appMono(size: 11, weight: .medium))
                 .foregroundStyle(AppTheme.Text.secondary)
             }
             .buttonStyle(.plain)

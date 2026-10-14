@@ -158,11 +158,11 @@ struct VocabularyWordTile: View {
         .padding(.horizontal, 12)
         .padding(.vertical, 10)
         .background(
-            RoundedRectangle(cornerRadius: 10, style: .continuous)
+            RoundedRectangle(cornerRadius: 12, style: .continuous)
                 .fill(isHovered ? AppTheme.Surface.control : AppTheme.Surface.card)
         )
         .overlay(
-            RoundedRectangle(cornerRadius: 10, style: .continuous)
+            RoundedRectangle(cornerRadius: 12, style: .continuous)
                 .stroke(AppTheme.Border.card, lineWidth: 1)
         )
         .onHover { hovering in

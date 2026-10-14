@@ -93,12 +93,15 @@ struct ModeView: View {
     }
 
     private var addModeButton: some View {
-        AppIconButton(
-            systemName: "plus.circle.fill",
-            help: "Add a new mode"
-        ) {
+        Button {
             openPanel(mode: .add)
+        } label: {
+            Label("Add mode", systemImage: "plus")
+                .font(.app(size: 13, weight: .medium))
         }
+        .buttonStyle(.bordered)
+        .controlSize(.large)
+        .help("Add a new mode")
     }
 
     private var settingsButton: some View {

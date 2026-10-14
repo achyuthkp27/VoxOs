@@ -122,6 +122,53 @@ enum ModeListPhrasing {
         }
     }
 
+    /// What the mode is for, in one plain line. Known prompts and output actions get a fixed
+    /// description; a custom prompt falls back to its own name.
+    static func purpose(
+        outputMode: ModeOutputMode,
+        usesAI: Bool,
+        promptTitle: String?,
+        isAgent: Bool
+    ) -> String {
+        if isAgent {
+            return String(localized: "Uses tools and acts on your behalf")
+        }
+        switch outputMode {
+        case .rewrite:
+            return String(localized: "Rephrases or changes tone of the selection")
+        case .customCommand:
+            return String(localized: "Runs your own command on what you say")
+        case .respond, .paste:
+            break
+        }
+
+        let prompt = usesAI ? promptTitle : nil
+        switch prompt?.lowercased() {
+        case "email"?:
+            return String(localized: "Drafts and replies to emails")
+        case "chat"?:
+            return String(localized: "Writes casual chat messages")
+        case "rewrite"?:
+            return String(localized: "Rephrases or changes tone of the selection")
+        case "assistant"?:
+            return String(localized: "Answers questions")
+        case "agent"?:
+            return String(localized: "Uses tools and acts on your behalf")
+        case "default"?, nil:
+            if outputMode == .respond {
+                return String(localized: "Answers questions")
+            }
+            return usesAI
+                ? String(localized: "Improves wording and structure")
+                : String(localized: "Turns speech into text as you talk")
+        case _?:
+            let title = prompt ?? ""
+            return outputMode == .respond
+                ? String(localized: "Answers with your “\(title)” prompt")
+                : String(localized: "Writes with your “\(title)” prompt")
+        }
+    }
+
     private static func place(appNames: [String], websites: [String]) -> String? {
         let apps: String? =
             switch appNames.count {

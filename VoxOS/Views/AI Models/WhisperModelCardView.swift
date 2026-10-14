@@ -1,7 +1,7 @@
 import AppKit
 import SwiftUI
 
-// MARK: - Local Model Card View
+// MARK: - Local Model Row
 struct WhisperModelCardView: View {
     let model: WhisperModel
     let isDownloaded: Bool
@@ -17,121 +17,53 @@ struct WhisperModelCardView: View {
     }
 
     var body: some View {
-        HStack(alignment: .top, spacing: 16) {
-            // Main Content
-            VStack(alignment: .leading, spacing: 6) {
-                headerSection
-                metadataSection
-                descriptionSection
-                progressSection
-            }
-            .frame(maxWidth: .infinity, alignment: .leading)
-
-            // Action Controls
+        ModelListRow(
+            systemImage: "waveform",
+            name: model.displayName,
+            meta: [model.language, model.size, String(localized: "On this Mac")],
+            description: Text(model.description)
+        ) {
+            ModelInUseBadge(modelName: model.name)
+        } trailing: {
             actionSection
-        }
-        .padding(16)
-        .background(AppMaterialCardBackground())
-    }
-
-    private var headerSection: some View {
-        HStack(alignment: .firstTextBaseline) {
-            Text(model.displayName)
-                .font(.app(size: 13, weight: .semibold))
-                .foregroundColor(Color(.labelColor))
-
-            Spacer()
+        } footer: {
+            progressSection
         }
     }
 
-    private var metadataSection: some View {
-        HStack(spacing: 12) {
-            // Language
-            Label(model.language, systemImage: "globe")
-                .font(.app(size: 11, weight: .regular))
-                .foregroundColor(Color(.secondaryLabelColor))
-                .lineLimit(1)
-
-            // Size
-            Label(model.size, systemImage: "internaldrive")
-                .font(.app(size: 11, weight: .regular))
-                .foregroundColor(Color(.secondaryLabelColor))
-                .lineLimit(1)
-
-            Label("On this Mac", systemImage: "lock.shield")
-                .font(.app(size: 11, weight: .regular))
-                .foregroundColor(Color(.secondaryLabelColor))
-                .lineLimit(1)
-        }
-        .lineLimit(1)
-    }
-
-    private var descriptionSection: some View {
-        Text(model.description)
-            .font(.app(size: 11, weight: .regular))
-            .foregroundColor(Color(.secondaryLabelColor))
-            .lineLimit(2)
-            .fixedSize(horizontal: false, vertical: true)
-            .padding(.top, 4)
-    }
-
+    @ViewBuilder
     private var progressSection: some View {
-        Group {
-            if isDownloading || isWarming {
-                DownloadProgressView(
-                    modelName: model.name,
-                    downloadProgress: downloadProgress,
-                    isOptimizing: isWarming && !isDownloading
-                )
-                .padding(.top, 8)
-                .frame(maxWidth: .infinity, alignment: .leading)
-            }
+        if isDownloading || isWarming {
+            DownloadProgressView(
+                modelName: model.name,
+                downloadProgress: downloadProgress,
+                isOptimizing: isWarming && !isDownloading
+            )
+            .padding(.top, 6)
+            .frame(maxWidth: .infinity, alignment: .leading)
         }
     }
 
+    @ViewBuilder
     private var actionSection: some View {
-        HStack(spacing: 8) {
-            if isDownloaded {
-                modelStatusPill("Downloaded", systemImage: "checkmark.circle")
-            } else {
-                Button(action: downloadAction) {
-                    HStack(spacing: 4) {
-                        Text(LocalizedStringKey(isDownloading ? "Downloading..." : "Download"))
-                            .font(.app(size: 12, weight: .medium))
-                        Image(systemName: "arrow.down.circle")
-                            .font(.app(size: 12, weight: .medium))
-                    }
-                    .foregroundColor(AppTheme.Accent.primary)
-                    .padding(.horizontal, 12)
-                    .padding(.vertical, 6)
-                    .background(Capsule().fill(AppTheme.Accent.fillSubtle))
-                    .overlay(Capsule().strokeBorder(AppTheme.Accent.border, lineWidth: 1))
+        if isDownloaded {
+            modelStatusPill("Downloaded", systemImage: "checkmark.circle.fill")
+
+            ModelRowMenu {
+                Button(action: deleteAction) {
+                    Label("Delete Model", systemImage: "trash")
                 }
-                .buttonStyle(.plain)
-                .disabled(isDownloading)
-            }
 
-            if isDownloaded {
-                Menu {
-                    Button(action: deleteAction) {
-                        Label("Delete Model", systemImage: "trash")
-                    }
-
-                    Button {
-                        if let modelURL = modelURL {
-                            NSWorkspace.shared.selectFile(modelURL.path, inFileViewerRootedAtPath: "")
-                        }
-                    } label: {
-                        Label("Show in Finder", systemImage: "folder")
+                Button {
+                    if let modelURL = modelURL {
+                        NSWorkspace.shared.selectFile(modelURL.path, inFileViewerRootedAtPath: "")
                     }
                 } label: {
-                    Image(systemName: "ellipsis.circle")
-                        .font(.app(size: 14, weight: .regular))
+                    Label("Show in Finder", systemImage: "folder")
                 }
-                .menuStyle(.borderlessButton)
-                .menuIndicator(.hidden)
-                .frame(width: 20, height: 20)
             }
+        } else {
+            ModelDownloadButton(isDownloading: isDownloading, action: downloadAction)
         }
     }
 }
@@ -145,60 +77,39 @@ struct ImportedWhisperModelCardView: View {
     var deleteAction: () -> Void
 
     var body: some View {
-        HStack(alignment: .top, spacing: 16) {
-            VStack(alignment: .leading, spacing: 6) {
-                HStack(alignment: .firstTextBaseline) {
-                    Text(model.displayName)
-                        .font(.app(size: 13, weight: .semibold))
-                        .foregroundColor(Color(.labelColor))
-                    Spacer()
-                }
+        ModelListRow(
+            systemImage: "waveform",
+            name: model.displayName,
+            meta: [String(localized: "Imported"), String(localized: "On this Mac")],
+            description: Text("Imported local model")
+        ) {
+            ModelInUseBadge(modelName: model.name)
+        } trailing: {
+            if isDownloaded {
+                modelStatusPill("Imported", systemImage: "checkmark.circle.fill")
 
-                Text("Imported local model")
-                    .font(.app(size: 11, weight: .regular))
-                    .foregroundColor(Color(.secondaryLabelColor))
-                    .lineLimit(2)
-                    .fixedSize(horizontal: false, vertical: true)
-                    .padding(.top, 4)
-            }
-            .frame(maxWidth: .infinity, alignment: .leading)
-
-            HStack(spacing: 8) {
-                if isDownloaded {
-                    modelStatusPill("Imported", systemImage: "checkmark.circle")
-                }
-
-                if isDownloaded {
-                    Menu {
-                        Button(action: deleteAction) {
-                            Label("Delete Model", systemImage: "trash")
-                        }
-                        Button {
-                            if let modelURL = modelURL {
-                                NSWorkspace.shared.selectFile(modelURL.path, inFileViewerRootedAtPath: "")
-                            }
-                        } label: {
-                            Label("Show in Finder", systemImage: "folder")
+                ModelRowMenu {
+                    Button(action: deleteAction) {
+                        Label("Delete Model", systemImage: "trash")
+                    }
+                    Button {
+                        if let modelURL = modelURL {
+                            NSWorkspace.shared.selectFile(modelURL.path, inFileViewerRootedAtPath: "")
                         }
                     } label: {
-                        Image(systemName: "ellipsis.circle")
-                            .font(.app(size: 14, weight: .regular))
+                        Label("Show in Finder", systemImage: "folder")
                     }
-                    .menuStyle(.borderlessButton)
-                    .menuIndicator(.hidden)
-                    .frame(width: 20, height: 20)
                 }
             }
+        } footer: {
         }
-        .padding(16)
-        .background(AppMaterialCardBackground())
     }
 }
 
 // MARK: - Helper Views and Functions
 
-/// "In use by N modes" beside a speech model's name, so the catalogue says which model is
-/// actually hearing you rather than leaving that to the Modes page.
+/// "In use" beside a speech model's name, so the catalogue says which model is actually
+/// hearing you rather than leaving that to the Modes page. The tooltip gives the count.
 struct ModelInUseBadge: View {
     let modelName: String
     @ObservedObject private var modeManager = ModeManager.shared
@@ -209,22 +120,26 @@ struct ModelInUseBadge: View {
 
     var body: some View {
         if count > 0 {
-            Text(count == 1 ? "In use by 1 mode" : "In use by \(count) modes")
-                .font(.app(size: 10, weight: .semibold))
-                .foregroundStyle(AppTheme.Accent.primary)
-                .padding(.horizontal, 7)
-                .padding(.vertical, 2)
-                .background(Capsule().fill(AppTheme.Accent.fillSubtle))
+            ModelRowBadge(title: "In use")
+                .help(Text(count == 1 ? "In use by 1 mode" : "In use by \(count) modes"))
         }
     }
 }
 
+/// A model's state at the end of its row ("Downloaded ✓", "Built in"): plain text with a
+/// coloured symbol rather than a pill, so the row's one control stays the loudest thing on it.
 func modelStatusPill(_ text: LocalizedStringKey, systemImage: String) -> some View {
-    Label(text, systemImage: systemImage)
-        .font(.app(size: 11, weight: .medium))
-        .foregroundColor(Color(.secondaryLabelColor))
-        .padding(.horizontal, 8)
-        .padding(.vertical, 4)
-        .background(AppTheme.Surface.card)
-        .clipShape(Capsule())
+    let tint: Color =
+        systemImage.hasPrefix("checkmark")
+        ? AppTheme.Status.success
+        : systemImage.hasPrefix("exclamationmark") ? AppTheme.Status.warning : AppTheme.Text.secondary
+    return HStack(spacing: 5) {
+        Text(text)
+            .foregroundStyle(AppTheme.Text.secondary)
+        Image(systemName: systemImage)
+            .foregroundStyle(tint)
+    }
+    .font(.app(size: 12, weight: .medium))
+    .lineLimit(1)
+    .fixedSize()
 }

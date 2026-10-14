@@ -38,7 +38,9 @@ struct LearnedCorrectionsSection: View {
                         Image(systemName: "sparkles")
                             .font(.app(size: 10, weight: .medium))
                         Text("Suggested from your corrections")
-                            .font(.app(size: 11, weight: .semibold))
+                            .font(.appMono(size: 11, weight: .medium))
+                            .textCase(.uppercase)
+                            .tracking(0.6)
                         Spacer()
                     }
                     .foregroundColor(AppTheme.Text.secondary)

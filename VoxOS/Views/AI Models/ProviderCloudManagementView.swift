@@ -56,20 +56,28 @@ struct CloudProviderManagementView: View {
     }
 
     var body: some View {
-        VStack(alignment: .leading, spacing: 12) {
+        let descriptors = providerDescriptors
+
+        return VStack(alignment: .leading, spacing: 10) {
             ProviderSectionHeader(
-                title: "Cloud Providers",
+                title: "Cloud providers",
                 subtitle: "Connect providers here, then choose models inside Modes."
             )
+            .padding(.horizontal, 4)
 
-            ForEach(providerDescriptors) { descriptor in
-                ProviderListRow(
-                    descriptor: descriptor,
-                    isSelected: selectedProviderID == descriptor.id,
-                    onSelect: {
-                        onSelectProvider(descriptor)
+            ModelListGroup {
+                ForEach(Array(descriptors.enumerated()), id: \.element.id) { index, descriptor in
+                    if index > 0 {
+                        ModelListDivider()
                     }
-                )
+                    ProviderListRow(
+                        descriptor: descriptor,
+                        isSelected: selectedProviderID == descriptor.id,
+                        onSelect: {
+                            onSelectProvider(descriptor)
+                        }
+                    )
+                }
             }
         }
     }
@@ -180,6 +188,7 @@ private struct ProviderListRow: View {
     let descriptor: ProviderDescriptor
     let isSelected: Bool
     let onSelect: () -> Void
+    @State private var isHovering = false
 
     private var isConfigured: Bool {
         APIKeyManager.shared.hasAPIKey(forProvider: descriptor.providerKey)
@@ -216,40 +225,36 @@ private struct ProviderListRow: View {
     }
 
     private func transcriptionModelCountText(_ count: Int) -> String {
-        String.localizedStringWithFormat(
-            NSLocalizedString(
-                "%lld Transcription models", comment: "Number of transcription models available for a provider."),
-            Int64(count)
-        )
+        count == 1
+            ? String(localized: "1 transcription model")
+            : String(localized: "\(count) transcription models")
     }
 
     private func enhancementModelCountText(_ count: Int) -> String {
-        String.localizedStringWithFormat(
-            NSLocalizedString(
-                "%lld Enhancement models", comment: "Number of enhancement models available for a provider."),
-            Int64(count)
-        )
+        count == 1
+            ? String(localized: "1 language model")
+            : String(localized: "\(count) language models")
     }
 
     var body: some View {
         Button(action: onSelect) {
-            HStack(spacing: 12) {
+            HStack(spacing: ModelRowMetrics.spacing) {
                 ProviderBrandIcon(
                     descriptor: descriptor,
                     fallbackSystemImage: iconName,
                     isSelected: isSelected,
-                    size: 28,
+                    size: ModelRowMetrics.iconSize,
                     iconSize: 15
                 )
 
-                VStack(alignment: .leading, spacing: 4) {
+                VStack(alignment: .leading, spacing: 3) {
                     Text(descriptor.displayName)
-                        .font(.app(size: 13, weight: .semibold))
-                        .foregroundStyle(.primary)
+                        .font(.app(size: 14, weight: .semibold))
+                        .foregroundStyle(AppTheme.Text.primary)
 
                     Text(capabilitySummary)
-                        .font(.app(.caption))
-                        .foregroundStyle(.secondary)
+                        .font(.app(size: 11.5, weight: .medium))
+                        .foregroundStyle(AppTheme.Text.secondary)
                         .lineLimit(1)
                 }
 
@@ -258,14 +263,19 @@ private struct ProviderListRow: View {
                 ProviderStatusBadge(title: statusText, color: statusColor)
 
                 Image(systemName: "chevron.right")
-                    .font(.app(size: 12, weight: .semibold))
-                    .foregroundStyle(.secondary)
+                    .font(.app(size: 11, weight: .semibold))
+                    .foregroundStyle(AppTheme.Text.muted)
             }
             .contentShape(Rectangle())
-            .padding(14)
+            .padding(.horizontal, ModelRowMetrics.horizontalPadding)
+            .padding(.vertical, 12)
+            .background(
+                isSelected ? AppTheme.Selection.fill : (isHovering ? AppTheme.Surface.subtle : Color.clear)
+            )
         }
         .buttonStyle(.plain)
-        .background(ProviderSurface(isActive: isSelected, cornerRadius: 10))
+        .onHover { hovering in
+            withAnimation(.easeOut(duration: 0.12)) { isHovering = hovering }
+        }
     }
-
 }

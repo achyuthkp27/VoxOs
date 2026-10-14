@@ -132,11 +132,12 @@ struct WordReplacementView: View {
                         }
                     }
                     .background(
-                        RoundedRectangle(cornerRadius: 10, style: .continuous)
+                        RoundedRectangle(cornerRadius: 14, style: .continuous)
                             .fill(AppTheme.Surface.card)
                     )
+                    .clipShape(RoundedRectangle(cornerRadius: 14, style: .continuous))
                     .overlay(
-                        RoundedRectangle(cornerRadius: 10, style: .continuous)
+                        RoundedRectangle(cornerRadius: 14, style: .continuous)
                             .stroke(AppTheme.Border.card, lineWidth: 1)
                     )
                 }
