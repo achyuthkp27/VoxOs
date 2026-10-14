@@ -6,6 +6,9 @@ struct SidePanel<PanelContent: View>: ViewModifier {
     let dismissOnExitCommand: Bool
     @ViewBuilder let panelContent: () -> PanelContent
     @Environment(\.accessibilityReduceMotion) private var reduceMotion
+    /// The panel itself takes focus when it opens. Otherwise AppKit hands it to the first text
+    /// field inside (a mode's name, a key field), which selects all its text as if to replace it.
+    @FocusState private var isPanelFocused: Bool
 
     private var animation: Animation {
         reduceMotion ? .easeOut(duration: 0.12) : .smooth(duration: 0.32)
@@ -34,6 +37,10 @@ struct SidePanel<PanelContent: View>: ViewModifier {
             .overlay(SidePanelEdgeSeparator(), alignment: .leading)
             .overlay(SidePanelOuterSeparator(), alignment: .trailing)
             .ignoresSafeArea()
+            .focusable()
+            .focusEffectDisabled()
+            .focused($isPanelFocused)
+            .onAppear { isPanelFocused = true }
     }
 
     func body(content: Content) -> some View {
