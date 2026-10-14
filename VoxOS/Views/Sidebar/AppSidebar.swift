@@ -75,14 +75,31 @@ struct AppSidebar: View {
     @ViewBuilder
     private var header: some View {
         if isCollapsed {
-            VStack(spacing: 10) {
+            // No separate toggle button: the app icon collapses and expands the sidebar, the
+            // one thing at its top a person reaches for in either state.
+            Button(action: toggleCollapsed) {
                 appIcon
-                collapseButton
+                    .padding(4)
+                    .contentShape(Rectangle())
             }
+            .buttonStyle(.plain)
+            .focusEffectDisabled()
+            .keyboardShortcut("s", modifiers: [.control, .command])
+            .help(Text("Expand sidebar (⌃⌘S)"))
+            .accessibilityLabel(Text("Expand sidebar"))
             .frame(maxWidth: .infinity)
         } else {
             HStack(spacing: 10) {
-                appIcon
+                Button(action: toggleCollapsed) {
+                    appIcon
+                        .contentShape(Rectangle())
+                }
+                .buttonStyle(.plain)
+                .focusEffectDisabled()
+                .keyboardShortcut("s", modifiers: [.control, .command])
+                .help(Text("Collapse sidebar (⌃⌘S)"))
+                .accessibilityLabel(Text("Collapse sidebar"))
+
                 Text(verbatim: "VoxOS")
                     .font(.app(size: 14, weight: .semibold))
                     .tracking(-0.2)
@@ -90,7 +107,6 @@ struct AppSidebar: View {
                     .lineLimit(1)
                     .fixedSize()
                 Spacer(minLength: 0)
-                collapseButton
             }
             .padding(.leading, 18)
             .padding(.trailing, 12)
@@ -105,22 +121,8 @@ struct AppSidebar: View {
             .accessibilityHidden(true)
     }
 
-    private var collapseButton: some View {
-        Button {
-            withAnimation(reduceMotion ? nil : .smooth(duration: 0.25)) { isCollapsed.toggle() }
-        } label: {
-            Image(systemName: "sidebar.left")
-                .font(.app(size: 12, weight: .medium))
-                .foregroundStyle(AppTheme.Text.secondary)
-                .frame(width: 26, height: 24)
-                .contentShape(Rectangle())
-        }
-        .buttonStyle(.plain)
-        .focusEffectDisabled()
-        // ⌃⌘S is the system's Toggle Sidebar shortcut.
-        .keyboardShortcut("s", modifiers: [.control, .command])
-        .help(isCollapsed ? Text("Expand sidebar (⌃⌘S)") : Text("Collapse sidebar (⌃⌘S)"))
-        .accessibilityLabel(isCollapsed ? Text("Expand sidebar") : Text("Collapse sidebar"))
+    private func toggleCollapsed() {
+        withAnimation(reduceMotion ? nil : .smooth(duration: 0.25)) { isCollapsed.toggle() }
     }
 
     @ViewBuilder
