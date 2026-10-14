@@ -70,6 +70,7 @@ enum AgentToolExecutor {
         var reply = firstReply
         var steps = 0
         var executed: [String] = []
+        var lastResult: [String: Any] = [:]
 
         while !Task.isCancelled, let call = parseToolCall(reply), steps < maxSteps {
             steps += 1
@@ -77,6 +78,7 @@ enum AgentToolExecutor {
             let result = await AgentTools.execute(name: call.name, args: call.args)
             AgentAutoClose.record(tool: call.name, result: result)
             executed.append(call.name)
+            lastResult = result
             if !background, let card = AgentCard.from(tool: call.name, result: result) { AgentCardStore.add(card) }
 
             // Resent on every remaining step: an uncapped page dump or file read would blow
@@ -110,6 +112,18 @@ enum AgentToolExecutor {
         if parseToolCall(reply) != nil {
             return "Agent stopped after \(maxSteps) steps (ran: \(executed.joined(separator: ", ")))."
         }
+        if reply.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty, !executed.isEmpty {
+            return emptyReplyFallback(executed: executed, lastResult: lastResult)
+        }
         return reply
+    }
+
+    /// Some models (gpt-oss on Groq) answer a TOOL_RESULT with nothing at all. Rather than
+    /// "empty reply", say what the tools did — above all a block or a pending confirmation,
+    /// which the user otherwise never hears about.
+    static func emptyReplyFallback(executed: [String], lastResult: [String: Any]) -> String {
+        if let error = lastResult["error"] as? String { return error }
+        if let confirm = lastResult["confirm_required"] as? String { return confirm }
+        return "Done (ran \(executed.joined(separator: ", ")))."
     }
 }

@@ -378,7 +378,8 @@ struct AgentLogicTests {
             AgentFrontmostApp.set(Self.fakeApp)
             #expect(AgentControlMode.mode(forTool: "type_text", args: [:]) == .takeover)
             #expect(AgentControlMode.mode(forTool: "run_shell", args: [:]) == .observeOnly)
-            #expect(AgentControlMode.mode(forTool: "set_window_bounds", args: ["app": "No Such App Xyzzy"]) == .observeOnly)
+            #expect(
+                AgentControlMode.mode(forTool: "set_window_bounds", args: ["app": "No Such App Xyzzy"]) == .observeOnly)
         }
     }
 
@@ -433,6 +434,17 @@ struct AgentLogicTests {
         await withModes(global: .takeover, overrides: [:]) {
             #expect(!AgentToolCatalog.runtimeSection().contains("per-app control modes"))
         }
+    }
+
+    @Test func emptyModelReplyAfterToolsSaysWhatHappened() {
+        let blocked = AgentToolExecutor.emptyReplyFallback(
+            executed: ["type_text"], lastResult: ["error": "blocked: observe only in TextEdit"])
+        #expect(blocked == "blocked: observe only in TextEdit")
+        let held = AgentToolExecutor.emptyReplyFallback(
+            executed: ["open_app"], lastResult: ["confirm_required": "Ready to open TextEdit."])
+        #expect(held == "Ready to open TextEdit.")
+        let done = AgentToolExecutor.emptyReplyFallback(executed: ["open_app", "type_text"], lastResult: ["ok": true])
+        #expect(done == "Done (ran open_app, type_text).")
     }
 
     // MARK: App deep links
