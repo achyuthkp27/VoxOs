@@ -42,7 +42,8 @@ final class LocalCLIWarmClaude {
         let refresh = { [weak self] in self?.scheduleRefresh(command: command) }
         observers = [
             NotificationCenter.default.addObserver(
-                forName: UserDefaults.didChangeNotification, object: nil, queue: .main) { _ in refresh() }
+                forName: UserDefaults.didChangeNotification, object: nil, queue: .main
+            ) { _ in refresh() }
         ]
         refresh()
     }

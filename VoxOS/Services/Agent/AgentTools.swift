@@ -378,8 +378,11 @@ enum AgentTools {
             }
             let pasteTask = await MainActor.run { CursorPaster.startPasteAtCursor(text) }
             let pasted = await pasteTask.value.didPostPasteCommand
+            let frontApp = await MainActor.run {
+                NSWorkspace.shared.frontmostApplication?.localizedName ?? "the front app"
+            }
             return pasted
-                ? ["result": "typed text at the cursor in \(await MainActor.run { NSWorkspace.shared.frontmostApplication?.localizedName ?? "the front app" })"]
+                ? ["result": "typed text at the cursor in \(frontApp)"]
                 : [
                     "error":
                         "could not paste at the cursor (no text field focused, or Accessibility permission missing)"

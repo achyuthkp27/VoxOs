@@ -145,7 +145,8 @@ enum AgentAppResolver {
         guard !trimmed.isEmpty else { return nil }
         let q = trimmed.lowercased()
         let running = NSWorkspace.shared.runningApplications.filter { $0.activationPolicy == .regular }
-        if let app = running.first(where: { $0.localizedName?.lowercased() == q || $0.bundleIdentifier?.lowercased() == q })
+        let exact = running.first { $0.localizedName?.lowercased() == q || $0.bundleIdentifier?.lowercased() == q }
+        if let app = exact
             ?? running.first(where: { $0.localizedName?.lowercased().contains(q) ?? false }),
             let id = app.bundleIdentifier
         {

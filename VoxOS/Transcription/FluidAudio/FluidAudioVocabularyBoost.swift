@@ -61,7 +61,8 @@ actor FluidAudioVocabularyBoost {
         guard let models = modelsIfReady(for: terms) else { return nil }
         if let cachedSession, cachedSession.terms == terms { return cachedSession.session }
         do {
-            let session = try await VocabularyBoostingSession(vocabulary: Self.vocabulary(for: terms), ctcModels: models)
+            let session = try await VocabularyBoostingSession(
+                vocabulary: Self.vocabulary(for: terms), ctcModels: models)
             cachedSession = (terms, session)
             return session
         } catch {
