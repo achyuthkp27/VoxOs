@@ -75,6 +75,9 @@ enum DefaultsKeys {
     /// Global main model (`AIProvider.rawValue` + model). When set, every mode uses it.
     static let aiMainProvider = "AIMainProvider"
     static let aiMainModel = "AIMainModel"
+    /// Global Agent model; when set, Agent conversations use it instead of the main model.
+    static let aiAgentProvider = "AIAgentProvider"
+    static let aiAgentModel = "AIAgentModel"
     /// Global fallback model, tried when the main one is down or answers with nothing.
     static let aiFallbackProvider = "AIFallbackProvider"
     static let aiFallbackModel = "AIFallbackModel"

@@ -25,6 +25,19 @@ enum AIModelRouting {
         set { write(newValue, providerKey: DefaultsKeys.aiMainProvider, modelKey: DefaultsKeys.aiMainModel) }
     }
 
+    /// The model for Agent conversations only; nil means they follow the main model.
+    static var agent: AIModelChoice? {
+        get { read(providerKey: DefaultsKeys.aiAgentProvider, modelKey: DefaultsKeys.aiAgentModel) }
+        set { write(newValue, providerKey: DefaultsKeys.aiAgentProvider, modelKey: DefaultsKeys.aiAgentModel) }
+    }
+
+    /// Which global choice applies: the Agent model for Agent conversations, then the main
+    /// model; nil leaves the mode's own provider and model in charge.
+    static func override(isAgentConversation: Bool, connected: [AIProvider]) -> AIModelChoice? {
+        let candidates = isAgentConversation ? [agent, main] : [main]
+        return candidates.compactMap { $0 }.first { connected.contains($0.provider) }
+    }
+
     static var fallback: AIModelChoice? {
         get {
             migrateLegacyFallbackIfNeeded()

@@ -11,7 +11,8 @@ import Testing
 struct AIModelRoutingTests {
 
     private static let keys = [
-        DefaultsKeys.aiMainProvider, DefaultsKeys.aiMainModel, DefaultsKeys.aiFallbackProvider,
+        DefaultsKeys.aiMainProvider, DefaultsKeys.aiMainModel, DefaultsKeys.aiAgentProvider, DefaultsKeys.aiAgentModel,
+        DefaultsKeys.aiFallbackProvider,
         DefaultsKeys.aiFallbackModel, DefaultsKeys.aiFallbackMigrated, DefaultsKeys.aiFallbackProviders,
     ]
 
@@ -99,6 +100,23 @@ struct AIModelRoutingTests {
 
             AIModelRouting.fallback = nil
             #expect(AIModelRouting.fallback == nil, "clearing the fallback must not bring the old list back")
+        }
+    }
+
+    @Test func agentModelAppliesOnlyToAgentConversations() {
+        withCleanDefaults {
+            AIModelRouting.main = AIModelChoice(provider: .groq, model: nil)
+            AIModelRouting.agent = AIModelChoice(provider: .ollama, model: "gemma4:cloud")
+            let connected: [AIProvider] = [.groq, .ollama]
+            #expect(AIModelRouting.override(isAgentConversation: true, connected: connected)?.provider == .ollama)
+            #expect(AIModelRouting.override(isAgentConversation: false, connected: connected)?.provider == .groq)
+            #expect(
+                AIModelRouting.override(isAgentConversation: true, connected: [.groq])?.provider == .groq,
+                "a disconnected Agent model falls back to the main model")
+            AIModelRouting.agent = nil
+            #expect(AIModelRouting.override(isAgentConversation: true, connected: connected)?.provider == .groq)
+            AIModelRouting.main = nil
+            #expect(AIModelRouting.override(isAgentConversation: true, connected: connected) == nil)
         }
     }
 

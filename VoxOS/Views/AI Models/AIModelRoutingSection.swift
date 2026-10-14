@@ -7,6 +7,7 @@ struct AIModelRoutingSection: View {
 
     @State private var main: AIModelChoice? = AIModelRouting.main
     @State private var fallback: AIModelChoice? = AIModelRouting.fallback
+    @State private var agent: AIModelChoice? = AIModelRouting.agent
 
     var body: some View {
         VStack(alignment: .leading, spacing: 10) {
@@ -14,7 +15,7 @@ struct AIModelRoutingSection: View {
                 Text("Main & Fallback Model")
                     .font(.headline)
                 InfoTip(
-                    "Main: every mode uses this model instead of its own. Leave it on “Each mode's own” to keep choosing per mode in Modes. Fallback: tried when the main model is rate-limited, down, unreachable or answers with nothing. Your text only goes to the models you pick here."
+                    "Main: every mode uses this model instead of its own. Leave it on “Each mode's own” to keep choosing per mode in Modes. Agent: the Agent uses this one instead, for example a stronger model than dictation cleanup needs. Fallback: tried when the main model is rate-limited, down, unreachable or answers with nothing. Your text only goes to the models you pick here."
                 )
             }
 
@@ -23,6 +24,12 @@ struct AIModelRoutingSection: View {
                 set: {
                     main = $0
                     AIModelRouting.main = $0
+                })
+            row(
+                title: "Agent", noneLabel: "Same as Main", choice: agent,
+                set: {
+                    agent = $0
+                    AIModelRouting.agent = $0
                 })
             row(
                 title: "Fallback", noneLabel: "None", choice: fallback,
@@ -46,6 +53,7 @@ struct AIModelRoutingSection: View {
         .onAppear {
             aiService.refreshOllamaAvailabilityInBackground()
             main = AIModelRouting.main
+            agent = AIModelRouting.agent
             fallback = AIModelRouting.fallback
         }
     }

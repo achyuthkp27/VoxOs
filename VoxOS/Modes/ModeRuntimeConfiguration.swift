@@ -162,11 +162,15 @@ enum ModeRuntimeResolver {
         aiService: AIService
     ) -> EnhancementRuntimeConfiguration {
         let mode = mode ?? ModeManager.shared.currentEffectiveConfiguration
-        // The global main model (AI Models) replaces every mode's own choice while it is set
-        // and connected; a main model that is not connected leaves the mode's choice in charge.
-        let main = AIModelRouting.main.flatMap { aiService.connectedProviders.contains($0.provider) ? $0 : nil }
+        // The global Agent model (Agent conversations only) or main model (AI Models) replaces
+        // the mode's own choice while it is set and connected; one that is not connected leaves
+        // the mode's choice in charge.
+        let modePrompt = resolvedPrompt(promptId: mode?.selectedPrompt, enhancementService: enhancementService)
+        let globalChoice = AIModelRouting.override(
+            isAgentConversation: AgentToolExecutor.isAgentConversation(systemPrompt: modePrompt?.finalPromptText),
+            connected: aiService.connectedProviders)
         let provider = resolvedProvider(
-            providerName: main?.provider.rawValue ?? mode?.selectedAIProvider,
+            providerName: globalChoice?.provider.rawValue ?? mode?.selectedAIProvider,
             aiService: aiService
         )
         let prompt =
@@ -178,7 +182,7 @@ enum ModeRuntimeResolver {
             )
         let modelName = resolvedEnhancementModelName(
             provider: provider,
-            configuredModelName: main.map { $0.model ?? aiService.selectedModel(for: $0.provider) }
+            configuredModelName: globalChoice.map { $0.model ?? aiService.selectedModel(for: $0.provider) }
                 ?? mode?.selectedAIModel,
             aiService: aiService
         )
