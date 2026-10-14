@@ -14,4 +14,15 @@ extension Font {
     static func app(_ style: Font.TextStyle, weight: Font.Weight? = nil) -> Font {
         weight.map { .system(style, weight: $0) } ?? .system(style)
     }
+
+    /// Page titles and the few display moments: Apple's serif (New York), used with restraint
+    /// so the app reads as edited rather than templated.
+    static func appDisplay(size: CGFloat, weight: Font.Weight = .regular) -> Font {
+        .system(size: size, weight: weight, design: .serif)
+    }
+
+    /// Eyebrows, labels, shortcuts and figures: the machine voice next to the serif.
+    static func appMono(size: CGFloat, weight: Font.Weight = .medium) -> Font {
+        .system(size: size, weight: weight, design: .monospaced)
+    }
 }

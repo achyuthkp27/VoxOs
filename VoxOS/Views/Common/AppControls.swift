@@ -78,21 +78,33 @@ struct AppScreenHeader<Trailing: View>: View {
     let title: LocalizedStringKey
     var infoMessage: LocalizedStringKey?
     var infoURL: String?
+    /// One plain line under the title saying what the page is for.
+    var subtitle: LocalizedStringKey? = nil
     @ViewBuilder let trailing: () -> Trailing
 
     var body: some View {
         HStack {
-            HStack(spacing: 8) {
-                Text(title)
-                    .font(.app(size: 28, weight: .bold))
-                    .foregroundColor(.primary)
+            VStack(alignment: .leading, spacing: 2) {
+                HStack(spacing: 8) {
+                    Text(title)
+                        .font(.appDisplay(size: 30, weight: .regular))
+                        .tracking(-0.3)
+                        .foregroundColor(.primary)
 
-                if let infoMessage {
-                    if let infoURL {
-                        InfoTip(infoMessage, learnMoreURL: infoURL)
-                    } else {
-                        InfoTip(infoMessage)
+                    if let infoMessage {
+                        if let infoURL {
+                            InfoTip(infoMessage, learnMoreURL: infoURL)
+                        } else {
+                            InfoTip(infoMessage)
+                        }
                     }
+                }
+
+                if let subtitle {
+                    Text(subtitle)
+                        .font(.app(size: 13))
+                        .foregroundStyle(AppTheme.Text.secondary)
+                        .lineLimit(1)
                 }
             }
 
@@ -100,7 +112,7 @@ struct AppScreenHeader<Trailing: View>: View {
 
             trailing()
         }
-        .frame(height: 40)
+        .frame(minHeight: 40)
         .padding(.horizontal, 24)
         .padding(.top, 20)
         .padding(.bottom, 12)
@@ -109,10 +121,14 @@ struct AppScreenHeader<Trailing: View>: View {
 }
 
 extension AppScreenHeader where Trailing == EmptyView {
-    init(title: LocalizedStringKey, infoMessage: LocalizedStringKey? = nil, infoURL: String? = nil) {
+    init(
+        title: LocalizedStringKey, infoMessage: LocalizedStringKey? = nil, infoURL: String? = nil,
+        subtitle: LocalizedStringKey? = nil
+    ) {
         self.title = title
         self.infoMessage = infoMessage
         self.infoURL = infoURL
+        self.subtitle = subtitle
         self.trailing = { EmptyView() }
     }
 }

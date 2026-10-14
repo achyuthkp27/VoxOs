@@ -114,6 +114,33 @@ enum AppTheme {
         static let disabledForeground = Text.disabled
     }
 
+    /// Prism: your voice is one white beam; each mode is a band of the spectrum it splits into.
+    /// The only colour in the app outside the brand accent, and always meaning "this mode".
+    enum Spectrum {
+        /// Raw voice — the default (dictation) mode, closest to what you said. The label colour,
+        /// so it is the white beam in dark appearance and stays visible in light.
+        static let beam = Color(nsColor: .labelColor)
+        static let bands: [Color] = [
+            Color(red: 1.00, green: 0.42, blue: 0.45),  // red
+            Color(red: 1.00, green: 0.64, blue: 0.30),  // orange
+            Color(red: 0.98, green: 0.84, blue: 0.36),  // yellow
+            Color(red: 0.36, green: 0.84, blue: 0.56),  // green
+            Color(red: 0.32, green: 0.78, blue: 0.95),  // cyan
+            Color(red: 0.40, green: 0.56, blue: 1.00),  // blue
+            Color(red: 0.62, green: 0.42, blue: 0.98),  // violet (brand)
+        ]
+
+        /// A mode's colour: the default mode is the white beam; the others take bands in list
+        /// order, spread across the spectrum so neighbours stay distinct.
+        static func color(forModeAt index: Int, count: Int, isDefault: Bool) -> Color {
+            guard !isDefault else { return beam }
+            let others = max(1, count - 1)
+            let step = Double(bands.count - 1) / Double(max(1, others - 1))
+            let position = others == 1 ? bands.count - 1 : Int((Double(index) * step).rounded())
+            return bands[min(bands.count - 1, max(0, position))]
+        }
+    }
+
     enum Radius {
         static let control: CGFloat = 14
         static let card: CGFloat = 22
