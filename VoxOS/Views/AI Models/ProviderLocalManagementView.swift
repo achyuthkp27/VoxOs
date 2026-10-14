@@ -23,8 +23,8 @@ struct LocalEnhancementServiceManagementView: View {
     var body: some View {
         VStack(alignment: .leading, spacing: 10) {
             ProviderSectionHeader(
-                title: "Local language models",
-                subtitle: "Ollama or a command-line tool — for AI cleanup, the Assistant and the Agent."
+                title: "On this Mac",
+                subtitle: "Ollama models, or a command-line tool such as Claude Code."
             )
             .padding(.top, 8)
 

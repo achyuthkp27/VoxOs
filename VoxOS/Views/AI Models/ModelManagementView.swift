@@ -210,28 +210,26 @@ struct ModelManagementView: View {
         .frame(maxWidth: .infinity, alignment: .leading)
     }
 
+    /// A native segmented control, matching the Dictionary page, in place of three pill buttons.
     private var modelFilterPicker: some View {
-        HStack(spacing: 12) {
-            ForEach(ModelFilter.allCases, id: \.self) { filter in
-                Button(action: {
-                    withAnimation(.spring(response: 0.3, dampingFraction: 0.8)) {
-                        selectedFilter = filter
-                    }
+        Picker(
+            "",
+            selection: Binding(
+                get: { selectedFilter },
+                set: { filter in
+                    withAnimation(.easeInOut(duration: 0.16)) { selectedFilter = filter }
                     activePanel = nil
-                }) {
-                    Text(filter.title)
-                        .font(.system(size: 14, weight: selectedFilter == filter ? .semibold : .medium))
-                        .foregroundColor(selectedFilter == filter ? .primary : .primary.opacity(0.7))
-                        .padding(.horizontal, 16)
-                        .padding(.vertical, 8)
-                        .background(
-                            AppMaterialCardBackground(isSelected: selectedFilter == filter, cornerRadius: 22)
-                        )
-                }
-                .buttonStyle(PlainButtonStyle())
+                })
+        ) {
+            ForEach(ModelFilter.allCases, id: \.self) { filter in
+                Text(filter.title).tag(filter)
             }
         }
-        .padding(.bottom, 8)
+        .pickerStyle(.segmented)
+        .labelsHidden()
+        .fixedSize()
+        .controlSize(.large)
+        .padding(.bottom, 4)
     }
 
     private var settingsButton: some View {
@@ -243,12 +241,13 @@ struct ModelManagementView: View {
         }
     }
 
+    /// Split by job: what hears you, and what writes for you. They used to share one list, which
+    /// put a text-cleanup model between two speech models.
     private var localModelsSection: some View {
-        VStack(spacing: 12) {
-            VoxOSRefineModelCardView(
-                service: voxOSRefineService,
-                deleteAction: confirmDeleteVoxOSRefineModel
-            )
+        VStack(alignment: .leading, spacing: 12) {
+            localGroupHeader(
+                "Speech models", detail: "Turn your voice into text. Each mode picks one in Modes.",
+                trailing: AnyView(importLocalModelButton))
 
             ForEach(appleSpeechModels, id: \.id) { model in
                 localModelCard(model)
@@ -258,12 +257,37 @@ struct ModelManagementView: View {
                 localModelCard(model)
             }
 
-            importLocalModelButton
+            localGroupHeader(
+                "Language models", detail: "Clean up text, and run the Assistant and the Agent.", trailing: nil
+            )
+            .padding(.top, 14)
+
+            VoxOSRefineModelCardView(
+                service: voxOSRefineService,
+                deleteAction: confirmDeleteVoxOSRefineModel
+            )
 
             LocalEnhancementServiceManagementView()
                 .environmentObject(aiService)
         }
         .frame(maxWidth: .infinity, alignment: .leading)
+    }
+
+    private func localGroupHeader(_ title: LocalizedStringKey, detail: LocalizedStringKey, trailing: AnyView?)
+        -> some View
+    {
+        HStack(alignment: .bottom) {
+            VStack(alignment: .leading, spacing: 3) {
+                Text(title)
+                    .font(.app(size: 17, weight: .semibold))
+                    .foregroundStyle(AppTheme.Text.primary)
+                Text(detail)
+                    .font(.app(size: 12, weight: .regular))
+                    .foregroundStyle(AppTheme.Text.secondary)
+            }
+            Spacer()
+            trailing
+        }
     }
 
     private func localModelCard(_ model: any TranscriptionModel) -> some View {
@@ -311,7 +335,6 @@ struct ModelManagementView: View {
             )
             .help("Read more about custom local models")
         }
-        .frame(maxWidth: .infinity, alignment: .leading)
     }
 
     private var intelMacWarningBanner: some View {

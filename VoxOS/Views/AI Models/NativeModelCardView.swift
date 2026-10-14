@@ -25,8 +25,10 @@ struct NativeAppleModelCardView: View {
     private var headerSection: some View {
         HStack(alignment: .firstTextBaseline) {
             Text(model.displayName)
-                .font(.app(size: 13, weight: .semibold))
+                .font(.app(size: 14, weight: .semibold))
                 .foregroundColor(Color(.labelColor))
+
+            ModelInUseBadge(modelName: model.name)
 
             Spacer()
         }

@@ -197,6 +197,28 @@ struct ImportedWhisperModelCardView: View {
 
 // MARK: - Helper Views and Functions
 
+/// "In use by N modes" beside a speech model's name, so the catalogue says which model is
+/// actually hearing you rather than leaving that to the Modes page.
+struct ModelInUseBadge: View {
+    let modelName: String
+    @ObservedObject private var modeManager = ModeManager.shared
+
+    private var count: Int {
+        modeManager.configurations.filter { $0.selectedTranscriptionModelName == modelName }.count
+    }
+
+    var body: some View {
+        if count > 0 {
+            Text(count == 1 ? "In use by 1 mode" : "In use by \(count) modes")
+                .font(.app(size: 10, weight: .semibold))
+                .foregroundStyle(AppTheme.Accent.primary)
+                .padding(.horizontal, 7)
+                .padding(.vertical, 2)
+                .background(Capsule().fill(AppTheme.Accent.fillSubtle))
+        }
+    }
+}
+
 func modelStatusPill(_ text: LocalizedStringKey, systemImage: String) -> some View {
     Label(text, systemImage: systemImage)
         .font(.app(size: 11, weight: .medium))
