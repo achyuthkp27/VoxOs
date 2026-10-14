@@ -16,8 +16,9 @@ struct DashboardInsightsView: View {
     let onViewModelPerformance: () -> Void
 
     var body: some View {
-        VStack(alignment: .leading, spacing: 22) {
+        VStack(alignment: .leading, spacing: DashboardLayout.columnSpacing) {
             header
+                .padding(.bottom, DashboardLayout.sectionSpacing - DashboardLayout.columnSpacing)
 
             DashboardProductivitySummaryStrip(
                 summary: timeSavedSummary
@@ -60,11 +61,11 @@ struct DashboardInsightsView: View {
     private var header: some View {
         HStack(alignment: .top, spacing: 16) {
             VStack(alignment: .leading, spacing: 3) {
-                Text("VoxOS Insights")
-                    .font(.app(size: 26, weight: .bold))
+                Text("Insights")
+                    .font(.app(size: 28, weight: .bold))
                     .foregroundStyle(AppTheme.Text.primary)
 
-                Text("A closer look at your VoxOS usage.")
+                Text("How much you dictate, when, and with which models.")
                     .font(.app(size: 13, weight: .medium))
                     .foregroundStyle(AppTheme.Text.secondary)
             }

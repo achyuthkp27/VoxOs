@@ -1,53 +1,55 @@
 import SwiftUI
 
+/// The one card surface on the Dashboard and Insights pages: a faint fill and a hairline over the
+/// window glass. No gradients, glows or shadows, so the content is the only thing that stands out.
 struct DashboardInsightCardBackground: View {
     var cornerRadius: CGFloat = DashboardLayout.cardCornerRadius
 
     var body: some View {
-        ZStack {
-            RoundedRectangle(cornerRadius: cornerRadius, style: .continuous)
-                .fill(Color(nsColor: .controlBackgroundColor).opacity(0.86))
+        RoundedRectangle(cornerRadius: cornerRadius, style: .continuous)
+            .fill(AppTheme.Surface.card)
+            .overlay(
+                RoundedRectangle(cornerRadius: cornerRadius, style: .continuous)
+                    .strokeBorder(AppTheme.Border.card, lineWidth: 1)
+            )
+    }
+}
 
-            RoundedRectangle(cornerRadius: cornerRadius, style: .continuous)
-                .fill(
-                    LinearGradient(
-                        stops: [
-                            .init(color: Color(nsColor: .windowBackgroundColor).opacity(0.62), location: 0),
-                            .init(color: Color(nsColor: .controlBackgroundColor).opacity(0.38), location: 0.46),
-                            .init(color: AppTheme.Surface.subtle.opacity(0.62), location: 1),
-                        ],
-                        startPoint: .topLeading,
-                        endPoint: .bottomTrailing
-                    )
-                )
+extension View {
+    /// Pads the content and sets it on the shared Dashboard card surface.
+    func dashboardCard(padding: CGFloat = DashboardLayout.cardPadding) -> some View {
+        self
+            .padding(padding)
+            .frame(maxWidth: .infinity, alignment: .topLeading)
+            .background(DashboardInsightCardBackground())
+    }
+}
 
-            RoundedRectangle(cornerRadius: cornerRadius, style: .continuous)
-                .fill(
-                    LinearGradient(
-                        stops: [
-                            .init(color: Color.white.opacity(0.075), location: 0),
-                            .init(color: Color.clear, location: 0.42),
-                            .init(color: Color.black.opacity(0.045), location: 1),
-                        ],
-                        startPoint: .top,
-                        endPoint: .bottom
-                    )
-                )
+/// Small uppercase label that names a section or a card, matching the Dictionary page.
+struct DashboardSectionLabel<Trailing: View>: View {
+    let title: LocalizedStringKey
+    @ViewBuilder let trailing: () -> Trailing
 
-            RoundedRectangle(cornerRadius: cornerRadius, style: .continuous)
-                .strokeBorder(
-                    LinearGradient(
-                        stops: [
-                            .init(color: Color.white.opacity(0.20), location: 0),
-                            .init(color: AppTheme.Border.subtle.opacity(0.60), location: 0.55),
-                            .init(color: Color.primary.opacity(0.08), location: 1),
-                        ],
-                        startPoint: .topLeading,
-                        endPoint: .bottomTrailing
-                    ),
-                    lineWidth: 1
-                )
+    var body: some View {
+        HStack(alignment: .firstTextBaseline, spacing: 8) {
+            Text(title)
+                .font(.app(size: 11, weight: .semibold))
+                .foregroundStyle(AppTheme.Text.secondary)
+                .textCase(.uppercase)
+                .tracking(0.6)
+                .lineLimit(1)
+
+            Spacer(minLength: 0)
+
+            trailing()
         }
-        .clipShape(RoundedRectangle(cornerRadius: cornerRadius, style: .continuous))
+        .accessibilityAddTraits(.isHeader)
+    }
+}
+
+extension DashboardSectionLabel where Trailing == EmptyView {
+    init(_ title: LocalizedStringKey) {
+        self.title = title
+        self.trailing = { EmptyView() }
     }
 }

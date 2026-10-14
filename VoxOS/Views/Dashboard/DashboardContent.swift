@@ -136,38 +136,58 @@ struct DashboardContent: View {
         }
     }
 
+    /// Top to bottom: who and when, anything blocking dictation, the week in one sentence, four
+    /// glance cards, then running Agent jobs, recent dictations and the shortcut reference.
     private func dashboardMainContent(availableWidth: CGFloat) -> some View {
         VStack(alignment: .leading, spacing: DashboardLayout.sectionSpacing) {
             licenseStatusMessage
 
             greetingHeader
 
-            nameEditorDismissArea {
-                heroSection
+            if !isAccessibilityEnabled || !modeManager.hasEnabledConfiguration {
+                nameEditorDismissArea {
+                    VStack(spacing: DashboardLayout.labelSpacing) {
+                        if !isAccessibilityEnabled {
+                            accessibilityReminder
+                        }
+
+                        if !modeManager.hasEnabledConfiguration {
+                            DashboardNotice(
+                                icon: "square.grid.2x2",
+                                title: "Add a mode to start dictating",
+                                detail:
+                                    "VoxOS records through a mode. Create one to choose how your words are written.",
+                                actionTitle: "Open Modes",
+                                actionHelp: "Open Modes settings",
+                                action: ModeSetupNavigator.openModesSettings
+                            )
+                        }
+                    }
+                }
             }
 
             nameEditorDismissArea {
-                DashboardShortcutStrip()
+                VStack(spacing: DashboardLayout.columnSpacing) {
+                    heroSection(isWide: DashboardLayout.isWide(availableWidth))
+
+                    DashboardGlanceGrid(
+                        today: statsSummary.totals(for: .today),
+                        allTime: statsSummary.total,
+                        peakHours: statsSummary.allTimePeakHours,
+                        isLoaded: hasLoadedStatsSnapshot,
+                        columnCount: DashboardLayout.glanceColumnCount(for: availableWidth)
+                    )
+                }
             }
 
             DashboardBackgroundTasks()
 
-            if !isAccessibilityEnabled {
-                nameEditorDismissArea {
-                    accessibilityReminder
-                }
+            nameEditorDismissArea {
+                DashboardTranscriptCards(transcriptions: recentDashboardTranscriptions)
             }
 
-            if !modeManager.hasEnabledConfiguration {
-                nameEditorDismissArea {
-                    DashboardNoModesReminder(onOpenModes: ModeSetupNavigator.openModesSettings)
-                }
-            }
-
-            if !recentDashboardTranscriptions.isEmpty {
-                nameEditorDismissArea {
-                    DashboardTranscriptCards(transcriptions: recentDashboardTranscriptions)
-                }
+            nameEditorDismissArea {
+                DashboardShortcutStrip()
             }
 
             Spacer(minLength: DashboardLayout.footerTopSpacing)
@@ -273,50 +293,77 @@ struct DashboardContent: View {
         didStatsLoadFail && !hasLoadedStatsSnapshot
     }
 
-    private var insightsActionTitle: LocalizedStringKey {
+    private var heroAction: DashboardHeroAction? {
         if showsStatsLoadError {
-            return "Retry"
+            return DashboardHeroAction(
+                title: "Try again",
+                icon: "arrow.clockwise",
+                help: String(localized: "Try loading your stats again"),
+                isEnabled: !isDashboardStatsRefreshing,
+                perform: refreshDashboardStats
+            )
         }
-        return canViewInsights ? "View Insights" : "Insights Locked"
+
+        // Nothing to analyse yet: the first-run copy is the call to action.
+        guard hasLoadedStatsSnapshot, statsSummary.totalCount > 0 else {
+            return nil
+        }
+
+        return DashboardHeroAction(
+            title: canViewInsights ? "See insights" : "Insights locked",
+            icon: canViewInsights ? "chevron.right" : "lock.fill",
+            help: canViewInsights
+                ? String(localized: "Charts, peak hours and model usage")
+                : String(localized: "Keep dictating to unlock these stats."),
+            isEnabled: canViewInsights,
+            perform: openInsightsIfAvailable
+        )
     }
 
-    private var insightsActionIcon: String {
+    private var heroState: DashboardHeroState {
         if showsStatsLoadError {
-            return "arrow.clockwise"
-        }
-        return canViewInsights ? "chart.line.uptrend.xyaxis" : "lock.fill"
-    }
-
-    private var insightsActionHelp: String {
-        if showsStatsLoadError {
-            return String(localized: "Try loading your stats again")
+            return .failed
         }
 
-        if canViewInsights {
-            return String(localized: "View dashboard insights")
+        guard hasLoadedStatsSnapshot else {
+            return .loading
         }
 
-        return String(localized: "Continue using VoxOS to unlock these stats.")
-    }
-
-    private var insightsActionAccessibilityLabel: String {
-        if showsStatsLoadError {
-            return "Retry loading stats"
+        if shouldShowLockedInsightsState {
+            return .locked
         }
-        return canViewInsights ? "View insights" : "Insights locked"
+
+        guard statsSummary.totalCount > 0 else {
+            return .firstRun(shortcut: ShortcutStore.shortcut(for: .primaryRecording)?.displayString)
+        }
+
+        let week = statsSummary.recentSevenDays
+        guard week.count > 0 else {
+            return .quietWeek(allTimeWords: statsSummary.totalWords, allTimeSaved: allTimeSaved)
+        }
+
+        return .week(
+            words: week.words,
+            saved: DashboardTimeSaving.timeSaved(words: week.words, duration: week.duration),
+            sessions: week.count,
+            previousWeekWords: statsSummary.previousSevenDayWords
+        )
     }
 
     private var accessibilityReminder: some View {
-        DashboardAccessibilityReminder(onOpenSettings: openAccessibilitySettings)
+        DashboardNotice(
+            icon: "hand.raised",
+            title: "Allow Accessibility access",
+            detail: "VoxOS needs it to hear your shortcut and paste into other apps.",
+            actionTitle: "Open Settings",
+            actionHelp: "Open Accessibility settings",
+            action: openAccessibilitySettings
+        )
     }
 
     private var greetingHeader: some View {
-        VStack(alignment: .leading, spacing: 10) {
+        VStack(alignment: .leading, spacing: 4) {
             HStack(alignment: .firstTextBaseline, spacing: 8) {
-                Text(greetingEmoji)
-                    .font(.app(size: 25, weight: .regular))
-                    .accessibilityHidden(true)
-
                 Text("\(greetingText),")
                     .font(displayNameFont)
                     .foregroundStyle(AppTheme.Text.primary)
@@ -594,17 +641,12 @@ struct DashboardContent: View {
         )
     }
 
-    private var heroSection: some View {
+    private func heroSection(isWide: Bool) -> some View {
         DashboardHeroCard(
-            isLocked: shouldShowLockedInsightsState,
-            headline: momentumHeadline,
-            subtext: momentumSubtext,
-            actionTitle: insightsActionTitle,
-            actionIcon: insightsActionIcon,
-            canViewInsights: canViewInsights || showsStatsLoadError,
-            actionHelp: insightsActionHelp,
-            actionAccessibilityLabel: insightsActionAccessibilityLabel,
-            onViewInsights: showsStatsLoadError ? refreshDashboardStats : openInsightsIfAvailable
+            state: heroState,
+            days: statsSummary.lastSevenDayProductivity,
+            isWide: isWide,
+            action: heroAction
         )
     }
 
@@ -613,16 +655,16 @@ struct DashboardContent: View {
             if let availableUpdate = updaterViewModel.availableUpdate {
                 Button(action: updaterViewModel.checkForUpdates) {
                     footerActionLabel(
-                        icon: "arrow.down.circle.fill",
-                        title: "Update Available",
-                        color: AppTheme.Status.infoStrong
+                        icon: "arrow.down.circle",
+                        title: "Update available",
+                        color: AppTheme.Accent.primary
                     )
                 }
                 .buttonStyle(.plain)
                 .fixedSize(horizontal: true, vertical: true)
                 .disabled(!updaterViewModel.canCheckForUpdates)
                 .help("Open the VoxOS \(availableUpdate.displayVersion) update")
-                .accessibilityLabel("Update Available")
+                .accessibilityLabel("Update available")
                 .accessibilityValue(Text(verbatim: availableUpdate.displayVersion))
                 .accessibilityHint("Opens the update window")
                 .transition(.move(edge: .trailing).combined(with: .opacity))
@@ -631,8 +673,8 @@ struct DashboardContent: View {
             Button(action: copySystemInfo) {
                 footerActionLabel(
                     icon: isSystemInfoCopied ? "checkmark" : "doc.on.doc",
-                    title: isSystemInfoCopied ? "Copied!" : "Copy System Info",
-                    color: isSystemInfoCopied ? AppTheme.Sidebar.license : AppTheme.Sidebar.fallback
+                    title: isSystemInfoCopied ? "Copied" : "Copy system info",
+                    color: AppTheme.Text.secondary
                 )
             }
             .buttonStyle(.plain)
@@ -644,17 +686,18 @@ struct DashboardContent: View {
 
     @ViewBuilder
     private func footerActionLabel(icon: String, title: LocalizedStringKey, color: Color) -> some View {
-        HStack(alignment: .center, spacing: 8) {
-            DashboardIconGlyph(systemName: icon, color: color, size: 13, frameSize: 16)
+        HStack(alignment: .center, spacing: 6) {
+            DashboardIconGlyph(systemName: icon, color: color, size: 12, frameSize: 14)
 
             Text(title)
-                .font(.app(size: 13, weight: .medium))
+                .font(.app(size: 12, weight: .medium))
+                .foregroundStyle(AppTheme.Text.secondary)
                 .lineLimit(1)
                 .fixedSize(horizontal: true, vertical: false)
         }
-        .padding(.horizontal, 14)
+        .padding(.horizontal, 12)
         .frame(height: DashboardLayout.footerButtonHeight)
-        .background(AppCardBackground(cornerRadius: 18))
+        .background(DashboardInsightCardBackground(cornerRadius: DashboardLayout.footerButtonHeight / 2))
     }
 
     private func copySystemInfo() {
@@ -779,75 +822,9 @@ struct DashboardContent: View {
         }
     }
 
-    private var greetingEmoji: String {
-        let hour = Calendar.current.component(.hour, from: Date())
-
-        switch hour {
-        case 5..<12:
-            return "☀️"
-        case 12..<17:
-            return "👋"
-        case 17..<24:
-            return "🌙"
-        default:
-            return "👋"
-        }
-    }
-
+    /// The date, not a pep talk: the hero already says how the week went.
     private var headerSubtitle: String {
-        if showsStatsLoadError {
-            return String(localized: "Your stats couldn’t be loaded.")
-        }
-
-        guard hasLoadedStatsSnapshot else {
-            return String(localized: "Pulling together your VoxOS activity.")
-        }
-
-        guard statsSummary.totalCount > 0 else {
-            return String(localized: "Record your first session to start building momentum.")
-        }
-
-        if statsSummary.recentSevenDayCount >= 5 {
-            return String(localized: "You’re on a roll this week. Keep the momentum going.")
-        }
-
-        if statsSummary.recentSevenDayCount > 0 {
-            return String(localized: "You’re building momentum this week. Keep it going.")
-        }
-
-        return String(localized: "Your data is not ready yet. Keep the momentum going.")
-    }
-
-    private var momentumHeadline: DashboardHeroHeadline {
-        if showsStatsLoadError {
-            return .statsUnavailable
-        }
-
-        guard hasLoadedStatsSnapshot else {
-            return .calculatingProgress
-        }
-
-        guard statsSummary.totalCount > 0 else {
-            return .startRecordingProgress
-        }
-
-        return .savedTime(formattedAllTimeSaved)
-    }
-
-    private var momentumSubtext: String {
-        if showsStatsLoadError {
-            return String(localized: "Something went wrong while reading your history. Try again.")
-        }
-
-        guard hasLoadedStatsSnapshot else {
-            return String(localized: "Your word count and benchmark will appear here.")
-        }
-
-        guard statsSummary.totalCount > 0 else {
-            return String(localized: "Your first milestone appears after one session.")
-        }
-
-        return formattedProgressBenchmarkText
+        Date().formatted(.dateTime.weekday(.wide).day().month(.wide))
     }
 
     // MARK: - Computed Metrics
@@ -855,121 +832,47 @@ struct DashboardContent: View {
     private var allTimeSaved: TimeInterval {
         DashboardTimeSaving.timeSaved(words: statsSummary.totalWords, duration: statsSummary.totalDuration)
     }
-
-    private var formattedAllTimeSaved: String {
-        Formatters.formattedSavedTime(allTimeSaved)
-    }
-
-    private var formattedAllTimeWords: String {
-        let words = Formatters.formattedCompactNumber(statsSummary.totalWords)
-        let wordUnit = statsSummary.totalWords == 1 ? String(localized: "word") : String(localized: "words")
-        return String(localized: "\(words) \(wordUnit)")
-    }
-
-    private var formattedProgressBenchmarkText: String {
-        switch DashboardProgressBenchmark.equivalence(for: statsSummary.totalWords) {
-        case .matched(let title):
-            return String(localized: "Dictated \(formattedAllTimeWords), equivalent to \(title).")
-        case .repeated(let title, let count):
-            return String(
-                localized:
-                    "Dictated \(formattedAllTimeWords), equivalent to \(title) \(formattedBenchmarkMultiple(count)).")
-        case .remaining(let words, let title):
-            guard words > 0, !title.isEmpty else {
-                return String(localized: "Dictated \(formattedAllTimeWords).")
-            }
-
-            let remainingWords = Formatters.formattedNumber(words)
-            return String(localized: "Dictated \(formattedAllTimeWords), \(remainingWords) words from \(title).")
-        }
-    }
-
-    private func formattedBenchmarkMultiple(_ count: Int) -> String {
-        if count == 2 {
-            return String(localized: "twice")
-        }
-
-        return String(localized: "\(Formatters.formattedNumber(count)) times")
-    }
 }
 
-private struct DashboardAccessibilityReminder: View {
-    let onOpenSettings: () -> Void
+/// Something that stops dictation from working, with the one action that fixes it. Warning
+/// orange on the icon only, so it is noticed without competing with the hero.
+private struct DashboardNotice: View {
+    let icon: String
+    let title: LocalizedStringKey
+    let detail: LocalizedStringKey
+    let actionTitle: LocalizedStringKey
+    let actionHelp: LocalizedStringKey
+    let action: () -> Void
 
     var body: some View {
         HStack(alignment: .center, spacing: 12) {
-            ZStack {
-                RoundedRectangle(cornerRadius: 10, style: .continuous)
-                    .fill(AppTheme.Accent.fill)
+            Image(systemName: icon)
+                .font(.app(size: 15, weight: .medium))
+                .foregroundStyle(AppTheme.Status.warning)
+                .frame(width: 24)
+                .accessibilityHidden(true)
 
-                Image(systemName: "hand.raised")
-                    .font(.app(size: 15, weight: .medium))
-                    .symbolRenderingMode(.hierarchical)
-                    .foregroundStyle(AppTheme.Accent.primary)
-            }
-            .frame(width: 34, height: 34)
-
-            VStack(alignment: .leading, spacing: 3) {
-                Text("Enable Accessibility Access")
+            VStack(alignment: .leading, spacing: 2) {
+                Text(title)
                     .font(.app(size: 13, weight: .semibold))
-                    .foregroundStyle(.primary)
+                    .foregroundStyle(AppTheme.Text.primary)
                     .lineLimit(1)
 
-                Text("Required for VoxOS shortcuts and app-wide controls to work properly.")
-                    .font(.app(size: 11, weight: .regular))
-                    .foregroundStyle(.secondary)
+                Text(detail)
+                    .font(.app(size: 12, weight: .regular))
+                    .foregroundStyle(AppTheme.Text.secondary)
                     .lineLimit(2)
+                    .fixedSize(horizontal: false, vertical: true)
             }
 
             Spacer(minLength: 12)
 
-            Button("Open Settings", action: onOpenSettings)
+            Button(actionTitle, action: action)
                 .controlSize(.small)
-                .help("Open Accessibility settings")
+                .help(Text(actionHelp))
         }
-        .padding(16)
-        .frame(maxWidth: .infinity, alignment: .leading)
-        .background(AppCardBackground(cornerRadius: DashboardLayout.cardCornerRadius))
-    }
-}
-
-private struct DashboardNoModesReminder: View {
-    let onOpenModes: () -> Void
-
-    var body: some View {
-        HStack(alignment: .center, spacing: 12) {
-            ZStack {
-                RoundedRectangle(cornerRadius: 10, style: .continuous)
-                    .fill(AppTheme.Accent.fill)
-
-                Image(systemName: "square.grid.2x2")
-                    .font(.app(size: 15, weight: .medium))
-                    .symbolRenderingMode(.hierarchical)
-                    .foregroundStyle(AppTheme.Accent.primary)
-            }
-            .frame(width: 34, height: 34)
-
-            VStack(alignment: .leading, spacing: 3) {
-                Text("Set Up a Mode")
-                    .font(.app(size: 13, weight: .semibold))
-                    .foregroundStyle(.primary)
-                    .lineLimit(1)
-
-                Text("VoxOS needs at least one mode to record. Create one to start dictating.")
-                    .font(.app(size: 11, weight: .regular))
-                    .foregroundStyle(.secondary)
-                    .lineLimit(2)
-            }
-
-            Spacer(minLength: 12)
-
-            Button("Manage Modes", action: onOpenModes)
-                .controlSize(.small)
-                .help("Open Modes settings")
-        }
-        .padding(16)
-        .frame(maxWidth: .infinity, alignment: .leading)
-        .background(AppCardBackground(cornerRadius: DashboardLayout.cardCornerRadius))
+        .dashboardCard(padding: 14)
+        .accessibilityElement(children: .contain)
     }
 }
 

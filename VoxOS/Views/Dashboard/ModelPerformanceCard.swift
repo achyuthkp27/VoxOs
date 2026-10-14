@@ -23,7 +23,7 @@ struct ModelPerformanceCard: View {
     }
 
     var body: some View {
-        VStack(alignment: .leading, spacing: 18) {
+        VStack(alignment: .leading, spacing: 16) {
             ModelPreviewCardHeader(
                 title: "AI Model Performance",
                 viewMoreHelp: String(localized: "Open detailed model performance"),
@@ -47,9 +47,7 @@ struct ModelPerformanceCard: View {
             )
         }
         .fixedSize(horizontal: false, vertical: true)
-        .padding(18)
-        .frame(maxWidth: .infinity, alignment: .topLeading)
-        .background(DashboardInsightCardBackground())
+        .dashboardCard()
     }
 
     private static func previewRow(from summary: ModelPerformanceSummary) -> ModelPreviewRow {

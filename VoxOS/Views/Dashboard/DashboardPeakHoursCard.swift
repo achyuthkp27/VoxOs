@@ -32,7 +32,7 @@ struct DashboardPeakHoursCard: View {
             }
         }
         .fixedSize(horizontal: false, vertical: true)
-        .padding(18)
+        .padding(DashboardLayout.cardPadding)
         .frame(maxWidth: .infinity, minHeight: 196, maxHeight: 196, alignment: .topLeading)
         .background(DashboardInsightCardBackground())
         .accessibilityElement(children: .combine)
@@ -41,31 +41,17 @@ struct DashboardPeakHoursCard: View {
     }
 
     private var header: some View {
-        HStack(alignment: .firstTextBaseline, spacing: 12) {
-            Text("Peak Dictation Hours")
-                .font(.app(size: 18, weight: .bold))
+        DashboardSectionLabel(title: "Peak hours") {
+            Text(canShowPattern ? windowText : "–")
+                .font(.app(size: 12, weight: .semibold))
                 .foregroundStyle(AppTheme.Text.primary)
                 .lineLimit(1)
-                .minimumScaleFactor(0.84)
-
-            Spacer(minLength: 0)
-
-            HStack(spacing: 5) {
-                Image(systemName: "clock")
-                    .font(.app(size: 12, weight: .semibold))
-                    .foregroundStyle(AppTheme.Text.secondary.opacity(0.78))
-
-                Text(canShowPattern ? windowText : "--")
-                    .font(.app(size: 13, weight: .bold))
-                    .foregroundStyle(AppTheme.Text.secondary)
-                    .lineLimit(1)
-                    .minimumScaleFactor(0.76)
-            }
+                .minimumScaleFactor(0.76)
         }
     }
 
     private var windowText: String {
-        formattedHourRange(from: summary.startHour, to: summary.endHour)
+        DashboardHourLabel.range(from: summary.startHour, to: summary.endHour)
     }
 
     private var accessibilityValue: String {
@@ -84,9 +70,9 @@ struct DashboardPeakHoursCard: View {
         VStack(spacing: 8) {
             Image(systemName: "lock.fill")
                 .font(.app(size: 16, weight: .bold))
-                .foregroundStyle(AppTheme.Accent.primary)
+                .foregroundStyle(AppTheme.Text.secondary)
                 .frame(width: 34, height: 34)
-                .background(AppTheme.Accent.fill)
+                .background(AppTheme.Surface.control)
                 .clipShape(RoundedRectangle(cornerRadius: 11, style: .continuous))
 
             Text("Continue using VoxOS to unlock peak hours.")
@@ -100,17 +86,6 @@ struct DashboardPeakHoursCard: View {
         .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .center)
     }
 
-    private func formattedHourRange(from startHour: Int, to endHour: Int) -> String {
-        String(
-            format: String(localized: "%@ to %@"),
-            formattedHour(startHour),
-            formattedHour(endHour)
-        )
-    }
-
-    private func formattedHour(_ hour: Int) -> String {
-        DashboardHourLabel.string(for: hour)
-    }
 }
 
 /// Hour-of-day labels through the locale's own "j" skeleton, so 24-hour locales never see a
@@ -119,7 +94,7 @@ struct DashboardPeakHoursCard: View {
 /// The label is a clock hour, not a moment, so it is formatted in GMT from a fixed reference
 /// day. Building today's date in the current zone gave a skipped hour on a DST change day ("2 AM"
 /// showed as "3 AM" twice), and the static formatter kept whichever zone it was created in.
-private enum DashboardHourLabel {
+enum DashboardHourLabel {
     private static let formatter: DateFormatter = {
         var calendar = Calendar.current
         calendar.timeZone = TimeZone(secondsFromGMT: 0) ?? calendar.timeZone
@@ -131,11 +106,16 @@ private enum DashboardHourLabel {
         // The reference date is midnight GMT, so this is exactly `hour` o'clock in the formatter's zone.
         return formatter.string(from: Date(timeIntervalSinceReferenceDate: TimeInterval(hour) * 3600))
     }
+
+    static func range(from startHour: Int, to endHour: Int) -> String {
+        String(format: String(localized: "%@ to %@"), string(for: startHour), string(for: endHour))
+    }
 }
 
 private struct DashboardPeakHoursHistogram: View {
-    private let peakTint = AppTheme.Accent.strong
-    private let peakTintSoft = AppTheme.Accent.primary.opacity(0.46)
+    // Neutral bars on purpose: on the Insights page the productivity line carries the accent.
+    private let peakTint = AppTheme.Text.primary
+    private let peakTintSoft = AppTheme.Text.secondary
 
     let points: [DashboardHourlyActivityPoint]
     let maxWords: Int
@@ -161,11 +141,6 @@ private struct DashboardPeakHoursHistogram: View {
                                     .fill(barStyle(for: point))
                                     .frame(maxWidth: .infinity)
                                     .frame(height: barHeight(for: point, in: geometry.size))
-                                    .shadow(
-                                        color: isPeakHour(point.hour) && hasData ? peakTint.opacity(0.22) : Color.clear,
-                                        radius: 5,
-                                        y: 1
-                                    )
                             }
                             .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .bottom)
                         }

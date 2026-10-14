@@ -14,14 +14,34 @@ struct DashboardShortcutStrip: View {
     }
 
     var body: some View {
-        LazyVGrid(columns: [GridItem(.adaptive(minimum: 280), spacing: 12)], alignment: .leading, spacing: 12) {
+        VStack(alignment: .leading, spacing: DashboardLayout.labelSpacing) {
+            DashboardSectionLabel("Shortcuts")
+
+            if primary == nil && dictateAndSend == nil && agentTap == nil {
+                Text("No recording shortcut is set yet. Add one in Settings to start dictating.")
+                    .font(.app(size: 12, weight: .regular))
+                    .foregroundStyle(AppTheme.Text.secondary)
+                    .dashboardCard()
+            } else {
+                chips
+            }
+        }
+        .frame(maxWidth: .infinity, alignment: .leading)
+    }
+
+    private var chips: some View {
+        LazyVGrid(
+            columns: [GridItem(.adaptive(minimum: 260), spacing: DashboardLayout.columnSpacing)],
+            alignment: .leading,
+            spacing: DashboardLayout.columnSpacing
+        ) {
             if let primary {
                 chip(keys: [primary.displayString], title: "Hold to dictate", detail: "Release to paste")
                 chip(keys: [primary.displayString], title: "Tap for hands-free", detail: "Tap again to stop")
             }
             if let dictateAndSend {
                 chip(
-                    keys: [dictateAndSend.displayString], title: "Hold to dictate & send",
+                    keys: [dictateAndSend.displayString], title: "Hold to dictate and send",
                     detail: "Presses Return after pasting")
             }
             if let agentTap {
@@ -45,15 +65,15 @@ struct DashboardShortcutStrip: View {
                         .font(.app(size: 12, weight: .semibold))
                         .foregroundStyle(AppTheme.Text.primary)
                         .fixedSize()
-                        .padding(.horizontal, 8)
-                        .frame(minWidth: 30, minHeight: 26)
+                        .padding(.horizontal, 7)
+                        .frame(minWidth: 28, minHeight: 24)
                         .background(
-                            RoundedRectangle(cornerRadius: 7, style: .continuous)
-                                .fill(AppTheme.Surface.subtle)
+                            RoundedRectangle(cornerRadius: 6, style: .continuous)
+                                .fill(AppTheme.Surface.control)
                         )
                         .overlay(
-                            RoundedRectangle(cornerRadius: 7, style: .continuous)
-                                .stroke(AppTheme.Border.control, lineWidth: 1)
+                            RoundedRectangle(cornerRadius: 6, style: .continuous)
+                                .strokeBorder(AppTheme.Border.control, lineWidth: 1)
                         )
                 }
             }
@@ -68,9 +88,6 @@ struct DashboardShortcutStrip: View {
             .lineLimit(1)
             .frame(maxWidth: .infinity, alignment: .leading)
         }
-        .padding(.horizontal, 14)
-        .padding(.vertical, 10)
-        .frame(maxWidth: .infinity, alignment: .leading)
-        .glassCard(radius: DashboardLayout.cardCornerRadius)
+        .dashboardCard(padding: 12)
     }
 }

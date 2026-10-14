@@ -8,15 +8,13 @@ struct DashboardBackgroundTasks: View {
 
     var body: some View {
         if !center.tasks.isEmpty {
-            VStack(alignment: .leading, spacing: 10) {
-                HStack {
-                    Text("Background Tasks")
-                        .font(.app(size: 17, weight: .semibold))
-                    Spacer()
+            VStack(alignment: .leading, spacing: DashboardLayout.labelSpacing) {
+                DashboardSectionLabel(title: "Agent tasks") {
                     if center.tasks.contains(where: { $0.status != .running }) {
-                        Button("Clear Finished") { center.clearFinished() }
+                        Button("Clear finished") { center.clearFinished() }
                             .buttonStyle(.borderless)
-                            .font(.app(size: 12, weight: .medium))
+                            .font(.app(size: 11, weight: .medium))
+                            .foregroundStyle(AppTheme.Text.secondary)
                     }
                 }
 
@@ -28,8 +26,7 @@ struct DashboardBackgroundTasks: View {
                         }
                     }
                 }
-                .padding(.vertical, 4)
-                .glassCard(radius: DashboardLayout.cardCornerRadius)
+                .dashboardCard(padding: 4)
             }
         }
     }
@@ -40,7 +37,8 @@ struct DashboardBackgroundTasks: View {
                 statusIcon(task.status)
                     .frame(width: 18)
                 Text(task.title)
-                    .font(.app(size: 14, weight: .medium))
+                    .font(.app(size: 13, weight: .medium))
+                    .foregroundStyle(AppTheme.Text.primary)
                     .lineLimit(1)
                 Spacer(minLength: 8)
                 if task.status == .running {
@@ -60,7 +58,7 @@ struct DashboardBackgroundTasks: View {
             }
             if !task.result.isEmpty {
                 Text(task.result)
-                    .font(.app(size: 13))
+                    .font(.app(size: 12))
                     .foregroundStyle(.secondary)
                     .lineLimit(expanded.contains(task.id) ? nil : 2)
                     .textSelection(.enabled)
@@ -72,7 +70,7 @@ struct DashboardBackgroundTasks: View {
                     }
             }
         }
-        .padding(.horizontal, 16)
+        .padding(.horizontal, 12)
         .padding(.vertical, 10)
     }
 

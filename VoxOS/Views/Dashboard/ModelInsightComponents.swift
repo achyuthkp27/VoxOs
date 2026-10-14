@@ -143,10 +143,11 @@ struct ModelPreviewCardHeader: View {
     var body: some View {
         HStack(alignment: .center, spacing: 8) {
             Text(title)
-                .font(.app(size: 18, weight: .bold))
-                .foregroundStyle(AppTheme.Text.primary)
+                .font(.app(size: 11, weight: .semibold))
+                .foregroundStyle(AppTheme.Text.secondary)
+                .textCase(.uppercase)
+                .tracking(0.6)
                 .lineLimit(1)
-                .minimumScaleFactor(0.84)
 
             if let infoTip {
                 InfoTip(infoTip)

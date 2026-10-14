@@ -4,28 +4,42 @@ struct DashboardTranscriptCards: View {
     let transcriptions: [Transcription]
 
     var body: some View {
-        VStack(alignment: .leading, spacing: 14) {
-            Text("Recent Transcripts")
-                .font(.app(size: 18, weight: .semibold))
-                .foregroundStyle(AppTheme.Text.heading)
-                .lineLimit(1)
+        VStack(alignment: .leading, spacing: DashboardLayout.labelSpacing) {
+            DashboardSectionLabel("Recent dictations")
 
-            VStack(spacing: 0) {
-                ForEach(Array(transcriptions.enumerated()), id: \.element.id) { index, transcription in
-                    DashboardTranscriptCardRow(transcription: transcription)
+            if transcriptions.isEmpty {
+                emptyState
+            } else {
+                VStack(spacing: 0) {
+                    ForEach(Array(transcriptions.enumerated()), id: \.element.id) { index, transcription in
+                        DashboardTranscriptCardRow(transcription: transcription)
 
-                    if index < transcriptions.count - 1 {
-                        Divider()
-                            .overlay(AppTheme.Border.subtle)
-                            .padding(.horizontal, 16)
+                        if index < transcriptions.count - 1 {
+                            Divider()
+                                .overlay(AppTheme.Border.subtle)
+                                .padding(.leading, 50)
+                                .padding(.trailing, 8)
+                        }
                     }
                 }
+                .dashboardCard(padding: 6)
             }
-            .padding(.vertical, 6)
-            .padding(.horizontal, 8)
-            .voiceOSCard(radius: DashboardLayout.cardCornerRadius)
         }
         .frame(maxWidth: .infinity, alignment: .leading)
+    }
+
+    private var emptyState: some View {
+        VStack(alignment: .leading, spacing: 4) {
+            Text("Nothing here yet")
+                .font(.app(size: 13, weight: .semibold))
+                .foregroundStyle(AppTheme.Text.primary)
+
+            Text("Your last five dictations show up here. Click one to read it in full, or hover to copy it.")
+                .font(.app(size: 12, weight: .regular))
+                .foregroundStyle(AppTheme.Text.secondary)
+                .fixedSize(horizontal: false, vertical: true)
+        }
+        .dashboardCard()
     }
 }
 

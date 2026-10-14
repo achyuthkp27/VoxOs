@@ -9,16 +9,8 @@ struct DashboardProductivityCard: View {
     let onRefreshStats: () -> Void
 
     var body: some View {
-        VStack(alignment: .leading, spacing: 18) {
-            HStack(alignment: .center, spacing: 16) {
-                Text(period.chartTitle)
-                    .font(.app(size: 18, weight: .bold))
-                    .foregroundStyle(AppTheme.Text.primary)
-                    .lineLimit(1)
-                    .minimumScaleFactor(0.84)
-
-                Spacer(minLength: 12)
-
+        VStack(alignment: .leading, spacing: 16) {
+            DashboardSectionLabel(title: period.chartTitle) {
                 HStack(spacing: 8) {
                     Text(statusText)
                         .font(.app(size: 12, weight: .medium))
@@ -39,9 +31,7 @@ struct DashboardProductivityCard: View {
             DashboardProductivityChart(period: period, points: points)
                 .frame(height: 208)
         }
-        .padding(18)
-        .frame(maxWidth: .infinity, alignment: .leading)
-        .background(DashboardInsightCardBackground())
+        .dashboardCard()
     }
 
     private var statusText: String {
@@ -52,7 +42,7 @@ struct DashboardProductivitySummaryStrip: View {
     let summary: DashboardTimeSavedSummary
 
     var body: some View {
-        HStack(alignment: .top, spacing: 12) {
+        HStack(alignment: .top, spacing: DashboardLayout.columnSpacing) {
             metricCell(
                 title: "Time saved",
                 value: summary.hasData ? Formatters.formattedSavedTime(summary.timeSaved) : "--",
@@ -72,43 +62,18 @@ struct DashboardProductivitySummaryStrip: View {
     }
 
     private func metricCell(title: LocalizedStringKey, value: String, systemName: String) -> some View {
-        HStack(alignment: .center, spacing: 14) {
-            ZStack {
-                RoundedRectangle(cornerRadius: 13, style: .continuous)
-                    .fill(AppTheme.Surface.controlActive.opacity(0.72))
-                    .overlay(
-                        RoundedRectangle(cornerRadius: 13, style: .continuous)
-                            .stroke(AppTheme.Border.subtle.opacity(0.80), lineWidth: 1)
-                    )
+        VStack(alignment: .leading, spacing: 10) {
+            DashboardSectionLabel(title)
 
-                Image(systemName: systemName)
-                    .font(.app(size: 17, weight: .semibold))
-                    .symbolRenderingMode(.monochrome)
-                    .foregroundStyle(AppTheme.Text.secondary.opacity(0.86))
-            }
-            .frame(width: 44, height: 44)
-            .accessibilityHidden(true)
-
-            VStack(alignment: .leading, spacing: 5) {
-                Text(title)
-                    .font(.app(size: 11, weight: .bold))
-                    .foregroundStyle(AppTheme.Text.secondary)
-                    .lineLimit(1)
-                    .minimumScaleFactor(0.76)
-
-                Text(value)
-                    .font(.app(size: 23, weight: .bold))
-                    .foregroundStyle(AppTheme.Text.primary)
-                    .lineLimit(1)
-                    .minimumScaleFactor(0.66)
-            }
-
-            Spacer(minLength: 0)
+            Text(value)
+                .font(.app(size: 22, weight: .semibold).monospacedDigit())
+                .foregroundStyle(AppTheme.Text.primary)
+                .lineLimit(1)
+                .minimumScaleFactor(0.66)
         }
-        .padding(.horizontal, 16)
-        .padding(.vertical, 14)
-        .frame(minWidth: 132, maxWidth: .infinity, minHeight: 86, alignment: .leading)
-        .background(DashboardInsightCardBackground())
+        .frame(minWidth: 120, maxWidth: .infinity, alignment: .leading)
+        .dashboardCard()
+        .accessibilityElement(children: .combine)
     }
 }
 

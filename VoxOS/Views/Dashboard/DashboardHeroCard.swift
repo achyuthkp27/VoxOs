@@ -1,194 +1,275 @@
 import Foundation
 import SwiftUI
 
-enum DashboardHeroHeadline {
-    case calculatingProgress
-    case startRecordingProgress
-    case savedTime(String)
+/// What the hero says, decided by `DashboardContent` from the loaded stats.
+enum DashboardHeroState: Equatable {
+    case loading
     /// Stats failed to load and nothing is cached; the card's action becomes a retry.
-    case statsUnavailable
+    case failed
+    case locked
+    /// No dictation recorded yet. Carries the recording shortcut so the copy can name the key.
+    case firstRun(shortcut: String?)
+    /// Dictated before, but not in the last seven days.
+    case quietWeek(allTimeWords: Int, allTimeSaved: TimeInterval)
+    case week(words: Int, saved: TimeInterval, sessions: Int, previousWeekWords: Int)
 }
 
-struct DashboardHeroCard: View {
-    private static let headlineFont: Font = .app(size: 23, weight: .semibold)
-    private static let highlightedHeadlineFont: Font = .app(size: 30, weight: .bold)
+struct DashboardHeroAction {
+    let title: LocalizedStringKey
+    let icon: String
+    let help: String
+    let isEnabled: Bool
+    let perform: () -> Void
+}
 
-    let isLocked: Bool
-    let headline: DashboardHeroHeadline
-    let subtext: String
-    let actionTitle: LocalizedStringKey
-    let actionIcon: String
-    let canViewInsights: Bool
-    let actionHelp: String
-    let actionAccessibilityLabel: String
-    let onViewInsights: () -> Void
+/// The page's one statement: what VoxOS did for you in the last seven days, as a sentence, beside
+/// the week drawn as a voice waveform. The waveform is the page's only accent colour.
+struct DashboardHeroCard: View {
+    private static let sentenceSize: CGFloat = 22
+
+    let state: DashboardHeroState
+    let days: [DashboardProductivityPoint]
+    let isWide: Bool
+    let action: DashboardHeroAction?
 
     var body: some View {
-        VStack(alignment: .leading, spacing: 10) {
-            if isLocked {
-                lockedInsightsPrompt
-            } else {
-                heroCopy
-            }
-
-            HStack(spacing: 12) {
-                Button(action: onViewInsights) {
-                    DashboardMomentumActionLabel(
-                        title: actionTitle,
-                        icon: actionIcon,
-                        isPrimary: canViewInsights,
-                        isLocked: !canViewInsights
-                    )
+        Group {
+            if isWide {
+                HStack(alignment: .center, spacing: 36) {
+                    copy
+                    DashboardWeekWaveform(days: days, isActive: showsActivity)
+                        .frame(width: 236, height: 112)
                 }
-                .buttonStyle(.plain)
-                .disabled(!canViewInsights)
-                .help(actionHelp)
-                .accessibilityLabel(Text(actionAccessibilityLabel))
+            } else {
+                VStack(alignment: .leading, spacing: 22) {
+                    copy
+                    DashboardWeekWaveform(days: days, isActive: showsActivity)
+                        .frame(height: 92)
+                }
             }
-            .padding(.top, 8)
         }
-        .padding(.horizontal, 28)
-        .padding(.vertical, 22)
-        .frame(maxWidth: .infinity, minHeight: 160, alignment: .leading)
-        .background(DashboardImpactBackground(isLocked: isLocked))
-        .voiceOSCard(radius: DashboardLayout.heroCornerRadius)
+        .dashboardCard(padding: DashboardLayout.heroPadding)
+        .animation(.easeOut(duration: 0.2), value: state)
     }
 
-    private var heroCopy: some View {
+    private var showsActivity: Bool {
+        if case .week = state { return true }
+        return false
+    }
+
+    private var copy: some View {
         VStack(alignment: .leading, spacing: 10) {
-            headlineText
-                .frame(maxWidth: 720, alignment: .leading)
+            DashboardSectionLabel(eyebrow)
 
-            Text(subtext)
-                .font(.app(size: 15, weight: .semibold))
-                .foregroundStyle(DashboardMomentumBackground.subtext)
-                .frame(maxWidth: 620, alignment: .leading)
+            Text(sentence)
+                .fixedSize(horizontal: false, vertical: true)
+                .frame(maxWidth: 560, alignment: .leading)
+                .contentTransition(.opacity)
+
+            if let detail {
+                Text(detail)
+                    .font(.app(size: 13, weight: .regular))
+                    .foregroundStyle(AppTheme.Text.secondary)
+                    .fixedSize(horizontal: false, vertical: true)
+                    .frame(maxWidth: 560, alignment: .leading)
+            }
+
+            if let action {
+                Button(action: action.perform) {
+                    HStack(spacing: 6) {
+                        Text(action.title)
+                        Image(systemName: action.icon)
+                            .font(.app(size: 11, weight: .semibold))
+                    }
+                }
+                .buttonStyle(.voiceOSCompact)
+                .disabled(!action.isEnabled)
+                .help(action.help)
+                .padding(.top, 6)
+            }
+        }
+        .frame(maxWidth: .infinity, alignment: .leading)
+    }
+
+    private var eyebrow: LocalizedStringKey {
+        switch state {
+        case .firstRun: return "Get started"
+        default: return "Last 7 days"
         }
     }
 
-    private var headlineText: Text {
-        Text(styledHeadline)
-    }
+    /// The sentence in secondary text with its figures lifted to primary, so the numbers carry the
+    /// hierarchy without a second colour.
+    private var sentence: AttributedString {
+        let figures: [String]
+        let plain: String
 
-    private var styledHeadline: AttributedString {
-        let highlightedValue: String
-        var text: AttributedString
-
-        switch headline {
-        case .calculatingProgress:
-            highlightedValue = String(localized: "VoxOS progress")
-            text = AttributedString(localized: "Calculating \(highlightedValue).")
-        case .startRecordingProgress:
-            highlightedValue = String(localized: "VoxOS progress")
-            text = AttributedString(localized: "Start recording to build \(highlightedValue).")
-        case .savedTime(let value):
-            highlightedValue = value
-            text = AttributedString(localized: "You have saved \(highlightedValue) with VoxOS")
-        case .statsUnavailable:
-            highlightedValue = String(localized: "VoxOS progress")
-            text = AttributedString(localized: "Couldn’t load \(highlightedValue).")
+        switch state {
+        case .loading:
+            figures = []
+            plain = String(localized: "Adding up your dictation…")
+        case .failed:
+            figures = []
+            plain = String(localized: "Your stats couldn’t be loaded.")
+        case .locked:
+            figures = []
+            plain = String(localized: "Keep dictating to unlock your stats.")
+        case .firstRun:
+            figures = []
+            plain = String(localized: "Your first dictation is one shortcut away.")
+        case .quietWeek:
+            figures = []
+            plain = String(localized: "Nothing dictated in the last 7 days.")
+        case .week(let words, let saved, _, _):
+            let wordsText = Self.wordsText(words)
+            if saved >= 60 {
+                let savedText = Formatters.formattedSavedTime(saved)
+                figures = [wordsText, savedText]
+                plain = String(localized: "You dictated \(wordsText) and saved \(savedText) of typing.")
+            } else {
+                figures = [wordsText]
+                plain = String(localized: "You dictated \(wordsText).")
+            }
         }
 
-        text.font = Self.headlineFont
-        text.foregroundColor = DashboardMomentumBackground.headline
+        var text = AttributedString(plain)
+        text.font = Font.app(size: Self.sentenceSize, weight: .medium)
+        text.foregroundColor = figures.isEmpty ? AppTheme.Text.primary : AppTheme.Text.secondary
 
-        if let highlightedRange = text.range(of: highlightedValue) {
-            text[highlightedRange].font = Self.highlightedHeadlineFont
-            text[highlightedRange].foregroundColor = DashboardMomentumBackground.accent
+        for figure in figures {
+            if let range = text.range(of: figure) {
+                text[range].font = Font.app(size: Self.sentenceSize, weight: .semibold)
+                text[range].foregroundColor = AppTheme.Text.primary
+            }
         }
 
         return text
     }
 
-    private var lockedInsightsPrompt: some View {
-        HStack(alignment: .center, spacing: 14) {
-            ZStack {
-                RoundedRectangle(cornerRadius: 12, style: .continuous)
-                    .fill(AppTheme.Accent.fill)
-
-                Image(systemName: "lock.fill")
-                    .font(.app(size: 17, weight: .bold))
-                    .foregroundStyle(DashboardMomentumBackground.accent)
+    private var detail: String? {
+        switch state {
+        case .loading:
+            return nil
+        case .failed:
+            return String(localized: "Something went wrong while reading your history.")
+        case .locked:
+            return nil
+        case .firstRun(let shortcut):
+            guard let shortcut else {
+                return String(
+                    localized:
+                        "Set a recording shortcut, then hold it in any text field and speak. Words and time saved add up here."
+                )
             }
-            .frame(width: 42, height: 42)
-
-            Text("Continue using VoxOS to unlock stats and insights.")
-                .font(.app(size: 24, weight: .semibold))
-                .foregroundStyle(DashboardMomentumBackground.headline)
-                .frame(maxWidth: 540, alignment: .leading)
+            return String(
+                localized:
+                    "Click into any text field, hold \(shortcut) and speak, then let go to paste. Words and time saved add up here."
+            )
+        case .quietWeek(let words, let saved):
+            let wordsText = Self.wordsText(words)
+            guard saved >= 60 else {
+                return String(localized: "So far you’ve dictated \(wordsText) with VoxOS.")
+            }
+            return String(
+                localized: "So far you’ve dictated \(wordsText) and saved \(Formatters.formattedSavedTime(saved)).")
+        case .week(let words, _, let sessions, let previousWeekWords):
+            return Self.weekDetail(words: words, sessions: sessions, previousWeekWords: previousWeekWords)
         }
-        .frame(maxWidth: .infinity, alignment: .leading)
+    }
+
+    private static func wordsText(_ words: Int) -> String {
+        let count = Formatters.formattedNumber(words)
+        return words == 1 ? String(localized: "\(count) word") : String(localized: "\(count) words")
+    }
+
+    private static func weekDetail(words: Int, sessions: Int, previousWeekWords: Int) -> String {
+        let count = Formatters.formattedNumber(sessions)
+        let sessionsText =
+            sessions == 1
+            ? String(localized: "Across 1 session") : String(localized: "Across \(count) sessions")
+
+        guard previousWeekWords > 0 else {
+            return String(localized: "\(sessionsText).")
+        }
+
+        let change = Double(words - previousWeekWords) / Double(previousWeekWords)
+        let percent = Int((abs(change) * 100).rounded())
+
+        if percent < 5 {
+            return String(localized: "\(sessionsText), about the same as the 7 days before.")
+        }
+
+        return change > 0
+            ? String(localized: "\(sessionsText), \(percent)% more words than the 7 days before.")
+            : String(localized: "\(sessionsText), \(percent)% fewer words than the 7 days before.")
     }
 }
 
-private struct DashboardMomentumActionLabel: View {
-    private static let cornerRadius: CGFloat = 12
+/// Seven days as a mirrored voice waveform: one bar per day, its height the words dictated that
+/// day. With no activity it is a flat line, which reads as silence rather than as a broken chart.
+private struct DashboardWeekWaveform: View {
+    private static let restingHeight: CGFloat = 4
+    private static let labelHeight: CGFloat = 16
 
-    let title: LocalizedStringKey
-    let icon: String
-    let isPrimary: Bool
-    var isLocked = false
+    let days: [DashboardProductivityPoint]
+    let isActive: Bool
+
+    private var maxWords: Int {
+        max(days.map(\.words).max() ?? 0, 1)
+    }
 
     var body: some View {
-        HStack(spacing: 9) {
-            Text(title)
-                .lineLimit(2)
+        VStack(spacing: 8) {
+            GeometryReader { geometry in
+                HStack(alignment: .center, spacing: 0) {
+                    ForEach(Array(days.enumerated()), id: \.element.id) { index, day in
+                        Capsule(style: .continuous)
+                            .fill(barColor(for: day, isToday: index == days.count - 1))
+                            .frame(width: barWidth(in: geometry.size.width))
+                            .frame(height: barHeight(for: day, available: geometry.size.height))
+                            .frame(maxWidth: .infinity, maxHeight: .infinity)
+                            .help(Text(verbatim: "\(day.accessibilityLabel): \(Formatters.formattedNumber(day.words))"))
+                    }
+                }
+            }
 
-            Image(systemName: icon)
-                .font(.app(size: 13, weight: .semibold))
+            HStack(spacing: 0) {
+                ForEach(Array(days.enumerated()), id: \.element.id) { index, day in
+                    Text(verbatim: day.label)
+                        .font(.app(size: 10, weight: index == days.count - 1 ? .semibold : .medium))
+                        .foregroundStyle(index == days.count - 1 ? AppTheme.Text.secondary : AppTheme.Text.muted)
+                        .lineLimit(1)
+                        .frame(maxWidth: .infinity)
+                }
+            }
+            .frame(height: Self.labelHeight)
         }
-        .font(.app(size: 13, weight: .semibold))
-        .foregroundStyle(foregroundColor)
-        .padding(.horizontal, 22)
-        .frame(minHeight: 40)
-        .background(backgroundColor)
-        .clipShape(Capsule())
-        .overlay(Capsule().stroke(borderColor, lineWidth: 1))
-        .shadow(color: shadowColor, radius: 2, y: 2)
+        .animation(.easeOut(duration: 0.35), value: days.map(\.words))
+        .accessibilityElement(children: .ignore)
+        .accessibilityLabel("Words dictated each day, last 7 days")
+        .accessibilityValue(accessibilityValue)
     }
 
-    private var foregroundColor: Color {
-        if isPrimary {
-            return Color.white
-        }
-
-        return isLocked ? DashboardMomentumBackground.subtext : AppTheme.Text.primary
+    private func barWidth(in width: CGFloat) -> CGFloat {
+        let slot = width / CGFloat(max(days.count, 1))
+        return min(max(slot * 0.42, 6), 16)
     }
 
-    private var backgroundColor: Color {
-        if isPrimary {
-            return DashboardMomentumBackground.accent
-        }
-
-        return isLocked ? AppTheme.Surface.subtle : AppTheme.Surface.card
+    private func barHeight(for day: DashboardProductivityPoint, available: CGFloat) -> CGFloat {
+        guard isActive, day.words > 0 else { return Self.restingHeight }
+        // Square root keeps a light day visible next to a heavy one.
+        let share = (Double(day.words) / Double(maxWords)).squareRoot()
+        return max(Self.restingHeight * 2, available * CGFloat(share))
     }
 
-    private var borderColor: Color {
-        if isPrimary {
-            return Color.clear
-        }
-
-        return AppTheme.Border.control
+    private func barColor(for day: DashboardProductivityPoint, isToday: Bool) -> Color {
+        guard isActive, day.words > 0 else { return AppTheme.Border.control }
+        return isToday ? AppTheme.Accent.primary : AppTheme.Accent.primary.opacity(0.55)
     }
 
-    private var shadowColor: Color {
-        isPrimary ? AppTheme.Accent.shadow : AppTheme.Shadow.card
+    private var accessibilityValue: String {
+        days
+            .map { "\($0.accessibilityLabel) \(Formatters.formattedNumber($0.words))" }
+            .joined(separator: ", ")
     }
-}
-
-private struct DashboardImpactBackground: View {
-    var isLocked = false
-
-    var body: some View {
-        // A faint accent bloom in the far corner; the glass slab itself is the card.
-        RadialGradient(
-            colors: [AppTheme.Accent.primary.opacity(isLocked ? 0.18 : 0.32), .clear],
-            center: .init(x: 1.05, y: 1.1), startRadius: 0, endRadius: 560)
-    }
-}
-
-private struct DashboardMomentumBackground {
-    static let accent = AppTheme.Accent.primary
-    static let headline = AppTheme.Text.heading
-    static let subtext = AppTheme.Text.secondary
 }
