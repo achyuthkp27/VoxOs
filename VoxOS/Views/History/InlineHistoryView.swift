@@ -15,20 +15,33 @@ struct InlineHistoryView: View {
     /// The mode filter the list on screen was fetched with; Load More and Select All read this,
     /// like `lastFetchedSearchText`, so they continue the list that is showing.
     @State private var lastFetchedModeFilter: String?
+    @State private var dateRange: HistoryDateRange = .all
+    /// The start date the list on screen was fetched with, kept for the same reason as above and
+    /// so "Today" does not move under Load More when midnight passes.
+    @State private var lastFetchedSince: Date?
     @State private var selectedTranscriptions: Set<Transcription> = []
+    /// True after Select is pressed, so the checkbox column shows before anything is checked.
+    @State private var isSelectionMode = false
+    /// The rows the delete confirmation is asking about: the checked rows, or one row from its
+    /// menu or the Delete key.
+    @State private var pendingDeletion: [Transcription] = []
     @State private var showDeleteConfirmation = false
     @State private var isPanelPresented = false
     @State private var panelMode: InlineHistoryPanelMode = .info
     @State private var panelTranscriptionId: UUID?
+    /// The highlighted row: the one last clicked or reached with the arrow keys.
+    @State private var highlightedTranscriptionId: UUID?
     @State private var displayedTranscriptions: [Transcription] = []
     @State private var isLoading = false
     @State private var hasMoreContent = true
     /// Where the next page starts; see `HistoryPageCursor` for why it is more than a timestamp.
     @State private var pageCursor: HistoryPageCursor?
     @State private var isViewCurrentlyVisible = false
+    @FocusState private var isSearchFocused: Bool
+    @FocusState private var isTableFocused: Bool
 
     private let exportService = VoxOSCSVExportService()
-    private let pageSize = 20
+    private let pageSize = 40
 
     @Query(Self.createLatestTranscriptionIndicatorDescriptor()) private var latestTranscriptionIndicator:
         [Transcription]
@@ -41,12 +54,13 @@ struct InlineHistoryView: View {
         return descriptor
     }
 
-    /// Built from `lastFetchedSearchText`, not the live field: while the search debounce is
+    /// Built from the last fetched filters, not the live controls: while the search debounce is
     /// pending the two differ, and Load More must continue the list that is on screen.
     private func cursorQueryDescriptor(after cursor: HistoryPageCursor? = nil) -> FetchDescriptor<Transcription> {
         HistoryPageQuery.descriptor(
             searchText: lastFetchedSearchText,
             modeName: lastFetchedModeFilter,
+            since: lastFetchedSince,
             after: cursor,
             pageSize: pageSize
         )
@@ -57,22 +71,12 @@ struct InlineHistoryView: View {
     }
 
     private var isSelecting: Bool {
-        !selectedTranscriptions.isEmpty
-    }
-
-    private var isFiltering: Bool {
-        !searchText.isEmpty || modeFilter != nil
+        isSelectionMode || !selectedTranscriptions.isEmpty
     }
 
     private var panelTranscription: Transcription? {
         guard let id = panelTranscriptionId else { return nil }
         return displayedTranscriptions.first { $0.id == id }
-    }
-
-    /// The row whose details are open, highlighted in the list.
-    private var openedTranscriptionId: UUID? {
-        guard isPanelPresented, panelMode == .detail || panelMode == .info else { return nil }
-        return panelTranscriptionId
     }
 
     /// Names offered by the filter menu: every mode the user has, plus the one being filtered on
@@ -89,9 +93,16 @@ struct InlineHistoryView: View {
         HistoryDayGroup.group(displayedTranscriptions)
     }
 
+    private func modeColor(for name: String?) -> Color {
+        ModeSpectrum.color(forModeNamed: name, in: modeManager.configurations)
+    }
+
     private func openPanel(mode: InlineHistoryPanelMode, transcriptionID: UUID? = nil) {
         panelMode = mode
         panelTranscriptionId = transcriptionID
+        if let transcriptionID {
+            highlightedTranscriptionId = transcriptionID
+        }
 
         isPanelPresented = true
     }
@@ -115,22 +126,23 @@ struct InlineHistoryView: View {
                 }
             }
 
-            filterBar
+            toolbar
 
-            if displayedTranscriptions.isEmpty && !isLoading {
-                emptyStateView
-            } else {
-                dayListView
-            }
-
-            if isSelecting {
-                Divider()
-                selectionBar
-                    .transition(.move(edge: .bottom).combined(with: .opacity))
-            }
+            tableCard
+                .padding(.horizontal, 24)
+                .padding(.bottom, 24)
         }
-        .animation(reduceMotion ? nil : .easeInOut(duration: 0.2), value: selectedTranscriptions.isEmpty)
+        .animation(reduceMotion ? nil : .easeInOut(duration: 0.15), value: isSelecting)
         .frame(maxWidth: .infinity, maxHeight: .infinity)
+        .background {
+            // ⌘F focuses the search field. A zero-size button keeps the shortcut live without
+            // showing anything.
+            Button("Search") { isSearchFocused = true }
+                .keyboardShortcut("f", modifiers: .command)
+                .opacity(0)
+                .frame(width: 0, height: 0)
+                .accessibilityHidden(true)
+        }
         .sidePanel(
             isPresented: .init(
                 get: { isPanelPresented },
@@ -144,14 +156,16 @@ struct InlineHistoryView: View {
         }
         .alert("Delete Selected Items?", isPresented: $showDeleteConfirmation) {
             Button("Delete", role: .destructive) {
-                deleteSelectedTranscriptions()
+                deletePendingTranscriptions()
             }
-            Button("Cancel", role: .cancel) {}
+            Button("Cancel", role: .cancel) {
+                pendingDeletion = []
+            }
         } message: {
             Text(
                 String(
                     localized:
-                        "This action cannot be undone. Are you sure you want to delete \(selectedTranscriptions.count) items?"
+                        "This action cannot be undone. Are you sure you want to delete \(pendingDeletion.count) items?"
                 ))
         }
         .onAppear {
@@ -180,6 +194,13 @@ struct InlineHistoryView: View {
                 await loadInitialContent()
             }
         }
+        .onChange(of: dateRange) { _, newRange in
+            lastFetchedSince = newRange.startDate()
+            Task {
+                resetPagination()
+                await loadInitialContent()
+            }
+        }
         .onChange(of: latestTranscriptionIndicator.first?.id) { oldId, newId in
             guard isViewCurrentlyVisible else { return }
             if newId != oldId {
@@ -191,44 +212,69 @@ struct InlineHistoryView: View {
         }
     }
 
-    // MARK: - Filter Bar
+    // MARK: - Toolbar
 
-    private var filterBar: some View {
+    private var toolbar: some View {
         HStack(spacing: 10) {
-            HStack(spacing: 8) {
-                Image(systemName: "magnifyingglass")
-                    .foregroundStyle(AppTheme.Text.muted)
-                    .font(.app(size: 12, weight: .medium))
-                TextField("Search transcriptions…", text: $searchText)
-                    .textFieldStyle(.plain)
-                    .font(.app(size: 13, weight: .regular))
-                if !searchText.isEmpty {
-                    Button {
-                        searchText = ""
-                    } label: {
-                        Image(systemName: "xmark.circle.fill")
-                            .foregroundStyle(AppTheme.Text.muted)
-                    }
-                    .buttonStyle(.plain)
-                    .help("Clear search")
-                }
-            }
-            .padding(.horizontal, 12)
-            .frame(height: 32)
-            .background(
-                RoundedRectangle(cornerRadius: 10, style: .continuous)
-                    .fill(AppTheme.Surface.card)
-                    .overlay(
-                        RoundedRectangle(cornerRadius: 10, style: .continuous)
-                            .strokeBorder(AppTheme.Border.card, lineWidth: 1)
-                    )
-            )
-            .frame(maxWidth: .infinity)
+            searchField
+                .frame(minWidth: 160, maxWidth: 280)
 
             modeFilterMenu
+
+            Picker("Date range", selection: $dateRange) {
+                ForEach(HistoryDateRange.allCases) { range in
+                    Text(range.title).tag(range)
+                }
+            }
+            .pickerStyle(.segmented)
+            .labelsHidden()
+            .fixedSize()
+            .help("Show dictations from this period")
+
+            Spacer(minLength: 8)
+
+            selectionActions
         }
+        .font(.app(size: 12, weight: .medium))
         .padding(.horizontal, 24)
-        .padding(.bottom, 14)
+        .padding(.bottom, 12)
+    }
+
+    private var searchField: some View {
+        HStack(spacing: 7) {
+            Image(systemName: "magnifyingglass")
+                .foregroundStyle(AppTheme.Text.muted)
+                .font(.app(size: 12, weight: .medium))
+            TextField("Search dictations…", text: $searchText)
+                .textFieldStyle(.plain)
+                .font(.app(size: 13, weight: .regular))
+                .focused($isSearchFocused)
+                .onSubmit { isTableFocused = true }
+            if !searchText.isEmpty {
+                Button {
+                    searchText = ""
+                } label: {
+                    Image(systemName: "xmark.circle.fill")
+                        .foregroundStyle(AppTheme.Text.muted)
+                }
+                .buttonStyle(.plain)
+                .help("Clear search")
+            }
+        }
+        .padding(.horizontal, 10)
+        .frame(height: 28)
+        .background(
+            RoundedRectangle(cornerRadius: 8, style: .continuous)
+                .fill(AppTheme.Surface.card)
+                .overlay(
+                    RoundedRectangle(cornerRadius: 8, style: .continuous)
+                        .strokeBorder(
+                            isSearchFocused ? AppTheme.Accent.border : AppTheme.Border.card,
+                            lineWidth: 1
+                        )
+                )
+        )
+        .help("Search dictations (⌘F)")
     }
 
     private var modeFilterMenu: some View {
@@ -237,7 +283,12 @@ struct InlineHistoryView: View {
                 Text("All modes").tag(String?.none)
                 Divider()
                 ForEach(filterModeNames, id: \.self) { name in
-                    Text(name).tag(String?.some(name))
+                    Label {
+                        Text(name)
+                    } icon: {
+                        Image(nsImage: HistoryModeDot.image(modeColor(for: name)))
+                    }
+                    .tag(String?.some(name))
                 }
             }
             .pickerStyle(.inline)
@@ -246,65 +297,231 @@ struct InlineHistoryView: View {
             HStack(spacing: 6) {
                 if let modeFilter {
                     Circle()
-                        .fill(ModeSpectrum.color(forModeNamed: modeFilter, in: modeManager.configurations))
+                        .fill(modeColor(for: modeFilter))
                         .frame(width: 7, height: 7)
                     Text(modeFilter)
                         .lineLimit(1)
                 } else {
                     Image(systemName: "line.3.horizontal.decrease")
-                    Text("All")
+                    Text("All modes")
                 }
             }
-            .font(.app(size: 12, weight: .medium))
         }
         .menuStyle(.button)
         .buttonStyle(.bordered)
         .fixedSize()
-        .help("Show transcriptions from one mode")
+        .help("Show dictations from one mode")
     }
 
-    private var selectionBar: some View {
-        HStack(spacing: 16) {
-            Text(String(format: String(localized: "%lld selected"), Int64(selectedTranscriptions.count)))
-                .font(.appMono(size: 11, weight: .medium))
-                .foregroundStyle(AppTheme.Text.secondary)
+    @ViewBuilder
+    private var selectionActions: some View {
+        if isSelecting {
+            HStack(spacing: 8) {
+                Text(String(format: String(localized: "%lld selected"), Int64(selectedTranscriptions.count)))
+                    .font(.appMono(size: 11, weight: .medium))
+                    .foregroundStyle(AppTheme.Text.secondary)
+                    .lineLimit(1)
 
-            Spacer()
+                Button {
+                    openPanel(mode: .analysis)
+                } label: {
+                    Label("Analyze", systemImage: "chart.bar.xaxis")
+                }
+                .help("Analyze selected dictations")
+                .disabled(selectedTranscriptions.isEmpty)
 
-            Button(action: {
-                openPanel(mode: .analysis)
-            }) {
-                Label("Analyze", systemImage: "chart.bar.xaxis")
-            }
+                Button {
+                    exportService.exportTranscriptionsToCSV(transcriptions: Array(selectedTranscriptions))
+                } label: {
+                    Label("Export", systemImage: "square.and.arrow.up")
+                }
+                .help("Export selected dictations as CSV")
+                .disabled(selectedTranscriptions.isEmpty)
 
-            Button(action: {
-                exportService.exportTranscriptionsToCSV(transcriptions: Array(selectedTranscriptions))
-            }) {
-                Label("Export", systemImage: "square.and.arrow.up")
-            }
+                Button(role: .destructive) {
+                    confirmDeletion(of: Array(selectedTranscriptions))
+                } label: {
+                    Label("Delete", systemImage: "trash")
+                }
+                .help("Delete selected dictations")
+                .disabled(selectedTranscriptions.isEmpty)
 
-            Button(role: .destructive, action: { showDeleteConfirmation = true }) {
-                Label("Delete", systemImage: "trash")
-            }
-            .foregroundStyle(AppTheme.Status.error)
-
-            Divider()
-                .frame(height: 16)
-
-            if allSelected {
-                Button("Deselect All") {
+                Button("Done") {
                     selectedTranscriptions.removeAll()
+                    isSelectionMode = false
                 }
+            }
+            .labelStyle(.titleAndIcon)
+            .buttonStyle(.bordered)
+            .transition(.opacity)
+        } else {
+            Button("Select") {
+                isSelectionMode = true
+            }
+            .buttonStyle(.bordered)
+            .disabled(displayedTranscriptions.isEmpty)
+            .help("Choose dictations to export or delete")
+        }
+    }
+
+    // MARK: - Table
+
+    private var tableCard: some View {
+        VStack(spacing: 0) {
+            if displayedTranscriptions.isEmpty && !isLoading {
+                emptyStateView
             } else {
-                Button("Select All") {
-                    Task { await selectAllTranscriptions() }
-                }
+                HistoryColumnHeader(
+                    isSelecting: isSelecting,
+                    allSelected: allSelected,
+                    onToggleAll: {
+                        if allSelected {
+                            selectedTranscriptions.removeAll()
+                        } else {
+                            Task { await selectAllTranscriptions() }
+                        }
+                    }
+                )
+                Divider()
+                tableBody
             }
         }
-        .buttonStyle(.borderless)
+        .frame(maxWidth: .infinity, maxHeight: .infinity)
+        .background(
+            RoundedRectangle(cornerRadius: HistoryTableLayout.cardRadius, style: .continuous)
+                .fill(AppTheme.Surface.card)
+        )
+        .clipShape(RoundedRectangle(cornerRadius: HistoryTableLayout.cardRadius, style: .continuous))
+        .overlay(
+            RoundedRectangle(cornerRadius: HistoryTableLayout.cardRadius, style: .continuous)
+                .strokeBorder(AppTheme.Border.card, lineWidth: 1)
+        )
+    }
+
+    private var tableBody: some View {
+        ScrollViewReader { proxy in
+            ScrollView {
+                LazyVStack(alignment: .leading, spacing: 0, pinnedViews: [.sectionHeaders]) {
+                    ForEach(dayGroups) { group in
+                        Section {
+                            ForEach(Array(group.items.enumerated()), id: \.element.id) { index, transcription in
+                                if index > 0 {
+                                    Divider()
+                                }
+                                tableRow(for: transcription)
+                                    .id(transcription.id)
+                            }
+                        } header: {
+                            HistoryDayHeader(group: group)
+                        }
+                    }
+
+                    if hasMoreContent {
+                        loadMoreFooter
+                    }
+                }
+            }
+            .focusable()
+            .focused($isTableFocused)
+            .focusEffectDisabled()
+            .onKeyPress(.downArrow) {
+                moveHighlight(by: 1, proxy: proxy)
+            }
+            .onKeyPress(.upArrow) {
+                moveHighlight(by: -1, proxy: proxy)
+            }
+            .onKeyPress(.return) {
+                guard let id = highlightedTranscriptionId else { return .ignored }
+                openPanel(mode: .detail, transcriptionID: id)
+                return .handled
+            }
+            .onKeyPress(keys: [.delete, .deleteForward]) { _ in
+                deleteFromKeyboard()
+            }
+        }
+    }
+
+    /// Loads the next page as soon as it scrolls into view; the button covers the case where it
+    /// is already on screen after a load, which `onAppear` would not fire for again.
+    private var loadMoreFooter: some View {
+        HStack(spacing: 8) {
+            if isLoading {
+                ProgressView().controlSize(.small)
+                Text("Loading…")
+                    .foregroundStyle(AppTheme.Text.muted)
+            } else {
+                Button("Load more") {
+                    Task { await loadMoreContent() }
+                }
+                .buttonStyle(.borderless)
+            }
+        }
         .font(.app(size: 12, weight: .medium))
-        .padding(.horizontal, 24)
-        .padding(.vertical, 10)
+        .frame(maxWidth: .infinity)
+        .frame(height: 40)
+        .overlay(alignment: .top) { Divider() }
+        .onAppear {
+            Task { await loadMoreContent() }
+        }
+    }
+
+    private func tableRow(for transcription: Transcription) -> some View {
+        HistoryTableRow(
+            transcription: transcription,
+            modeColor: modeColor(for: transcription.modeName),
+            isChecked: selectedTranscriptions.contains(transcription),
+            isSelecting: isSelecting,
+            isHighlighted: highlightedTranscriptionId == transcription.id,
+            onOpen: {
+                isTableFocused = true
+                openPanel(mode: .detail, transcriptionID: transcription.id)
+            },
+            onToggleCheck: {
+                isTableFocused = true
+                highlightedTranscriptionId = transcription.id
+                toggleSelection(transcription)
+            },
+            onShowInfo: { openPanel(mode: .info, transcriptionID: transcription.id) },
+            onDelete: { confirmDeletion(of: [transcription]) }
+        )
+    }
+
+    // MARK: - Keyboard
+
+    /// Moves the highlight one row up or down, and follows it in the side panel when a
+    /// dictation's details or info are open there.
+    private func moveHighlight(by offset: Int, proxy: ScrollViewProxy) -> KeyPress.Result {
+        guard !displayedTranscriptions.isEmpty else { return .ignored }
+        let current = displayedTranscriptions.firstIndex { $0.id == highlightedTranscriptionId }
+        let next: Int
+        if let current {
+            next = min(max(current + offset, 0), displayedTranscriptions.count - 1)
+        } else {
+            next = offset > 0 ? 0 : displayedTranscriptions.count - 1
+        }
+        let id = displayedTranscriptions[next].id
+        highlightedTranscriptionId = id
+        if isPanelPresented, panelMode == .detail || panelMode == .info {
+            panelTranscriptionId = id
+        }
+        proxy.scrollTo(id)
+        if next == displayedTranscriptions.count - 1, hasMoreContent {
+            Task { await loadMoreContent() }
+        }
+        return .handled
+    }
+
+    /// Delete asks about the checked rows, or the highlighted row when none is checked.
+    private func deleteFromKeyboard() -> KeyPress.Result {
+        if !selectedTranscriptions.isEmpty {
+            confirmDeletion(of: Array(selectedTranscriptions))
+            return .handled
+        }
+        guard let id = highlightedTranscriptionId,
+            let transcription = displayedTranscriptions.first(where: { $0.id == id })
+        else { return .ignored }
+        confirmDeletion(of: [transcription])
+        return .handled
     }
 
     // MARK: - Empty State
@@ -312,93 +529,56 @@ struct InlineHistoryView: View {
     private var emptyStateView: some View {
         VStack(spacing: 10) {
             Spacer()
-            Image(systemName: isFiltering ? "magnifyingglass" : "waveform")
-                .font(.app(size: 28, weight: .regular))
-                .foregroundStyle(AppTheme.Text.muted)
-            Text(isFiltering ? "No transcriptions match" : "No transcriptions yet")
-                .font(.app(size: 14, weight: .medium))
-                .foregroundStyle(AppTheme.Text.primary)
-            Text(
-                isFiltering
-                    ? "Try other words, or set the filter back to All."
-                    : "Press your dictation shortcut and speak. Each dictation is kept here."
-            )
-            .font(.app(size: 13, weight: .regular))
-            .foregroundStyle(AppTheme.Text.secondary)
-            .multilineTextAlignment(.center)
+            if !lastFetchedSearchText.isEmpty {
+                emptyMessage(
+                    systemImage: "magnifyingglass",
+                    title: String(format: String(localized: "No dictations match “%@”"), lastFetchedSearchText),
+                    actionTitle: "Clear search",
+                    action: { searchText = "" }
+                )
+            } else if lastFetchedModeFilter != nil || lastFetchedSince != nil {
+                emptyMessage(
+                    systemImage: "line.3.horizontal.decrease",
+                    title: String(localized: "No dictations in this range"),
+                    actionTitle: "Show all",
+                    action: {
+                        modeFilter = nil
+                        dateRange = .all
+                    }
+                )
+            } else {
+                emptyMessage(
+                    systemImage: "waveform",
+                    title: String(localized: "Your dictations will appear here. Hold Fn and speak."),
+                    actionTitle: nil,
+                    action: {}
+                )
+            }
             Spacer()
         }
         .padding(.horizontal, 24)
         .frame(maxWidth: .infinity, maxHeight: .infinity)
     }
 
-    // MARK: - Day List
-
-    private var dayListView: some View {
-        ScrollView {
-            LazyVStack(alignment: .leading, spacing: 20) {
-                ForEach(dayGroups) { group in
-                    VStack(alignment: .leading, spacing: 8) {
-                        Text(group.title)
-                            .font(.appMono(size: 11, weight: .medium))
-                            .textCase(.uppercase)
-                            .tracking(0.6)
-                            .foregroundStyle(AppTheme.Text.secondary)
-                            .padding(.leading, 4)
-
-                        VStack(spacing: 0) {
-                            ForEach(Array(group.items.enumerated()), id: \.element.id) { index, transcription in
-                                if index > 0 {
-                                    Divider()
-                                        .padding(.leading, 40)
-                                }
-                                historyRow(for: transcription)
-                            }
-                        }
-                        .background(
-                            RoundedRectangle(cornerRadius: HistoryRowMetrics.cardRadius, style: .continuous)
-                                .fill(AppTheme.Surface.card)
-                        )
-                        .overlay(
-                            RoundedRectangle(cornerRadius: HistoryRowMetrics.cardRadius, style: .continuous)
-                                .strokeBorder(AppTheme.Border.card, lineWidth: 1)
-                        )
-                        .clipShape(RoundedRectangle(cornerRadius: HistoryRowMetrics.cardRadius, style: .continuous))
-                    }
-                }
-
-                if hasMoreContent {
-                    Button(action: {
-                        Task { await loadMoreContent() }
-                    }) {
-                        HStack(spacing: 8) {
-                            if isLoading {
-                                ProgressView().controlSize(.small)
-                            }
-                            Text(isLoading ? "Loading…" : "Load more")
-                        }
-                    }
+    private func emptyMessage(
+        systemImage: String,
+        title: String,
+        actionTitle: LocalizedStringKey?,
+        action: @escaping () -> Void
+    ) -> some View {
+        VStack(spacing: 12) {
+            Image(systemName: systemImage)
+                .font(.app(size: 24, weight: .regular))
+                .foregroundStyle(AppTheme.Text.muted)
+            Text(title)
+                .font(.app(size: 13, weight: .regular))
+                .foregroundStyle(AppTheme.Text.secondary)
+                .multilineTextAlignment(.center)
+            if let actionTitle {
+                Button(actionTitle, action: action)
                     .buttonStyle(.bordered)
-                    .disabled(isLoading)
-                    .frame(maxWidth: .infinity)
-                }
             }
-            .padding(.horizontal, 24)
-            .padding(.bottom, 24)
         }
-    }
-
-    private func historyRow(for transcription: Transcription) -> some View {
-        HistoryRow(
-            transcription: transcription,
-            modeColor: ModeSpectrum.color(forModeNamed: transcription.modeName, in: modeManager.configurations),
-            isChecked: selectedTranscriptions.contains(transcription),
-            isSelecting: isSelecting,
-            isOpen: openedTranscriptionId == transcription.id,
-            onOpen: { openPanel(mode: .detail, transcriptionID: transcription.id) },
-            onToggleCheck: { toggleSelection(transcription) },
-            onShowInfo: { openPanel(mode: .info, transcriptionID: transcription.id) }
-        )
     }
 
     // MARK: - Side Panel
@@ -430,8 +610,7 @@ struct InlineHistoryView: View {
             if let transcription = panelTranscription {
                 HistoryDetailMeta(
                     transcription: transcription,
-                    modeColor: ModeSpectrum.color(
-                        forModeNamed: transcription.modeName, in: modeManager.configurations)
+                    modeColor: modeColor(for: transcription.modeName)
                 )
                 .padding(.horizontal, 20)
                 .padding(.top, 12)
@@ -515,6 +694,12 @@ struct InlineHistoryView: View {
         }
     }
 
+    private func confirmDeletion(of transcriptions: [Transcription]) {
+        guard !transcriptions.isEmpty else { return }
+        pendingDeletion = transcriptions
+        showDeleteConfirmation = true
+    }
+
     /// Removes the record and returns its audio file, which the caller deletes only once the
     /// removal is saved: a leftover file is harmless, a saved record pointing at a missing file
     /// is a broken row forever.
@@ -525,15 +710,21 @@ struct InlineHistoryView: View {
             panelTranscriptionId = nil
             closePanel()
         }
+        if highlightedTranscriptionId == transcription.id {
+            highlightedTranscriptionId = nil
+        }
 
         selectedTranscriptions.remove(transcription)
         modelContext.delete(transcription)
         return audioURL
     }
 
-    private func deleteSelectedTranscriptions() {
-        let audioURLs = selectedTranscriptions.compactMap { performDeletion(for: $0) }
-        selectedTranscriptions.removeAll()
+    private func deletePendingTranscriptions() {
+        let audioURLs = pendingDeletion.compactMap { performDeletion(for: $0) }
+        pendingDeletion = []
+        if selectedTranscriptions.isEmpty {
+            isSelectionMode = false
+        }
 
         Task {
             do {
@@ -560,11 +751,12 @@ struct InlineHistoryView: View {
 
     private func selectAllTranscriptions() async {
         do {
-            // The query the list is showing, not the live field: Select All and the bulk delete
-            // that follows must never reach rows the visible list does not match.
+            // The query the list is showing, not the live controls: Select All and the bulk
+            // delete that follows must never reach rows the visible list does not match.
             let allDescriptor = HistoryPageQuery.allMatchingDescriptor(
                 searchText: lastFetchedSearchText,
-                modeName: lastFetchedModeFilter
+                modeName: lastFetchedModeFilter,
+                since: lastFetchedSince
             )
             let allTranscriptions = try modelContext.fetch(allDescriptor)
             let visibleIds = Set(displayedTranscriptions.map { $0.id })
@@ -589,158 +781,6 @@ private enum InlineHistoryPanelMode {
     case info
     case analysis
     case historySettings
-}
-
-private enum HistoryRowMetrics {
-    /// The spec's card radius; `AppTheme.Radius.card` is the older, rounder glass value.
-    static let cardRadius: CGFloat = 14
-}
-
-// MARK: - Day Groups
-
-/// One day of history: the list shows each under a mono day header, newest day first.
-private struct HistoryDayGroup: Identifiable {
-    let day: Date
-    var items: [Transcription]
-
-    var id: Date { day }
-
-    /// "Today · 14 Oct 2026", "Yesterday · …", or the weekday for older days.
-    var title: String {
-        let calendar = Calendar.current
-        let date = day.formatted(.dateTime.day().month(.abbreviated).year())
-        let name: String
-        if calendar.isDateInToday(day) {
-            name = String(localized: "Today")
-        } else if calendar.isDateInYesterday(day) {
-            name = String(localized: "Yesterday")
-        } else {
-            name = day.formatted(.dateTime.weekday(.wide))
-        }
-        return "\(name) · \(date)"
-    }
-
-    /// Groups an already newest-first list by calendar day, keeping its order.
-    static func group(_ transcriptions: [Transcription]) -> [HistoryDayGroup] {
-        let calendar = Calendar.current
-        var groups: [HistoryDayGroup] = []
-        for transcription in transcriptions {
-            let day = calendar.startOfDay(for: transcription.timestamp)
-            if let last = groups.indices.last, groups[last].day == day {
-                groups[last].items.append(transcription)
-            } else {
-                groups.append(HistoryDayGroup(day: day, items: [transcription]))
-            }
-        }
-        return groups
-    }
-}
-
-// MARK: - History Row
-
-private struct HistoryRow: View {
-    let transcription: Transcription
-    let modeColor: Color
-    let isChecked: Bool
-    let isSelecting: Bool
-    let isOpen: Bool
-    let onOpen: () -> Void
-    let onToggleCheck: () -> Void
-    let onShowInfo: () -> Void
-
-    @State private var isHovering = false
-
-    /// One line: what was written, with line breaks folded so the row never grows.
-    private var previewText: String {
-        let text = transcription.enhancedText ?? transcription.text
-        return text.split(whereSeparator: \.isNewline).joined(separator: " ")
-    }
-
-    /// The checkbox replaces the mode dot while selecting, or under the pointer.
-    private var showsCheckbox: Bool {
-        isSelecting || isChecked || isHovering
-    }
-
-    private var rowFill: Color {
-        if isOpen || isChecked { return AppTheme.Selection.fill }
-        return isHovering ? AppTheme.Surface.subtle : .clear
-    }
-
-    var body: some View {
-        HStack(spacing: 12) {
-            ZStack {
-                if showsCheckbox {
-                    Toggle(
-                        "",
-                        isOn: Binding(
-                            get: { isChecked },
-                            set: { _ in onToggleCheck() }
-                        )
-                    )
-                    .toggleStyle(CircularCheckboxStyle())
-                    .labelsHidden()
-                    .help(isChecked ? "Deselect" : "Select")
-                } else {
-                    Circle()
-                        .fill(modeColor)
-                        .frame(width: 8, height: 8)
-                        .help(transcription.modeName ?? String(localized: "No mode"))
-                }
-            }
-            .frame(width: 18, height: 18)
-
-            Text(previewText)
-                .font(.app(size: 13, weight: .regular))
-                .foregroundStyle(AppTheme.Text.primary)
-                .lineLimit(1)
-                .truncationMode(.tail)
-                .frame(maxWidth: .infinity, alignment: .leading)
-
-            Text(transcription.timestamp, format: .dateTime.hour().minute())
-                .font(.appMono(size: 11, weight: .medium))
-                .foregroundStyle(AppTheme.Text.muted)
-
-            rowMenu
-                .opacity(isHovering || isOpen ? 1 : 0)
-                .allowsHitTesting(isHovering || isOpen)
-        }
-        .padding(.leading, 12)
-        .padding(.trailing, 8)
-        .frame(minHeight: 40)
-        .background(rowFill)
-        .contentShape(Rectangle())
-        .onTapGesture {
-            if isSelecting { onToggleCheck() } else { onOpen() }
-        }
-        .onHover { isHovering = $0 }
-        .accessibilityElement(children: .combine)
-        .accessibilityAddTraits(.isButton)
-        .accessibilityAction(named: Text("Open")) { onOpen() }
-    }
-
-    private var rowMenu: some View {
-        Menu {
-            Button("Open") { onOpen() }
-            Button("Copy text") {
-                let pasteboard = NSPasteboard.general
-                pasteboard.clearContents()
-                pasteboard.setString(transcription.enhancedText ?? transcription.text, forType: .string)
-            }
-            Button("Show info") { onShowInfo() }
-            Divider()
-            Button(isChecked ? "Deselect" : "Select") { onToggleCheck() }
-        } label: {
-            Image(systemName: "ellipsis")
-                .font(.app(size: 12, weight: .semibold))
-                .foregroundStyle(AppTheme.Text.secondary)
-                .frame(width: 24, height: 24)
-                .contentShape(Rectangle())
-        }
-        .menuStyle(.borderlessButton)
-        .menuIndicator(.hidden)
-        .fixedSize()
-        .help("More")
-    }
 }
 
 // MARK: - Detail Meta
