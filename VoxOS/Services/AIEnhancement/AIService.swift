@@ -373,6 +373,11 @@ class AIService: ObservableObject {
                 self?.reloadSelectedProviderConfiguration()
             }
         }
+
+        // The test host is a separate app to macOS; it must not start Claude processes.
+        if !ProcessIdentity.isTestHost {
+            LocalCLIWarmClaude.shared.startMonitoring { [weak self] in self?.localCLICommandTemplate ?? "" }
+        }
     }
 
     deinit {

@@ -22,7 +22,12 @@ enum LocalCLITemplate: String, CaseIterable, Identifiable {
         case .pi:
             return "pi -ne -ns -p --no-tools --system-prompt \"$VOXOS_SYSTEM_PROMPT\" \"$VOXOS_USER_PROMPT\""
         case .claude:
-            return "claude -p \"$VOXOS_FULL_PROMPT\""
+            // Haiku, and none of the user's MCP servers, settings, hooks, skills or tools:
+            // each request is a fresh Claude Code process, and loading those took it from
+            // ~3 s to ~5.5 s for a one-line cleanup. `--tools ""` must stay last: it is
+            // variadic and would swallow anything after it, including the prompt.
+            return
+                "claude -p \"$VOXOS_FULL_PROMPT\" --model haiku --strict-mcp-config --setting-sources \"\" --disable-slash-commands --no-session-persistence --tools \"\""
         case .codex:
             return
                 "TMPFILE=$(mktemp) && codex exec --skip-git-repo-check --output-last-message \"$TMPFILE\" \"$VOXOS_FULL_PROMPT\" > /dev/null 2>&1 && cat \"$TMPFILE\" && rm \"$TMPFILE\""
@@ -69,11 +74,21 @@ final class LocalCLIService {
         let savedTemplateRaw = UserDefaults.standard.string(forKey: Self.selectedTemplateKey) ?? ""
         selectedTemplate = LocalCLITemplate(rawValue: savedTemplateRaw) ?? .pi
 
-        commandTemplate = UserDefaults.standard.string(forKey: Self.commandTemplateKey) ?? ""
+        let savedCommand = UserDefaults.standard.string(forKey: Self.commandTemplateKey) ?? ""
+        // A command saved from an older template is upgraded; one the user edited is kept.
+        commandTemplate = Self.upgradedTemplates[savedCommand] ?? savedCommand
+        if commandTemplate != savedCommand {
+            UserDefaults.standard.set(commandTemplate, forKey: Self.commandTemplateKey)
+        }
 
         let savedTimeout = UserDefaults.standard.double(forKey: Self.timeoutSecondsKey)
         timeoutSeconds = savedTimeout > 0 ? savedTimeout : Self.defaultTimeoutSeconds
     }
+
+    /// Old template text → current template text.
+    static let upgradedTemplates: [String: String] = [
+        "claude -p \"$VOXOS_FULL_PROMPT\"": LocalCLITemplate.claude.commandTemplate
+    ]
 
     func loadTemplate(_ template: LocalCLITemplate) {
         selectedTemplate = template
@@ -86,6 +101,13 @@ final class LocalCLIService {
         }
 
         let fullPrompt = Self.makeFullPrompt(systemPrompt: systemPrompt, userPrompt: userPrompt)
+        // A pre-started Claude answers in ~1.2 s instead of ~3 s. If it fails, this request runs
+        // the command the normal way; the spare is replaced either way.
+        if LocalCLIWarmClaude.isEligible(command: commandTemplate),
+            let warm = try? await LocalCLIWarmClaude.shared.complete(prompt: fullPrompt, timeout: timeoutSeconds)
+        {
+            return warm
+        }
         return try await executeCommand(
             commandTemplate: commandTemplate,
             systemPrompt: systemPrompt,
