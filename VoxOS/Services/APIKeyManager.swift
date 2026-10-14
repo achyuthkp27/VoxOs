@@ -24,7 +24,6 @@ final class APIKeyManager {
         "openai": "openAIAPIKey",
         "anthropic": "anthropicAPIKey",
         "openrouter": "openRouterAPIKey",
-        "opencode": "openCodeAPIKey",
     ]
 
     private init() {}

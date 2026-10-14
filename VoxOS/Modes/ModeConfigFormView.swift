@@ -461,15 +461,9 @@ struct ModeConfigFormView: View {
                     }
                 }
 
-                if provider == .openRouter || provider == .openCode {
+                if provider == .openRouter {
                     Button("Refresh Models") {
-                        Task {
-                            if provider == .openCode {
-                                await aiService.fetchOpenCodeModels()
-                            } else {
-                                await aiService.fetchOpenRouterModels()
-                            }
-                        }
+                        Task { await aiService.fetchOpenRouterModels() }
                     }
                     .help("Refresh models")
                 }

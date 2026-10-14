@@ -314,7 +314,7 @@ struct ProviderDetailPanel: View {
             let models = aiService.availableModels(for: provider)
 
             ProviderModelListSection(title: "Available Enhancement Models") {
-                if provider == .openRouter || provider == .openCode {
+                if provider == .openRouter {
                     HStack(spacing: 12) {
                         Text(openRouterModelAvailabilityText(for: models.count))
                             .font(.app(size: 12, weight: .medium))
@@ -345,12 +345,11 @@ struct ProviderDetailPanel: View {
                     }
                     .padding(.vertical, 8)
                 }
-                // OpenRouter's catalogue is too long to list here; OpenCode's is read from
-                // OpenCode, so show what that returned.
+                // OpenRouter's catalogue is too long to list here.
                 if provider == .openRouter {
                     EmptyView()
                 } else if models.isEmpty {
-                    Text(provider == .openCode ? "Save your API key to load OpenCode's models." : "No models listed.")
+                    Text("No models listed.")
                         .font(.app(.caption))
                         .foregroundStyle(.secondary)
                         .padding(.vertical, 8)
@@ -553,11 +552,7 @@ struct ProviderDetailPanel: View {
         isRefreshingOpenRouterModels = true
 
         Task {
-            if descriptor.aiProvider == .openCode {
-                await aiService.fetchOpenCodeModels()
-            } else {
-                await aiService.fetchOpenRouterModels()
-            }
+            await aiService.fetchOpenRouterModels()
             await MainActor.run {
                 isRefreshingOpenRouterModels = false
             }
