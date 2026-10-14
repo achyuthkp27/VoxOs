@@ -49,399 +49,300 @@ struct ModeEmptyStateView: View {
     }
 }
 
+/// The Modes list: one line for what every mode shares, then one compact row per mode in a
+/// single grouped container. Rows only call out what makes their mode different.
 struct ModeConfigurationsGrid: View {
     @ObservedObject var modeManager: ModeManager
     let onEditConfig: (ModeConfig) -> Void
     @EnvironmentObject var enhancementService: AIEnhancementService
+    @EnvironmentObject var aiService: AIService
+    @EnvironmentObject var transcriptionModelManager: TranscriptionModelManager
+
+    // Read only so the shared line redraws when the main or Agent model changes in AI Models;
+    // `AIModelRouting` itself is not observable.
+    @AppStorage(DefaultsKeys.aiMainProvider) private var mainProvider = ""
+    @AppStorage(DefaultsKeys.aiMainModel) private var mainModelName = ""
+    @AppStorage(DefaultsKeys.aiAgentProvider) private var agentProvider = ""
+    @AppStorage(DefaultsKeys.aiAgentModel) private var agentModelName = ""
+
+    private var resolver: ModeListResolver {
+        ModeListResolver(
+            enhancementService: enhancementService,
+            aiService: aiService,
+            transcriptionModelManager: transcriptionModelManager
+        )
+    }
 
     var body: some View {
-        LazyVStack(spacing: 12) {
-            ForEach($modeManager.configurations) { $config in
-                ConfigurationRow(
-                    config: $config,
-                    isEditing: false,
-                    modeManager: modeManager,
-                    onEditConfig: onEditConfig
+        let resolver = resolver
+        let entries = modeManager.configurations.map {
+            ModeListEntry(config: $0, facts: resolver.facts(for: $0))
+        }
+        let shared = ModeSharedSettings(facts: entries.map(\.facts))
+
+        VStack(alignment: .leading, spacing: 18) {
+            ModeSharedSettingsStrip(
+                shared: shared,
+                mainModel: resolver.mainModel,
+                agentModel: resolver.agentModel
+            )
+
+            VStack(alignment: .leading, spacing: 8) {
+                ModeListSectionLabel(count: entries.count)
+
+                VStack(spacing: 0) {
+                    ForEach(Array(entries.enumerated()), id: \.element.id) { index, entry in
+                        if index > 0 {
+                            Divider()
+                                .padding(.leading, ModeListRow.textInset)
+                        }
+                        ModeListRow(
+                            config: entry.config,
+                            facts: entry.facts,
+                            shared: shared,
+                            promptTitle: resolver.promptTitle(for: entry.config),
+                            modeManager: modeManager,
+                            onEdit: { onEditConfig(entry.config) }
+                        )
+                    }
+                }
+                .background(
+                    RoundedRectangle(cornerRadius: 12, style: .continuous)
+                        .fill(AppTheme.Surface.card)
+                )
+                .clipShape(RoundedRectangle(cornerRadius: 12, style: .continuous))
+                .overlay(
+                    RoundedRectangle(cornerRadius: 12, style: .continuous)
+                        .stroke(AppTheme.Border.card, lineWidth: 1)
                 )
             }
         }
     }
 }
 
+private struct ModeListEntry: Identifiable {
+    let config: ModeConfig
+    let facts: ModeListFacts
+    var id: UUID { config.id }
+}
+
+/// The small uppercase label above the list, in the Dictionary page's style.
+private struct ModeListSectionLabel: View {
+    let count: Int
+
+    var body: some View {
+        HStack {
+            Text(count == 1 ? String(localized: "1 mode") : String(localized: "\(count) modes"))
+                .font(.app(size: 11, weight: .semibold))
+                .foregroundStyle(AppTheme.Text.secondary)
+                .textCase(.uppercase)
+                .tracking(0.6)
+            Spacer()
+            Text("Click a mode to edit it")
+                .font(.app(size: 11, weight: .medium))
+                .foregroundStyle(AppTheme.Text.muted)
+        }
+        .padding(.horizontal, 4)
+    }
+}
+
+/// "All modes hear with … and write with …": the settings that would otherwise repeat on
+/// every row, stated once.
+private struct ModeSharedSettingsStrip: View {
+    let shared: ModeSharedSettings
+    let mainModel: String?
+    let agentModel: String?
+
+    var body: some View {
+        if let sentence {
+            HStack(alignment: .firstTextBaseline, spacing: 10) {
+                Image(systemName: "waveform")
+                    .font(.app(size: 12, weight: .semibold))
+                    .foregroundStyle(AppTheme.Accent.primary)
+
+                Text(sentence)
+                    .font(.app(size: 13, weight: .regular))
+                    .foregroundStyle(AppTheme.Text.secondary)
+                    .fixedSize(horizontal: false, vertical: true)
+                    .frame(maxWidth: .infinity, alignment: .leading)
+
+                infoTip
+            }
+            .padding(.leading, 14)
+            .padding(.trailing, 6)
+            .padding(.vertical, 8)
+            .background(
+                RoundedRectangle(cornerRadius: 10, style: .continuous)
+                    .fill(AppTheme.Surface.subtle)
+            )
+        }
+    }
+
+    private var infoTip: InfoTip {
+        var tip = InfoTip(
+            "Every mode can choose its own speech model, language and AI model. When one differs from this line, it is highlighted on that mode."
+        )
+        tip.iconColor = AppTheme.Text.muted
+        tip.iconSize = .small
+        return tip
+    }
+
+    private var sentence: AttributedString? {
+        let hears = shared.transcriptionModel != nil || shared.language != nil
+        guard hears || shared.aiModel != nil else { return nil }
+        let detectsLanguage = shared.language == ModeListResolver.autoDetectLabel
+
+        var text = plain(shared.isUniversal ? String(localized: "All modes ") : String(localized: "Most modes "))
+        if let model = shared.transcriptionModel {
+            text += plain(String(localized: "hear with "))
+            text += value(model)
+            if detectsLanguage {
+                text += plain(String(localized: ", detecting the language"))
+            } else if let language = shared.language {
+                text += plain(String(localized: " in "))
+                text += value(language)
+            }
+        } else if detectsLanguage {
+            text += plain(String(localized: "detect the language"))
+        } else if let language = shared.language {
+            text += plain(String(localized: "hear in "))
+            text += value(language)
+        }
+        if let aiModel = shared.aiModel {
+            text += plain(!hears ? String(localized: "write with ") : String(localized: ", and write with "))
+            text += value(aiModel)
+            if aiModel == mainModel {
+                text += plain(String(localized: " (set in AI Models)"))
+            }
+        }
+        text += plain(".")
+        if let agentModel, agentModel != shared.aiModel {
+            text += plain(String(localized: " The Agent writes with "))
+            text += value(agentModel)
+            text += plain(".")
+        }
+        return text
+    }
+
+    private func plain(_ string: String) -> AttributedString {
+        AttributedString(string)
+    }
+
+    private func value(_ string: String) -> AttributedString {
+        var run = AttributedString(string)
+        run.swiftUI.font = .app(size: 13, weight: .medium)
+        run.swiftUI.foregroundColor = AppTheme.Text.primary
+        return run
+    }
+}
+
+/// Quiet marker for the mode used when nothing else matches.
 struct DefaultModeIndicator: View {
     var body: some View {
-        HStack(spacing: 5) {
-            Image(systemName: "checkmark.seal.fill")
-                .font(.app(size: 11, weight: .semibold))
-                .symbolRenderingMode(.hierarchical)
-                .foregroundStyle(.primary)
-
-            Text("Default")
-                .font(.app(size: 11, weight: .semibold))
-                .foregroundStyle(.secondary)
-                .lineLimit(1)
-        }
-        .padding(.leading, 7)
-        .padding(.trailing, 9)
-        .frame(height: 24)
-        .background {
-            Capsule()
-                .fill(AppTheme.Surface.card)
-        }
-        .overlay {
-            Capsule()
-                .strokeBorder(AppTheme.Border.control, lineWidth: 0.5)
-        }
-        .contentShape(Capsule())
-        .help("Default mode is used when no app or website matches")
+        Text("Default")
+            .font(.app(size: 10, weight: .semibold))
+            .foregroundStyle(AppTheme.Text.secondary)
+            .lineLimit(1)
+            .padding(.horizontal, 6)
+            .padding(.vertical, 2)
+            .background(
+                RoundedRectangle(cornerRadius: 5, style: .continuous)
+                    .fill(AppTheme.Surface.control)
+            )
+            .help("Default mode is used when no app or website matches")
     }
 }
 
-struct ConfigurationRow: View {
-    private struct TranscriptionModelMetadata {
-        let label: String
-        let isWarning: Bool
-    }
+/// One mode as a sentence: its name, when it kicks in and what it does, plus accent chips for
+/// any setting that differs from the shared line.
+private struct ModeListRow: View {
+    /// Where the name starts, so dividers line up with the text rather than the icon.
+    static let textInset: CGFloat = 14 + 30 + 12
 
-    @Binding var config: ModeConfig
-    let isEditing: Bool
+    let config: ModeConfig
+    let facts: ModeListFacts
+    let shared: ModeSharedSettings
+    let promptTitle: String?
     let modeManager: ModeManager
-    let onEditConfig: (ModeConfig) -> Void
-    @EnvironmentObject var enhancementService: AIEnhancementService
-    @EnvironmentObject var transcriptionModelManager: TranscriptionModelManager
+    let onEdit: () -> Void
     @State private var isHovering = false
 
-    private let maxAppIconsToShow = 5
-
-    private var selectedPrompt: CustomPrompt? {
-        guard let promptId = config.selectedPrompt,
-            let uuid = UUID(uuidString: promptId)
-        else { return nil }
-        return enhancementService.allPrompts.first { $0.id == uuid }
-    }
-
-    private var transcriptionModelMetadata: TranscriptionModelMetadata {
-        switch ModeRuntimeResolver.transcriptionModelResolution(
-            mode: config,
-            transcriptionModelManager: transcriptionModelManager
-        ) {
-        case .available(_, let model):
-            return TranscriptionModelMetadata(
-                label: model.displayName,
-                isWarning: false
-            )
-        case .noMode, .noSelection, .modelNotFound, .unavailable:
-            return TranscriptionModelMetadata(
-                label: String(localized: "Unavailable"),
-                isWarning: true
-            )
-        }
-    }
-
-    private var selectedLanguage: String? {
-        if let langCode = config.selectedLanguage {
-            if langCode == "auto" { return String(localized: "Auto") }
-            if langCode == "en" { return String(localized: "English") }
-
-            if let modelName = config.selectedTranscriptionModelName,
-                let model = transcriptionModelManager.allAvailableModels.first(where: { $0.name == modelName }),
-                let langName = TranscriptionLanguageSupport.languages(
-                    for: model, realtimeEnabled: config.isRealtimeTranscriptionEnabled)[langCode]
-            {
-                return langName
-            }
-            return langCode.uppercased()
-        }
-        return "Default"
-    }
-
-    private var appCount: Int { return config.allAppConfigs.count }
-    private var websiteCount: Int { return config.allURLConfigs.count }
-
-    private var websiteText: String {
-        if websiteCount == 0 { return "" }
-        return String(localized: "\(websiteCount) Websites")
-    }
-
-    private var appText: String {
-        if appCount == 0 { return "" }
-        return String(localized: "\(appCount) Apps")
-    }
-
-    private var extraAppsCount: Int {
-        return max(0, appCount - maxAppIconsToShow)
-    }
-
-    private var visibleAppConfigs: [AppConfig] {
-        return Array(config.allAppConfigs.prefix(maxAppIconsToShow))
-    }
-
-    private var editModeButton: some View {
-        Button {
-            onEditConfig(config)
-        } label: {
-            Text("Edit")
-                .font(.app(.caption))
-                .foregroundStyle(.secondary)
-                .padding(.horizontal, 6)
-                .padding(.vertical, 2)
-                .background(
-                    Capsule()
-                        .fill(AppTheme.Surface.control)
-                )
-                .overlay(
-                    Capsule()
-                        .stroke(AppTheme.Border.control, lineWidth: 0.5)
-                )
-        }
-        .buttonStyle(.plain)
-        .help("Edit mode")
-        .accessibilityLabel("Edit mode")
+    private var summary: String {
+        let trigger = ModeListPhrasing.trigger(
+            isDefault: config.isDefault,
+            appNames: config.allAppConfigs.map(\.appName),
+            websites: config.allURLConfigs.map(\.url),
+            triggerWords: config.triggerWords,
+            shortcut: ShortcutStore.shortcut(for: .mode(config.id))
+        )
+        let action = ModeListPhrasing.action(
+            outputMode: config.outputMode,
+            usesAI: config.isAIEnhancementEnabled,
+            promptTitle: promptTitle,
+            autoSendKey: config.autoSendKey
+        )
+        return "\(trigger) · \(action)"
     }
 
     var body: some View {
-        VStack(spacing: 0) {
-            HStack(spacing: 12) {
+        HStack(spacing: 12) {
+            Button(action: onEdit) {
                 HStack(spacing: 12) {
-                    ZStack {
-                        ModeIconView(icon: config.icon, size: config.icon.kind == .emoji ? 20 : 16)
-                    }
-                    .frame(width: 40, height: 40)
-                    .background(
-                        AppCardBackground(isSelected: false, cornerRadius: AppTheme.Radius.pill)
-                    )
+                    ModeIconView(icon: config.icon, size: config.icon.kind == .emoji ? 16 : 13)
+                        .frame(width: 30, height: 30)
+                        .background(
+                            RoundedRectangle(cornerRadius: 8, style: .continuous)
+                                .fill(AppTheme.Surface.control)
+                        )
+                        .overlay(
+                            RoundedRectangle(cornerRadius: 8, style: .continuous)
+                                .stroke(AppTheme.Border.card, lineWidth: 1)
+                        )
 
-                    VStack(alignment: .leading, spacing: 3) {
-                        Text(config.name)
-                            .font(.app(size: 15, weight: .semibold))
+                    VStack(alignment: .leading, spacing: 2) {
+                        HStack(spacing: 6) {
+                            Text(config.name)
+                                .font(.app(size: 14, weight: .semibold))
+                                .foregroundStyle(AppTheme.Text.primary)
+                                .lineLimit(1)
+                            if config.isDefault {
+                                DefaultModeIndicator()
+                            }
+                        }
+                        Text(summary)
+                            .font(.app(size: 12, weight: .regular))
+                            .foregroundStyle(AppTheme.Text.secondary)
                             .lineLimit(1)
                             .truncationMode(.tail)
-
-                        HStack(spacing: 12) {
-                            if appCount > 0 {
-                                HStack(spacing: 4) {
-                                    Image(systemName: "app.fill")
-                                        .font(.app(size: 10, weight: .regular))
-                                    Text(appText)
-                                        .font(.app(.caption2))
-                                }
-                            }
-
-                            if websiteCount > 0 {
-                                HStack(spacing: 4) {
-                                    Image(systemName: "globe")
-                                        .font(.app(size: 10, weight: .regular))
-                                    Text(websiteText)
-                                        .font(.app(.caption2))
-                                }
-                            }
-                        }
-                        .padding(.top, 2)
-                        .foregroundColor(.secondary)
                     }
+                    .layoutPriority(1)
 
-                    Spacer()
+                    Spacer(minLength: 8)
 
-                    if config.isDefault {
-                        DefaultModeIndicator()
-                    }
+                    differences
                 }
+                .opacity(config.isEnabled ? 1 : 0.5)
                 .contentShape(Rectangle())
-                .onTapGesture {
-                    onEditConfig(config)
-                }
+            }
+            .buttonStyle(.plain)
+            .help("Edit \(config.name)")
 
+            // The default mode cannot be turned off; the empty slot keeps the chips aligned.
+            Group {
                 if !config.isDefault {
-                    Toggle(
-                        "",
-                        isOn: Binding(
-                            get: { config.isEnabled },
-                            set: { newValue in
-                                if newValue {
-                                    modeManager.enableConfiguration(with: config.id)
-                                } else {
-                                    modeManager.disableConfiguration(with: config.id)
-                                }
-                            }
-                        )
-                    )
-                    .toggleStyle(SwitchToggleStyle(tint: AppTheme.Accent.primary))
-                    .labelsHidden()
+                    Toggle("Use \(config.name)", isOn: isEnabled)
+                        .toggleStyle(.switch)
+                        .controlSize(.small)
+                        .tint(AppTheme.Accent.primary)
+                        .labelsHidden()
                 }
             }
-            .padding(.vertical, 12)
-            .padding(.horizontal, 14)
-            .frame(maxWidth: .infinity, alignment: .leading)
-            .background(AppMaterialCardBackground.fill)
-
-            Divider()
-
-            // Up to five capsules share this row; each label truncates (lineLimit 1) and the spacer
-            // can collapse so a long model or prompt name never pushes the row past the card width.
-            HStack(spacing: 8) {
-                let modelMetadata = transcriptionModelMetadata
-                HStack(spacing: 4) {
-                    Image(systemName: "waveform")
-                        .font(.app(size: 10, weight: .regular))
-                    Text(modelMetadata.label)
-                        .font(.app(.caption))
-                        .lineLimit(1)
-                }
-                .foregroundStyle(modelMetadata.isWarning ? Color.white : Color.primary)
-                .padding(.horizontal, 6)
-                .padding(.vertical, 2)
-                .background(
-                    Capsule()
-                        .fill(
-                            modelMetadata.isWarning
-                                ? Color.red.opacity(0.80) : AppTheme.Surface.control)
-                )
-                .overlay(
-                    Capsule()
-                        .stroke(
-                            modelMetadata.isWarning
-                                ? Color.red.opacity(0.80) : AppTheme.Border.control,
-                            lineWidth: 0.5
-                        )
-                )
-
-                if let language = selectedLanguage, language != "Default" {
-                    HStack(spacing: 4) {
-                        Image(systemName: "globe")
-                            .font(.app(size: 10, weight: .regular))
-                        Text(language)
-                            .font(.app(.caption))
-                            .lineLimit(1)
-                    }
-                    .padding(.horizontal, 6)
-                    .padding(.vertical, 2)
-                    .background(
-                        Capsule()
-                            .fill(AppTheme.Surface.control)
-                    )
-                    .overlay(
-                        Capsule()
-                            .stroke(AppTheme.Border.control, lineWidth: 0.5)
-                    )
-                }
-
-                if config.isAIEnhancementEnabled,
-                    config.selectedAIProvider != AIProvider.localCLI.rawValue,
-                    let modelName = config.selectedAIModel,
-                    !modelName.isEmpty
-                {
-                    HStack(spacing: 4) {
-                        Image(systemName: "cpu")
-                            .font(.app(size: 10, weight: .regular))
-                        // Truncated by width rather than by character count, so wide and narrow
-                        // model names get the same room and the ellipsis is the system's.
-                        MaxWidthLayout(maxWidth: 120) {
-                            Text(modelName)
-                                .font(.app(.caption))
-                                .lineLimit(1)
-                                .truncationMode(.tail)
-                        }
-                    }
-                    .padding(.horizontal, 6)
-                    .padding(.vertical, 2)
-                    .background(
-                        Capsule()
-                            .fill(AppTheme.Surface.control)
-                    )
-                    .overlay(
-                        Capsule()
-                            .stroke(AppTheme.Border.control, lineWidth: 0.5)
-                    )
-                }
-
-                if config.outputMode != .paste {
-                    HStack(spacing: 4) {
-                        Image(systemName: config.outputMode.iconName)
-                            .font(.app(size: 10, weight: .regular))
-                        Text(config.outputMode.displayName)
-                            .font(.app(.caption))
-                            .lineLimit(1)
-                    }
-                    .padding(.horizontal, 6)
-                    .padding(.vertical, 2)
-                    .background(
-                        Capsule()
-                            .fill(AppTheme.Surface.control)
-                    )
-                    .overlay(
-                        Capsule()
-                            .stroke(AppTheme.Border.control, lineWidth: 0.5)
-                    )
-                }
-
-                if config.outputMode == .paste && config.autoSendKey.isEnabled {
-                    HStack(spacing: 4) {
-                        Image(systemName: "keyboard")
-                            .font(.app(size: 10, weight: .regular))
-                        Text(config.autoSendKey.displayName)
-                            .font(.app(.caption))
-                            .lineLimit(1)
-                    }
-                    .padding(.horizontal, 6)
-                    .padding(.vertical, 2)
-                    .background(
-                        Capsule()
-                            .fill(AppTheme.Surface.control)
-                    )
-                    .overlay(
-                        Capsule()
-                            .stroke(AppTheme.Border.control, lineWidth: 0.5)
-                    )
-                }
-                if config.isAIEnhancementEnabled {
-                    HStack(spacing: 4) {
-                        Image(systemName: "sparkles")
-                            .font(.app(size: 10, weight: .regular))
-                        Text(
-                            config.selectedAIProvider == AIProvider.voxOSRefine.rawValue
-                                ? VoxOSRefineService.providerName
-                                : selectedPrompt?.title ?? "AI"
-                        )
-                        .font(.app(.caption))
-                        .lineLimit(1)
-                    }
-                    .padding(.horizontal, 6)
-                    .padding(.vertical, 2)
-                    .background(
-                        Capsule()
-                            .fill(AppTheme.Surface.control)
-                    )
-                    .overlay(
-                        Capsule()
-                            .stroke(AppTheme.Border.control, lineWidth: 0.5)
-                    )
-                }
-
-                Spacer(minLength: 0)
-
-                // Always laid out and only faded, so hovering a row does not reflow its chips.
-                editModeButton
-                    .opacity(isHovering ? 1 : 0)
-                    .allowsHitTesting(isHovering)
-                    .accessibilityHidden(!isHovering)
-            }
-            .contentShape(Rectangle())
-            .onTapGesture {
-                onEditConfig(config)
-            }
-            .padding(.vertical, 6)
-            .padding(.horizontal, 16)
-            .background(AppTheme.Surface.card)
+            .frame(width: 36, alignment: .trailing)
         }
-        .clipShape(RoundedRectangle(cornerRadius: 16))
-        .overlay {
-            RoundedRectangle(cornerRadius: 16)
-                .stroke(
-                    AppMaterialCardBackground.border(for: isEditing),
-                    lineWidth: AppMaterialCardBackground.lineWidth(for: isEditing)
-                )
-        }
-        .opacity(config.isEnabled ? 1.0 : 0.70)
+        .padding(.leading, 14)
+        .padding(.trailing, 12)
+        .padding(.vertical, 10)
+        .background(isHovering ? AppTheme.Surface.subtle : Color.clear)
         .onHover { hovering in
             withAnimation(.easeInOut(duration: 0.12)) {
                 isHovering = hovering
@@ -449,6 +350,86 @@ struct ConfigurationRow: View {
         }
     }
 
+    private var isEnabled: Binding<Bool> {
+        Binding(
+            get: { config.isEnabled },
+            set: { newValue in
+                if newValue {
+                    modeManager.enableConfiguration(with: config.id)
+                } else {
+                    modeManager.disableConfiguration(with: config.id)
+                }
+            }
+        )
+    }
+
+    @ViewBuilder private var differences: some View {
+        HStack(spacing: 6) {
+            if facts.transcriptionModel == nil {
+                ModeDifferenceChip(
+                    systemImage: "exclamationmark.triangle.fill",
+                    text: String(localized: "Speech model unavailable"),
+                    help: String(localized: "This mode's speech model is missing or not downloaded"),
+                    tint: AppTheme.Status.error
+                )
+            } else if let model = facts.transcriptionModel, model != shared.transcriptionModel {
+                ModeDifferenceChip(
+                    systemImage: "waveform",
+                    text: model,
+                    help: String(localized: "Hears with \(model)")
+                )
+            }
+
+            if facts.language != shared.language {
+                let language = facts.language ?? String(localized: "Model's language")
+                ModeDifferenceChip(
+                    systemImage: "globe",
+                    text: language,
+                    help: String(localized: "Listens for \(language)")
+                )
+            }
+
+            if let aiModel = facts.aiModel, aiModel != shared.aiModel {
+                ModeDifferenceChip(
+                    systemImage: "sparkles",
+                    text: aiModel,
+                    help: facts.isAgent
+                        ? String(localized: "Writes with \(aiModel), the Agent model set in AI Models")
+                        : String(localized: "Writes with \(aiModel)")
+                )
+            }
+        }
+    }
+}
+
+/// A setting that differs from the shared line, tinted so it is the one thing on the row that
+/// catches the eye.
+private struct ModeDifferenceChip: View {
+    let systemImage: String
+    let text: String
+    let help: String
+    var tint: Color = AppTheme.Accent.primary
+
+    var body: some View {
+        HStack(spacing: 4) {
+            Image(systemName: systemImage)
+                .font(.app(size: 9, weight: .semibold))
+            // Truncated by width rather than by character count, so wide and narrow names get
+            // the same room and the ellipsis is the system's.
+            MaxWidthLayout(maxWidth: 140) {
+                Text(text)
+                    .font(.app(size: 11, weight: .medium))
+                    .lineLimit(1)
+                    .truncationMode(.tail)
+            }
+        }
+        .foregroundStyle(tint)
+        .padding(.horizontal, 7)
+        .padding(.vertical, 3)
+        .background(Capsule().fill(tint.opacity(0.10)))
+        .overlay(Capsule().strokeBorder(tint.opacity(0.35), lineWidth: 0.5))
+        .help(help)
+    }
 }
 
 struct ModeAppIcon: View {
