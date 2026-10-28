@@ -656,7 +656,7 @@ struct SettingsView: View {
                             HStack(spacing: 2) {
                                 Text("Live Music Bars")
                                 InfoTip(
-                                    "Bars in the open player that move with what is actually playing. They listen to the Mac's sound output only while the player is open, which needs the System Audio Recording permission and shows macOS's purple recording dot meanwhile. Nothing is recorded or stored."
+                                    "Bars beside the notch and in the player that move with what is actually playing. They listen to the Mac's sound output while music plays, which needs the System Audio Recording permission and shows macOS's purple recording dot meanwhile. Off, the bars still move but listen to nothing. Nothing is recorded or stored."
                                 )
                             }
                         }

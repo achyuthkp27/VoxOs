@@ -13,8 +13,9 @@ click-drag: Music, Calendar, Reminders, Pomodoro, Shelf.
 Decisions, and what they rest on (measured on macOS 26 unless noted):
 - **Music bars.** Real bars come from a Core Audio process tap (`SystemAudioLevels`), not
   ScreenCaptureKit, but any system-audio capture lights macOS's purple recording dot. So the tap
-  runs only while the Music page is open and only if Live Music Bars is on (off by default); the
-  collapsed band shows ambient bars that listen to nothing.
+  runs only if Live Music Bars is on (off by default), and then only while live bars are on
+  screen (the band or the open Music page); with it off, the bars are ambient and listen to
+  nothing.
 - **Several players.** MediaRemote names one player. Music and Spotify are followed through their
   distributed notifications and AppleScript (`NotchPlayers`) beside MediaRemote's player, and the
   card's controls act on the player shown.

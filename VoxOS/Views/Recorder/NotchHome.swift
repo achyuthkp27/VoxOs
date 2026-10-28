@@ -357,10 +357,14 @@ struct NotchHomeView: View {
         switch content {
         case .playing:
             if let track = model.track {
-                // Ambient motion that says "playing"; it does not listen, so no recording dot.
-                NotchLevelBars(color: track.tint, bars: 4, barWidth: 3, spacing: 2.5, maxHeight: 14, source: .ambient)
-                    .frame(width: NotchHome.artSize, height: 16)
-                    .accessibilityLabel(Text("Playing"))
+                // Live when the setting is on; otherwise ambient motion that listens to nothing,
+                // so no recording dot.
+                NotchLevelBars(
+                    color: track.tint, bars: 4, barWidth: 3, spacing: 2.5, maxHeight: 14,
+                    source: barsEnabled ? .live : .ambient
+                )
+                .frame(width: NotchHome.artSize, height: 16)
+                .accessibilityLabel(Text("Playing"))
             }
         case .timer:
             if let running = NotchTimers.shared.running {
@@ -864,10 +868,11 @@ final class NotchHomeManager {
         model?.tracks = tracks
         apply(content, track: track, timerRunning: timers.running != nil, on: screen)
 
-        // Listening turns on macOS's purple recording dot, so it happens only while the Music
-        // page is open, and only when the setting is on.
+        // Listening turns on macOS's purple recording dot, so it happens only when the setting is
+        // on, and only while live bars are on screen: in the band or on the open Music page.
         let showsBars =
-            NotchHome.barsEnabled && track?.isPlaying == true && content == .expanded && model?.page == .music
+            NotchHome.barsEnabled && track?.isPlaying == true
+            && (content == .playing || (content == .expanded && model?.page == .music))
         if showsBars { SystemAudioLevels.shared.start() } else { SystemAudioLevels.shared.stop() }
 
         if uiManager.isNotchHomeVisible != content.isVisible { uiManager.isNotchHomeVisible = content.isVisible }

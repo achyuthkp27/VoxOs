@@ -284,7 +284,9 @@ struct ClaudeCodeNotchView: View {
     /// One black surface, as the music card: glass under a black notch row read as a dark strip
     /// across the top.
     private var background: some View {
-        shape.fill(NotchDesign.solid).overlay(rim)
+        // Fully opaque for a card, as Notch Home's: at 98% the text of a window behind showed
+        // through around the option rows.
+        shape.fill(content.isCard ? Color(red: 0, green: 0, blue: 2 / 255) : NotchDesign.solid).overlay(rim)
     }
 
     private var rim: some View {
