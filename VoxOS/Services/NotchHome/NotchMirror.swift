@@ -2,9 +2,9 @@ import AVFoundation
 import AppKit
 import SwiftUI
 
-/// The camera as a mirror in the open card. It runs only from a click on the Mirror page until
-/// that page or the card goes away, so the green light means someone asked for it; nothing is
-/// recorded. Camera access is asked for on that first click.
+/// The camera as a mirror in the open card. It runs only from a click on the Sound page's
+/// mirror until that part, the page or the card goes away, so the green light means someone
+/// asked for it; nothing is recorded. Camera access is asked for on that first click.
 @MainActor
 final class NotchMirror: ObservableObject {
     static let shared = NotchMirror()

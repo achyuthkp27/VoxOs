@@ -90,7 +90,6 @@ enum NotchHome {
     }
     static var showsInFullScreen: Bool { UserDefaults.standard.bool(forKey: DefaultsKeys.notchHomeInFullScreen) }
     static var meetingsEnabled: Bool { UserDefaults.standard.bool(forKey: DefaultsKeys.notchMeetingsEnabled) }
-    static var mirrorEnabled: Bool { UserDefaults.standard.bool(forKey: DefaultsKeys.notchMirrorEnabled) }
     /// Left out of screenshots, recordings and screen sharing.
     static var hiddenFromCapture: Bool { UserDefaults.standard.bool(forKey: DefaultsKeys.notchHiddenFromCapture) }
 
@@ -253,7 +252,6 @@ struct NotchHomeView: View {
     let onToggleMute: () -> Void
     let onJoin: (NotchToday.Event) -> Void
     let onPin: () -> Void
-    @ObservedObject var keepAwake = NotchKeepAwake.shared
     @ObservedObject var lyrics = NotchLyrics.shared
     @AppStorage(DefaultsKeys.notchMusicBarsEnabled) private var barsEnabled = false
     @Environment(\.accessibilityReduceMotion) private var reduceMotion
@@ -388,12 +386,10 @@ struct NotchHomeView: View {
             NotchRemindersPage(reminders: .shared)
         case .shelf:
             NotchShelfPage(shelf: .shared, dropping: model.dropping)
-        case .clipboard:
-            NotchClipboardPage(clipboard: .shared)
         case .sound:
-            NotchSoundPage(mixer: .shared)
-        case .mirror:
-            NotchMirrorPage(mirror: .shared)
+            NotchSoundPage(
+                mixer: .shared, clipboard: .shared, mirror: .shared, keepAwake: .shared, pinned: model.pinned,
+                onPin: onPin)
         }
     }
 
@@ -551,11 +547,7 @@ struct NotchHomeView: View {
                     .accessibilityLabel(Text(verbatim: NotchHomeApp.name(for: privacy.microphoneApp) ?? ""))
             }
         case .expanded:
-            HStack(spacing: 6) {
-                NotchKeepAwakeButton(on: keepAwake.isOn) { keepAwake.toggle() }
-                NotchPinButton(pinned: model.pinned, action: onPin)
-                NotchHomePageButton(page: model.page) { onPage(true) }
-            }
+            NotchHomePageButton(page: model.page) { onPage(true) }
         default:
             EmptyView()
         }
@@ -624,50 +616,6 @@ private struct NotchBlur: ViewModifier {
 
     func body(content: Content) -> some View {
         content.blur(radius: radius).opacity(opacity)
-    }
-}
-
-/// Keeps the Mac awake while lit; a second click lets it sleep as usual.
-private struct NotchKeepAwakeButton: View {
-    let on: Bool
-    let action: () -> Void
-    @State private var hovered = false
-
-    var body: some View {
-        Button(action: action) {
-            Image(systemName: on ? "cup.and.saucer.fill" : "cup.and.saucer")
-                .font(.system(size: 10, weight: .semibold))
-                .foregroundStyle(on ? Color.orange : .white.opacity(hovered ? 0.95 : 0.6))
-                .frame(width: 24, height: 20)
-                .background(Capsule().fill(.white.opacity(hovered || on ? 0.14 : 0.08)))
-                .contentShape(Capsule())
-        }
-        .buttonStyle(.plain)
-        .onHover { hovered = $0 }
-        .help(on ? "Keeping the Mac awake. Click to let it sleep." : "Keep the Mac awake")
-        .accessibilityLabel(Text(on ? "Stop keeping the Mac awake" : "Keep the Mac awake"))
-    }
-}
-
-/// Keeps the card open after the pointer leaves; a second click lets it close again.
-private struct NotchPinButton: View {
-    let pinned: Bool
-    let action: () -> Void
-    @State private var hovered = false
-
-    var body: some View {
-        Button(action: action) {
-            Image(systemName: pinned ? "pin.fill" : "pin")
-                .font(.system(size: 10, weight: .semibold))
-                .foregroundStyle(pinned ? AppTheme.Accent.primary : .white.opacity(hovered ? 0.95 : 0.6))
-                .frame(width: 22, height: 20)
-                .background(Capsule().fill(.white.opacity(hovered || pinned ? 0.14 : 0.08)))
-                .contentShape(Capsule())
-        }
-        .buttonStyle(.plain)
-        .onHover { hovered = $0 }
-        .help(pinned ? "Unpin: close when the pointer leaves" : "Pin: keep open")
-        .accessibilityLabel(Text(pinned ? "Unpin the card" : "Pin the card open"))
     }
 }
 
@@ -1603,13 +1551,8 @@ final class NotchHomeManager {
     }
 
     /// The page after (or before) `page` among those available, wrapping round.
-    nonisolated static func page(
-        after page: NotchHomePage, forward: Bool, hasTrack: Bool,
-        sound: Bool = UserDefaults.standard.bool(forKey: DefaultsKeys.notchMixerEnabled),
-        mirror: Bool = UserDefaults.standard.bool(forKey: DefaultsKeys.notchMirrorEnabled),
-        clipboard: Bool = UserDefaults.standard.bool(forKey: DefaultsKeys.notchClipboardEnabled)
-    ) -> NotchHomePage {
-        let pages = NotchHomePage.available(hasTrack: hasTrack, sound: sound, mirror: mirror, clipboard: clipboard)
+    nonisolated static func page(after page: NotchHomePage, forward: Bool, hasTrack: Bool) -> NotchHomePage {
+        let pages = NotchHomePage.available(hasTrack: hasTrack)
         guard let index = pages.firstIndex(of: page) else { return pages.first ?? page }
         return pages[(index + (forward ? 1 : -1) + pages.count) % pages.count]
     }
@@ -1942,9 +1885,7 @@ final class NotchHomeManager {
             readModes(of: track)
         }
         // A page that went away (no track, or switched off in Settings) gives way to the day.
-        let available = NotchHomePage.available(
-            hasTrack: track != nil, sound: NotchMixer.isEnabled, mirror: NotchHome.mirrorEnabled,
-            clipboard: NotchClipboard.isEnabled)
+        let available = NotchHomePage.available(hasTrack: track != nil)
         if !available.contains(model.page) { model.page = .today }
         if panel.isVisible, model.content == content { return }
         resizeTask?.cancel()

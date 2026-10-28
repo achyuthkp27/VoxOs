@@ -1,7 +1,7 @@
 import AppKit
 import Combine
 
-/// The last few pieces of text copied, on a Clipboard page, to copy again with a click.
+/// The last few pieces of text copied, on the Sound page, to copy again with a click.
 ///
 /// macOS says nothing when the clipboard changes, so its change count is read once a second
 /// (with slack for macOS to fold the wake-up into others), and not at all while the displays

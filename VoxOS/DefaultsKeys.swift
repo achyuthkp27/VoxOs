@@ -81,11 +81,11 @@ enum DefaultsKeys {
     static let notchDownloadsEnabled = "NotchDownloadsEnabled"
     /// A notice when a Focus turns on or off.
     static let notchFocusEnabled = "NotchFocusEnabled"
-    /// The Sound page: each playing app with its own volume.
+    /// On the Sound page: each playing app with its own volume.
     static let notchMixerEnabled = "NotchMixerEnabled"
-    /// The Mirror page: the camera, only on request.
+    /// On the Sound page: the camera as a mirror, only on request.
     static let notchMirrorEnabled = "NotchMirrorEnabled"
-    /// The Clipboard page: text copied lately, kept in memory only.
+    /// On the Sound page: text copied lately, kept in memory only.
     static let notchClipboardEnabled = "NotchClipboardEnabled"
     /// The sung line on the Music page, from lrclib.net.
     static let notchLyricsEnabled = "NotchLyricsEnabled"

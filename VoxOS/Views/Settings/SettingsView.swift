@@ -696,7 +696,7 @@ struct SettingsView: View {
                             HStack(spacing: 2) {
                                 Text("Per-App Volume")
                                 InfoTip(
-                                    "A Sound page with each playing app and its own volume. An app turned down is played on through a system audio tap, which needs System Audio Recording and shows macOS's purple dot until every app is back at full."
+                                    "On the Sound page: each playing app with its own volume. An app turned down is played on through a system audio tap, which needs System Audio Recording and shows macOS's purple dot until every app is back at full."
                                 )
                             }
                         }
@@ -704,7 +704,7 @@ struct SettingsView: View {
                             HStack(spacing: 2) {
                                 Text("Clipboard History")
                                 InfoTip(
-                                    "A Clipboard page with the last few pieces of text you copied; a click copies one again. Kept in memory only, never what a password manager marks as secret. Off by default: it checks the clipboard once a second."
+                                    "On the Sound page: the last few pieces of text you copied; a click copies one again. Kept in memory only, never what a password manager marks as secret. Off by default: it checks the clipboard once a second."
                                 )
                             }
                         }
@@ -720,7 +720,7 @@ struct SettingsView: View {
                             HStack(spacing: 2) {
                                 Text("Mirror")
                                 InfoTip(
-                                    "A Mirror page that shows your camera, only after a click and only while the page is open."
+                                    "On the Sound page: your camera as a mirror, only after a click and only while it is open."
                                 )
                             }
                         }

@@ -9,10 +9,8 @@ enum NotchHomePage: String, CaseIterable, Identifiable {
     case reminders
     case timer
     case shelf
-    case clipboard
-    /// Per-app volume.
+    /// Per-app volume, with the clipboard, the camera mirror, keeping awake and pinning.
     case sound
-    case mirror
 
     var id: String { rawValue }
 
@@ -23,9 +21,7 @@ enum NotchHomePage: String, CaseIterable, Identifiable {
         case .reminders: return "checklist"
         case .timer: return "timer"
         case .shelf: return "tray"
-        case .clipboard: return "doc.on.clipboard"
         case .sound: return "slider.horizontal.3"
-        case .mirror: return "person.crop.square"
         }
     }
 
@@ -36,26 +32,13 @@ enum NotchHomePage: String, CaseIterable, Identifiable {
         case .reminders: return String(localized: "Reminders")
         case .timer: return String(localized: "Pomodoro")
         case .shelf: return String(localized: "Shelf")
-        case .clipboard: return String(localized: "Clipboard")
         case .sound: return String(localized: "Sound")
-        case .mirror: return String(localized: "Mirror")
         }
     }
 
-    /// Music only while there is a track; Clipboard, Sound and Mirror when switched on; the rest
-    /// always.
-    static func available(hasTrack: Bool, sound: Bool = true, mirror: Bool = true, clipboard: Bool = true)
-        -> [NotchHomePage]
-    {
-        allCases.filter { page in
-            switch page {
-            case .music: return hasTrack
-            case .clipboard: return clipboard
-            case .sound: return sound
-            case .mirror: return mirror
-            default: return true
-            }
-        }
+    /// Music only while there is a track; the rest always.
+    static func available(hasTrack: Bool) -> [NotchHomePage] {
+        hasTrack ? allCases : allCases.filter { $0 != .music }
     }
 
     /// What opening the notch shows: files being dragged in go to the shelf, a meeting about to
@@ -659,99 +642,272 @@ struct NotchRoundButton: View {
     }
 }
 
-// MARK: - Clipboard
+// MARK: - Sound
 
-/// The last pieces of text copied; a click copies one again.
-struct NotchClipboardPage: View {
-    @ObservedObject var clipboard: NotchClipboard
-    @State private var copied: UUID?
+/// One page for the extras, so they do not each take a page: each playing app's volume, the
+/// clipboard and the camera mirror (each when switched on in Settings), with keeping the Mac
+/// awake and pinning the card in its corner.
+struct NotchSoundPage: View {
+    enum Section: String, CaseIterable, Identifiable {
+        case apps
+        case clipboard
+        case mirror
 
-    var body: some View {
-        Group {
-            if clipboard.items.isEmpty {
-                VStack(spacing: 6) {
-                    Image(systemName: "doc.on.clipboard").font(.system(size: 18, weight: .medium))
-                    Text("Text you copy shows here, to copy again").font(.app(size: 12))
-                }
-                .foregroundStyle(.white.opacity(0.45))
-                .frame(maxWidth: .infinity, maxHeight: .infinity)
-            } else {
-                ScrollView(.vertical) {
-                    VStack(spacing: 4) {
-                        ForEach(clipboard.items) { item in
-                            Button {
-                                clipboard.copy(item)
-                                copied = item.id
-                            } label: {
-                                HStack(spacing: 10) {
-                                    Text(verbatim: item.text.replacingOccurrences(of: "\n", with: " "))
-                                        .font(.app(size: 12))
-                                        .foregroundStyle(.white.opacity(0.88))
-                                        .lineLimit(1)
-                                        .truncationMode(.tail)
-                                    Spacer(minLength: 6)
-                                    Text(
-                                        copied == item.id
-                                            ? "Copied" : item.at.formatted(.relative(presentation: .named))
-                                    )
-                                    .font(.app(size: 10))
-                                    .foregroundStyle(.white.opacity(0.4))
-                                }
-                                .padding(.horizontal, 10)
-                                .frame(height: 26)
-                                .background(
-                                    RoundedRectangle(cornerRadius: 8, style: .continuous).fill(.white.opacity(0.06))
-                                )
-                                .contentShape(Rectangle())
-                            }
-                            .buttonStyle(.plain)
-                            .help(item.text)
-                        }
-                    }
-                    .padding(.vertical, 6)
-                }
-                .scrollIndicators(.automatic)
+        var id: String { rawValue }
+
+        var symbol: String {
+            switch self {
+            case .apps: return "speaker.wave.2"
+            case .clipboard: return "doc.on.clipboard"
+            case .mirror: return "person.crop.square"
             }
         }
+
+        var label: LocalizedStringKey {
+            switch self {
+            case .apps: return "App volumes"
+            case .clipboard: return "Clipboard"
+            case .mirror: return "Mirror"
+            }
+        }
+    }
+
+    @ObservedObject var mixer: NotchMixer
+    @ObservedObject var clipboard: NotchClipboard
+    @ObservedObject var mirror: NotchMirror
+    @ObservedObject var keepAwake: NotchKeepAwake
+    let pinned: Bool
+    let onPin: () -> Void
+    @State private var section: Section?
+    @AppStorage(DefaultsKeys.notchMixerEnabled) private var appsOn = true
+    @AppStorage(DefaultsKeys.notchClipboardEnabled) private var clipboardOn = false
+    @AppStorage(DefaultsKeys.notchMirrorEnabled) private var mirrorOn = true
+
+    private var sections: [Section] {
+        Section.allCases.filter { section in
+            switch section {
+            case .apps: return appsOn
+            case .clipboard: return clipboardOn
+            case .mirror: return mirrorOn
+            }
+        }
+    }
+
+    private var shown: Section? { section.flatMap { sections.contains($0) ? $0 : nil } ?? sections.first }
+
+    var body: some View {
+        VStack(alignment: .leading, spacing: 8) {
+            HStack(spacing: 6) {
+                ForEach(sections) { item in
+                    NotchSegmentButton(symbol: item.symbol, label: item.label, selected: item == shown) {
+                        section = item
+                    }
+                }
+                Spacer(minLength: 6)
+                NotchToggleChip(
+                    symbol: keepAwake.isOn ? "cup.and.saucer.fill" : "cup.and.saucer", on: keepAwake.isOn,
+                    tint: .orange,
+                    help: keepAwake.isOn ? "Keeping the Mac awake. Click to let it sleep." : "Keep the Mac awake"
+                ) { keepAwake.toggle() }
+                NotchToggleChip(
+                    symbol: pinned ? "pin.fill" : "pin", on: pinned, tint: AppTheme.Accent.primary,
+                    help: pinned ? "Unpin: close when the pointer leaves" : "Pin: keep the card open", action: onPin)
+            }
+            .frame(height: 22)
+
+            Group {
+                switch shown {
+                case .apps: apps
+                case .clipboard: clipboardList
+                case .mirror: mirrorView
+                case nil:
+                    Text("Switch on app volumes, the clipboard or the mirror in Settings → Notch Home")
+                        .font(.app(size: 11))
+                        .foregroundStyle(.white.opacity(0.45))
+                        .frame(maxWidth: .infinity, maxHeight: .infinity)
+                }
+            }
+            .frame(maxHeight: .infinity, alignment: .top)
+        }
+        .padding(.top, 2)
         .padding(.horizontal, AgentComposer.panelInset)
         .padding(.bottom, NotchHome.Card.bottom)
+        .onAppear { mixer.setVisible(shown == .apps) }
+        .onChange(of: shown) { old, new in
+            mixer.setVisible(new == .apps)
+            if old == .mirror { mirror.stop() }
+        }
+        // Leaving the page, or the card closing, stops the camera and the app list's listening.
+        .onDisappear {
+            mixer.setVisible(false)
+            mirror.stop()
+        }
+    }
+
+    // MARK: Apps
+
+    @ViewBuilder
+    private var apps: some View {
+        if mixer.apps.isEmpty {
+            NotchPageHint(symbol: "speaker.wave.2", text: "Apps that are playing show here, each with its own volume")
+        } else {
+            ScrollView(.vertical) {
+                VStack(spacing: 8) {
+                    ForEach(mixer.apps) { app in
+                        NotchAppVolumeRow(app: app) { mixer.setGain($0, for: app.bundleID) }
+                    }
+                }
+            }
+            .scrollIndicators(.automatic)
+        }
+    }
+
+    // MARK: Clipboard
+
+    @ViewBuilder
+    private var clipboardList: some View {
+        if clipboard.items.isEmpty {
+            NotchPageHint(symbol: "doc.on.clipboard", text: "Text you copy shows here, to copy again")
+        } else {
+            ScrollView(.vertical) {
+                VStack(spacing: 4) {
+                    ForEach(clipboard.items) { item in
+                        NotchClipboardRow(item: item) { clipboard.copy(item) }
+                    }
+                }
+            }
+            .scrollIndicators(.automatic)
+        }
+    }
+
+    // MARK: Mirror
+
+    @ViewBuilder
+    private var mirrorView: some View {
+        switch mirror.state {
+        case .on:
+            NotchMirrorPreview(session: mirror.session)
+                .clipShape(RoundedRectangle(cornerRadius: 12, style: .continuous))
+        case .starting:
+            ProgressView().controlSize(.small).frame(maxWidth: .infinity, maxHeight: .infinity)
+        case .off:
+            VStack(spacing: 6) {
+                Text("A mirror, before a call. The camera stays off until you ask.")
+                    .font(.app(size: 11))
+                    .foregroundStyle(.white.opacity(0.5))
+                NotchChip(title: String(localized: "Show the camera"), prominent: true) { mirror.start() }
+            }
+            .frame(maxWidth: .infinity, maxHeight: .infinity)
+        case .denied:
+            VStack(spacing: 6) {
+                Text("Camera access is off").font(.app(size: 11)).foregroundStyle(.white.opacity(0.5))
+                NotchChip(title: String(localized: "Open Settings")) {
+                    if let url = URL(string: "x-apple.systempreferences:com.apple.preference.security?Privacy_Camera") {
+                        NSWorkspace.shared.open(url)
+                    }
+                }
+            }
+            .frame(maxWidth: .infinity, maxHeight: .infinity)
+        case .noCamera:
+            NotchPageHint(symbol: "video.slash", text: "No camera found")
+        }
     }
 }
 
-// MARK: - Sound
-
-/// Each app that is playing, with its own volume under the system's.
-struct NotchSoundPage: View {
-    @ObservedObject var mixer: NotchMixer
+/// An icon, and a line under it, for a part of a page with nothing in it yet.
+private struct NotchPageHint: View {
+    let symbol: String
+    let text: LocalizedStringKey
 
     var body: some View {
-        Group {
-            if mixer.apps.isEmpty {
-                VStack(spacing: 6) {
-                    Image(systemName: "speaker.wave.2")
-                        .font(.system(size: 18, weight: .medium))
-                    Text("Apps that are playing show here, each with its own volume")
-                        .font(.app(size: 12))
-                }
-                .foregroundStyle(.white.opacity(0.45))
-                .frame(maxWidth: .infinity, maxHeight: .infinity)
-            } else {
-                // No sideways scrolling: a sideways swipe turns the page.
-                ScrollView(.vertical) {
-                    VStack(spacing: 10) {
-                        ForEach(mixer.apps) { app in
-                            NotchAppVolumeRow(app: app) { mixer.setGain($0, for: app.bundleID) }
-                        }
-                    }
-                    .padding(.vertical, 8)
-                }
-                .scrollIndicators(.automatic)
-            }
+        VStack(spacing: 5) {
+            Image(systemName: symbol).font(.system(size: 15, weight: .medium))
+            Text(text).font(.app(size: 11))
         }
-        .padding(.horizontal, AgentComposer.panelInset)
-        .padding(.bottom, NotchHome.Card.bottom)
-        .onAppear { mixer.setVisible(true) }
-        .onDisappear { mixer.setVisible(false) }
+        .foregroundStyle(.white.opacity(0.45))
+        .frame(maxWidth: .infinity, maxHeight: .infinity)
+    }
+}
+
+/// A part of the Sound page, chosen by its icon.
+private struct NotchSegmentButton: View {
+    let symbol: String
+    let label: LocalizedStringKey
+    let selected: Bool
+    let action: () -> Void
+    @State private var hovered = false
+
+    var body: some View {
+        Button(action: action) {
+            Image(systemName: symbol)
+                .font(.system(size: 10, weight: .semibold))
+                .foregroundStyle(.white.opacity(selected ? 1 : hovered ? 0.85 : 0.55))
+                .frame(width: 30, height: 20)
+                .background(Capsule().fill(.white.opacity(selected ? 0.18 : hovered ? 0.1 : 0.05)))
+                .contentShape(Capsule())
+        }
+        .buttonStyle(.plain)
+        .onHover { hovered = $0 }
+        .help(Text(label))
+        .accessibilityLabel(Text(label))
+        .accessibilityAddTraits(selected ? .isSelected : [])
+    }
+}
+
+/// Keep awake or pin: lit in its colour while on.
+private struct NotchToggleChip: View {
+    let symbol: String
+    let on: Bool
+    let tint: Color
+    let help: String
+    let action: () -> Void
+    @State private var hovered = false
+
+    var body: some View {
+        Button(action: action) {
+            Image(systemName: symbol)
+                .font(.system(size: 10, weight: .semibold))
+                .foregroundStyle(on ? tint : .white.opacity(hovered ? 0.95 : 0.6))
+                .frame(width: 24, height: 20)
+                .background(Capsule().fill(.white.opacity(hovered || on ? 0.14 : 0.06)))
+                .contentShape(Capsule())
+        }
+        .buttonStyle(.plain)
+        .onHover { hovered = $0 }
+        .help(help)
+        .accessibilityLabel(Text(help))
+        .accessibilityAddTraits(on ? .isSelected : [])
+    }
+}
+
+private struct NotchClipboardRow: View {
+    let item: NotchClipboard.Item
+    let action: () -> Void
+    @State private var copied = false
+
+    var body: some View {
+        Button {
+            action()
+            copied = true
+        } label: {
+            HStack(spacing: 10) {
+                Text(verbatim: item.text.replacingOccurrences(of: "\n", with: " "))
+                    .font(.app(size: 12))
+                    .foregroundStyle(.white.opacity(0.88))
+                    .lineLimit(1)
+                    .truncationMode(.tail)
+                Spacer(minLength: 6)
+                Text(copied ? "Copied" : item.at.formatted(.relative(presentation: .named)))
+                    .font(.app(size: 10))
+                    .foregroundStyle(.white.opacity(0.4))
+            }
+            .padding(.horizontal, 10)
+            .frame(height: 24)
+            .background(RoundedRectangle(cornerRadius: 8, style: .continuous).fill(.white.opacity(0.06)))
+            .contentShape(Rectangle())
+        }
+        .buttonStyle(.plain)
+        .help(item.text)
     }
 }
 
@@ -762,7 +918,7 @@ private struct NotchAppVolumeRow: View {
     var body: some View {
         HStack(spacing: 10) {
             if let icon = NotchHomeApp.icon(for: app.bundleID) {
-                Image(nsImage: icon).resizable().frame(width: 22, height: 22)
+                Image(nsImage: icon).resizable().frame(width: 20, height: 20)
             }
             Text(verbatim: app.name)
                 .font(.app(size: 12, weight: .semibold))
@@ -779,55 +935,5 @@ private struct NotchAppVolumeRow: View {
         }
         .accessibilityElement(children: .combine)
         .accessibilityLabel(Text("\(app.name) volume"))
-    }
-}
-
-// MARK: - Mirror
-
-/// The camera as a mirror, only after a click and only while this page is open.
-struct NotchMirrorPage: View {
-    @ObservedObject var mirror: NotchMirror
-
-    var body: some View {
-        Group {
-            switch mirror.state {
-            case .on:
-                NotchMirrorPreview(session: mirror.session)
-                    .clipShape(RoundedRectangle(cornerRadius: 14, style: .continuous))
-                    .padding(.top, 4)
-            case .starting:
-                ProgressView().controlSize(.small).frame(maxWidth: .infinity, maxHeight: .infinity)
-            case .off, .denied, .noCamera:
-                VStack(spacing: 8) {
-                    Text(message)
-                        .font(.app(size: 12))
-                        .foregroundStyle(.white.opacity(0.55))
-                    if mirror.state == .denied {
-                        NotchChip(title: String(localized: "Open Settings")) {
-                            if let url = URL(
-                                string: "x-apple.systempreferences:com.apple.preference.security?Privacy_Camera")
-                            {
-                                NSWorkspace.shared.open(url)
-                            }
-                        }
-                    } else if mirror.state == .off {
-                        NotchChip(title: String(localized: "Show the camera"), prominent: true) { mirror.start() }
-                    }
-                }
-                .frame(maxWidth: .infinity, maxHeight: .infinity)
-            }
-        }
-        .padding(.horizontal, AgentComposer.panelInset)
-        .padding(.bottom, NotchHome.Card.bottom)
-        // Leaving the page, or the card closing, turns the camera off.
-        .onDisappear { mirror.stop() }
-    }
-
-    private var message: String {
-        switch mirror.state {
-        case .denied: return String(localized: "Camera access is off")
-        case .noCamera: return String(localized: "No camera found")
-        default: return String(localized: "A mirror, before a call. The camera stays off until you ask.")
-        }
     }
 }

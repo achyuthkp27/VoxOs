@@ -54,8 +54,9 @@ It is a fork of VoiceInk (GPL v3) with the cursor-voice tool layer (MIT) ported 
 - **Shelf** — files dropped on the notch, kept by path in `shelf.json`; details only when clicked.
 - **Level band** — `NotchHUD`: volume or brightness just changed with the keys, shown in the notch
   in place of macOS's pop-up (in the open card's top row while it is open).
-- **Sound page** — `NotchMixer`: per-app volume through process taps. **Mirror page** —
-  `NotchMirror`: the camera, on request only.
+- **Sound page** — the last page, for the extras: per-app volume (`NotchMixer`, process taps),
+  the clipboard (`NotchClipboard`) and the camera mirror (`NotchMirror`, on request only), each
+  behind its own switch, with keeping awake and pinning the card.
 
 ## Invariants
 
