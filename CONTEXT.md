@@ -39,11 +39,14 @@ It is a fork of VoiceInk (GPL v3) with the cursor-voice tool layer (MIT) ported 
   hooks post to through curl (ADR 0006). Settings → Claude Code installs the hooks in
   `~/.claude/settings.json` (`ClaudeCodeHooks`) and removes them when switched off.
 - **Claude Code notch** — `ClaudeCodeNotchManager`'s own panel: a card for a PermissionRequest
-  (Allow, Deny, Always allow, Auto mode) or an AskUserQuestion (options, or "Other…" typed in),
-  and, only if turned on, a band while a session works. Hidden while the recorder is up.
+  (Allow, Deny, Always allow, Auto mode), an AskUserQuestion (options, or "Other…" typed in) or a
+  plan (Approve, Keep planning with feedback, Auto-accept edits), named by folder, branch and
+  session title; a **waiting band** instead while the session's own terminal is in front; and,
+  only if turned on, a band while a session works. Hidden while the recorder is up.
 - **Notch Home** — `NotchHomeManager`'s panel on the notch between dictations (ADR 0007). Collapsed
-  it is a **band** (one notice, timer or track) or a bare notch-sized target; hovering the notch
-  opens the **card** with its **pages**: Music, Calendar, Reminders, Pomodoro, Shelf.
+  it is a **band** (a notice, the next meeting, a mic or camera in use, a timer or the track) or a
+  bare notch-sized target; the top strip of the notch, or a file dragged toward it, opens the
+  **card** with its **pages**: Music, Calendar, Reminders, Pomodoro, Shelf.
 - **Live music bars** — bars driven by the real output through `SystemAudioLevels` (a Core Audio
   tap), in the band and on the Music page, only when the setting is on (a click on the player's
   bars switches it) and `PowerState` allows: never in Low Power Mode, on battery only if allowed.

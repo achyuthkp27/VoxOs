@@ -35,3 +35,16 @@ Added the same day, also measured:
 - AskUserQuestion fires PermissionRequest too, while the terminal shows the question. Allowing with
   `updatedInput` = the questions plus an `answers` map answers it; multiple choices are joined
   with ", ". The notch shows the questions one at a time.
+- ExitPlanMode fires PermissionRequest too, with the plan as markdown in `tool_input.plan`. The
+  CLI's plan dialog maps onto hook answers: a plain allow runs the tool, whose own code returns the
+  session to the mode it had before planning; "Yes, auto-accept edits" is `setMode` acceptEdits for
+  the session; "No, keep planning" is a deny whose message carries what to change. The notch's plan
+  card gives the same three.
+- The transcript (`transcript_path`) says what hooks do not: `gitBranch` on every message line,
+  `ai-title` and, after /rename, `custom-title` lines that are appended again later (last wins),
+  and an Esc as a user message "[Request interrupted by user…]". Cards name the session by its
+  folder, branch and title, read from the file's tail. Esc ends a turn with no hook, so while the
+  working band is on, a working session's transcript is followed through a kernel file watch.
+- A session's terminal app is the nearest regular app above its CLI (CLI, zsh, login, cmux). While
+  it is in front, the terminal is already asking, so a request waits as a small band with a count
+  until clicked; a CLI under tmux or ssh has no such app and keeps the card.
