@@ -35,8 +35,8 @@ enum NotchHome {
         static let progressHeight: CGFloat = 14
         static let controlsHeight: CGFloat = 30
         static var bottom: CGFloat { AgentComposer.panelBottomInset }
-        /// Where the cover's fade into the card begins, as a fraction of its width.
-        static let posterFadeStart: CGFloat = 0.62
+        /// The cover tile: the card's height less its top and bottom insets.
+        static var coverSize: CGFloat { height - top - bottom }
     }
 
     struct Notice: Equatable {
@@ -141,7 +141,10 @@ struct NotchTrack: Equatable {
 @MainActor
 final class NotchHomeModel: ObservableObject {
     @Published var content: NotchHome.Content = .hidden
+    /// The track shown: the one picked with the dots, or the one playing.
     @Published var track: NotchTrack?
+    /// Every player with a track, in a stable order for the dots.
+    @Published var tracks: [NotchTrack] = []
     /// Shuffle and repeat as the player reports them; nil when it cannot say.
     @Published var modes: NotchPlaybackModes.State?
     @Published var page: NotchHomePage = .today
@@ -162,6 +165,7 @@ struct NotchHomeView: View {
     let onShuffle: () -> Void
     let onRepeat: () -> Void
     let onDropTargeted: (Bool) -> Void
+    let onSelectTrack: (String?) -> Void
     @AppStorage(DefaultsKeys.notchMusicBarsEnabled) private var barsEnabled = false
     @Environment(\.accessibilityReduceMotion) private var reduceMotion
 
@@ -175,21 +179,6 @@ struct NotchHomeView: View {
     var body: some View {
         ZStack(alignment: .topLeading) {
             background
-            if content == .expanded, model.page == .music, let track = model.track {
-                // Up through the notch row as well: the top-left wing is otherwise an empty
-                // black strip.
-                NotchHomePoster(image: track.artwork, tint: track.tint)
-                    .frame(width: size.width / 2, height: size.height)
-                    .mask(
-                        LinearGradient(
-                            stops: [
-                                .init(color: .white, location: 0),
-                                .init(color: .white, location: NotchHome.Card.posterFadeStart),
-                                .init(color: .clear, location: 1),
-                            ], startPoint: .leading, endPoint: .trailing)
-                    )
-                    .transition(.opacity)
-            }
             VStack(spacing: 0) {
                 notchRow
                 if content == .expanded {
@@ -197,6 +186,9 @@ struct NotchHomeView: View {
                         .frame(height: NotchHome.Card.height, alignment: .top)
                         .transition(.opacity)
                 }
+            }
+            if content == .expanded, model.page == .music, model.tracks.count > 1 {
+                playerDots
             }
             rim
         }
@@ -217,6 +209,33 @@ struct NotchHomeView: View {
             value: content)
     }
 
+    /// One dot per player, down the left edge over the cover; a two-finger scroll up or down on
+    /// the card moves between them too.
+    private var playerDots: some View {
+        VStack(spacing: 7) {
+            ForEach(model.tracks, id: \.bundleID) { track in
+                let selected = track.bundleID == model.track?.bundleID
+                Button {
+                    onSelectTrack(track.bundleID)
+                } label: {
+                    Circle()
+                        .fill(.white.opacity(selected ? 0.95 : 0.4))
+                        .frame(width: selected ? 7 : 6, height: selected ? 7 : 6)
+                        .shadow(color: .black.opacity(0.5), radius: 2)
+                        .frame(width: 16, height: 14)
+                        .contentShape(Rectangle())
+                }
+                .buttonStyle(.plain)
+                .help(track.title)
+                .accessibilityLabel(Text(verbatim: track.title))
+                .accessibilityAddTraits(selected ? .isSelected : [])
+            }
+        }
+        .frame(height: NotchHome.Card.height)
+        .padding(.leading, 6)
+        .offset(y: model.notchHeight)
+    }
+
     @ViewBuilder
     private var page: some View {
         switch model.page {
@@ -224,10 +243,7 @@ struct NotchHomeView: View {
             if let track = model.track {
                 NotchHomePlayer(
                     track: track, modes: model.modes, barsEnabled: barsEnabled, onShuffle: onShuffle,
-                    onRepeat: onRepeat
-                )
-                .frame(width: size.width / 2, alignment: .topLeading)
-                .frame(maxWidth: .infinity, alignment: .trailing)
+                    onRepeat: onRepeat)
             }
         case .timer:
             NotchTimerPage(timers: .shared)
@@ -269,8 +285,11 @@ struct NotchHomeView: View {
             }
             .foregroundStyle(.white)
             .frame(maxWidth: NotchHome.noticeWing - inset - NotchDesign.contentInset, alignment: .leading)
-        case .expanded where model.page != .music:
-            NotchHomePageLabel(text: model.page.title)
+        case .expanded:
+            // The player's name on the Music page (several can play at once), the page's elsewhere.
+            NotchHomePageLabel(
+                text: model.page == .music
+                    ? (NotchHomeApp.name(for: model.track?.bundleID) ?? model.page.title) : model.page.title)
         default:
             EmptyView()
         }
@@ -281,11 +300,9 @@ struct NotchHomeView: View {
         switch content {
         case .playing:
             if let track = model.track {
-                // A still mark, not a pretend visualizer: live bars are a setting, in the player.
-                Image(systemName: "waveform")
-                    .font(.system(size: 12, weight: .semibold))
-                    .foregroundStyle(track.tint.opacity(0.9))
-                    .frame(width: NotchHome.artSize)
+                // Ambient motion that says "playing"; it does not listen, so no recording dot.
+                NotchLevelBars(color: track.tint, bars: 4, barWidth: 3, spacing: 2.5, maxHeight: 14, source: .ambient)
+                    .frame(width: NotchHome.artSize, height: 16)
                     .accessibilityLabel(Text("Playing"))
             }
         case .timer:
@@ -315,10 +332,10 @@ struct NotchHomeView: View {
         }
     }
 
-    /// One black surface, top to bottom. Glass below a black notch row read as a dark strip
-    /// across the top of the card, and the cover fades into black more cleanly than into glass.
+    /// One black surface, top to bottom, and fully opaque while open: glass below a black notch
+    /// row read as a dark strip, and a card over a document must not let its text through.
     private var background: some View {
-        shape.fill(NotchDesign.solid)
+        shape.fill(content == .expanded ? Color(red: 0, green: 0, blue: 2 / 255) : NotchDesign.solid)
     }
 
     private var rim: some View {
@@ -329,90 +346,133 @@ struct NotchHomeView: View {
     }
 }
 
-/// The cover, filling its half of the card. Without one, a quiet field in the cover's colour.
-private struct NotchHomePoster: View {
-    let image: NSImage?
-    let tint: Color
+/// The player app's name and icon, for the Music page's label and a track without a cover.
+@MainActor
+enum NotchHomeApp {
+    private static var names: [String: String] = [:]
+    private static var icons: [String: NSImage] = [:]
+
+    static func name(for bundleID: String?) -> String? {
+        guard let bundleID else { return nil }
+        if let name = names[bundleID] { return name }
+        guard let url = NSWorkspace.shared.urlForApplication(withBundleIdentifier: bundleID) else { return nil }
+        let name = FileManager.default.displayName(atPath: url.path).replacingOccurrences(of: ".app", with: "")
+        names[bundleID] = name
+        return name
+    }
+
+    static func icon(for bundleID: String?) -> NSImage? {
+        guard let bundleID else { return nil }
+        if let icon = icons[bundleID] { return icon }
+        guard let url = NSWorkspace.shared.urlForApplication(withBundleIdentifier: bundleID) else { return nil }
+        let icon = NSWorkspace.shared.icon(forFile: url.path)
+        icons[bundleID] = icon
+        return icon
+    }
+}
+
+/// The cover as a tile. Without one, the player's own icon on a quiet tile in the cover's colour
+/// (a browser playing YouTube has no cover to give).
+private struct NotchHomeCover: View {
+    let track: NotchTrack
+    let size: CGFloat
+    private var shape: RoundedRectangle { RoundedRectangle(cornerRadius: 14, style: .continuous) }
 
     var body: some View {
-        GeometryReader { geo in
-            if let image {
-                Image(nsImage: image).resizable().interpolation(.high).aspectRatio(contentMode: .fill)
-                    .frame(width: geo.size.width, height: geo.size.height)
-                    .clipped()
+        Group {
+            if let artwork = track.artwork {
+                Image(nsImage: artwork).resizable().interpolation(.high).aspectRatio(contentMode: .fill)
             } else {
                 ZStack {
                     LinearGradient(
-                        colors: [tint.opacity(0.25), .clear], startPoint: .topLeading, endPoint: .bottomTrailing)
-                    Image(systemName: "music.note").font(.system(size: 34, weight: .medium))
-                        .foregroundStyle(.white.opacity(0.35))
+                        colors: [track.tint.opacity(0.28), track.tint.opacity(0.08)], startPoint: .topLeading,
+                        endPoint: .bottomTrailing)
+                    if let icon = NotchHomeApp.icon(for: track.bundleID) {
+                        Image(nsImage: icon).resizable().frame(width: size * 0.46, height: size * 0.46)
+                    } else {
+                        Image(systemName: "music.note").font(.system(size: size * 0.22, weight: .medium))
+                            .foregroundStyle(.white.opacity(0.45))
+                    }
                 }
             }
         }
+        .frame(width: size, height: size)
+        .clipShape(shape)
+        .overlay(shape.strokeBorder(.white.opacity(0.08), lineWidth: 0.5))
         .accessibilityHidden(true)
     }
 }
 
-/// The right half: names, a hairline of progress, and the controls. Times show only while the
-/// pointer is on the line.
+/// The cover on the left; names, a hairline of progress and the controls beside it, top and
+/// bottom aligned with the cover. Times show only while the pointer is on the line.
 private struct NotchHomePlayer: View {
     let track: NotchTrack
     let modes: NotchPlaybackModes.State?
     let barsEnabled: Bool
     let onShuffle: () -> Void
     let onRepeat: () -> Void
-    private var playback: PlaybackController { .shared }
 
     var body: some View {
-        VStack(alignment: .leading, spacing: 0) {
-            Spacer(minLength: 0)
-            HStack(spacing: 8) {
-                Text(verbatim: track.title)
-                    .font(.app(size: 15, weight: .semibold))
-                    .foregroundStyle(.white)
-                    .lineLimit(1)
+        HStack(alignment: .top, spacing: 18) {
+            NotchHomeCover(track: track, size: NotchHome.Card.coverSize)
+            VStack(alignment: .leading, spacing: 0) {
+                HStack(alignment: .top, spacing: 8) {
+                    VStack(alignment: .leading, spacing: 3) {
+                        Text(verbatim: track.title)
+                            .font(.app(size: 15, weight: .semibold))
+                            .foregroundStyle(.white)
+                            .lineLimit(1)
+                        Text(verbatim: track.artist)
+                            .font(.app(size: 12))
+                            .foregroundStyle(.white.opacity(0.5))
+                            .lineLimit(1)
+                    }
+                    Spacer(minLength: 0)
+                    if track.isPlaying {
+                        NotchLevelBars(
+                            color: track.tint, bars: 4, barWidth: 2.5, spacing: 2, maxHeight: 14,
+                            source: barsEnabled ? .live : .ambient
+                        )
+                        .frame(width: 18, height: 16)
+                    }
+                }
+                .padding(.top, 4)
+
                 Spacer(minLength: 0)
-                if barsEnabled, track.isPlaying {
-                    NotchLevelBars(color: track.tint, bars: 4, barWidth: 2.5, spacing: 2, maxHeight: 14)
-                        .frame(width: 18, height: 14)
-                }
-            }
-            Text(verbatim: track.artist)
-                .font(.app(size: 12))
-                .foregroundStyle(.white.opacity(0.5))
-                .lineLimit(1)
-                .padding(.top, 2)
 
-            NotchHomeProgress(track: track) { playback.seek(to: $0) }
-                .frame(height: NotchHome.Card.progressHeight)
-                .padding(.top, 14)
+                NotchHomeProgress(track: track) { NotchPlayers.perform(.seek($0), on: track.bundleID) }
+                    .frame(height: NotchHome.Card.progressHeight)
 
-            HStack(spacing: 14) {
-                NotchHomeControl(
-                    symbol: "shuffle", size: 11, label: "Shuffle", lit: modes?.shuffle == true, action: onShuffle)
-                NotchHomeControl(symbol: "backward.fill", size: 13, label: "Previous") {
-                    playback.performAgentMediaAction("previous")
+                HStack(spacing: 0) {
+                    NotchHomeControl(
+                        symbol: "shuffle", size: 11, label: "Shuffle", lit: modes?.shuffle == true, action: onShuffle)
+                    Spacer(minLength: 0)
+                    NotchHomeControl(symbol: "backward.fill", size: 13, label: "Previous") {
+                        NotchPlayers.perform(.previous, on: track.bundleID)
+                    }
+                    Spacer(minLength: 0)
+                    NotchHomeControl(
+                        symbol: track.isPlaying ? "pause.fill" : "play.fill", size: 19,
+                        label: track.isPlaying ? "Pause" : "Play"
+                    ) {
+                        NotchPlayers.perform(.toggle, on: track.bundleID)
+                    }
+                    Spacer(minLength: 0)
+                    NotchHomeControl(symbol: "forward.fill", size: 13, label: "Next") {
+                        NotchPlayers.perform(.next, on: track.bundleID)
+                    }
+                    Spacer(minLength: 0)
+                    NotchHomeControl(
+                        symbol: modes?.repeatMode == .one ? "repeat.1" : "repeat", size: 11, label: "Repeat",
+                        lit: modes.map { $0.repeatMode != .off } ?? false, action: onRepeat)
                 }
-                NotchHomeControl(
-                    symbol: track.isPlaying ? "pause.fill" : "play.fill", size: 19,
-                    label: track.isPlaying ? "Pause" : "Play"
-                ) {
-                    playback.performAgentMediaAction("toggle")
-                }
-                NotchHomeControl(symbol: "forward.fill", size: 13, label: "Next") {
-                    playback.performAgentMediaAction("next")
-                }
-                NotchHomeControl(
-                    symbol: modes?.repeatMode == .one ? "repeat.1" : "repeat", size: 11, label: "Repeat",
-                    lit: modes.map { $0.repeatMode != .off } ?? false, action: onRepeat)
+                .frame(height: NotchHome.Card.controlsHeight)
+                .padding(.top, 4)
             }
-            .frame(maxWidth: .infinity)
-            .frame(height: NotchHome.Card.controlsHeight)
-            .padding(.top, 6)
-            Spacer(minLength: 0)
+            .frame(height: NotchHome.Card.coverSize)
         }
-        .padding(.leading, 4)
-        .padding(.trailing, AgentComposer.panelInset)
+        .padding(.top, NotchHome.Card.top)
+        .padding(.horizontal, AgentComposer.panelInset)
         .padding(.bottom, NotchHome.Card.bottom)
     }
 }
@@ -518,11 +578,19 @@ private struct NotchHomeControl: View {
 /// Bars driven by SystemAudioLevels, drawn as plain CALayers updated at 30 Hz. A SwiftUI
 /// TimelineView or Canvas doing the same costs far more CPU for five rectangles.
 struct NotchLevelBars: NSViewRepresentable {
+    enum Source {
+        /// The Mac's real output, from SystemAudioLevels.
+        case live
+        /// A slow, organic motion that only says "playing": nothing is listened to.
+        case ambient
+    }
+
     let color: Color
     let bars: Int
     let barWidth: CGFloat
     let spacing: CGFloat
     let maxHeight: CGFloat
+    var source: Source = .live
 
     func makeNSView(context: Context) -> LevelBarsNSView {
         LevelBarsNSView(bars: bars, barWidth: barWidth, spacing: spacing, maxHeight: maxHeight)
@@ -530,6 +598,18 @@ struct NotchLevelBars: NSViewRepresentable {
 
     func updateNSView(_ view: LevelBarsNSView, context: Context) {
         view.color = NSColor(color)
+        view.source = source
+    }
+
+    /// Each bar drifts on two slow sines at its own pace, so the bars never move in step and never
+    /// repeat in a way the eye catches. 0.15…1.
+    static func ambientLevels(count: Int, at time: TimeInterval) -> [Float] {
+        (0..<count).map { index in
+            let i = Double(index)
+            let value =
+                0.55 + 0.28 * sin(time * (5.1 + i * 1.3) + i * 1.7) + 0.17 * sin(time * (8.3 + i * 0.9) + i * 2.9)
+            return Float(min(1, max(0.15, value)))
+        }
     }
 }
 
@@ -537,6 +617,7 @@ final class LevelBarsNSView: NSView {
     var color: NSColor = .white {
         didSet { bars.forEach { $0.backgroundColor = color.cgColor } }
     }
+    var source: NotchLevelBars.Source = .live
     private let bars: [CALayer]
     private let barWidth: CGFloat
     private let spacing: CGFloat
@@ -575,7 +656,10 @@ final class LevelBarsNSView: NSView {
     /// Levels come in band order, bass first; with fewer bars than bands the highest band is
     /// dropped, since it is the one most songs barely move.
     private func tick() {
-        let levels = SystemAudioLevels.shared.levels
+        let levels =
+            source == .live
+            ? SystemAudioLevels.shared.levels
+            : NotchLevelBars.ambientLevels(count: bars.count, at: CACurrentMediaTime())
         CATransaction.begin()
         CATransaction.setDisableActions(true)
         let total = CGFloat(bars.count) * barWidth + CGFloat(bars.count - 1) * spacing
@@ -628,6 +712,14 @@ final class NotchHomeManager {
     private var screen: NSScreen?
     private var hovered = false
     private var dropping = false
+    /// After a swipe closed the card, the pointer has to leave before hovering opens it again.
+    private var hoverSuppressed = false
+    /// The band a swipe put away; it stays away until the band would say something else.
+    private var dismissedBand: String?
+    /// The player picked with the dots or a scroll, by bundle id.
+    private var selectedPlayer: String?
+    private var scrollMonitor: Any?
+    private var gesture: (startX: CGFloat, width: CGFloat, dx: CGFloat, dy: CGFloat)?
     private var cancellables: Set<AnyCancellable> = []
     private var resizeTask: Task<Void, Never>?
     private var pointerWatch: Timer?
@@ -648,6 +740,12 @@ final class NotchHomeManager {
             .store(in: &cancellables)
         NotchDeviceAlerts.shared.$notice.receive(on: RunLoop.main).sink { [weak self] _ in self?.refresh() }
             .store(in: &cancellables)
+        NotchPlayers.shared.$entries.receive(on: RunLoop.main).sink { [weak self] _ in self?.refresh() }
+            .store(in: &cancellables)
+        scrollMonitor = NSEvent.addLocalMonitorForEvents(matching: .scrollWheel) { [weak self] event in
+            if let self, let panel = self.panel, event.window === panel { self.handleScroll(event, in: panel) }
+            return event
+        }
         NotificationCenter.default.publisher(for: UserDefaults.didChangeNotification).receive(on: RunLoop.main)
             .sink { [weak self] _ in self?.refresh() }
             .store(in: &cancellables)
@@ -666,23 +764,28 @@ final class NotchHomeManager {
         let enabled = NotchHome.isEnabled
         let wantsMusic = enabled && NotchHome.musicEnabled
         PlaybackController.shared.setNowPlayingWanted(wantsMusic)
+        if wantsMusic { NotchPlayers.shared.start() } else { NotchPlayers.shared.stop() }
         if enabled && NotchDeviceAlerts.isEnabled {
             NotchDeviceAlerts.shared.start()
         } else {
             NotchDeviceAlerts.shared.stop()
         }
 
-        let track = wantsMusic ? makeTrack(PlaybackController.shared.nowPlaying) : nil
+        let tracks = wantsMusic ? makeTracks() : []
+        let track = Self.shown(tracks, selected: selectedPlayer)
         let screen = self.screen ?? NSScreen.screens.first { $0.safeAreaInsets.top > 0 }
         let timers = NotchTimers.shared
-        let content = NotchHome.content(
+        var content = NotchHome.content(
             enabled: enabled, hasNotch: screen != nil,
             blocked: uiManager.isRecorderPanelVisible || uiManager.isClaudeCodeCardVisible, hovered: hovered,
             dropping: dropping,
             notice: Self.notice(device: NotchDeviceAlerts.shared.notice, finished: timers.finished),
             timerRunning: timers.running != nil, musicPlaying: track?.isPlaying == true)
+        let band = Self.bandKey(content, track: track, timer: timers.running)
+        if band != nil, band == dismissedBand { content = .bare }
 
         if content == .hidden, hovered { setHovered(false) }
+        model?.tracks = tracks
         apply(content, track: track, timerRunning: timers.running != nil, on: screen)
 
         // Listening turns on macOS's purple recording dot, so it happens only while the Music
@@ -714,6 +817,113 @@ final class NotchHomeManager {
         } else {
             refresh()
         }
+    }
+
+    /// MediaRemote's player and every player followed directly, one each; MediaRemote's wins
+    /// when both name the same app, since it brings the cover and an exact position.
+    private func makeTracks() -> [NotchTrack] {
+        var tracks: [NotchTrack] = []
+        if let remote = makeTrack(PlaybackController.shared.nowPlaying) { tracks.append(remote) }
+        for entry in NotchPlayers.shared.entries.values where !tracks.contains(where: { $0.bundleID == entry.bundleID })
+        {
+            tracks.append(
+                NotchTrack(
+                    id: entry.trackKey, title: entry.title, artist: entry.artist, isPlaying: entry.isPlaying,
+                    duration: entry.duration, elapsed: entry.position, stamp: entry.stamp,
+                    rate: entry.isPlaying ? 1 : 0, artwork: entry.artwork, tint: Self.tint(of: entry.artwork),
+                    bundleID: entry.bundleID))
+        }
+        return tracks.sorted { ($0.bundleID ?? "") < ($1.bundleID ?? "") }
+    }
+
+    /// The player picked with the dots while it still has a track; otherwise one that is
+    /// playing; otherwise the first.
+    nonisolated static func shown(_ tracks: [NotchTrack], selected: String?) -> NotchTrack? {
+        if let selected, let picked = tracks.first(where: { $0.bundleID == selected }) { return picked }
+        return tracks.first(where: \.isPlaying) ?? tracks.first
+    }
+
+    /// What a collapsed band is about, so a swipe can put away this band and not the next one.
+    nonisolated static func bandKey(_ content: NotchHome.Content, track: NotchTrack?, timer: NotchTimer?) -> String? {
+        switch content {
+        case .playing: return "playing:" + (track?.id ?? "")
+        case .timer: return "timer:\(timer?.ends.timeIntervalSince1970 ?? 0)"
+        case .notice(let notice): return "notice:\(notice.title)|\(notice.detail ?? "")"
+        default: return nil
+        }
+    }
+
+    enum Swipe: Equatable {
+        case dismiss
+        case nextPlayer
+        case previousPlayer
+        case none
+    }
+
+    /// Fingers moving toward the middle of the notch close it: right to left on its right half,
+    /// left to right on its left half. Up and down move between players.
+    nonisolated static func swipe(
+        startX: CGFloat, width: CGFloat, fingerDX: CGFloat, fingerDY: CGFloat, threshold: CGFloat = 36
+    ) -> Swipe {
+        if abs(fingerDX) >= abs(fingerDY) {
+            guard abs(fingerDX) >= threshold else { return .none }
+            let onRight = startX > width / 2
+            return (onRight && fingerDX < 0) || (!onRight && fingerDX > 0) ? .dismiss : .none
+        }
+        guard abs(fingerDY) >= threshold else { return .none }
+        return fingerDY < 0 ? .nextPlayer : .previousPlayer
+    }
+
+    private func handleScroll(_ event: NSEvent, in panel: NSPanel) {
+        // Natural scrolling flips the deltas; turned back here, they follow the fingers.
+        let sign: CGFloat = event.isDirectionInvertedFromDevice ? 1 : -1
+        switch event.phase {
+        case .began:
+            gesture = (event.locationInWindow.x, panel.frame.width, 0, 0)
+        case .changed:
+            gesture?.dx += event.scrollingDeltaX * sign
+            gesture?.dy += event.scrollingDeltaY * sign
+        case .ended, .cancelled:
+            guard let gesture else { return }
+            self.gesture = nil
+            perform(
+                Self.swipe(startX: gesture.startX, width: gesture.width, fingerDX: gesture.dx, fingerDY: gesture.dy))
+        default:
+            break
+        }
+    }
+
+    private func perform(_ swipe: Swipe) {
+        guard let model else { return }
+        switch swipe {
+        case .dismiss:
+            // The shelf scrolls sideways; there a sideways swipe is for the files.
+            if model.content == .expanded, model.page == .shelf { return }
+            ActivityTrail.mark("notch home swiped away")
+            if model.content == .expanded {
+                hoverSuppressed = true
+                setHovered(false)
+            } else {
+                dismissedBand = Self.bandKey(model.content, track: model.track, timer: NotchTimers.shared.running)
+                refresh()
+            }
+        case .nextPlayer, .previousPlayer:
+            guard model.content == .expanded, model.page == .music, model.tracks.count > 1,
+                let index = model.tracks.firstIndex(where: { $0.bundleID == model.track?.bundleID })
+            else { return }
+            let step = swipe == .nextPlayer ? 1 : -1
+            let next = (index + step + model.tracks.count) % model.tracks.count
+            selectPlayer(model.tracks[next].bundleID)
+        case .none:
+            break
+        }
+    }
+
+    private func selectPlayer(_ bundleID: String?) {
+        selectedPlayer = bundleID
+        model?.modes = nil
+        refresh()
+        if let track = model?.track { readModes(of: track) }
     }
 
     private func makeTrack(_ payload: TrackInfo.Payload?) -> NotchTrack? {
@@ -760,6 +970,8 @@ final class NotchHomeManager {
         hovered = inside
         ActivityTrail.mark("notch home hover \(inside)")
         if inside {
+            // Opening the notch on purpose brings back a band that was swiped away.
+            dismissedBand = nil
             // mouseExited is not reliable on a panel that resizes under the pointer, so while
             // open the pointer itself is checked.
             pointerWatch?.invalidate()
@@ -768,16 +980,26 @@ final class NotchHomeManager {
             }
             RunLoop.main.add(watch, forMode: .common)
             pointerWatch = watch
-        } else {
+        } else if !hoverSuppressed {
             pointerWatch?.invalidate()
             pointerWatch = nil
         }
         refresh()
     }
 
+    /// While open: closes once the pointer leaves. After a swipe: waits for the pointer to leave
+    /// before hovering may open it again.
     private func checkPointer() {
-        guard let panel, hovered else { return }
-        if !panel.frame.insetBy(dx: -4, dy: -4).contains(NSEvent.mouseLocation) { setHovered(false) }
+        guard let panel else { return }
+        let inside = panel.frame.insetBy(dx: -4, dy: -4).contains(NSEvent.mouseLocation)
+        if hovered, !inside { setHovered(false) }
+        if hoverSuppressed, !inside {
+            hoverSuppressed = false
+            if !hovered {
+                pointerWatch?.invalidate()
+                pointerWatch = nil
+            }
+        }
     }
 
     // MARK: Window
@@ -846,7 +1068,7 @@ final class NotchHomeManager {
         let view = NotchHomeView(
             model: model,
             onHover: { [weak self] inside in
-                guard inside else { return }  // leaving is decided by checkPointer
+                guard inside, self?.hoverSuppressed != true else { return }  // leaving: see checkPointer
                 self?.setHovered(true)
             },
             onShuffle: { [weak model] in
@@ -863,7 +1085,8 @@ final class NotchHomeManager {
                     if let state { model.modes = state }
                 }
             },
-            onDropTargeted: { [weak self] targeted in self?.setDropTargeted(targeted) })
+            onDropTargeted: { [weak self] targeted in self?.setDropTargeted(targeted) },
+            onSelectTrack: { [weak self] bundleID in self?.selectPlayer(bundleID) })
         panel.contentView = NotchRecorderHostingController(rootView: view).view
         self.model = model
         self.panel = panel

@@ -11,7 +11,7 @@ struct SpectrumAnalyzer {
     static let bandEdges: [Float] = [40, 160, 500, 1_600, 5_000, 14_000]
     static let fftSize = 1024
     /// The quietest level that still shows; anything below reads as zero.
-    static let floorDecibels: Float = -64
+    static let floorDecibels: Float = -56
     /// Bars jump up at once and fall back gently, the way a meter is read.
     static let release: Float = 0.82
 

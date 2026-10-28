@@ -184,4 +184,84 @@ struct NotchHomeTests {
             NotchPlaybackModes.repeatScript(for: "com.apple.Music", to: .one)
                 == #"tell application id "com.apple.Music" to set song repeat to one"#)
     }
+
+    // MARK: Several players
+
+    @Test func musicAndSpotifyAnnounceThemselves() {
+        let now = Date()
+        let music = NotchPlayers.parseMusic(
+            ["Name": "Loser", "Artist": "Charlie Puth", "Player State": "Playing", "Total Time": 204_000], now: now)
+        #expect(music?.title == "Loser")
+        #expect(music?.isPlaying == true)
+        #expect(music?.duration == 204)
+        #expect(NotchPlayers.parseMusic(["Name": "Loser", "Player State": "Stopped"], now: now) == nil)
+
+        let spotify = NotchPlayers.parseSpotify(
+            [
+                "Name": "Song", "Artist": "Band", "Player State": "Paused", "Duration": 180_000,
+                "Playback Position": 42.5,
+            ],
+            now: now)
+        #expect(spotify?.isPlaying == false)
+        #expect(spotify?.duration == 180)
+        #expect(spotify?.position == 42.5)
+    }
+
+    @Test func appleScriptStateKeepsCommasInTitles() {
+        let sep = NotchPlayers.separator
+        let output = ["Hello, World", "Artist", "playing", "213.5", "12.25"].joined(separator: sep)
+        let entry = NotchPlayers.parseState(output, bundleID: NotchPlayers.music, now: Date())
+        #expect(entry?.title == "Hello, World")
+        #expect(entry?.duration == 213.5)
+        let spotify = NotchPlayers.parseState(
+            ["A", "B", "paused", "180000", "3"].joined(separator: sep), bundleID: NotchPlayers.spotify, now: Date())
+        #expect(spotify?.duration == 180, "Spotify reports milliseconds")
+        #expect(NotchPlayers.parseState("stopped", bundleID: NotchPlayers.music, now: Date()) == nil)
+    }
+
+    private func track(_ bundle: String, playing: Bool) -> NotchTrack {
+        NotchTrack(
+            id: bundle, title: bundle, artist: "", isPlaying: playing, duration: nil, elapsed: nil, stamp: Date(),
+            rate: 0, artwork: nil, tint: .white, bundleID: bundle)
+    }
+
+    @Test func thePickedPlayerStaysShownAndOtherwiseThePlayingOne() {
+        let tracks = [track("com.apple.Music", playing: false), track("com.google.Chrome", playing: true)]
+        #expect(NotchHomeManager.shown(tracks, selected: nil)?.bundleID == "com.google.Chrome")
+        #expect(NotchHomeManager.shown(tracks, selected: "com.apple.Music")?.bundleID == "com.apple.Music")
+        #expect(
+            NotchHomeManager.shown(tracks, selected: "com.spotify.client")?.bundleID == "com.google.Chrome",
+            "a picked player that went away gives way")
+    }
+
+    // MARK: Swipes
+
+    @Test func swipingTowardTheMiddleCloses() {
+        let width: CGFloat = 480
+        #expect(NotchHomeManager.swipe(startX: 400, width: width, fingerDX: -60, fingerDY: 4) == .dismiss)
+        #expect(NotchHomeManager.swipe(startX: 80, width: width, fingerDX: 60, fingerDY: -3) == .dismiss)
+        #expect(NotchHomeManager.swipe(startX: 400, width: width, fingerDX: 60, fingerDY: 0) == .none, "outward")
+        #expect(NotchHomeManager.swipe(startX: 400, width: width, fingerDX: -10, fingerDY: 0) == .none, "a nudge")
+        #expect(NotchHomeManager.swipe(startX: 240, width: width, fingerDX: 2, fingerDY: -50) == .nextPlayer)
+        #expect(NotchHomeManager.swipe(startX: 240, width: width, fingerDX: 2, fingerDY: 50) == .previousPlayer)
+    }
+
+    @Test func aSwipedBandStaysAwayUntilItWouldSaySomethingElse() {
+        let first = NotchHomeManager.bandKey(.playing, track: track("a", playing: true), timer: nil)
+        let next = NotchHomeManager.bandKey(.playing, track: track("b", playing: true), timer: nil)
+        #expect(first != nil && first != next)
+        #expect(NotchHomeManager.bandKey(.bare, track: nil, timer: nil) == nil)
+        #expect(
+            NotchHomeManager.bandKey(.expanded, track: nil, timer: nil) == nil, "the open card is closed, not hidden")
+    }
+
+    /// The collapsed band moves while music plays without listening to it: always in range, and
+    /// the bars never in step.
+    @Test func ambientBarsMoveWithinRangeAndOutOfStep() {
+        let now = NotchLevelBars.ambientLevels(count: 4, at: 100)
+        let later = NotchLevelBars.ambientLevels(count: 4, at: 100.2)
+        #expect(now.allSatisfy { $0 >= 0.15 && $0 <= 1 })
+        #expect(now != later, "it moves")
+        #expect(Set(now.map { ($0 * 100).rounded() }).count > 1, "not all the same height")
+    }
 }
