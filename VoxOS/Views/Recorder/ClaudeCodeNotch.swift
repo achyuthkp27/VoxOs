@@ -966,6 +966,12 @@ final class ClaudeCodeNotchManager {
 
     private func refresh() {
         guard let uiManager else { return }
+        // On another display now: built again there, unless a card is up mid-answer.
+        if let screen, let target = NotchScreens.target(), !NotchScreens.same(screen, target),
+            model?.content.isCard != true
+        {
+            destroyPanel()
+        }
         let now = Date()
         if let revealed, !activity.prompts.contains(where: { $0.id == revealed }) { self.revealed = nil }
         let first = activity.prompts.first
@@ -1066,9 +1072,9 @@ final class ClaudeCodeNotchManager {
 
     /// The notched display when there is one, as for the idle tab; otherwise the usual screen,
     /// where the band hangs from the menu bar.
+    /// Notch Home's display (NotchScreens): the notched one, or the menu bar's, or the one in use.
     private func buildPanel() {
-        let notched = NSScreen.screens.first { $0.safeAreaInsets.top > 0 }
-        guard let screen = notched ?? RecorderScreenResolver.resolve(),
+        guard let screen = NotchScreens.target() ?? RecorderScreenResolver.resolve(),
             let metrics = NotchRecorderPanel.calculateWindowMetrics(on: screen)
         else {
             logger.error("Claude Code notch not built: no screen")

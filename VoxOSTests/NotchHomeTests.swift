@@ -344,4 +344,16 @@ struct NotchHomeTests {
         view.source = .ambient
         #expect(!view.isTicking, "no window: nothing can see the bars")
     }
+
+    // MARK: Displays
+
+    @Test func theNotchLivesOnTheNotchedDisplayElseTheMainOneOrTheOneInUse() {
+        let laptop: (id: CGDirectDisplayID, hasNotch: Bool) = (1, true)
+        let monitor: (id: CGDirectDisplayID, hasNotch: Bool) = (2, false)
+        #expect(NotchScreens.choose([monitor, laptop], active: nil) == 1, "the notched display")
+        #expect(NotchScreens.choose([monitor], active: nil) == 2, "no notch anywhere: the main display")
+        #expect(NotchScreens.choose([monitor, laptop], active: 2) == 2, "following the display in use")
+        #expect(NotchScreens.choose([laptop], active: 9) == 1, "a display that is gone is not followed")
+        #expect(NotchScreens.choose([], active: nil) == nil)
+    }
 }

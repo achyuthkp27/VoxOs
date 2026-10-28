@@ -59,6 +59,8 @@ enum AppDefaults {
             DefaultsKeys.notchHomeEnabled: true,
             DefaultsKeys.notchDeviceAlertsEnabled: true,
             DefaultsKeys.notchHomeInFullScreen: false,
+            // Off: the notch stays on the display with one (or, with none, the menu bar's).
+            DefaultsKeys.notchFollowsActiveDisplay: false,
             DefaultsKeys.notchPrivacyEnabled: true,
             // Needs Calendar access, which only the Calendar page asks for.
             DefaultsKeys.notchMeetingsEnabled: true,

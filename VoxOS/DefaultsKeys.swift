@@ -57,6 +57,8 @@ enum DefaultsKeys {
     static let notchDeviceAlertsEnabled = "NotchDeviceAlertsEnabled"
     /// Notch Home stays up over a full-screen app (a video, a game); off, it steps aside.
     static let notchHomeInFullScreen = "NotchHomeInFullScreen"
+    /// Notch Home and Claude Code's cards move to the display holding the front app's window.
+    static let notchFollowsActiveDisplay = "NotchFollowsActiveDisplay"
     /// A band with a mute switch while another app uses the microphone or a camera.
     static let notchPrivacyEnabled = "NotchPrivacyEnabled"
     /// A countdown band for the next meeting, with Join when it has a call link.

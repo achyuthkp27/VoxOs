@@ -47,6 +47,7 @@ struct SettingsView: View {
     @AppStorage(DefaultsKeys.notchDeviceAlertsEnabled) private var notchDeviceAlertsEnabled = true
     @AppStorage(DefaultsKeys.notchHomeInFullScreen) private var notchHomeInFullScreen = false
     @AppStorage(DefaultsKeys.notchPrivacyEnabled) private var notchPrivacyEnabled = true
+    @AppStorage(DefaultsKeys.notchFollowsActiveDisplay) private var notchFollowsActiveDisplay = false
     @AppStorage(DefaultsKeys.notchMeetingsEnabled) private var notchMeetingsEnabled = true
     @AppStorage(DefaultsKeys.notchMusicEnabled) private var notchMusicEnabled = true
     @AppStorage(DefaultsKeys.notchMusicBarsEnabled) private var notchMusicBarsEnabled = false
@@ -109,7 +110,8 @@ struct SettingsView: View {
         "Device Alerts", "bluetooth", "airpods", "wifi", "output", "speakers", "headphones", "charging",
         "low battery", "timer", "pomodoro", "shelf", "calendar", "Mic & Camera in Use", "microphone", "camera",
         "mute", "Meeting Countdown", "meeting", "zoom", "join",
-        "Show in Full Screen", "full screen", "fullscreen",
+        "Show in Full Screen", "full screen", "fullscreen", "Follow the Display in Use", "external display",
+        "monitor", "display",
     ]
     private static let generalTerms = [
         "General", "Hide Dock Icon", "Launch at Login", "Automatically Check for Updates",
@@ -644,6 +646,14 @@ struct SettingsView: View {
                                 Text("Show in Full Screen")
                                 InfoTip(
                                     "Off: while a full-screen app is in front (a video, a game), Notch Home and its animations step aside. Claude Code requests still show."
+                                )
+                            }
+                        }
+                        Toggle(isOn: $notchFollowsActiveDisplay) {
+                            HStack(spacing: 2) {
+                                Text("Follow the Display in Use")
+                                InfoTip(
+                                    "On: Notch Home and Claude Code's cards move to the display with the front window, as a notch drawn from that display's menu bar where it has none. Off: they stay on the display with a notch, or on the main display when no display has one."
                                 )
                             }
                         }

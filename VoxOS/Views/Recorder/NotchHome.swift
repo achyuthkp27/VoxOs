@@ -197,9 +197,14 @@ final class NotchHomeModel: ObservableObject {
     let notchWidth: CGFloat
     let notchHeight: CGFloat
 
-    init(notchWidth: CGFloat, notchHeight: CGFloat) {
+    /// No hardware notch on this display: the resting target is all but transparent instead of
+    /// black, so nothing shows at the top of the screen until there is something to say.
+    let virtualNotch: Bool
+
+    init(notchWidth: CGFloat, notchHeight: CGFloat, virtualNotch: Bool = false) {
         self.notchWidth = notchWidth
         self.notchHeight = notchHeight
+        self.virtualNotch = virtualNotch
     }
 }
 
@@ -485,7 +490,11 @@ struct NotchHomeView: View {
     /// One black surface, top to bottom, and fully opaque while open: glass below a black notch
     /// row read as a dark strip, and a card over a document must not let its text through.
     private var background: some View {
-        shape.fill(content == .expanded ? Color(red: 0, green: 0, blue: 2 / 255) : NotchDesign.solid)
+        shape.fill(
+            content == .expanded
+                ? Color(red: 0, green: 0, blue: 2 / 255)
+                // Faint enough to see through, opaque enough to be hovered and dropped on.
+                : (model.virtualNotch && !content.isVisible ? Color.black.opacity(0.012) : NotchDesign.solid))
     }
 
     private var rim: some View {
@@ -1070,11 +1079,14 @@ final class NotchHomeManager {
         watchDrags(enabled)
 
         let tracks = wantsMusic ? makeTracks() : []
-        let screenForState = self.screen ?? NSScreen.screens.first { $0.safeAreaInsets.top > 0 }
+        // Another display now (one attached or closed, or the display in use changed): the panel
+        // is built again there.
+        let target = NotchScreens.target()
+        if let current = self.screen, target != nil, !NotchScreens.same(current, target) { destroyPanel() }
+        let screen = self.screen ?? target
         let hiddenForFullScreen =
-            !NotchHome.showsInFullScreen && screenForState.map(Self.frontAppIsFullScreen(on:)) == true
+            !NotchHome.showsInFullScreen && screen.map(Self.frontAppIsFullScreen(on:)) == true
         let track = Self.shown(tracks, selected: selectedPlayer)
-        let screen = self.screen ?? NSScreen.screens.first { $0.safeAreaInsets.top > 0 }
         let timers = NotchTimers.shared
         var content = NotchHome.content(
             enabled: enabled && !hiddenForFullScreen, hasNotch: screen != nil,
@@ -1677,7 +1689,9 @@ final class NotchHomeManager {
     private func buildPanel(on screen: NSScreen) {
         guard let metrics = NotchRecorderPanel.calculateWindowMetrics(on: screen) else { return }
         self.screen = screen
-        let model = NotchHomeModel(notchWidth: metrics.notchWidth, notchHeight: metrics.notchHeight)
+        let model = NotchHomeModel(
+            notchWidth: metrics.notchWidth, notchHeight: metrics.notchHeight,
+            virtualNotch: !NotchScreens.hasNotch(screen))
         let size = NotchHome.size(for: .bare, notchWidth: metrics.notchWidth, notchHeight: metrics.notchHeight)
         let panel = NotchHomePanel(contentRect: NotchHome.frame(for: size, screenFrame: screen.frame))
         let view = NotchHomeView(
@@ -1728,5 +1742,8 @@ final class NotchHomeManager {
         panel = nil
         model = nil
         screen = nil
+        // The menu bar beside another display's notch is measured afresh.
+        allowedWing = nil
+        clearanceMeasured = nil
     }
 }
