@@ -50,5 +50,19 @@ Decisions, and what they rest on (measured on macOS 26 unless noted):
 - **Drag to the shelf.** A global mouse monitor reads the drag pasteboard's count on mouse-down;
   a later drag that wrote file URLs and reaches the open card's area (plus a margin) opens the
   card on the Shelf page, and the card stays while the file is in that area.
+- **Volume and brightness.** A session event tap of its own, on its own thread, takes the
+  system-defined media key events before macOS (so macOS neither changes anything nor shows its
+  pop-up) only while the notch can show the level and VoxOS can make the change: the output's
+  whole-device volume (Core Audio) and the built-in display's brightness (DisplayServices,
+  private, loaded at run time). Anything else stays with macOS.
+- **Per-app volume.** An app turned down is muted at its source by a process tap (`.muted`, so a
+  pause never lets full volume through) and played on through a private aggregate device whose IO
+  runs only while the app plays. It is system audio capture, so the purple dot shows meanwhile.
+- **Downloads, Focus.** Downloads come from the progress browsers publish for files in Downloads
+  (`Progress.addSubscriber`), throttled to two updates a second. Focus is read from
+  ~/Library/DoNotDisturb/DB (Assertions.json, ModeConfigurations.json) when that folder changes;
+  the format is private, so anything unexpected reads as no Focus.
+- **Mirror, keep awake.** The camera runs only from a click until its page goes away; keeping
+  awake is a display-sleep assertion let go at 10% on battery.
 - **Nothing is fixed to one Mac.** Icons come from Bluetooth device classes, sizes from the
   screen's notch, players from bundle ids; tests use generic names.

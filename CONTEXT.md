@@ -52,6 +52,10 @@ It is a fork of VoiceInk (GPL v3) with the cursor-voice tool layer (MIT) ported 
   bars switches it) and `PowerState` allows: never in Low Power Mode, on battery only if allowed.
   Otherwise ambient.
 - **Shelf** — files dropped on the notch, kept by path in `shelf.json`; details only when clicked.
+- **Level band** — `NotchHUD`: volume or brightness just changed with the keys, shown in the notch
+  in place of macOS's pop-up (in the open card's top row while it is open).
+- **Sound page** — `NotchMixer`: per-app volume through process taps. **Mirror page** —
+  `NotchMirror`: the camera, on request only.
 
 ## Invariants
 
