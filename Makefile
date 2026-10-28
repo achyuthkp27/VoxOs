@@ -19,6 +19,9 @@ LOCAL_PACKAGES := $(CURDIR)/.local-packages
 # Debug (default) builds fast and is unoptimised; `make local LOCAL_CONFIG=Release` builds the optimised app.
 LOCAL_CONFIG ?= Debug
 TEST_DERIVED_DATA := $(CURDIR)/.local-build-tests
+# Xcode registers every app it builds with Launch Services, and Spotlight lists registered apps:
+# a build product left registered shows as a second "VoxOS" beside the installed one.
+LSREGISTER := /System/Library/Frameworks/CoreServices.framework/Frameworks/LaunchServices.framework/Support/lsregister
 # The test host is the app itself. Sharing the app's bundle identifier let macOS resolve
 # the login item to whichever copy ran last, so a test run re-pointed it at this throwaway
 # build and the next login tried to start a bundle that cannot load whisper.framework.
@@ -132,6 +135,7 @@ local: check setup
 		rm -rf "$(INSTALL_PATH)"; \
 		ditto "$$APP_PATH" "$(INSTALL_PATH)"; \
 		xattr -cr "$(INSTALL_PATH)"; \
+		"$(LSREGISTER)" -u "$$APP_PATH" >/dev/null 2>&1 || true; \
 		echo ""; \
 		echo "Build complete! Installed to: $(INSTALL_PATH)"; \
 		echo "Run with: make run"; \
@@ -230,6 +234,9 @@ test: check
 	@./scripts/test-summary.sh $(TEST_RESULT_BUNDLE); \
 	STATUS=$$?; \
 	tccutil reset All com.achyuthkp.VoxOS$(TEST_BUNDLE_ID_SUFFIX) >/dev/null 2>&1 || true; \
+	for app in $(TEST_DERIVED_DATA)/Build/Products/*/*.app; do \
+		[ -d "$$app" ] && "$(LSREGISTER)" -u "$$app" >/dev/null 2>&1; \
+	done; \
 	exit $$STATUS
 
 # Formatting, configured by .swift-format. swift-format ships inside the Xcode
