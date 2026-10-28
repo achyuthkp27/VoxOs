@@ -51,6 +51,7 @@ enum AppDefaults {
             DefaultsKeys.claudeCodeEnabled: false,
             DefaultsKeys.claudeCodeApprovalsEnabled: true,
             DefaultsKeys.claudeCodeStatusEnabled: true,
+            DefaultsKeys.claudeCodeOfferAnswered: false,
             RecorderDisplaySettingsKeys.showLiveTranscript: true,
 
             // Cleanup

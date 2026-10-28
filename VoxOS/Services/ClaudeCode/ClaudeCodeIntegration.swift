@@ -15,6 +15,8 @@ final class ClaudeCodeIntegration: ObservableObject {
     @Published private(set) var installState: ClaudeCodeHooks.InstallState = .notInstalled
     /// The last install, removal or read that failed, in words for Settings.
     @Published private(set) var problem: String?
+    /// The one-time offer to turn the integration on is in the notch.
+    @Published private(set) var isOffering = false
 
     private let bridge: ClaudeCodeBridge
     private let settingsURL: URL
@@ -36,9 +38,46 @@ final class ClaudeCodeIntegration: ObservableObject {
     /// At launch: listen if the user turned the integration on. The hooks are not rewritten here;
     /// if the user removed them by hand, Settings shows that and offers to put them back.
     func startIfEnabled() {
-        guard !ProcessIdentity.isTestHost, Self.isEnabled else { return }
+        guard !ProcessIdentity.isTestHost else { return }
+        guard Self.isEnabled else { return offerIfAppropriate() }
         startBridge()
         refreshInstallState()
+    }
+
+    /// Asked once, on a Mac where Claude Code is installed, so a new install does not depend on
+    /// the user finding the switch in Settings. Never before onboarding is finished, and never again
+    /// once answered either way; Settings keeps the switch.
+    static func shouldOffer(enabled: Bool, answered: Bool, onboarded: Bool, claudeCodeInstalled: Bool) -> Bool {
+        !enabled && !answered && onboarded && claudeCodeInstalled
+    }
+
+    /// The CLI creates ~/.claude on its first run.
+    static var claudeCodeInstalled: Bool {
+        var isDirectory: ObjCBool = false
+        let path = FileManager.default.homeDirectoryForCurrentUser.appendingPathComponent(".claude").path
+        return FileManager.default.fileExists(atPath: path, isDirectory: &isDirectory) && isDirectory.boolValue
+    }
+
+    private func offerIfAppropriate() {
+        let defaults = UserDefaults.standard
+        guard
+            Self.shouldOffer(
+                enabled: Self.isEnabled, answered: defaults.bool(forKey: DefaultsKeys.claudeCodeOfferAnswered),
+                onboarded: defaults.bool(forKey: DefaultsKeys.hasCompletedOnboardingV2),
+                claudeCodeInstalled: Self.claudeCodeInstalled)
+        else { return }
+        // A moment after launch, so it does not arrive in the same breath as the menu bar icon.
+        Task { @MainActor [weak self] in
+            try? await Task.sleep(for: .seconds(3))
+            guard let self, !Self.isEnabled else { return }
+            self.isOffering = true
+        }
+    }
+
+    func answerOffer(turnOn: Bool) {
+        UserDefaults.standard.set(true, forKey: DefaultsKeys.claudeCodeOfferAnswered)
+        isOffering = false
+        if turnOn { setEnabled(true) }
     }
 
     func setEnabled(_ enabled: Bool) {

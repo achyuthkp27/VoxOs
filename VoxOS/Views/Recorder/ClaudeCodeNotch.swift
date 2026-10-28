@@ -84,18 +84,25 @@ enum ClaudeCodeNotch {
         /// The first waiting request, and how many are waiting in all.
         case approval(ClaudeCodeActivity.PermissionPrompt, waiting: Int)
 
-        var isApproval: Bool {
-            if case .approval = self { return true }
-            return false
+        /// The one-time "Show Claude Code in the notch?" card.
+        case offer
+
+        var isCard: Bool {
+            switch self {
+            case .approval, .offer: return true
+            case .hidden, .status: return false
+            }
         }
     }
 
     /// A request outranks status; the recorder outranks both, since the user is talking to it.
     static func content(
         prompts: [ClaudeCodeActivity.PermissionPrompt], status: ClaudeCodeActivity.Status, enabled: Bool,
-        approvalsEnabled: Bool, statusEnabled: Bool, recorderVisible: Bool
+        approvalsEnabled: Bool, statusEnabled: Bool, recorderVisible: Bool, offering: Bool = false
     ) -> Content {
-        guard enabled, !recorderVisible else { return .hidden }
+        guard !recorderVisible else { return .hidden }
+        if offering, !enabled { return .offer }
+        guard enabled else { return .hidden }
         if approvalsEnabled, let first = prompts.first { return .approval(first, waiting: prompts.count) }
         if statusEnabled, !status.isEmpty { return .status(status) }
         return .hidden
@@ -112,6 +119,9 @@ enum ClaudeCodeNotch {
             return CGSize(
                 width: max(NotchDesign.expandedWidth, notchWidth + wing * 2),
                 height: notchHeight + cardContentHeight(for: prompt))
+        case .offer:
+            return CGSize(
+                width: max(NotchDesign.expandedWidth, notchWidth + wing * 2), height: notchHeight + offerContentHeight)
         }
     }
 
@@ -127,8 +137,20 @@ enum ClaudeCodeNotch {
         switch content {
         case .hidden: return NotchDesign.resting
         case .status: return NotchDesign.listening
-        case .approval: return NotchDesign.expanded
+        case .approval, .offer: return NotchDesign.expanded
         }
+    }
+
+    static let offerMessage = String(
+        localized:
+            "See when a session is working, and allow or answer its requests here. This adds hooks to ~/.claude/settings.json."
+    )
+    static let offerMessageLineHeight: CGFloat = 16
+
+    /// Eyebrow, title, a two-line message, and the buttons.
+    static var offerContentHeight: CGFloat {
+        Card.top + Card.eyebrowHeight + Card.spacing + Card.titleLineHeight + Card.spacing + 2 * offerMessageLineHeight
+            + Card.buttonGap + Card.buttonHeight + Card.bottom
     }
 }
 
@@ -149,6 +171,7 @@ final class ClaudeCodeNotchModel: ObservableObject {
 struct ClaudeCodeNotchView: View {
     @ObservedObject var model: ClaudeCodeNotchModel
     let onDecision: (UUID, ClaudeCodeActivity.Decision) -> Void
+    let onOffer: (Bool) -> Void
     @AppStorage(DefaultsKeys.notchMaterial) private var notchMaterialRaw = NotchDesign.Material.liquidGlass.rawValue
     @Environment(\.accessibilityReduceMotion) private var reduceMotion
 
@@ -173,6 +196,11 @@ struct ClaudeCodeNotchView: View {
                 .id(prompt.id)
                 .frame(height: ClaudeCodeNotch.cardContentHeight(for: prompt), alignment: .top)
                 .transition(.opacity)
+            }
+            if content == .offer {
+                ClaudeCodeOfferCard(onAnswer: onOffer)
+                    .frame(height: ClaudeCodeNotch.offerContentHeight, alignment: .top)
+                    .transition(.opacity)
             }
         }
         .frame(width: size.width, height: size.height, alignment: .top)
@@ -216,6 +244,9 @@ struct ClaudeCodeNotchView: View {
         case .status:
             ClaudeCodeSpark(spinning: !reduceMotion)
                 .accessibilityLabel(Text("Claude Code is working"))
+        case .offer:
+            ClaudeCodeSpark(spinning: false)
+                .accessibilityLabel(Text("Claude Code"))
         case .approval(let prompt, _):
             ClaudeCodeSpark(spinning: false)
                 .accessibilityLabel(
@@ -290,6 +321,41 @@ private struct ClaudeCodeSpark: View {
                 guard spinning else { return }
                 withAnimation(.linear(duration: 2.4).repeatForever(autoreverses: false)) { angle = 360 }
             }
+    }
+}
+
+/// Asked once: turn the integration on from the notch itself.
+private struct ClaudeCodeOfferCard: View {
+    typealias Card = ClaudeCodeNotch.Card
+    let onAnswer: (Bool) -> Void
+
+    var body: some View {
+        VStack(alignment: .leading, spacing: Card.spacing) {
+            ClaudeCodeEyebrow(text: "VoxOS · Claude Code")
+
+            Text("Show Claude Code in the notch?")
+                .font(.app(size: 15, weight: .semibold))
+                .foregroundStyle(.white)
+                .lineLimit(1)
+                .frame(height: Card.titleLineHeight)
+
+            Text(verbatim: ClaudeCodeNotch.offerMessage)
+                .font(.app(size: 12))
+                .foregroundStyle(.white.opacity(0.7))
+                .lineLimit(2)
+                .frame(maxWidth: .infinity, alignment: .topLeading)
+                .frame(height: 2 * ClaudeCodeNotch.offerMessageLineHeight, alignment: .topLeading)
+
+            HStack(spacing: 8) {
+                Spacer(minLength: 0)
+                ClaudeCodeNotchButton(title: String(localized: "Not now"), prominent: false) { onAnswer(false) }
+                ClaudeCodeNotchButton(title: String(localized: "Turn on"), prominent: true) { onAnswer(true) }
+            }
+            .padding(.top, Card.buttonGap - Card.spacing)
+        }
+        .padding(.top, Card.top)
+        .padding(.horizontal, AgentComposer.panelInset)
+        .padding(.bottom, Card.bottom)
     }
 }
 
@@ -600,6 +666,8 @@ final class ClaudeCodeNotchManager {
             .store(in: &cancellables)
         activity.$sessions.receive(on: RunLoop.main).sink { [weak self] _ in self?.refresh() }
             .store(in: &cancellables)
+        ClaudeCodeIntegration.shared.$isOffering.receive(on: RunLoop.main).sink { [weak self] _ in self?.refresh() }
+            .store(in: &cancellables)
         uiManager.$isRecorderPanelVisible.receive(on: RunLoop.main).sink { [weak self] _ in self?.refresh() }
             .store(in: &cancellables)
         NotificationCenter.default.publisher(for: UserDefaults.didChangeNotification).receive(on: RunLoop.main)
@@ -621,7 +689,7 @@ final class ClaudeCodeNotchManager {
             prompts: activity.prompts, status: activity.status(now: now), enabled: ClaudeCodeIntegration.isEnabled,
             approvalsEnabled: ClaudeCodeIntegration.approvalsEnabled,
             statusEnabled: ClaudeCodeIntegration.statusEnabled,
-            recorderVisible: uiManager.isRecorderPanelVisible)
+            recorderVisible: uiManager.isRecorderPanelVisible, offering: ClaudeCodeIntegration.shared.isOffering)
         scheduleTick(after: now)
         apply(content)
         if uiManager.isClaudeCodeSurfaceVisible != (content != .hidden) {
@@ -663,7 +731,7 @@ final class ClaudeCodeNotchManager {
         let wasVisible = panel.isVisible && model.content != .hidden
         let current = panel.frame.size
         let grows = !wasVisible || (target.width >= current.width && target.height >= current.height)
-        panel.hasShadow = content.isApproval
+        panel.hasShadow = content.isCard
 
         if grows {
             // The window grows first so the shape has room to animate into.
@@ -701,9 +769,10 @@ final class ClaudeCodeNotchManager {
         let model = ClaudeCodeNotchModel(notchWidth: metrics.notchWidth, notchHeight: metrics.notchHeight)
         let size = ClaudeCodeNotch.size(for: .hidden, notchWidth: metrics.notchWidth, notchHeight: metrics.notchHeight)
         let panel = ClaudeCodeNotchPanel(contentRect: ClaudeCodeNotch.frame(for: size, screenFrame: screen.frame))
-        let view = ClaudeCodeNotchView(model: model) { [weak activity] id, decision in
-            activity?.decide(id, decision)
-        }
+        let view = ClaudeCodeNotchView(
+            model: model,
+            onDecision: { [weak activity] id, decision in activity?.decide(id, decision) },
+            onOffer: { turnOn in ClaudeCodeIntegration.shared.answerOffer(turnOn: turnOn) })
         panel.contentView = NotchRecorderHostingController(rootView: view).view
         self.model = model
         self.panel = panel

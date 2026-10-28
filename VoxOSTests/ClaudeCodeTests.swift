@@ -563,4 +563,41 @@ struct ClaudeCodeTests {
         let arguments = ClaudeCodeProcesses.arguments(of: getpid())
         #expect(arguments?.isEmpty == false)
     }
+
+    // MARK: First-launch offer
+
+    @Test func theOfferIsMadeOnceAndOnlyWhereItHelps() {
+        #expect(
+            ClaudeCodeIntegration.shouldOffer(
+                enabled: false, answered: false, onboarded: true, claudeCodeInstalled: true))
+        #expect(
+            !ClaudeCodeIntegration.shouldOffer(
+                enabled: true, answered: false, onboarded: true, claudeCodeInstalled: true))
+        #expect(
+            !ClaudeCodeIntegration.shouldOffer(
+                enabled: false, answered: true, onboarded: true, claudeCodeInstalled: true),
+            "asked once, either answer is final")
+        #expect(
+            !ClaudeCodeIntegration.shouldOffer(
+                enabled: false, answered: false, onboarded: false, claudeCodeInstalled: true),
+            "not in the middle of onboarding")
+        #expect(
+            !ClaudeCodeIntegration.shouldOffer(
+                enabled: false, answered: false, onboarded: true, claudeCodeInstalled: false),
+            "no Claude Code, nothing to offer")
+    }
+
+    @Test func theOfferShowsWhileOffWaitsForTheRecorderAndGivesWayOnceOn() {
+        func content(enabled: Bool, recorder: Bool = false) -> ClaudeCodeNotch.Content {
+            ClaudeCodeNotch.content(
+                prompts: [], status: .none, enabled: enabled, approvalsEnabled: true, statusEnabled: true,
+                recorderVisible: recorder, offering: true)
+        }
+        #expect(content(enabled: false) == .offer)
+        #expect(content(enabled: false, recorder: true) == .hidden)
+        #expect(content(enabled: true) == .hidden, "turned on elsewhere, so nothing left to ask")
+        let size = ClaudeCodeNotch.size(for: .offer, notchWidth: 185, notchHeight: 32)
+        #expect(size.height == 32 + ClaudeCodeNotch.offerContentHeight)
+        #expect(ClaudeCodeNotch.Content.offer.isCard)
+    }
 }

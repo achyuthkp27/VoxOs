@@ -48,6 +48,8 @@ enum DefaultsKeys {
     static let claudeCodeApprovalsEnabled = "ClaudeCodeApprovalsEnabled"
     /// The notch shows when a session is working and when it finishes.
     static let claudeCodeStatusEnabled = "ClaudeCodeStatusEnabled"
+    /// The one-time "Show Claude Code in the notch?" card has been answered.
+    static let claudeCodeOfferAnswered = "ClaudeCodeOfferAnswered"
     static let transcriptionPrompt = "TranscriptionPrompt"
     static let currentTranscriptionModel = "CurrentTranscriptionModel"
     static let currentModel = "CurrentModel"
