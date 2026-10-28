@@ -6,6 +6,7 @@ import UniformTypeIdentifiers
 enum NotchHomePage: String, CaseIterable, Identifiable {
     case music
     case today
+    case weather
     case reminders
     case timer
     case shelf
@@ -18,6 +19,7 @@ enum NotchHomePage: String, CaseIterable, Identifiable {
         switch self {
         case .music: return "music.note"
         case .today: return "calendar"
+        case .weather: return "cloud.sun.fill"
         case .reminders: return "checklist"
         case .timer: return "timer"
         case .shelf: return "tray"
@@ -30,6 +32,7 @@ enum NotchHomePage: String, CaseIterable, Identifiable {
         switch self {
         case .music: return String(localized: "Music")
         case .today: return String(localized: "Calendar")
+        case .weather: return String(localized: "Weather")
         case .reminders: return String(localized: "Reminders")
         case .timer: return String(localized: "Pomodoro")
         case .shelf: return String(localized: "Shelf")

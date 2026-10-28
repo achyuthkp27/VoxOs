@@ -388,6 +388,8 @@ struct NotchHomeView: View {
             NotchTimerPage(timers: .shared)
         case .today:
             NotchTodayPage(today: .shared)
+        case .weather:
+            NotchWeatherPage(today: .shared)
         case .reminders:
             NotchRemindersPage(reminders: .shared)
         case .shelf:

@@ -341,4 +341,21 @@ struct NotchNoticesTests {
         #expect(left == [0.5, 0.25])
         #expect(right == [-0.5, -0.25])
     }
+
+    // MARK: Weather
+
+    @Test func theSceneFollowsTheConditions() {
+        #expect(NotchToday.kind(for: "clear sky") == .clear)
+        #expect(NotchToday.kind(for: "mainly clear") == .partlyCloudy)
+        #expect(NotchToday.kind(for: "partly cloudy") == .partlyCloudy)
+        #expect(NotchToday.kind(for: "overcast") == .cloudy)
+        #expect(NotchToday.kind(for: "fog") == .fog)
+        #expect(NotchToday.kind(for: "slight rain showers") == .rain)
+        #expect(NotchToday.kind(for: "light drizzle") == .rain)
+        #expect(NotchToday.kind(for: "moderate snow fall") == .snow)
+        #expect(NotchToday.kind(for: "thunderstorm with slight hail") == .thunder, "a storm, though it rains too")
+        let weather = NotchToday.weather(from: ["temperature_c": 21.4, "conditions": "clear sky", "is_day": false])
+        #expect(weather?.isDay == false)
+        #expect(weather?.kind == .clear)
+    }
 }

@@ -33,6 +33,21 @@ final class NotchToday: ObservableObject {
         let symbol: String
         let conditions: String
         let place: String?
+        /// Daylight where the weather is; nil when the service did not say.
+        var isDay: Bool? = nil
+
+        /// What the Weather page draws.
+        enum Kind: Equatable {
+            case clear
+            case partlyCloudy
+            case cloudy
+            case fog
+            case rain
+            case snow
+            case thunder
+        }
+
+        var kind: Kind { NotchToday.kind(for: conditions) }
     }
 
     enum CalendarAccess: Equatable {
@@ -293,7 +308,20 @@ final class NotchToday: ObservableObject {
         return Weather(
             temperature: Int(temperature.rounded()), high: (today?["high_c"] as? Double).map { Int($0.rounded()) },
             low: (today?["low_c"] as? Double).map { Int($0.rounded()) }, symbol: symbol(for: conditions),
-            conditions: conditions, place: summary["place"] as? String)
+            conditions: conditions, place: summary["place"] as? String, isDay: summary["is_day"] as? Bool)
+    }
+
+    /// From Open-Meteo's weather-code text ("clear sky", "partly cloudy", "slight rain showers",
+    /// "thunderstorm with hail"…), the scene to draw; storms first, since they come with rain.
+    nonisolated static func kind(for conditions: String) -> Weather.Kind {
+        let text = conditions.lowercased()
+        if text.contains("thunder") { return .thunder }
+        if text.contains("snow") { return .snow }
+        if text.contains("rain") || text.contains("drizzle") || text.contains("shower") { return .rain }
+        if text.contains("fog") { return .fog }
+        if text.contains("overcast") { return .cloudy }
+        if text.contains("partly") || text.contains("mainly") || text.contains("cloud") { return .partlyCloudy }
+        return .clear
     }
 
     nonisolated static func symbol(for conditions: String) -> String {

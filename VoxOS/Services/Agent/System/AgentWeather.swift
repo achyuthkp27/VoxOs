@@ -28,7 +28,7 @@ enum AgentWeather {
             .init(name: "longitude", value: String(format: "%.4f", longitude)),
             .init(
                 name: "current",
-                value: "temperature_2m,apparent_temperature,weather_code,wind_speed_10m,relative_humidity_2m"),
+                value: "temperature_2m,apparent_temperature,weather_code,wind_speed_10m,relative_humidity_2m,is_day"),
             .init(
                 name: "daily", value: "temperature_2m_max,temperature_2m_min,precipitation_probability_max,weather_code"
             ),
@@ -49,6 +49,7 @@ enum AgentWeather {
         if let feels = current["apparent_temperature"] as? Double { out["feels_like_c"] = feels }
         if let wind = current["wind_speed_10m"] as? Double { out["wind_kmh"] = wind }
         if let humidity = current["relative_humidity_2m"] as? Double { out["humidity_pct"] = humidity }
+        if let day = int(current["is_day"]) { out["is_day"] = day == 1 }
 
         if let daily = json["daily"] as? [String: Any],
             let highs = daily["temperature_2m_max"] as? [Double], let lows = daily["temperature_2m_min"] as? [Double]
