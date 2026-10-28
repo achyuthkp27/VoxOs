@@ -592,8 +592,6 @@ private struct ClaudeCodePlanCard: View {
             Spacer(minLength: 8)
             ClaudeCodeNotchButton(title: String(localized: "Keep planning"), prominent: false) {
                 revising = true
-                onKeyboard(true)
-                fieldFocused = true
             }
             .padding(.trailing, 4)
             ClaudeCodeNotchButton(title: String(localized: "Approve"), prominent: true) {
@@ -620,7 +618,7 @@ private struct ClaudeCodePlanCard: View {
         .background(
             Capsule().strokeBorder(AppTheme.Accent.primary.opacity(0.7), lineWidth: 1)
         )
-        .onAppear { fieldFocused = true }
+        .onAppear(perform: takeKeyboard)
         // Answered in the terminal while typing here: the panel gives the keyboard back.
         .onDisappear { onKeyboard(false) }
     }
@@ -629,6 +627,14 @@ private struct ClaudeCodePlanCard: View {
         let text = feedback
         stopRevising()
         onDecision(prompt.id, .keepPlanning(text))
+    }
+
+    /// The panel becomes key only once the field exists, and the field takes focus a run-loop
+    /// turn later: focus asked for earlier went to the window's first key view (measured: with
+    /// keyboard navigation on, the Send button, which a typed space then pressed).
+    private func takeKeyboard() {
+        onKeyboard(true)
+        DispatchQueue.main.async { fieldFocused = true }
     }
 
     private func stopRevising() {
@@ -684,8 +690,6 @@ private struct ClaudeCodeQuestionCard: View {
                         picked: false
                     ) {
                         typing = true
-                        onKeyboard(true)
-                        fieldFocused = true
                     }
                 }
             }
@@ -729,7 +733,7 @@ private struct ClaudeCodeQuestionCard: View {
             RoundedRectangle(cornerRadius: 10, style: .continuous).strokeBorder(
                 AppTheme.Accent.primary.opacity(0.7), lineWidth: 1)
         )
-        .onAppear { fieldFocused = true }
+        .onAppear(perform: takeKeyboard)
         // Answered in the terminal while typing here: the panel gives the keyboard back.
         .onDisappear { onKeyboard(false) }
     }
@@ -741,6 +745,12 @@ private struct ClaudeCodeQuestionCard: View {
         let ticked = question.multiSelect ? question.answer(choosing: picked) : ""
         stopTyping()
         record(ticked.isEmpty ? text : ticked + ", " + text)
+    }
+
+    /// See ClaudeCodePlanCard.takeKeyboard.
+    private func takeKeyboard() {
+        onKeyboard(true)
+        DispatchQueue.main.async { fieldFocused = true }
     }
 
     private func stopTyping() {
