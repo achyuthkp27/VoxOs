@@ -46,6 +46,8 @@ struct SettingsView: View {
     @AppStorage(DefaultsKeys.notchHomeEnabled) private var notchHomeEnabled = true
     @AppStorage(DefaultsKeys.notchDeviceAlertsEnabled) private var notchDeviceAlertsEnabled = true
     @AppStorage(DefaultsKeys.notchHomeInFullScreen) private var notchHomeInFullScreen = false
+    @AppStorage(DefaultsKeys.notchPrivacyEnabled) private var notchPrivacyEnabled = true
+    @AppStorage(DefaultsKeys.notchMeetingsEnabled) private var notchMeetingsEnabled = true
     @AppStorage(DefaultsKeys.notchMusicEnabled) private var notchMusicEnabled = true
     @AppStorage(DefaultsKeys.notchMusicBarsEnabled) private var notchMusicBarsEnabled = false
     @AppStorage(DefaultsKeys.notchMusicBarsOnBattery) private var notchMusicBarsOnBattery = true
@@ -105,7 +107,8 @@ struct SettingsView: View {
         "Music in the Notch", "Live Music Bars", "Live Bars on Battery", "music", "now playing", "visualizer",
         "Notch Home",
         "Device Alerts", "bluetooth", "airpods", "wifi", "output", "speakers", "headphones", "charging",
-        "low battery", "timer", "pomodoro", "shelf", "calendar",
+        "low battery", "timer", "pomodoro", "shelf", "calendar", "Mic & Camera in Use", "microphone", "camera",
+        "mute", "Meeting Countdown", "meeting", "zoom", "join",
         "Show in Full Screen", "full screen", "fullscreen",
     ]
     private static let generalTerms = [
@@ -630,7 +633,7 @@ struct SettingsView: View {
                         HStack(spacing: 2) {
                             Text("Notch Home")
                             InfoTip(
-                                "Hover the notch, or drag files onto it, to open Music, Timer, Today and Shelf. Between hovers it shows one thing at a time: a notice, a running timer, or the playing track."
+                                "Push the pointer to the top of the notch, or drag files toward it, to open Music, Calendar, Reminders, Pomodoro and Shelf. Between hovers it shows one thing at a time: a notice, the next meeting, a microphone or camera in use, a running timer, or the playing track."
                             )
                         }
                     }
@@ -650,6 +653,22 @@ struct SettingsView: View {
                                 Text("Device Alerts")
                                 InfoTip(
                                     "A short notice when AirPods or another Bluetooth device connects (with its battery), when the sound moves to another output, when Wi-Fi joins or drops, and when the power adapter goes in or out or the battery runs low."
+                                )
+                            }
+                        }
+                        Toggle(isOn: $notchPrivacyEnabled) {
+                            HStack(spacing: 2) {
+                                Text("Mic & Camera in Use")
+                                InfoTip(
+                                    "While another app uses the microphone or a camera, the notch shows it, with the app's icon. A click on the microphone mutes it; the mute is undone when the call ends."
+                                )
+                            }
+                        }
+                        Toggle(isOn: $notchMeetingsEnabled) {
+                            HStack(spacing: 2) {
+                                Text("Meeting Countdown")
+                                InfoTip(
+                                    "Five minutes before a meeting in your calendar, the notch counts down to it, with Join when the event has a video-call link. Needs Calendar access, which the Calendar page asks for."
                                 )
                             }
                         }

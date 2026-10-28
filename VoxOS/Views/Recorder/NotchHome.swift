@@ -6,11 +6,13 @@ import SwiftUI
 import os
 
 /// The notch between dictations. Collapsed it says one thing at a time; hovered (or with files
-/// dragged onto it) it opens into a small card with four pages: Music, Timer, Today and Shelf.
+/// dragged toward it) it opens into a small card with five pages: Music, Calendar, Reminders,
+/// Pomodoro and Shelf.
 ///
-/// Collapsed, in order: a passing notice (a device connected, a timer finished), a running timer,
-/// the playing track; otherwise a notch-sized black target that disappears into the hardware
-/// notch and is only there to be hovered or dropped on.
+/// Collapsed, in order: a passing notice (a device connected, a timer finished, the battery), the
+/// next meeting, a microphone or camera in use, a running timer, the playing track; otherwise a
+/// notch-sized black target that disappears into the hardware notch and is only there to be
+/// hovered or dropped on.
 ///
 /// Its own persistent panel, one level under Claude Code's: a Claude Code card (a request or a
 /// question) or the recorder hides it, while its band takes the place of Claude Code's "working"
@@ -23,6 +25,10 @@ enum NotchHome {
     static var timerWing: CGFloat { wing(holding: 40) }
     /// Wide enough for an icon and a short device name, or "Disconnected".
     static var noticeWing: CGFloat { wing(holding: 92) }
+    /// A microphone and a camera, or an app's icon.
+    static var privacyWing: CGFloat { wing(holding: 36) }
+    /// How far round the open card a dragged file opens the shelf.
+    static let dragMargin: CGFloat = 24
 
     static func wing(holding content: CGFloat) -> CGFloat {
         NotchDesign.listening.shoulder + NotchDesign.contentInset + content + NotchDesign.contentInset
@@ -53,6 +59,10 @@ enum NotchHome {
         case playing
         case timer
         case notice(Notice)
+        /// A meeting about to start: a countdown, and Join when it has a link.
+        case meeting(NotchToday.Event)
+        /// Another app has the microphone or a camera; a click on the microphone mutes it.
+        case privacy(NotchPrivacy.State)
         case expanded
 
         /// Shows something beyond the hardware notch.
@@ -70,14 +80,19 @@ enum NotchHome {
         enabled && !lowPowerMode && (!onBattery || allowedOnBattery)
     }
     static var showsInFullScreen: Bool { UserDefaults.standard.bool(forKey: DefaultsKeys.notchHomeInFullScreen) }
+    static var meetingsEnabled: Bool { UserDefaults.standard.bool(forKey: DefaultsKeys.notchMeetingsEnabled) }
 
+    /// Collapsed, in order: a passing notice, the next meeting, a microphone or camera in use, a
+    /// running timer, the playing track.
     static func content(
         enabled: Bool, hasNotch: Bool, blocked: Bool, hovered: Bool, dropping: Bool, notice: Notice?,
-        timerRunning: Bool, musicPlaying: Bool
+        timerRunning: Bool, musicPlaying: Bool, meeting: NotchToday.Event? = nil, privacy: NotchPrivacy.State? = nil
     ) -> Content {
         guard enabled, hasNotch, !blocked else { return .hidden }
         if hovered || dropping { return .expanded }
         if let notice { return .notice(notice) }
+        if let meeting { return .meeting(meeting) }
+        if let privacy, privacy.isActive { return .privacy(privacy) }
         if timerRunning { return .timer }
         if musicPlaying { return .playing }
         return .bare
@@ -91,8 +106,10 @@ enum NotchHome {
             return CGSize(width: notchWidth + wing * 2, height: notchHeight)
         case .timer:
             return CGSize(width: notchWidth + timerWing * 2, height: notchHeight)
-        case .notice:
+        case .notice, .meeting:
             return CGSize(width: notchWidth + noticeWing * 2, height: notchHeight)
+        case .privacy:
+            return CGSize(width: notchWidth + privacyWing * 2, height: notchHeight)
         case .expanded:
             return CGSize(
                 width: max(NotchDesign.expandedWidth, notchWidth + wing * 2), height: notchHeight + Card.height)
@@ -102,7 +119,7 @@ enum NotchHome {
     static func radii(for content: Content) -> NotchDesign.Radii {
         switch content {
         case .hidden, .bare: return NotchDesign.resting
-        case .playing, .timer, .notice: return NotchDesign.listening
+        case .playing, .timer, .notice, .meeting, .privacy: return NotchDesign.listening
         case .expanded: return NotchDesign.expanded
         }
     }
@@ -192,6 +209,8 @@ struct NotchHomeView: View {
     let onPage: (Bool) -> Void
     /// A click-drag ended: where it started (window x) and how far it went.
     let onDrag: (CGFloat, CGSize) -> Void
+    let onToggleMute: () -> Void
+    let onJoin: (NotchToday.Event) -> Void
     @AppStorage(DefaultsKeys.notchMusicBarsEnabled) private var barsEnabled = false
     @Environment(\.accessibilityReduceMotion) private var reduceMotion
 
@@ -344,6 +363,17 @@ struct NotchHomeView: View {
             }
             .foregroundStyle(.white)
             .frame(maxWidth: NotchHome.noticeWing - inset - NotchDesign.contentInset, alignment: .leading)
+        case .meeting(let meeting):
+            HStack(spacing: 7) {
+                Image(systemName: meeting.joinURL == nil ? "calendar" : "video.fill")
+                    .font(.system(size: 11, weight: .semibold))
+                    .foregroundStyle(meeting.color)
+                Text(verbatim: meeting.title).font(.app(size: 12, weight: .semibold)).lineLimit(1)
+            }
+            .foregroundStyle(.white)
+            .frame(maxWidth: NotchHome.noticeWing - inset - NotchDesign.contentInset, alignment: .leading)
+        case .privacy(let privacy):
+            NotchPrivacyGlyphs(state: privacy, onToggleMute: onToggleMute)
         case .expanded:
             // The player's name on the Music page (several can play at once), the page's elsewhere.
             NotchHomePageLabel(
@@ -396,6 +426,27 @@ struct NotchHomeView: View {
                     .foregroundStyle(.white.opacity(0.65))
                     .lineLimit(1)
             }
+        case .meeting(let meeting):
+            HStack(spacing: 6) {
+                // Meetings start on the minute, so a minute's tick keeps the count right.
+                TimelineView(.everyMinute) { context in
+                    Text(verbatim: NotchToday.countdown(to: meeting.start, now: context.date))
+                        .font(.appMono(size: 12, weight: .semibold))
+                        .foregroundStyle(.white.opacity(0.75))
+                        .monospacedDigit()
+                }
+                if meeting.joinURL != nil {
+                    NotchJoinButton { onJoin(meeting) }
+                }
+            }
+        case .privacy(let privacy):
+            if let icon = NotchHomeApp.icon(for: privacy.microphoneApp) {
+                Image(nsImage: icon)
+                    .resizable()
+                    .frame(width: 16, height: 16)
+                    .help(NotchHomeApp.name(for: privacy.microphoneApp) ?? "")
+                    .accessibilityLabel(Text(verbatim: NotchHomeApp.name(for: privacy.microphoneApp) ?? ""))
+            }
         case .expanded:
             NotchHomePageButton(page: model.page) { onPage(true) }
         default:
@@ -414,6 +465,59 @@ struct NotchHomeView: View {
             .mask(LinearGradient(colors: [.clear, .white], startPoint: .top, endPoint: UnitPoint(x: 0.5, y: 0.35)))
             .opacity(content.isVisible ? 1 : 0)
             .frame(width: size.width, height: size.height)
+    }
+}
+
+/// The microphone (a click mutes or unmutes it) and the camera, in macOS's own indicator colours.
+private struct NotchPrivacyGlyphs: View {
+    let state: NotchPrivacy.State
+    let onToggleMute: () -> Void
+    @State private var hovered = false
+
+    var body: some View {
+        HStack(spacing: 7) {
+            if state.microphone {
+                Button(action: onToggleMute) {
+                    Image(systemName: state.muted ? "mic.slash.fill" : "mic.fill")
+                        .font(.system(size: 12, weight: .semibold))
+                        .foregroundStyle(state.muted ? ClaudeCodeNotch.failedColor : .orange)
+                        .opacity(hovered ? 0.8 : 1)
+                        .frame(width: 16, height: 20)
+                        .contentShape(Rectangle())
+                }
+                .buttonStyle(.plain)
+                .onHover { hovered = $0 }
+                .help(state.muted ? "Microphone muted. Click to unmute." : "Microphone in use. Click to mute.")
+                .accessibilityLabel(Text(state.muted ? "Unmute the microphone" : "Mute the microphone"))
+            }
+            if state.camera {
+                Image(systemName: "video.fill")
+                    .font(.system(size: 11, weight: .semibold))
+                    .foregroundStyle(ClaudeCodeNotch.doneColor)
+                    .accessibilityLabel(Text("Camera in use"))
+            }
+        }
+    }
+}
+
+/// "Join", on the meeting band and beside a meeting on the Calendar page.
+struct NotchJoinButton: View {
+    let action: () -> Void
+    @State private var hovered = false
+
+    var body: some View {
+        Button(action: action) {
+            Text("Join")
+                .font(.app(size: 11, weight: .semibold))
+                .foregroundStyle(.white)
+                .padding(.horizontal, 9)
+                .frame(height: 18)
+                .background(Capsule().fill(ClaudeCodeNotch.doneColor.opacity(hovered ? 0.75 : 0.55)))
+                .contentShape(Capsule())
+        }
+        .buttonStyle(.plain)
+        .onHover { hovered = $0 }
+        .accessibilityLabel(Text("Join the meeting"))
     }
 }
 
@@ -850,6 +954,13 @@ final class NotchHomeManager {
     private var resizeTask: Task<Void, Never>?
     private var pointerWatch: Timer?
     private var artworkCache: (key: String, image: NSImage?, tint: Color)?
+    /// Files dragged in another app, seen through a global mouse monitor (see `globalMouse`).
+    private var dragMonitor: Any?
+    private var dragChangeCount = 0
+    /// A dragged file reached the notch's area and opened the card on the shelf.
+    private var shelfForDrag = false
+    private var meetingsWatched = false
+    private var meetingWatch: AnyCancellable?
     private let logger = Logger(subsystem: "com.achyuthkp.voxos", category: "NotchHome")
 
     init(uiManager: RecorderUIManager) {
@@ -867,6 +978,8 @@ final class NotchHomeManager {
         NotchDeviceAlerts.shared.$notice.receive(on: RunLoop.main).sink { [weak self] _ in self?.refresh() }
             .store(in: &cancellables)
         NotchPlayers.shared.$entries.receive(on: RunLoop.main).sink { [weak self] _ in self?.refresh() }
+            .store(in: &cancellables)
+        NotchPrivacy.shared.$state.receive(on: RunLoop.main).sink { [weak self] _ in self?.refresh() }
             .store(in: &cancellables)
         // Entering or leaving a full-screen app is a Space change.
         NSWorkspace.shared.notificationCenter.publisher(for: NSWorkspace.activeSpaceDidChangeNotification)
@@ -912,6 +1025,9 @@ final class NotchHomeManager {
         } else {
             NotchDeviceAlerts.shared.stop()
         }
+        if enabled && NotchPrivacy.isEnabled { NotchPrivacy.shared.start() } else { NotchPrivacy.shared.stop() }
+        let meeting = watchMeetings(enabled && NotchHome.meetingsEnabled && NotchToday.accessGranted)
+        watchDrags(enabled)
 
         let tracks = wantsMusic ? makeTracks() : []
         let screenForState = self.screen ?? NSScreen.screens.first { $0.safeAreaInsets.top > 0 }
@@ -925,7 +1041,8 @@ final class NotchHomeManager {
             blocked: uiManager.isRecorderPanelVisible || uiManager.isClaudeCodeCardVisible, hovered: hovered,
             dropping: dropping,
             notice: Self.notice(device: NotchDeviceAlerts.shared.notice, finished: timers.finished),
-            timerRunning: timers.running != nil, musicPlaying: track?.isPlaying == true)
+            timerRunning: timers.running != nil, musicPlaying: track?.isPlaying == true, meeting: meeting,
+            privacy: NotchPrivacy.shared.state)
         let band = Self.bandKey(content, track: track, timer: timers.running)
         if band != nil, band == dismissedBand { content = .bare }
         if let screen { measureClearance(on: screen) }
@@ -958,6 +1075,64 @@ final class NotchHomeManager {
         if uiManager.isNotchHomeVisible != content.isVisible { uiManager.isNotchHomeVisible = content.isVisible }
     }
 
+    /// The meeting countdown runs only while wanted and the calendar may be read; the calendar is
+    /// not touched otherwise, so nothing asks for access from here.
+    private func watchMeetings(_ wanted: Bool) -> NotchToday.Event? {
+        if wanted != meetingsWatched {
+            meetingsWatched = wanted
+            if wanted, meetingWatch == nil {
+                meetingWatch = NotchToday.shared.$meeting.dropFirst().receive(on: RunLoop.main)
+                    .sink { [weak self] _ in self?.refresh() }
+            }
+            NotchToday.shared.watchMeetings(wanted)
+        }
+        return wanted ? NotchToday.shared.meeting : nil
+    }
+
+    /// A file dragged in another app toward the notch opens the shelf before it gets there: the
+    /// hardware notch alone is a small target to find with a file in hand. A global monitor sees
+    /// other apps' events only; a drag from VoxOS's own windows is over them already.
+    private func watchDrags(_ wanted: Bool) {
+        if wanted, dragMonitor == nil, !ProcessIdentity.isTestHost {
+            dragMonitor = NSEvent.addGlobalMonitorForEvents(matching: [.leftMouseDown, .leftMouseDragged]) {
+                [weak self] event in
+                MainActor.assumeIsolated { self?.globalMouse(event) }
+            }
+        } else if !wanted, let dragMonitor {
+            NSEvent.removeMonitor(dragMonitor)
+            self.dragMonitor = nil
+        }
+    }
+
+    /// The drag pasteboard's count is read when the button goes down, so only a drag that wrote
+    /// to it since (a real drag, not a window move or a text selection) counts, once.
+    private func globalMouse(_ event: NSEvent) {
+        switch event.type {
+        case .leftMouseDown:
+            dragChangeCount = NSPasteboard(name: .drag).changeCount
+        case .leftMouseDragged:
+            guard !hovered, !dropping, let zone = dragZone(), zone.contains(NSEvent.mouseLocation) else { return }
+            let board = NSPasteboard(name: .drag)
+            guard board.changeCount != dragChangeCount else { return }
+            dragChangeCount = board.changeCount
+            guard board.types?.contains(.fileURL) == true else { return }
+            ActivityTrail.mark("notch home shelf opened for a drag")
+            shelfForDrag = true
+            setHovered(true)
+        default:
+            break
+        }
+    }
+
+    /// The open card's own frame and a margin round it, so the card opens under the pointer and
+    /// the file is dropped on it.
+    private func dragZone() -> CGRect? {
+        guard let model, let screen, model.content != .hidden else { return nil }
+        let size = NotchHome.size(for: .expanded, notchWidth: model.notchWidth, notchHeight: model.notchHeight)
+        return NotchHome.frame(for: size, screenFrame: screen.frame)
+            .insetBy(dx: -NotchHome.dragMargin, dy: -NotchHome.dragMargin)
+    }
+
     /// The front app fills the notched screen: a full-screen video, game or app, where the menu
     /// bar is hidden and the notch is best left alone. Window bounds need no permission.
     static func frontAppIsFullScreen(on screen: NSScreen) -> Bool {
@@ -982,6 +1157,8 @@ final class NotchHomeManager {
         switch content {
         case .playing: return allowedWing >= NotchHome.wing
         case .timer: return allowedWing >= NotchHome.timerWing
+        case .privacy: return allowedWing >= NotchHome.privacyWing
+        // A meeting is said for minutes, then gone, like a notice.
         default: return true
         }
     }
@@ -1063,6 +1240,10 @@ final class NotchHomeManager {
         case .playing: return "playing:" + (track?.id ?? "")
         case .timer: return "timer:\(timer?.ends.timeIntervalSince1970 ?? 0)"
         case .notice(let notice): return "notice:\(notice.title)|\(notice.detail ?? "")"
+        case .meeting(let meeting): return "meeting:\(meeting.id)"
+        // Not the mute: muting must not bring back a band that was put away.
+        case .privacy(let privacy):
+            return "privacy:\(privacy.microphone)|\(privacy.camera)|\(privacy.microphoneApp ?? "")"
         default: return nil
         }
     }
@@ -1219,6 +1400,7 @@ final class NotchHomeManager {
         hovered = inside
         ActivityTrail.mark("notch home hover \(inside)")
         pointerLeftAt = nil
+        if !inside { shelfForDrag = false }
         if inside { NotchHome.tap() }
         if inside {
             // mouseExited is not reliable on a panel that resizes under the pointer, so while
@@ -1239,7 +1421,10 @@ final class NotchHomeManager {
     /// While open: closes once the pointer leaves.
     private func checkPointer() {
         guard let panel, hovered else { return }
-        guard !panel.frame.insetBy(dx: -4, dy: -4).contains(NSEvent.mouseLocation) else {
+        // Opened by a drag, the card stays while the file is anywhere in the area that opened it:
+        // the margin below the card counts, or the card would close under the file it is for.
+        let area = (shelfForDrag ? dragZone() : nil) ?? panel.frame.insetBy(dx: -4, dy: -4)
+        guard !area.contains(NSEvent.mouseLocation) else {
             pointerLeftAt = nil
             return
         }
@@ -1269,7 +1454,8 @@ final class NotchHomeManager {
         if model.track != track { model.track = track }
         if content == .expanded, model.content != .expanded {
             model.page = NotchHomePage.preferred(
-                hasTrack: track != nil, timerRunning: timerRunning, dropping: dropping)
+                hasTrack: track != nil, timerRunning: timerRunning, dropping: dropping || shelfForDrag,
+                meeting: meetingsWatched && NotchToday.shared.meeting != nil)
             readModes(of: track)
         }
         if model.page == .music, track == nil { model.page = .today }
@@ -1335,7 +1521,9 @@ final class NotchHomeManager {
             onDropTargeted: { [weak self] targeted in self?.setDropTargeted(targeted) },
             onSelectTrack: { [weak self] bundleID in self?.selectPlayer(bundleID) },
             onPage: { [weak self] forward in self?.turnPage(forward: forward) },
-            onDrag: { [weak self] startX, translation in self?.dragged(from: startX, by: translation) })
+            onDrag: { [weak self] startX, translation in self?.dragged(from: startX, by: translation) },
+            onToggleMute: { NotchPrivacy.shared.toggleMute() },
+            onJoin: { NotchToday.shared.join($0) })
         panel.contentView = NotchRecorderHostingController(rootView: view).view
         self.model = model
         self.panel = panel

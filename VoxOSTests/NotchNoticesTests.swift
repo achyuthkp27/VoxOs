@@ -81,4 +81,119 @@ struct NotchNoticesTests {
         #expect(!NotchAudioOutput.isWorthANotice(transport: kAudioDeviceTransportTypeVirtual))
         #expect(!NotchAudioOutput.isWorthANotice(transport: kAudioDeviceTransportTypeAggregate))
     }
+
+    // MARK: Meetings
+
+    private static let nine = Date(timeIntervalSince1970: 1_800_000_000)
+
+    private static func event(
+        _ id: String, startsIn minutes: Double, length: Double = 30, allDay: Bool = false, link: URL? = nil
+    ) -> NotchToday.Event {
+        let start = nine.addingTimeInterval(minutes * 60)
+        return NotchToday.Event(
+            id: id, title: id, start: start, end: start.addingTimeInterval(length * 60), isAllDay: allDay,
+            color: .white, joinURL: link)
+    }
+
+    @Test func theCountdownCoversFiveMinutesEitherSideOfTheStart() {
+        let soon = Self.event("Standup", startsIn: 4)
+        let later = Self.event("Review", startsIn: 60)
+        var found = NotchToday.meeting(in: [later, soon], now: Self.nine)
+        #expect(found.current?.id == "Standup")
+        #expect(found.next?.id == "Review")
+        found = NotchToday.meeting(in: [Self.event("Early", startsIn: 6)], now: Self.nine)
+        #expect(found.current == nil, "more than five minutes out")
+        #expect(found.next?.id == "Early")
+        #expect(NotchToday.meeting(in: [Self.event("Late", startsIn: -4)], now: Self.nine).current?.id == "Late")
+        #expect(NotchToday.meeting(in: [Self.event("Gone", startsIn: -6)], now: Self.nine).current == nil)
+        #expect(
+            NotchToday.meeting(in: [Self.event("Holiday", startsIn: 2, allDay: true)], now: Self.nine).current == nil)
+        #expect(
+            NotchToday.meeting(in: [Self.event("Short", startsIn: -3, length: 2)], now: Self.nine).current == nil,
+            "a meeting that has ended")
+    }
+
+    @Test func theNextCheckIsWhenTheAnswerCanChange() {
+        let soon = Self.event("Standup", startsIn: 4)
+        let later = Self.event("Review", startsIn: 60)
+        #expect(
+            NotchToday.nextCheck(current: soon, next: later, now: Self.nine)
+                == soon.start.addingTimeInterval(NotchToday.meetingGrace))
+        #expect(
+            NotchToday.nextCheck(current: nil, next: later, now: Self.nine)
+                == later.start.addingTimeInterval(-NotchToday.meetingLead))
+        #expect(NotchToday.nextCheck(current: nil, next: nil, now: Self.nine) == nil, "nothing to wait for")
+    }
+
+    @Test func theCountdownRoundsUpAndSaysNowFromTheStart() {
+        #expect(NotchToday.countdown(to: Self.nine.addingTimeInterval(270), now: Self.nine) == "5m")
+        #expect(NotchToday.countdown(to: Self.nine.addingTimeInterval(60), now: Self.nine) == "1m")
+        #expect(NotchToday.countdown(to: Self.nine.addingTimeInterval(1), now: Self.nine) == "1m")
+        #expect(NotchToday.countdown(to: Self.nine, now: Self.nine) == "now")
+    }
+
+    @Test func onlyVideoCallLinksAreAWayIn() {
+        let zoom = NotchToday.joinURL(in: [nil, "Room 4", "Join: https://example.zoom.us/j/123456?pwd=x thanks"])
+        #expect(zoom?.host == "example.zoom.us")
+        #expect(NotchToday.joinURL(in: ["https://meet.google.com/abc-defg-hij"])?.host == "meet.google.com")
+        #expect(
+            NotchToday.joinURL(in: [
+                "Agenda: https://docs.example.com/a", "https://teams.microsoft.com/l/meetup-join/x",
+            ])?
+            .host == "teams.microsoft.com", "the first call link, not the first link")
+        #expect(NotchToday.joinURL(in: ["https://notzoom.us/j/1", "https://example.com"]) == nil)
+        #expect(NotchToday.joinURL(in: [nil, ""]) == nil)
+    }
+
+    @Test func joinIsOfferedAroundTheCallOnly() {
+        let link = URL(string: "https://meet.google.com/abc-defg-hij")
+        #expect(NotchToday.canJoin(Self.event("Call", startsIn: 8, link: link), now: Self.nine))
+        #expect(!NotchToday.canJoin(Self.event("Call", startsIn: 30, link: link), now: Self.nine))
+        #expect(!NotchToday.canJoin(Self.event("Call", startsIn: -40, link: link), now: Self.nine), "over")
+        #expect(!NotchToday.canJoin(Self.event("Room", startsIn: 2), now: Self.nine), "no link")
+    }
+
+    // MARK: What the band says
+
+    @Test func aMeetingAndACallComeBetweenANoticeAndATimer() {
+        let notice = NotchHome.Notice(symbol: "wifi", title: "Home", detail: nil)
+        let meeting = Self.event("Standup", startsIn: 3)
+        let call = NotchPrivacy.State(microphone: true, camera: true, microphoneApp: "com.example.calls", muted: false)
+        func content(
+            notice: NotchHome.Notice? = nil, meeting: NotchToday.Event? = nil, privacy: NotchPrivacy.State? = nil
+        )
+            -> NotchHome.Content
+        {
+            NotchHome.content(
+                enabled: true, hasNotch: true, blocked: false, hovered: false, dropping: false, notice: notice,
+                timerRunning: true, musicPlaying: true, meeting: meeting, privacy: privacy)
+        }
+        #expect(content(notice: notice, meeting: meeting, privacy: call) == .notice(notice))
+        #expect(content(meeting: meeting, privacy: call) == .meeting(meeting))
+        #expect(content(privacy: call) == .privacy(call))
+        #expect(content(privacy: .idle) == .timer, "nothing in use, nothing said")
+        #expect(NotchHomePage.preferred(hasTrack: true, timerRunning: true, dropping: false, meeting: true) == .today)
+        #expect(NotchHomePage.preferred(hasTrack: true, timerRunning: true, dropping: true, meeting: true) == .shelf)
+    }
+
+    @Test func aCallBandLastsSoItMustFitButAMeetingNeedNot() {
+        let call = NotchHome.Content.privacy(NotchPrivacy.State(microphone: true))
+        #expect(!NotchHomeManager.fits(call, allowedWing: NotchHome.privacyWing - 1))
+        #expect(NotchHomeManager.fits(call, allowedWing: NotchHome.privacyWing))
+        #expect(NotchHomeManager.fits(.meeting(Self.event("Standup", startsIn: 3)), allowedWing: 0))
+    }
+
+    @Test func mutingDoesNotBringBackABandThatWasPutAway() {
+        let open = NotchPrivacy.State(microphone: true, microphoneApp: "com.example.calls", muted: false)
+        var muted = open
+        muted.muted = true
+        #expect(
+            NotchHomeManager.bandKey(.privacy(open), track: nil, timer: nil)
+                == NotchHomeManager.bandKey(.privacy(muted), track: nil, timer: nil))
+        var withCamera = open
+        withCamera.camera = true
+        #expect(
+            NotchHomeManager.bandKey(.privacy(open), track: nil, timer: nil)
+                != NotchHomeManager.bandKey(.privacy(withCamera), track: nil, timer: nil), "a camera is news")
+    }
 }

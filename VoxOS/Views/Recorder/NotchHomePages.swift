@@ -37,10 +37,12 @@ enum NotchHomePage: String, CaseIterable, Identifiable {
         hasTrack ? allCases : allCases.filter { $0 != .music }
     }
 
-    /// What opening the notch shows: files being dragged in go to the shelf, then whatever is
-    /// running — a timer, then music — and otherwise the day.
-    static func preferred(hasTrack: Bool, timerRunning: Bool, dropping: Bool) -> NotchHomePage {
+    /// What opening the notch shows: files being dragged in go to the shelf, a meeting about to
+    /// start to the calendar, then whatever is running — a timer, then music — and otherwise the
+    /// day.
+    static func preferred(hasTrack: Bool, timerRunning: Bool, dropping: Bool, meeting: Bool = false) -> NotchHomePage {
         if dropping { return .shelf }
+        if meeting { return .today }
         if timerRunning { return .timer }
         if hasTrack { return .music }
         return .today
@@ -315,6 +317,10 @@ struct NotchTodayPage: View {
                                 Text(verbatim: NotchToday.when(event, now: now))
                                     .font(.app(size: 11))
                                     .foregroundStyle(.white.opacity(0.5))
+                            }
+                            if NotchToday.canJoin(event, now: now) {
+                                Spacer(minLength: 6)
+                                NotchJoinButton { today.join(event) }
                             }
                         }
                     }
