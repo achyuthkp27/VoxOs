@@ -71,7 +71,14 @@ final class NotchDownloads: ObservableObject {
             Task { @MainActor in self?.update(id, fraction: fraction) }
         }
         watches[id] = (progress, observation)
-        active.append(Item(id: id, name: Self.displayName(of: progress.fileURL), fraction: progress.fractionCompleted))
+        active.append(
+            Item(id: id, name: Self.displayName(of: Self.file(of: progress)), fraction: progress.fractionCompleted))
+    }
+
+    /// The downloading file. On the subscriber's side `fileURL` is nil and the file is only in
+    /// the user info (measured on macOS 26).
+    nonisolated static func file(of progress: Progress) -> URL? {
+        progress.fileURL ?? progress.userInfo[.fileURLKey] as? URL
     }
 
     private func update(_ id: ObjectIdentifier, fraction: Double, now: Date = Date()) {

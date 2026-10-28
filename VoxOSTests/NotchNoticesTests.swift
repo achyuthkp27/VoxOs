@@ -299,6 +299,10 @@ struct NotchNoticesTests {
         #expect(NotchDownloads.displayName(of: URL(fileURLWithPath: "/tmp/Report.pdf.crdownload")) == "Report.pdf")
         #expect(NotchDownloads.displayName(of: URL(fileURLWithPath: "/tmp/Movie.mov.download")) == "Movie.mov")
         #expect(NotchDownloads.displayName(of: URL(fileURLWithPath: "/tmp/notes.txt")) == "notes.txt")
+        // As a subscriber receives it: no fileURL, the file only in the user info.
+        let subscribed = Progress(totalUnitCount: 1)
+        subscribed.setUserInfoObject(URL(fileURLWithPath: "/tmp/Report.pdf.crdownload"), forKey: .fileURLKey)
+        #expect(NotchDownloads.displayName(of: NotchDownloads.file(of: subscribed)) == "Report.pdf")
         let item = NotchDownloads.Item(id: ObjectIdentifier(NSObject()), name: "a.zip", fraction: 0.4)
         let content = NotchHome.content(
             enabled: true, hasNotch: true, blocked: false, hovered: false, dropping: false, notice: nil,
