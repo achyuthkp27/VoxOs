@@ -56,6 +56,7 @@ enum AppDefaults {
             DefaultsKeys.claudeCodeOfferAnswered: false,
             DefaultsKeys.notchHomeEnabled: true,
             DefaultsKeys.notchDeviceAlertsEnabled: true,
+            DefaultsKeys.notchHomeInFullScreen: false,
             DefaultsKeys.notchMusicEnabled: true,
             // Off: listening to the sound output turns on macOS's purple recording dot.
             DefaultsKeys.notchMusicBarsEnabled: false,

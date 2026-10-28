@@ -45,6 +45,7 @@ struct SettingsView: View {
     @AppStorage(DefaultsKeys.notchIdleTabEnabled) private var notchIdleTabEnabled = false
     @AppStorage(DefaultsKeys.notchHomeEnabled) private var notchHomeEnabled = true
     @AppStorage(DefaultsKeys.notchDeviceAlertsEnabled) private var notchDeviceAlertsEnabled = true
+    @AppStorage(DefaultsKeys.notchHomeInFullScreen) private var notchHomeInFullScreen = false
     @AppStorage(DefaultsKeys.notchMusicEnabled) private var notchMusicEnabled = true
     @AppStorage(DefaultsKeys.notchMusicBarsEnabled) private var notchMusicBarsEnabled = false
     @AppStorage(DictationSend.stopWhenQuietKey) private var dictationStopWhenQuiet = false
@@ -101,6 +102,7 @@ struct SettingsView: View {
         "Notch Material", "Liquid Glass", "Solid Black", "Always-Visible Notch Tab", "notch", "tab",
         "Music in the Notch", "Live Music Bars", "music", "now playing", "visualizer", "Notch Home",
         "Device Alerts", "bluetooth", "airpods", "wifi", "timer", "pomodoro", "shelf", "calendar",
+        "Show in Full Screen", "full screen", "fullscreen",
     ]
     private static let generalTerms = [
         "General", "Hide Dock Icon", "Launch at Login", "Automatically Check for Updates",
@@ -630,6 +632,14 @@ struct SettingsView: View {
                     }
 
                     if notchHomeEnabled {
+                        Toggle(isOn: $notchHomeInFullScreen) {
+                            HStack(spacing: 2) {
+                                Text("Show in Full Screen")
+                                InfoTip(
+                                    "Off: while a full-screen app is in front (a video, a game), Notch Home and its animations step aside. Claude Code requests still show."
+                                )
+                            }
+                        }
                         Toggle("Music in the Notch", isOn: $notchMusicEnabled)
                         Toggle(isOn: $notchDeviceAlertsEnabled) {
                             HStack(spacing: 2) {

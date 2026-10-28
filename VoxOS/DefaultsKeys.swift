@@ -52,6 +52,8 @@ enum DefaultsKeys {
     static let notchHomeEnabled = "NotchHomeEnabled"
     /// A short notice in the notch when a Bluetooth device or Wi-Fi connects or drops.
     static let notchDeviceAlertsEnabled = "NotchDeviceAlertsEnabled"
+    /// Notch Home stays up over a full-screen app (a video, a game); off, it steps aside.
+    static let notchHomeInFullScreen = "NotchHomeInFullScreen"
     /// The notch shows the playing track and opens into a player on hover.
     static let notchMusicEnabled = "NotchMusicEnabled"
     /// The notch's music bars follow the real audio (needs System Audio Recording).

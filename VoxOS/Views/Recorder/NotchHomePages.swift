@@ -44,30 +44,27 @@ enum NotchHomePage: String, CaseIterable, Identifiable {
     }
 }
 
-struct NotchHomePageSelector: View {
-    let pages: [NotchHomePage]
-    let selection: NotchHomePage
-    let onSelect: (NotchHomePage) -> Void
+/// The page you are on, in the top-right corner. Swipe sideways to turn pages; a click moves
+/// to the next one, for a mouse.
+struct NotchHomePageButton: View {
+    let page: NotchHomePage
+    let action: () -> Void
+    @State private var hovered = false
 
     var body: some View {
-        HStack(spacing: 2) {
-            ForEach(pages) { page in
-                Button {
-                    onSelect(page)
-                } label: {
-                    Image(systemName: page.symbol)
-                        .font(.system(size: 11, weight: .semibold))
-                        .foregroundStyle(.white.opacity(page == selection ? 0.95 : 0.4))
-                        .frame(width: 24, height: 20)
-                        .background(Capsule().fill(.white.opacity(page == selection ? 0.12 : 0)))
-                        .contentShape(Capsule())
-                }
-                .buttonStyle(.plain)
-                .help(page.title)
-                .accessibilityLabel(Text(page.title))
-                .accessibilityAddTraits(page == selection ? .isSelected : [])
-            }
+        Button(action: action) {
+            Image(systemName: page.symbol)
+                .font(.system(size: 11, weight: .semibold))
+                .foregroundStyle(.white.opacity(hovered ? 0.95 : 0.7))
+                .frame(width: 24, height: 20)
+                .background(Capsule().fill(.white.opacity(hovered ? 0.14 : 0.08)))
+                .contentShape(Capsule())
         }
+        .buttonStyle(.plain)
+        .onHover { hovered = $0 }
+        .help(String(localized: "\(page.title) · swipe sideways for the next page"))
+        .accessibilityLabel(Text(page.title))
+        .accessibilityHint(Text("Shows the next page"))
     }
 }
 
@@ -284,20 +281,26 @@ struct NotchTodayPage: View {
 struct NotchShelfPage: View {
     @ObservedObject var shelf: NotchShelf
     let dropping: Bool
+    /// Tiles that fit beside the clear button; the rest are counted.
+    static let visible = 5
 
     var body: some View {
         Group {
             if shelf.items.isEmpty || dropping {
                 dropArea
             } else {
+                // No sideways scrolling: a sideways swipe turns the page.
                 HStack(alignment: .center, spacing: 6) {
-                    ScrollView(.horizontal, showsIndicators: false) {
-                        HStack(spacing: 6) {
-                            ForEach(shelf.items) { item in
-                                NotchShelfTile(item: item) { shelf.remove(item.id) }
-                            }
-                        }
+                    ForEach(shelf.items.prefix(Self.visible)) { item in
+                        NotchShelfTile(item: item) { shelf.remove(item.id) }
                     }
+                    if shelf.items.count > Self.visible {
+                        Text(verbatim: "+\(shelf.items.count - Self.visible)")
+                            .font(.app(size: 12, weight: .semibold))
+                            .foregroundStyle(.white.opacity(0.5))
+                            .frame(width: 34)
+                    }
+                    Spacer(minLength: 0)
                     NotchRoundButton(symbol: "trash", label: "Clear the shelf") { shelf.clear() }
                 }
                 .frame(maxHeight: .infinity)

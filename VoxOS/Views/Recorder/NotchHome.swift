@@ -62,6 +62,7 @@ enum NotchHome {
     static var isEnabled: Bool { UserDefaults.standard.bool(forKey: DefaultsKeys.notchHomeEnabled) }
     static var musicEnabled: Bool { UserDefaults.standard.bool(forKey: DefaultsKeys.notchMusicEnabled) }
     static var barsEnabled: Bool { UserDefaults.standard.bool(forKey: DefaultsKeys.notchMusicBarsEnabled) }
+    static var showsInFullScreen: Bool { UserDefaults.standard.bool(forKey: DefaultsKeys.notchHomeInFullScreen) }
 
     static func content(
         enabled: Bool, hasNotch: Bool, blocked: Bool, hovered: Bool, dropping: Bool, notice: Notice?,
@@ -101,6 +102,16 @@ enum NotchHome {
 
     static func frame(for size: CGSize, screenFrame: CGRect) -> CGRect {
         ClaudeCodeNotch.frame(for: size, screenFrame: screenFrame)
+    }
+
+    /// How long the pointer may be outside the open card before it closes.
+    static let leaveGrace: TimeInterval = 0.22
+
+    /// A light tap from the trackpad when the notch opens under the pointer or takes a drop: the
+    /// "you arrived on something" pattern, timed to the frame that shows it. Nothing on a mouse.
+    @MainActor
+    static func tap() {
+        NSHapticFeedbackManager.defaultPerformer.perform(.alignment, performanceTime: .drawCompleted)
     }
 
     static func clock(_ seconds: Double) -> String {
@@ -148,6 +159,8 @@ final class NotchHomeModel: ObservableObject {
     /// Shuffle and repeat as the player reports them; nil when it cannot say.
     @Published var modes: NotchPlaybackModes.State?
     @Published var page: NotchHomePage = .today
+    /// The last page change went forward (a swipe to the left), for the slide's direction.
+    @Published var pagedForward = true
     /// Files are being dragged over the notch.
     @Published var dropping = false
     let notchWidth: CGFloat
@@ -166,6 +179,10 @@ struct NotchHomeView: View {
     let onRepeat: () -> Void
     let onDropTargeted: (Bool) -> Void
     let onSelectTrack: (String?) -> Void
+    /// Next page (true) or previous (false).
+    let onPage: (Bool) -> Void
+    /// A click-drag ended: where it started (window x) and how far it went.
+    let onDrag: (CGFloat, CGSize) -> Void
     @AppStorage(DefaultsKeys.notchMusicBarsEnabled) private var barsEnabled = false
     @Environment(\.accessibilityReduceMotion) private var reduceMotion
 
@@ -175,6 +192,13 @@ struct NotchHomeView: View {
     }
     private var shape: NotchShape { NotchShape(NotchHome.radii(for: content)) }
     private var inset: CGFloat { NotchHome.radii(for: content).shoulder + NotchDesign.contentInset }
+    private var notchRect: CGSize { CGSize(width: model.notchWidth, height: model.notchHeight) }
+
+    /// The hardware notch's span, centred in the window, with a few points to spare.
+    static func opensAt(_ point: CGPoint, width: CGFloat, notch: CGSize) -> Bool {
+        let half = notch.width / 2 + 6
+        return abs(point.x - width / 2) <= half && point.y <= notch.height + 4
+    }
 
     var body: some View {
         ZStack(alignment: .topLeading) {
@@ -183,8 +207,9 @@ struct NotchHomeView: View {
                 notchRow
                 if content == .expanded {
                     page
+                        .id(model.page)
                         .frame(height: NotchHome.Card.height, alignment: .top)
-                        .transition(.opacity)
+                        .transition(.push(from: model.pagedForward ? .trailing : .leading))
                 }
             }
             if content == .expanded, model.page == .music, model.tracks.count > 1 {
@@ -195,34 +220,46 @@ struct NotchHomeView: View {
         .frame(width: size.width, height: size.height, alignment: .top)
         .clipShape(shape)
         .contentShape(shape)
+        // On the drawn shape: SwiftUI sends no hover to a clear view. Only the notch itself opens
+        // it; the band's wings hold the cover and the bars, and pass under the pointer on the way
+        // to the menu bar.
+        .onContinuousHover(coordinateSpace: .local) { phase in
+            guard case .active(let point) = phase else { return }
+            if content == .expanded || Self.opensAt(point, width: size.width, notch: notchRect) { onHover(true) }
+        }
         .environment(\.colorScheme, .dark)
         .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .top)
-        .onHover(perform: onHover)
+        .simultaneousGesture(
+            DragGesture(minimumDistance: 12, coordinateSpace: .local)
+                .onEnded { value in onDrag(value.startLocation.x, value.translation) }
+        )
         .dropDestination(for: URL.self) { urls, _ in
             NotchShelf.shared.add(urls)
+            if !urls.isEmpty { NotchHome.tap() }
             return !urls.isEmpty
         } isTargeted: { targeted in
             onDropTargeted(targeted)
         }
         .animation(
             reduceMotion ? nil : (content == .expanded ? NotchDesign.openAnimation : NotchDesign.closeAnimation),
-            value: content)
+            value: content
+        )
+        .animation(reduceMotion ? nil : NotchDesign.sizeAnimation, value: model.page)
     }
 
     /// One dot per player, down the left edge over the cover; a two-finger scroll up or down on
     /// the card moves between them too.
     private var playerDots: some View {
-        VStack(spacing: 7) {
+        VStack(spacing: 2) {
             ForEach(model.tracks, id: \.bundleID) { track in
                 let selected = track.bundleID == model.track?.bundleID
                 Button {
                     onSelectTrack(track.bundleID)
                 } label: {
                     Circle()
-                        .fill(.white.opacity(selected ? 0.95 : 0.4))
-                        .frame(width: selected ? 7 : 6, height: selected ? 7 : 6)
-                        .shadow(color: .black.opacity(0.5), radius: 2)
-                        .frame(width: 16, height: 14)
+                        .fill(.white.opacity(selected ? 0.9 : 0.3))
+                        .frame(width: 4, height: 4)
+                        .frame(width: 14, height: 9)
                         .contentShape(Rectangle())
                 }
                 .buttonStyle(.plain)
@@ -232,7 +269,7 @@ struct NotchHomeView: View {
             }
         }
         .frame(height: NotchHome.Card.height)
-        .padding(.leading, 6)
+        .padding(.leading, 8)
         .offset(y: model.notchHeight)
     }
 
@@ -270,7 +307,13 @@ struct NotchHomeView: View {
     private var leftWing: some View {
         switch content {
         case .playing:
-            if let track = model.track { NotchHomeArtwork(image: track.artwork, size: NotchHome.artSize, radius: 5) }
+            if let track = model.track {
+                NotchHomeArtwork(image: track.artwork, size: NotchHome.artSize, radius: 5)
+                    .overlay(alignment: .leading) {
+                        // More than one player: a hint that hovering and scrolling switches.
+                        if model.tracks.count > 1 { bandDots.offset(x: -8) }
+                    }
+            }
         case .timer:
             if let running = NotchTimers.shared.running {
                 TimelineView(.periodic(from: .now, by: 1)) { context in
@@ -293,6 +336,18 @@ struct NotchHomeView: View {
         default:
             EmptyView()
         }
+    }
+
+    /// Tiny dots beside the cover in the collapsed band, one per player, the shown one bright.
+    private var bandDots: some View {
+        VStack(spacing: 2.5) {
+            ForEach(model.tracks.prefix(4), id: \.bundleID) { track in
+                Circle()
+                    .fill(.white.opacity(track.bundleID == model.track?.bundleID ? 0.85 : 0.3))
+                    .frame(width: 3, height: 3)
+            }
+        }
+        .accessibilityLabel(Text("\(model.tracks.count) players"))
     }
 
     @ViewBuilder
@@ -322,11 +377,7 @@ struct NotchHomeView: View {
                     .lineLimit(1)
             }
         case .expanded:
-            NotchHomePageSelector(
-                pages: NotchHomePage.available(hasTrack: model.track != nil), selection: model.page
-            ) { page in
-                model.page = page
-            }
+            NotchHomePageButton(page: model.page) { onPage(true) }
         default:
             EmptyView()
         }
@@ -712,13 +763,18 @@ final class NotchHomeManager {
     private var screen: NSScreen?
     private var hovered = false
     private var dropping = false
-    /// After a swipe closed the card, the pointer has to leave before hovering opens it again.
-    private var hoverSuppressed = false
     /// The band a swipe put away; it stays away until the band would say something else.
     private var dismissedBand: String?
     /// The player picked with the dots or a scroll, by bundle id.
     private var selectedPlayer: String?
     private var scrollMonitor: Any?
+    /// When the pointer was first seen outside the open card; nil while it is inside.
+    private var pointerLeftAt: Date?
+    /// The widest band that covers nothing in the menu bar; nil while unknown.
+    private var allowedWing: CGFloat?
+    private var clearanceMeasured: Date?
+    /// Only the newest measurement counts; two can be in flight when the front app changes.
+    private var clearanceRequest = 0
     private var gesture: (startX: CGFloat, width: CGFloat, dx: CGFloat, dy: CGFloat)?
     private var cancellables: Set<AnyCancellable> = []
     private var resizeTask: Task<Void, Never>?
@@ -741,6 +797,19 @@ final class NotchHomeManager {
         NotchDeviceAlerts.shared.$notice.receive(on: RunLoop.main).sink { [weak self] _ in self?.refresh() }
             .store(in: &cancellables)
         NotchPlayers.shared.$entries.receive(on: RunLoop.main).sink { [weak self] _ in self?.refresh() }
+            .store(in: &cancellables)
+        // Entering or leaving a full-screen app is a Space change.
+        NSWorkspace.shared.notificationCenter.publisher(for: NSWorkspace.activeSpaceDidChangeNotification)
+            .receive(on: RunLoop.main)
+            .sink { [weak self] _ in self?.refresh() }
+            .store(in: &cancellables)
+        // Another app in front brings other menus, which may reach further toward the notch.
+        NSWorkspace.shared.notificationCenter.publisher(for: NSWorkspace.didActivateApplicationNotification)
+            .receive(on: RunLoop.main)
+            .sink { [weak self] _ in
+                self?.clearanceMeasured = nil
+                self?.refresh()
+            }
             .store(in: &cancellables)
         scrollMonitor = NSEvent.addLocalMonitorForEvents(matching: .scrollWheel) { [weak self] event in
             if let self, let panel = self.panel, event.window === panel { self.handleScroll(event, in: panel) }
@@ -772,17 +841,22 @@ final class NotchHomeManager {
         }
 
         let tracks = wantsMusic ? makeTracks() : []
+        let screenForState = self.screen ?? NSScreen.screens.first { $0.safeAreaInsets.top > 0 }
+        let hiddenForFullScreen =
+            !NotchHome.showsInFullScreen && screenForState.map(Self.frontAppIsFullScreen(on:)) == true
         let track = Self.shown(tracks, selected: selectedPlayer)
         let screen = self.screen ?? NSScreen.screens.first { $0.safeAreaInsets.top > 0 }
         let timers = NotchTimers.shared
         var content = NotchHome.content(
-            enabled: enabled, hasNotch: screen != nil,
+            enabled: enabled && !hiddenForFullScreen, hasNotch: screen != nil,
             blocked: uiManager.isRecorderPanelVisible || uiManager.isClaudeCodeCardVisible, hovered: hovered,
             dropping: dropping,
             notice: Self.notice(device: NotchDeviceAlerts.shared.notice, finished: timers.finished),
             timerRunning: timers.running != nil, musicPlaying: track?.isPlaying == true)
         let band = Self.bandKey(content, track: track, timer: timers.running)
         if band != nil, band == dismissedBand { content = .bare }
+        if let screen { measureClearance(on: screen) }
+        if !Self.fits(content, allowedWing: allowedWing) { content = .bare }
 
         if content == .hidden, hovered { setHovered(false) }
         model?.tracks = tracks
@@ -795,6 +869,59 @@ final class NotchHomeManager {
         if showsBars { SystemAudioLevels.shared.start() } else { SystemAudioLevels.shared.stop() }
 
         if uiManager.isNotchHomeVisible != content.isVisible { uiManager.isNotchHomeVisible = content.isVisible }
+    }
+
+    /// The front app fills the notched screen: a full-screen video, game or app, where the menu
+    /// bar is hidden and the notch is best left alone. Window bounds need no permission.
+    static func frontAppIsFullScreen(on screen: NSScreen) -> Bool {
+        guard let front = NSWorkspace.shared.frontmostApplication?.processIdentifier,
+            let list = CGWindowListCopyWindowInfo([.optionOnScreenOnly, .excludeDesktopElements], kCGNullWindowID)
+                as? [[String: Any]]
+        else { return false }
+        return list.contains { window in
+            guard (window[kCGWindowOwnerPID as String] as? Int32) == front,
+                (window[kCGWindowLayer as String] as? Int) == 0,
+                let bounds = window[kCGWindowBounds as String] as? [String: CGFloat],
+                let width = bounds["Width"], let height = bounds["Height"]
+            else { return false }
+            return width >= screen.frame.width && height >= screen.frame.height
+        }
+    }
+
+    /// A band that lasts (music, a timer) is drawn only where it covers nothing in the menu bar.
+    /// A notice is gone in seconds, so it may.
+    nonisolated static func fits(_ content: NotchHome.Content, allowedWing: CGFloat?) -> Bool {
+        guard let allowedWing else { return true }
+        switch content {
+        case .playing: return allowedWing >= NotchHome.wing
+        case .timer: return allowedWing >= NotchHome.timerWing
+        default: return true
+        }
+    }
+
+    /// Re-measured at most every ten seconds, and when another app comes to the front; a refresh
+    /// uses the last result meanwhile, and a new result refreshes again.
+    private func measureClearance(on screen: NSScreen) {
+        if let measured = clearanceMeasured, Date().timeIntervalSince(measured) < 10 { return }
+        clearanceMeasured = Date()
+        let notchWidth = model?.notchWidth ?? NotchRecorderPanel.calculateWindowMetrics(on: screen)?.notchWidth ?? 185
+        let notchMinX = screen.frame.midX - notchWidth / 2
+        let notchMaxX = screen.frame.midX + notchWidth / 2
+        let front = NSWorkspace.shared.frontmostApplication?.processIdentifier
+        let apps = NSWorkspace.shared.runningApplications.filter { $0.activationPolicy != .prohibited }
+            .map(\.processIdentifier)
+        clearanceRequest += 1
+        let request = clearanceRequest
+        Task { @MainActor [weak self] in
+            let measured = await NotchMenuBarClearance.measure(
+                notchMinX: notchMinX, notchMaxX: notchMaxX, front: front, apps: apps)
+            guard let self, request == self.clearanceRequest, measured.wing != self.allowedWing else { return }
+            self.allowedWing = measured.wing
+            self.logger.notice(
+                "Notch home: room beside the notch \(measured.wing.map { String(Int($0)) } ?? "unknown", privacy: .public) pt, limited by \(measured.limitedBy, privacy: .public)"
+            )
+            self.refresh()
+        }
     }
 
     /// A finished timer outranks a device: it is the one the user was waiting for.
@@ -855,23 +982,38 @@ final class NotchHomeManager {
 
     enum Swipe: Equatable {
         case dismiss
+        /// Outward from the notch: brings back a band that was swiped away.
+        case restore
+        case nextPage
+        case previousPage
         case nextPlayer
         case previousPlayer
         case none
     }
 
-    /// Fingers moving toward the middle of the notch close it: right to left on its right half,
-    /// left to right on its left half. Up and down move between players.
+    /// Open: sideways turns the page (fingers left for the next), up and down moves between
+    /// players. Collapsed: fingers moving toward the middle of the notch put the band away —
+    /// right to left on its right half, left to right on its left half — and moving outward
+    /// brings it back.
     nonisolated static func swipe(
-        startX: CGFloat, width: CGFloat, fingerDX: CGFloat, fingerDY: CGFloat, threshold: CGFloat = 36
+        startX: CGFloat, width: CGFloat, fingerDX: CGFloat, fingerDY: CGFloat, expanded: Bool,
+        threshold: CGFloat = 36
     ) -> Swipe {
         if abs(fingerDX) >= abs(fingerDY) {
             guard abs(fingerDX) >= threshold else { return .none }
+            if expanded { return fingerDX < 0 ? .nextPage : .previousPage }
             let onRight = startX > width / 2
-            return (onRight && fingerDX < 0) || (!onRight && fingerDX > 0) ? .dismiss : .none
+            return (onRight && fingerDX < 0) || (!onRight && fingerDX > 0) ? .dismiss : .restore
         }
-        guard abs(fingerDY) >= threshold else { return .none }
+        guard expanded, abs(fingerDY) >= threshold else { return .none }
         return fingerDY < 0 ? .nextPlayer : .previousPlayer
+    }
+
+    /// The page after (or before) `page` among those available, wrapping round.
+    nonisolated static func page(after page: NotchHomePage, forward: Bool, hasTrack: Bool) -> NotchHomePage {
+        let pages = NotchHomePage.available(hasTrack: hasTrack)
+        guard let index = pages.firstIndex(of: page) else { return pages.first ?? page }
+        return pages[(index + (forward ? 1 : -1) + pages.count) % pages.count]
     }
 
     private func handleScroll(_ event: NSEvent, in panel: NSPanel) {
@@ -887,7 +1029,9 @@ final class NotchHomeManager {
             guard let gesture else { return }
             self.gesture = nil
             perform(
-                Self.swipe(startX: gesture.startX, width: gesture.width, fingerDX: gesture.dx, fingerDY: gesture.dy))
+                Self.swipe(
+                    startX: gesture.startX, width: gesture.width, fingerDX: gesture.dx, fingerDY: gesture.dy,
+                    expanded: model?.content == .expanded))
         default:
             break
         }
@@ -897,16 +1041,18 @@ final class NotchHomeManager {
         guard let model else { return }
         switch swipe {
         case .dismiss:
-            // The shelf scrolls sideways; there a sideways swipe is for the files.
-            if model.content == .expanded, model.page == .shelf { return }
-            ActivityTrail.mark("notch home swiped away")
-            if model.content == .expanded {
-                hoverSuppressed = true
-                setHovered(false)
-            } else {
-                dismissedBand = Self.bandKey(model.content, track: model.track, timer: NotchTimers.shared.running)
-                refresh()
-            }
+            guard model.content != .bare else { return }
+            ActivityTrail.mark("notch home band swiped away")
+            dismissedBand = Self.bandKey(model.content, track: model.track, timer: NotchTimers.shared.running)
+            refresh()
+        case .restore:
+            guard dismissedBand != nil else { return }
+            ActivityTrail.mark("notch home band brought back")
+            dismissedBand = nil
+            NotchHome.tap()
+            refresh()
+        case .nextPage, .previousPage:
+            turnPage(forward: swipe == .nextPage)
         case .nextPlayer, .previousPlayer:
             guard model.content == .expanded, model.page == .music, model.tracks.count > 1,
                 let index = model.tracks.firstIndex(where: { $0.bundleID == model.track?.bundleID })
@@ -917,6 +1063,22 @@ final class NotchHomeManager {
         case .none:
             break
         }
+    }
+
+    /// A click-drag reads like a swipe: toward the middle puts a band away; sideways on the open
+    /// card turns the page; up and down there changes player.
+    private func dragged(from startX: CGFloat, by translation: CGSize) {
+        guard let panel, let model else { return }
+        perform(
+            Self.swipe(
+                startX: startX, width: panel.frame.width, fingerDX: translation.width, fingerDY: translation.height,
+                expanded: model.content == .expanded))
+    }
+
+    private func turnPage(forward: Bool) {
+        guard let model, model.content == .expanded else { return }
+        model.pagedForward = forward
+        model.page = Self.page(after: model.page, forward: forward, hasTrack: model.track != nil)
     }
 
     private func selectPlayer(_ bundleID: String?) {
@@ -969,9 +1131,9 @@ final class NotchHomeManager {
         guard inside != hovered else { return }
         hovered = inside
         ActivityTrail.mark("notch home hover \(inside)")
+        pointerLeftAt = nil
+        if inside { NotchHome.tap() }
         if inside {
-            // Opening the notch on purpose brings back a band that was swiped away.
-            dismissedBand = nil
             // mouseExited is not reliable on a panel that resizes under the pointer, so while
             // open the pointer itself is checked.
             pointerWatch?.invalidate()
@@ -980,26 +1142,24 @@ final class NotchHomeManager {
             }
             RunLoop.main.add(watch, forMode: .common)
             pointerWatch = watch
-        } else if !hoverSuppressed {
+        } else {
             pointerWatch?.invalidate()
             pointerWatch = nil
         }
         refresh()
     }
 
-    /// While open: closes once the pointer leaves. After a swipe: waits for the pointer to leave
-    /// before hovering may open it again.
+    /// While open: closes once the pointer leaves.
     private func checkPointer() {
-        guard let panel else { return }
-        let inside = panel.frame.insetBy(dx: -4, dy: -4).contains(NSEvent.mouseLocation)
-        if hovered, !inside { setHovered(false) }
-        if hoverSuppressed, !inside {
-            hoverSuppressed = false
-            if !hovered {
-                pointerWatch?.invalidate()
-                pointerWatch = nil
-            }
+        guard let panel, hovered else { return }
+        guard !panel.frame.insetBy(dx: -4, dy: -4).contains(NSEvent.mouseLocation) else {
+            pointerLeftAt = nil
+            return
         }
+        // A short grace, so brushing past the edge does not snap the card shut.
+        let left = pointerLeftAt ?? Date()
+        pointerLeftAt = left
+        if Date().timeIntervalSince(left) >= NotchHome.leaveGrace { setHovered(false) }
     }
 
     // MARK: Window
@@ -1068,7 +1228,7 @@ final class NotchHomeManager {
         let view = NotchHomeView(
             model: model,
             onHover: { [weak self] inside in
-                guard inside, self?.hoverSuppressed != true else { return }  // leaving: see checkPointer
+                guard inside else { return }  // leaving is decided by checkPointer
                 self?.setHovered(true)
             },
             onShuffle: { [weak model] in
@@ -1086,7 +1246,9 @@ final class NotchHomeManager {
                 }
             },
             onDropTargeted: { [weak self] targeted in self?.setDropTargeted(targeted) },
-            onSelectTrack: { [weak self] bundleID in self?.selectPlayer(bundleID) })
+            onSelectTrack: { [weak self] bundleID in self?.selectPlayer(bundleID) },
+            onPage: { [weak self] forward in self?.turnPage(forward: forward) },
+            onDrag: { [weak self] startX, translation in self?.dragged(from: startX, by: translation) })
         panel.contentView = NotchRecorderHostingController(rootView: view).view
         self.model = model
         self.panel = panel

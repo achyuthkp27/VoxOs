@@ -236,14 +236,28 @@ struct NotchHomeTests {
 
     // MARK: Swipes
 
-    @Test func swipingTowardTheMiddleCloses() {
-        let width: CGFloat = 480
-        #expect(NotchHomeManager.swipe(startX: 400, width: width, fingerDX: -60, fingerDY: 4) == .dismiss)
-        #expect(NotchHomeManager.swipe(startX: 80, width: width, fingerDX: 60, fingerDY: -3) == .dismiss)
-        #expect(NotchHomeManager.swipe(startX: 400, width: width, fingerDX: 60, fingerDY: 0) == .none, "outward")
-        #expect(NotchHomeManager.swipe(startX: 400, width: width, fingerDX: -10, fingerDY: 0) == .none, "a nudge")
-        #expect(NotchHomeManager.swipe(startX: 240, width: width, fingerDX: 2, fingerDY: -50) == .nextPlayer)
-        #expect(NotchHomeManager.swipe(startX: 240, width: width, fingerDX: 2, fingerDY: 50) == .previousPlayer)
+    @Test func swipingTowardTheMiddlePutsABandAway() {
+        func swipe(_ x: CGFloat, _ dx: CGFloat, _ dy: CGFloat) -> NotchHomeManager.Swipe {
+            NotchHomeManager.swipe(startX: x, width: 300, fingerDX: dx, fingerDY: dy, expanded: false)
+        }
+        #expect(swipe(250, -60, 4) == .dismiss, "right half, right to left")
+        #expect(swipe(50, 60, -3) == .dismiss, "left half, left to right")
+        #expect(swipe(250, 60, 0) == .restore, "outward brings a swiped band back")
+        #expect(swipe(50, -60, 0) == .restore)
+        #expect(swipe(250, -10, 0) == .none, "a nudge")
+        #expect(swipe(150, 2, -50) == .none, "up and down mean nothing to a band")
+    }
+
+    @Test func openSidewaysTurnsPagesAndUpDownChangesPlayer() {
+        func swipe(_ dx: CGFloat, _ dy: CGFloat) -> NotchHomeManager.Swipe {
+            NotchHomeManager.swipe(startX: 400, width: 480, fingerDX: dx, fingerDY: dy, expanded: true)
+        }
+        #expect(swipe(-60, 3) == .nextPage)
+        #expect(swipe(60, 3) == .previousPage)
+        #expect(swipe(2, -50) == .nextPlayer)
+        #expect(swipe(2, 50) == .previousPlayer)
+        #expect(NotchHomeManager.page(after: .shelf, forward: true, hasTrack: true) == .music, "wraps round")
+        #expect(NotchHomeManager.page(after: .timer, forward: false, hasTrack: false) == .shelf, "no Music page")
     }
 
     @Test func aSwipedBandStaysAwayUntilItWouldSaySomethingElse() {
@@ -263,5 +277,31 @@ struct NotchHomeTests {
         #expect(now.allSatisfy { $0 >= 0.15 && $0 <= 1 })
         #expect(now != later, "it moves")
         #expect(Set(now.map { ($0 * 100).rounded() }).count > 1, "not all the same height")
+    }
+
+    // MARK: Menu bar
+
+    @Test func aBandOnlyGrowsIntoFreeMenuBar() {
+        // Notch 663…848; menus end at 595, the first status item starts at 930.
+        let wing = NotchMenuBarClearance.allowedWing(
+            notchMinX: 663, notchMaxX: 848, menusMaxX: 595, statusItemsMinX: 930)
+        #expect(wing == 68 - NotchMenuBarClearance.margin, "the narrower side decides")
+        #expect(NotchHomeManager.fits(.playing, allowedWing: wing), "music needs \(NotchHome.wing)")
+        #expect(!NotchHomeManager.fits(.timer, allowedWing: wing), "a timer needs \(NotchHome.timerWing)")
+        #expect(NotchHomeManager.fits(.notice(.init(symbol: "wifi", title: "x", detail: nil)), allowedWing: 0))
+        #expect(
+            NotchMenuBarClearance.allowedWing(notchMinX: 663, notchMaxX: 848, menusMaxX: nil, statusItemsMinX: nil)
+                == nil, "nothing measured, nothing held back")
+        #expect(NotchHomeManager.fits(.timer, allowedWing: nil))
+    }
+
+    /// Only the hardware notch opens the card; the band's wings, which the pointer crosses on the
+    /// way to the menu bar, do not.
+    @Test func onlyTheNotchItselfOpensIt() {
+        let notch = CGSize(width: 185, height: 32)
+        #expect(NotchHomeView.opensAt(CGPoint(x: 150, y: 10), width: 301, notch: notch), "centre")
+        #expect(!NotchHomeView.opensAt(CGPoint(x: 20, y: 10), width: 301, notch: notch), "left wing: the cover")
+        #expect(!NotchHomeView.opensAt(CGPoint(x: 285, y: 10), width: 301, notch: notch), "right wing: the bars")
+        #expect(!NotchHomeView.opensAt(CGPoint(x: 150, y: 80), width: 301, notch: notch), "below the notch")
     }
 }

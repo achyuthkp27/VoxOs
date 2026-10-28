@@ -58,7 +58,8 @@ enum ClaudeCodeNotch {
             let tallest =
                 questions.map { question -> CGFloat in
                     let title = CGFloat(lines(of: question.question, perLine: Card.titleCharactersPerLine, max: 2))
-                    let rows = CGFloat(question.options.count)
+                    // The options, then "Other…", which turns into a text field in place.
+                    let rows = CGFloat(question.options.count + 1)
                     return title * Card.titleLineHeight + Card.spacing + rows * Card.optionHeight
                         + Swift.max(0, rows - 1) * Card.optionSpacing
                 }.max() ?? 0
@@ -174,6 +175,7 @@ struct ClaudeCodeNotchView: View {
     @ObservedObject var model: ClaudeCodeNotchModel
     let onDecision: (UUID, ClaudeCodeActivity.Decision) -> Void
     let onOffer: (Bool) -> Void
+    let onKeyboard: (Bool) -> Void
     @Environment(\.accessibilityReduceMotion) private var reduceMotion
 
     private var content: ClaudeCodeNotch.Content { model.content }
@@ -188,7 +190,8 @@ struct ClaudeCodeNotchView: View {
             if case .approval(let prompt, _) = content {
                 Group {
                     if let questions = prompt.questions {
-                        ClaudeCodeQuestionCard(prompt: prompt, questions: questions, onDecision: onDecision)
+                        ClaudeCodeQuestionCard(
+                            prompt: prompt, questions: questions, onDecision: onDecision, onKeyboard: onKeyboard)
                     } else {
                         ClaudeCodeApprovalCard(prompt: prompt, onDecision: onDecision)
                     }
@@ -429,9 +432,14 @@ private struct ClaudeCodeQuestionCard: View {
     let prompt: ClaudeCodeActivity.PermissionPrompt
     let questions: [ClaudeCodeQuestion]
     let onDecision: (UUID, ClaudeCodeActivity.Decision) -> Void
+    /// Asks the panel to take the keyboard (true) or give it back (false).
+    let onKeyboard: (Bool) -> Void
     @State private var index = 0
     @State private var answers: [String: String] = [:]
     @State private var picked: Set<String> = []
+    @State private var typing = false
+    @State private var typed = ""
+    @FocusState private var fieldFocused: Bool
 
     private var question: ClaudeCodeQuestion { questions[min(index, questions.count - 1)] }
     private var isLast: Bool { index >= questions.count - 1 }
@@ -454,6 +462,18 @@ private struct ClaudeCodeQuestionCard: View {
                         choose(option.label)
                     }
                 }
+                if typing {
+                    otherField
+                } else {
+                    ClaudeCodeOptionRow(
+                        option: .init(label: String(localized: "Other…"), description: ""), multiSelect: false,
+                        picked: false
+                    ) {
+                        typing = true
+                        onKeyboard(true)
+                        fieldFocused = true
+                    }
+                }
             }
 
             if question.multiSelect {
@@ -473,6 +493,47 @@ private struct ClaudeCodeQuestionCard: View {
         .padding(.top, Card.top)
         .padding(.horizontal, AgentComposer.panelInset)
         .padding(.bottom, Card.bottom)
+    }
+
+    /// "Other…" in place: the answer typed in the notch, as the terminal's Other would take it.
+    private var otherField: some View {
+        HStack(spacing: 8) {
+            TextField(String(localized: "Your answer"), text: $typed)
+                .textFieldStyle(.plain)
+                .font(.app(size: 13))
+                .foregroundStyle(.white)
+                .focused($fieldFocused)
+                .onSubmit(sendTyped)
+                .onExitCommand(perform: stopTyping)
+            ClaudeCodeNotchButton(title: String(localized: "Send"), prominent: true, action: sendTyped)
+                .disabled(typed.trimmingCharacters(in: .whitespaces).isEmpty)
+        }
+        .padding(.leading, 12)
+        .padding(.trailing, 4)
+        .frame(height: Card.optionHeight)
+        .background(
+            RoundedRectangle(cornerRadius: 10, style: .continuous).strokeBorder(
+                AppTheme.Accent.primary.opacity(0.7), lineWidth: 1)
+        )
+        .onAppear { fieldFocused = true }
+        // Answered in the terminal while typing here: the panel gives the keyboard back.
+        .onDisappear { onKeyboard(false) }
+    }
+
+    private func sendTyped() {
+        let text = typed.trimmingCharacters(in: .whitespacesAndNewlines)
+        guard !text.isEmpty else { return }
+        // Ticks already made on a multiple-choice question are kept, the typed answer last.
+        let ticked = question.multiSelect ? question.answer(choosing: picked) : ""
+        stopTyping()
+        record(ticked.isEmpty ? text : ticked + ", " + text)
+    }
+
+    private func stopTyping() {
+        typing = false
+        typed = ""
+        fieldFocused = false
+        onKeyboard(false)
     }
 
     private var eyebrow: String {
@@ -600,8 +661,10 @@ private struct ClaudeCodeNotchButton: View {
 // MARK: - Panel
 
 final class ClaudeCodeNotchPanel: NSPanel {
-    // Never key: answering a request must not take focus from the app the user is typing into.
-    override var canBecomeKey: Bool { false }
+    /// Only while an "Other…" answer is being typed: otherwise answering a request must not take
+    /// focus from the app the user is typing into.
+    var acceptsKeyboard = false
+    override var canBecomeKey: Bool { acceptsKeyboard }
     override var canBecomeMain: Bool { false }
 
     init(contentRect: NSRect) {
@@ -762,7 +825,12 @@ final class ClaudeCodeNotchManager {
         let view = ClaudeCodeNotchView(
             model: model,
             onDecision: { [weak activity] id, decision in activity?.decide(id, decision) },
-            onOffer: { turnOn in ClaudeCodeIntegration.shared.answerOffer(turnOn: turnOn) })
+            onOffer: { turnOn in ClaudeCodeIntegration.shared.answerOffer(turnOn: turnOn) },
+            onKeyboard: { [weak panel] wanted in
+                guard let panel else { return }
+                panel.acceptsKeyboard = wanted
+                if wanted { panel.makeKey() } else { panel.resignKey() }
+            })
         panel.contentView = NotchRecorderHostingController(rootView: view).view
         self.model = model
         self.panel = panel
