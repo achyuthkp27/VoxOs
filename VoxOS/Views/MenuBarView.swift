@@ -16,6 +16,8 @@ struct MenuBarView: View {
     @ObservedObject private var modeManager = ModeManager.shared
     @ObservedObject var audioDeviceManager = AudioDeviceManager.shared
     @AppStorage(DefaultsKeys.hasCompletedOnboardingV2) private var hasCompletedOnboardingV2 = false
+    @AppStorage(DefaultsKeys.voiceAssistantEnabled) private var voiceEnabled = true
+    @AppStorage(DefaultsKeys.notchMasterEnabled) private var notchEnabled = true
 
     var body: some View {
         VStack {
@@ -46,6 +48,14 @@ struct MenuBarView: View {
             Button("Toggle Recorder") {
                 recorderUIManager.handleToggleRecorderPanelNotification()
             }
+
+            Divider()
+
+            // The dashboard's two master switches, a click away.
+            Toggle(
+                "Voice Assistant",
+                isOn: Binding(get: { voiceEnabled }, set: { MasterSwitches.setVoiceEnabled($0) }))
+            Toggle("Notch", isOn: Binding(get: { notchEnabled }, set: { MasterSwitches.setNotchEnabled($0) }))
 
             Divider()
 
@@ -149,6 +159,14 @@ struct MenuBarView: View {
             .disabled(launchAtLoginManager.isUpdating)
 
             Divider()
+
+            Button("Voice Assistant Settings…") {
+                showMainWindowAndNavigate(to: "Voice Assistant")
+            }
+
+            Button("Notch Settings…") {
+                showMainWindowAndNavigate(to: "Notch")
+            }
 
             Button("Settings") {
                 showMainWindowAndNavigate(to: "Settings")

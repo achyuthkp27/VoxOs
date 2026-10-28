@@ -184,7 +184,7 @@ enum NavigationSection: CaseIterable, Identifiable {
         switch self {
         case .main: return [.dashboard, .modes, .transcribeAudio, .history, .dictionary]
         case .aiTools: return [.models, .audio]
-        case .preferences: return [.settings]
+        case .preferences: return [.voiceAssistant, .notch, .settings]
         }
     }
 }
@@ -212,6 +212,8 @@ extension ViewType {
         case .history: return String(localized: "History")
         case .audio: return String(localized: "Audio")
         case .dictionary: return String(localized: "Dictionary")
+        case .voiceAssistant: return String(localized: "Voice Assistant")
+        case .notch: return String(localized: "Notch")
         case .settings: return String(localized: "Settings")
         case .license: return String(localized: "VoxOS Pro")
         }
@@ -227,7 +229,9 @@ extension ViewType {
         case .history: return ["transcript", "past", "recent"]
         case .audio: return ["microphone", "mic", "input", "sound"]
         case .dictionary: return ["word", "vocabulary", "replacement", "spelling"]
-        case .settings: return ["preferences", "shortcut", "general"]
+        case .voiceAssistant: return ["shortcut", "agent", "dictation", "mcp", "paste", "transcription"]
+        case .notch: return ["notch home", "claude code", "music", "volume", "brightness", "shelf"]
+        case .settings: return ["preferences", "general", "appearance", "backup"]
         case .license: return ["pro", "license"]
         }
     }
@@ -241,6 +245,8 @@ extension ViewType {
         case .modes: return "square.on.square"
         case .audio: return "mic.fill"
         case .dictionary: return "book.fill"
+        case .voiceAssistant: return "waveform.circle.fill"
+        case .notch: return "rectangle.topthird.inset.filled"
         case .settings: return "gearshape.fill"
         case .license: return "sparkles"
         }

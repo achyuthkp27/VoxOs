@@ -9,6 +9,8 @@ enum ViewType: String, CaseIterable, Identifiable {
     case history = "History"
     case audio = "Audio"
     case dictionary = "Dictionary"
+    case voiceAssistant = "Voice Assistant"
+    case notch = "Notch"
     case settings = "Settings"
     case license = "VoxOS Pro"
 
@@ -101,6 +103,10 @@ struct ContentView: View {
             DictionarySettingsView()
         case .modes:
             ModeView()
+        case .voiceAssistant:
+            SettingsView(scope: .voice)
+        case .notch:
+            SettingsView(scope: .notch)
         case .settings:
             SettingsView()
         case .license:

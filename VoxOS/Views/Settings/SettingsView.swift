@@ -2,7 +2,16 @@ import Carbon.HIToolbox
 import Cocoa
 import SwiftUI
 
+/// Which page of settings: the voice assistant's, the notch's, or the rest. One view, so search
+/// and every section stay in one place; each sidebar page shows its own part.
+enum SettingsScope: Equatable {
+    case voice
+    case notch
+    case general
+}
+
 struct SettingsView: View {
+    var scope: SettingsScope = .general
     @Environment(\.modelContext) private var modelContext
     @EnvironmentObject private var updaterViewModel: UpdaterViewModel
     @EnvironmentObject private var menuBarManager: MenuBarManager
@@ -112,6 +121,8 @@ struct SettingsView: View {
         "Interface", "Appearance", "Language", "Recorder Position", "Live Text Display",
         "Shows live text while recording with realtime models.",
         "Edge History", "Left-Edge History", "battery", "hover", "power",
+    ]
+    private static let notchTerms = [
         "Notch Material", "Liquid Glass", "Solid Black", "Always-Visible Notch Tab", "notch", "tab",
         "Music in the Notch", "Live Music Bars", "Live Bars on Battery", "music", "now playing", "visualizer",
         "Notch Home",
@@ -132,6 +143,21 @@ struct SettingsView: View {
     private static let backupTerms = ["Export Settings", "Export", "Import Settings", "Import", "Backup"]
     private static let diagnosticsTerms = ["Diagnostics", "Export Logs", "Show in Finder"]
 
+    /// The sections each page shows, by their search terms.
+    private static func terms(for scope: SettingsScope) -> [[String]] {
+        switch scope {
+        case .voice:
+            return [
+                shortcutsTerms, additionalShortcutsTerms, systemAudioTerms, agentTerms, mcpTerms, pastingTerms,
+                transcriptionTerms,
+            ]
+        case .notch: return [notchTerms, claudeCodeTerms]
+        case .general: return [interfaceTerms, generalTerms, backupTerms, diagnosticsTerms]
+        }
+    }
+
+    private func shows(_ page: SettingsScope) -> Bool { scope == page }
+
     private static let allTerms = [
         shortcutsTerms,
         additionalShortcutsTerms,
@@ -142,12 +168,15 @@ struct SettingsView: View {
         pastingTerms,
         transcriptionTerms,
         interfaceTerms,
+        notchTerms,
         generalTerms,
         backupTerms,
         diagnosticsTerms,
     ]
 
     @AppStorage(DefaultsKeys.identifySpeakers) private var identifySpeakers = false
+    @AppStorage(DefaultsKeys.voiceAssistantEnabled) private var voiceMaster = true
+    @AppStorage(DefaultsKeys.notchMasterEnabled) private var notchMaster = true
     @AppStorage(DefaultsKeys.edgeHistoryEnabled) private var edgeHistoryEnabled = true
 
     @State private var settingsSearch = ""
@@ -176,13 +205,38 @@ struct SettingsView: View {
         Form {
             Section { searchField }
 
-            if search.isFiltering, !Self.allTerms.contains(where: { search.matches($0) }) {
+            if search.isFiltering, !Self.terms(for: scope).contains(where: { search.matches($0) }) {
                 Section {
                     Text("No settings match your search").foregroundStyle(.secondary)
                 }
             }
 
-            if search.matches(Self.shortcutsTerms) {
+            if shows(.voice), !search.isFiltering {
+                Section {
+                    Toggle(
+                        "Voice Assistant",
+                        isOn: Binding(get: { voiceMaster }, set: { MasterSwitches.setVoiceEnabled($0) }))
+                } footer: {
+                    Text("Off, the shortcuts below start nothing: no dictation, no Agent. They are kept as they are.")
+                        .font(.app(.caption))
+                        .foregroundStyle(.secondary)
+                }
+            }
+
+            if shows(.notch), !search.isFiltering {
+                Section {
+                    Toggle(
+                        "Notch", isOn: Binding(get: { notchMaster }, set: { MasterSwitches.setNotchEnabled($0) }))
+                } footer: {
+                    Text(
+                        "Off, nothing shows in the notch between dictations, and Claude Code's requests stay in the terminal."
+                    )
+                    .font(.app(.caption))
+                    .foregroundStyle(.secondary)
+                }
+            }
+
+            if shows(.voice), search.matches(Self.shortcutsTerms) {
                 Section {
                     LabeledContent("Primary Shortcut") {
                         HStack(spacing: 8) {
@@ -279,7 +333,7 @@ struct SettingsView: View {
                 }
             }
 
-            if search.matches(Self.additionalShortcutsTerms) {
+            if shows(.voice), search.matches(Self.additionalShortcutsTerms) {
                 Section("Additional Shortcuts") {
                     LabeledContent("Paste Last Transcription (Original)") {
                         ShortcutRecorder(action: .pasteLastTranscription) {
@@ -355,7 +409,7 @@ struct SettingsView: View {
                 }
             }
 
-            if search.matches(Self.systemAudioTerms) {
+            if shows(.voice), search.matches(Self.systemAudioTerms) {
                 Section {
                     LabeledContent {
                         ShortcutRecorder(action: .captureSystemAudio) {
@@ -417,7 +471,7 @@ struct SettingsView: View {
                 }
             }
 
-            if search.matches(Self.agentTerms) {
+            if shows(.voice), search.matches(Self.agentTerms) {
                 Section {
                     Picker("Control Mode", selection: $agentControlModeRaw) {
                         ForEach(AgentControlMode.allCases) { mode in
@@ -511,15 +565,11 @@ struct SettingsView: View {
                 }
             }
 
-            if search.matches(Self.mcpTerms) {
+            if shows(.voice), search.matches(Self.mcpTerms) {
                 MCPServersSection()
             }
 
-            if search.matches(Self.claudeCodeTerms) {
-                ClaudeCodeSection()
-            }
-
-            if search.matches(Self.pastingTerms) {
+            if shows(.voice), search.matches(Self.pastingTerms) {
                 Section("Pasting") {
                     Toggle(isOn: $matchWritingStyleToApp) {
                         HStack(spacing: 2) {
@@ -571,7 +621,7 @@ struct SettingsView: View {
                 }
             }
 
-            if search.matches(Self.transcriptionTerms) {
+            if shows(.voice), search.matches(Self.transcriptionTerms) {
                 Section("Transcription") {
                     Toggle("Identify Speakers", isOn: $identifySpeakers)
 
@@ -583,7 +633,7 @@ struct SettingsView: View {
                 }
             }
 
-            if search.matches(Self.interfaceTerms) {
+            if shows(.general), search.matches(Self.interfaceTerms) {
                 Section("Interface") {
                     Picker("Appearance", selection: $appAppearancePreference) {
                         ForEach(AppAppearancePreference.allCases) { preference in
@@ -627,6 +677,17 @@ struct SettingsView: View {
                     }
                     .pickerStyle(.menu)
 
+                    Toggle(isOn: $showLiveTranscript) {
+                        HStack(spacing: 4) {
+                            Text("Live Text Display")
+                            InfoTip("Shows live text while recording with realtime models.")
+                        }
+                    }
+                }
+            }
+
+            if shows(.notch), search.matches(Self.notchTerms) {
+                Section("Notch Home") {
                     Picker("Notch Material", selection: $notchMaterialRaw) {
                         ForEach(NotchDesign.Material.allCases) { material in
                             Text(material.displayName).tag(material.rawValue)
@@ -778,17 +839,14 @@ struct SettingsView: View {
                             }
                         }
                     }
-
-                    Toggle(isOn: $showLiveTranscript) {
-                        HStack(spacing: 4) {
-                            Text("Live Text Display")
-                            InfoTip("Shows live text while recording with realtime models.")
-                        }
-                    }
                 }
             }
 
-            if search.matches(Self.generalTerms) {
+            if shows(.notch), search.matches(Self.claudeCodeTerms) {
+                ClaudeCodeSection()
+            }
+
+            if shows(.general), search.matches(Self.generalTerms) {
                 Section("General") {
                     Toggle("Hide Dock Icon", isOn: $menuBarManager.isMenuBarOnly)
 
@@ -821,7 +879,7 @@ struct SettingsView: View {
                 }
             }
 
-            if search.matches(Self.backupTerms) {
+            if shows(.general), search.matches(Self.backupTerms) {
                 Section {
                     LabeledContent("Export Settings") {
                         Button("Export") {
@@ -860,7 +918,7 @@ struct SettingsView: View {
                 }
             }
 
-            if search.matches(Self.diagnosticsTerms) {
+            if shows(.general), search.matches(Self.diagnosticsTerms) {
                 Section("Diagnostics") {
                     DiagnosticsSettingsView()
                 }
