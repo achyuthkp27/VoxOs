@@ -183,8 +183,13 @@ final class NotchHomeModel: ObservableObject {
     /// Shuffle and repeat as the player reports them; nil when it cannot say.
     @Published var modes: NotchPlaybackModes.State?
     @Published var page: NotchHomePage = .today
-    /// The last page change went forward (a swipe to the left), for the slide's direction.
-    @Published var pagedForward = true
+    /// While pages move: how far the current page is from its place, in points…
+    @Published var pageOffset: CGFloat = 0
+    /// …and the page shown beside it: the one coming in under the fingers, or the one sliding
+    /// out once the swipe is let go.
+    @Published var sidePage: NotchHomePage?
+    /// The side page is to the right of the current one.
+    @Published var sideOnRight = true
     /// Files are being dragged over the notch.
     @Published var dropping = false
     /// The bars follow the real output (see `NotchHome.liveBars`); otherwise they are ambient.
@@ -207,8 +212,11 @@ struct NotchHomeView: View {
     let onSelectTrack: (String?) -> Void
     /// Next page (true) or previous (false).
     let onPage: (Bool) -> Void
-    /// A click-drag ended: where it started (window x) and how far it went.
-    let onDrag: (CGFloat, CGSize) -> Void
+    /// A click-drag moved this far.
+    let onDragChanged: (CGSize) -> Void
+    /// A click-drag ended: where it started (window x), how far it went, and how far it would
+    /// have gone with its speed.
+    let onDrag: (CGFloat, CGSize, CGSize) -> Void
     let onToggleMute: () -> Void
     let onJoin: (NotchToday.Event) -> Void
     @AppStorage(DefaultsKeys.notchMusicBarsEnabled) private var barsEnabled = false
@@ -239,13 +247,13 @@ struct NotchHomeView: View {
             VStack(spacing: 0) {
                 notchRow
                 if content == .expanded {
-                    page
-                        .id(model.page)
+                    pages
                         .frame(height: NotchHome.Card.height, alignment: .top)
-                        .transition(.push(from: model.pagedForward ? .trailing : .leading))
+                        // Opening shows the page where it is; only a swipe moves pages sideways.
+                        .transition(.opacity)
                 }
             }
-            if content == .expanded, model.page == .music, model.tracks.count > 1 {
+            if content == .expanded, model.page == .music, model.sidePage == nil, model.tracks.count > 1 {
                 playerDots
             }
             rim
@@ -264,7 +272,8 @@ struct NotchHomeView: View {
         .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .top)
         .simultaneousGesture(
             DragGesture(minimumDistance: 12, coordinateSpace: .local)
-                .onEnded { value in onDrag(value.startLocation.x, value.translation) }
+                .onChanged { value in onDragChanged(value.translation) }
+                .onEnded { value in onDrag(value.startLocation.x, value.translation, value.predictedEndTranslation) }
         )
         .dropDestination(for: URL.self) { urls, _ in
             NotchShelf.shared.add(urls)
@@ -277,7 +286,26 @@ struct NotchHomeView: View {
             reduceMotion ? nil : (content == .expanded ? NotchDesign.openAnimation : NotchDesign.closeAnimation),
             value: content
         )
-        .animation(reduceMotion ? nil : NotchDesign.sizeAnimation, value: model.page)
+    }
+
+    /// The current page and, while pages move, the one beside it, moving together like sheets
+    /// under the fingers. Identity follows the page, so the one sliding in stays the same view
+    /// once it is the current one.
+    private var pages: some View {
+        ZStack(alignment: .topLeading) {
+            ForEach([model.page] + (model.sidePage.map { [$0] } ?? []), id: \.self) { page in
+                pageView(page)
+                    .frame(width: size.width, height: NotchHome.Card.height, alignment: .top)
+                    .offset(x: offset(of: page))
+            }
+        }
+        .frame(width: size.width, height: NotchHome.Card.height, alignment: .topLeading)
+        .clipped()
+    }
+
+    private func offset(of page: NotchHomePage) -> CGFloat {
+        guard page != model.page else { return model.pageOffset }
+        return model.pageOffset + (model.sideOnRight ? size.width : -size.width)
     }
 
     /// One dot per player, down the left edge over the cover; a two-finger scroll up or down on
@@ -307,8 +335,8 @@ struct NotchHomeView: View {
     }
 
     @ViewBuilder
-    private var page: some View {
-        switch model.page {
+    private func pageView(_ page: NotchHomePage) -> some View {
+        switch page {
         case .music:
             if let track = model.track {
                 NotchHomePlayer(
@@ -949,7 +977,19 @@ final class NotchHomeManager {
     private var clearanceMeasured: Date?
     /// Only the newest measurement counts; two can be in flight when the front app changes.
     private var clearanceRequest = 0
-    private var gesture: (startX: CGFloat, width: CGFloat, dx: CGFloat, dy: CGFloat)?
+    /// A two-finger swipe in progress: where it started, how far the fingers have moved, the
+    /// last step (its speed), and the axis it locked to once it moved enough to tell.
+    private struct ScrollGesture {
+        let startX: CGFloat
+        let width: CGFloat
+        var dx: CGFloat = 0
+        var dy: CGFloat = 0
+        var lastDX: CGFloat = 0
+        var horizontal: Bool?
+    }
+    private var gesture: ScrollGesture?
+    /// The page a slide is landing on, until it has.
+    private var landing: NotchHomePage?
     private var cancellables: Set<AnyCancellable> = []
     private var resizeTask: Task<Void, Never>?
     private var pointerWatch: Timer?
@@ -1270,6 +1310,9 @@ final class NotchHomeManager {
         if abs(fingerDX) >= abs(fingerDY) {
             guard abs(fingerDX) >= threshold else { return .none }
             if expanded { return fingerDX < 0 ? .nextPage : .previousPage }
+            // Collapsed, only a plainly sideways swipe counts: a scroll that drifts across the
+            // band must not put it away or bring it back.
+            guard abs(fingerDX) >= threshold * 1.5, abs(fingerDX) >= abs(fingerDY) * 2 else { return .none }
             let onRight = startX > width / 2
             return (onRight && fingerDX < 0) || (!onRight && fingerDX > 0) ? .dismiss : .restore
         }
@@ -1284,24 +1327,145 @@ final class NotchHomeManager {
         return pages[(index + (forward ? 1 : -1) + pages.count) % pages.count]
     }
 
+    /// How far the fingers move before a swipe is taken as sideways or up and down.
+    static let axisLock: CGFloat = 8
+    /// How far a swipe goes to turn the page when nothing follows the fingers.
+    static let pageSwipe: CGFloat = 36
+
+    /// Sideways on the open card, the page follows the fingers and the next one comes in beside
+    /// it; up and down changes player once let go. Momentum after the fingers lift is ignored.
     private func handleScroll(_ event: NSEvent, in panel: NSPanel) {
         // Natural scrolling flips the deltas; turned back here, they follow the fingers.
         let sign: CGFloat = event.isDirectionInvertedFromDevice ? 1 : -1
+        let expanded = model?.content == .expanded
         switch event.phase {
         case .began:
-            gesture = (event.locationInWindow.x, panel.frame.width, 0, 0)
+            land()
+            gesture = ScrollGesture(startX: event.locationInWindow.x, width: panel.frame.width)
         case .changed:
-            gesture?.dx += event.scrollingDeltaX * sign
-            gesture?.dy += event.scrollingDeltaY * sign
+            guard var moved = gesture else { return }
+            let step = event.scrollingDeltaX * sign
+            moved.dx += step
+            moved.dy += event.scrollingDeltaY * sign
+            moved.lastDX = step
+            if moved.horizontal == nil, max(abs(moved.dx), abs(moved.dy)) >= Self.axisLock {
+                moved.horizontal = abs(moved.dx) > abs(moved.dy)
+            }
+            gesture = moved
+            if expanded, moved.horizontal == true { movePage(by: moved.dx) }
         case .ended, .cancelled:
-            guard let gesture else { return }
-            self.gesture = nil
-            perform(
-                Self.swipe(
-                    startX: gesture.startX, width: gesture.width, fingerDX: gesture.dx, fingerDY: gesture.dy,
-                    expanded: model?.content == .expanded))
+            guard let moved = gesture else { return }
+            gesture = nil
+            if expanded, moved.horizontal == true {
+                finishPage(dx: event.phase == .cancelled ? 0 : moved.dx, flick: moved.lastDX)
+            } else if moved.horizontal != nil {
+                // Open, a swipe that locked up-and-down changes player and never the page;
+                // collapsed, the whole movement decides.
+                perform(
+                    Self.swipe(
+                        startX: moved.startX, width: moved.width, fingerDX: expanded ? 0 : moved.dx,
+                        fingerDY: moved.dy, expanded: expanded))
+            }
         default:
             break
+        }
+    }
+
+    /// Let go past a fifth of the card, or with a flick its way, and the page goes; otherwise
+    /// it settles back.
+    nonisolated static func commitsPage(dx: CGFloat, flick: CGFloat, width: CGFloat) -> Bool {
+        guard dx != 0 else { return false }
+        if abs(dx) >= width * 0.2 { return true }
+        return abs(dx) >= 24 && abs(flick) >= 6 && (flick < 0) == (dx < 0)
+    }
+
+    private var reduceMotion: Bool { NSWorkspace.shared.accessibilityDisplayShouldReduceMotion }
+
+    private static func withoutAnimation(_ change: () -> Void) {
+        var transaction = Transaction()
+        transaction.disablesAnimations = true
+        withTransaction(transaction, change)
+    }
+
+    /// The page under the fingers, and the one it is moving toward beside it.
+    private func movePage(by dx: CGFloat) {
+        guard let model, let panel, model.content == .expanded, !reduceMotion else { return }
+        let width = panel.frame.width
+        let forward = dx < 0
+        let incoming = Self.page(after: model.page, forward: forward, hasTrack: model.track != nil)
+        guard incoming != model.page else { return }
+        Self.withoutAnimation {
+            if model.sideOnRight != forward { model.sideOnRight = forward }
+            if model.sidePage != incoming { model.sidePage = incoming }
+            model.pageOffset = max(-width, min(width, dx))
+        }
+    }
+
+    private func finishPage(dx: CGFloat, flick: CGFloat) {
+        guard let model, let panel else { return }
+        guard model.sidePage != nil else {
+            // Reduce Motion: nothing followed the fingers, but a swipe still turns the page.
+            if reduceMotion, abs(dx) >= Self.pageSwipe { slide(forward: dx < 0) }
+            return
+        }
+        if Self.commitsPage(dx: dx, flick: flick, width: panel.frame.width) {
+            slide(forward: dx < 0)
+        } else {
+            ActivityTrail.mark("notch home page settled back")
+            withAnimation(NotchDesign.pageAnimation, completionCriteria: .logicallyComplete) {
+                model.pageOffset = 0
+            } completion: { [weak model] in
+                guard let model, model.pageOffset == 0 else { return }
+                Self.withoutAnimation { model.sidePage = nil }
+            }
+        }
+    }
+
+    /// The incoming page becomes the current one where it stands, and both slide the rest of the
+    /// way; a click on the page button starts the same slide from rest.
+    private func slide(forward: Bool) {
+        guard let model, let panel, model.content == .expanded else { return }
+        let width = panel.frame.width
+        let incoming = Self.page(after: model.page, forward: forward, hasTrack: model.track != nil)
+        guard incoming != model.page else { return }
+        ActivityTrail.mark("notch home page \(incoming.rawValue)")
+        if reduceMotion {
+            Self.withoutAnimation {
+                model.page = incoming
+                model.sidePage = nil
+                model.pageOffset = 0
+            }
+            return
+        }
+        let outgoing = model.page
+        // Where the incoming page stands now: beside the current one, wherever the fingers left it.
+        let start = (model.sidePage == incoming ? model.pageOffset : 0) + (forward ? width : -width)
+        Self.withoutAnimation {
+            model.page = incoming
+            model.sidePage = outgoing
+            model.sideOnRight = !forward
+            model.pageOffset = start
+        }
+        landing = incoming
+        // The next pass, so the new arrangement is drawn before it moves.
+        DispatchQueue.main.async { [weak self, weak model] in
+            guard let model, self?.landing == incoming else { return }
+            withAnimation(NotchDesign.pageAnimation, completionCriteria: .logicallyComplete) {
+                model.pageOffset = 0
+            } completion: { [weak self] in
+                guard self?.landing == incoming else { return }
+                self?.land()
+            }
+        }
+    }
+
+    /// Ends a slide at once, as a new swipe starts: the page it was going to is simply there.
+    private func land() {
+        landing = nil
+        guard let model, model.sidePage != nil || model.pageOffset != 0 else { return }
+        Self.withoutAnimation {
+            model.sidePage = nil
+            model.pageOffset = 0
         }
     }
 
@@ -1333,20 +1497,37 @@ final class NotchHomeManager {
         }
     }
 
-    /// A click-drag reads like a swipe: toward the middle puts a band away; sideways on the open
-    /// card turns the page; up and down there changes player.
-    private func dragged(from startX: CGFloat, by translation: CGSize) {
+    /// A click-drag reads like a swipe: sideways on the open card the page follows the pointer;
+    /// not on the shelf, where dragging a file out must not move the page.
+    private func dragChanged(by translation: CGSize) {
+        guard let model, model.content == .expanded, model.page != .shelf,
+            abs(translation.width) > abs(translation.height)
+        else { return }
+        // A slide still landing is finished first, so the drag starts from a page at rest.
+        if landing != nil { land() }
+        movePage(by: translation.width)
+    }
+
+    /// Ended: a page in motion goes or settles; otherwise it is a swipe, toward the middle
+    /// putting a band away, up and down on the open card changing player.
+    private func dragged(from startX: CGFloat, by translation: CGSize, predicted: CGSize) {
         guard let panel, let model else { return }
-        perform(
-            Self.swipe(
-                startX: startX, width: panel.frame.width, fingerDX: translation.width, fingerDY: translation.height,
-                expanded: model.content == .expanded))
+        if model.content == .expanded, landing == nil, model.sidePage != nil || reduceMotion,
+            model.page != .shelf, abs(translation.width) > abs(translation.height)
+        {
+            return finishPage(dx: translation.width, flick: (predicted.width - translation.width) / 8)
+        }
+        let swipe = Self.swipe(
+            startX: startX, width: panel.frame.width, fingerDX: translation.width, fingerDY: translation.height,
+            expanded: model.content == .expanded)
+        // Pages move only under the pointer, above; the shelf keeps its drags for files.
+        if swipe == .nextPage || swipe == .previousPage { return }
+        perform(swipe)
     }
 
     private func turnPage(forward: Bool) {
-        guard let model, model.content == .expanded else { return }
-        model.pagedForward = forward
-        model.page = Self.page(after: model.page, forward: forward, hasTrack: model.track != nil)
+        land()
+        slide(forward: forward)
     }
 
     private func selectPlayer(_ bundleID: String?) {
@@ -1453,6 +1634,7 @@ final class NotchHomeManager {
         guard let panel, let model else { return }
         if model.track != track { model.track = track }
         if content == .expanded, model.content != .expanded {
+            land()
             model.page = NotchHomePage.preferred(
                 hasTrack: track != nil, timerRunning: timerRunning, dropping: dropping || shelfForDrag,
                 meeting: meetingsWatched && NotchToday.shared.meeting != nil)
@@ -1521,7 +1703,10 @@ final class NotchHomeManager {
             onDropTargeted: { [weak self] targeted in self?.setDropTargeted(targeted) },
             onSelectTrack: { [weak self] bundleID in self?.selectPlayer(bundleID) },
             onPage: { [weak self] forward in self?.turnPage(forward: forward) },
-            onDrag: { [weak self] startX, translation in self?.dragged(from: startX, by: translation) },
+            onDragChanged: { [weak self] translation in self?.dragChanged(by: translation) },
+            onDrag: { [weak self] startX, translation, predicted in
+                self?.dragged(from: startX, by: translation, predicted: predicted)
+            },
             onToggleMute: { NotchPrivacy.shared.toggleMute() },
             onJoin: { NotchToday.shared.join($0) })
         panel.contentView = NotchRecorderHostingController(rootView: view).view

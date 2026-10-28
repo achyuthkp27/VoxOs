@@ -246,6 +246,18 @@ struct NotchHomeTests {
         #expect(swipe(50, -60, 0) == .restore)
         #expect(swipe(250, -10, 0) == .none, "a nudge")
         #expect(swipe(150, 2, -50) == .none, "up and down mean nothing to a band")
+        #expect(swipe(250, 45, 0) == .none, "collapsed, a short sideways scroll is not a swipe")
+        #expect(swipe(250, 70, 40) == .none, "a scroll drifting across the band leaves it alone")
+    }
+
+    /// Let go far enough, or with a flick the same way, and the page goes; else it settles back.
+    @Test func aPageGoesOnlyWhenLetGoFarEnoughOrFlicked() {
+        #expect(NotchHomeManager.commitsPage(dx: -100, flick: 0, width: 480), "past a fifth")
+        #expect(!NotchHomeManager.commitsPage(dx: -60, flick: -1, width: 480), "a slow short drag settles back")
+        #expect(NotchHomeManager.commitsPage(dx: 40, flick: 9, width: 480), "a flick its way")
+        #expect(!NotchHomeManager.commitsPage(dx: 40, flick: -9, width: 480), "a flick back the other way")
+        #expect(!NotchHomeManager.commitsPage(dx: 10, flick: 12, width: 480), "too short to be a swipe")
+        #expect(!NotchHomeManager.commitsPage(dx: 0, flick: 0, width: 480))
     }
 
     @Test func openSidewaysTurnsPagesAndUpDownChangesPlayer() {

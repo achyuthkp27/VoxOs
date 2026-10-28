@@ -93,6 +93,9 @@ enum NotchDesign {
     /// open and a short one to close, so opening feels responsive and closing stays out of the way.
     static let sizeAnimation = Animation.timingCurve(0.45, 0, 0.55, 1, duration: 0.34)
     static let openAnimation = Animation.timingCurve(0.2, 0.8, 0.2, 1, duration: 0.28)
+    /// A page finishing its slide after the fingers let go: eases out with no overshoot, so it
+    /// lands rather than bounces.
+    static let pageAnimation = Animation.timingCurve(0.22, 0.61, 0.36, 1, duration: 0.3)
     static let closeAnimation = Animation.timingCurve(0.45, 0, 0.55, 1, duration: closeDuration)
     /// How long closeAnimation runs; the recorder waits this long before it orders the window out.
     static let closeDuration: TimeInterval = 0.20
