@@ -257,7 +257,8 @@ struct NotchHomeTests {
         #expect(swipe(2, -50) == .nextPlayer)
         #expect(swipe(2, 50) == .previousPlayer)
         #expect(NotchHomeManager.page(after: .shelf, forward: true, hasTrack: true) == .music, "wraps round")
-        #expect(NotchHomeManager.page(after: .timer, forward: false, hasTrack: false) == .shelf, "no Music page")
+        #expect(NotchHomeManager.page(after: .today, forward: false, hasTrack: false) == .shelf, "no Music page")
+        #expect(NotchHomeManager.page(after: .music, forward: true, hasTrack: true) == .today)
     }
 
     @Test func aSwipedBandStaysAwayUntilItWouldSaySomethingElse() {

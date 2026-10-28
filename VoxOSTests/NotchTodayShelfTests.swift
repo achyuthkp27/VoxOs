@@ -103,4 +103,37 @@ struct NotchTodayShelfTests {
         #expect(NotchDeviceAlerts.symbol(forDeviceNamed: "Magic Keyboard", majorClass: 5) == "keyboard")
         #expect(NotchDeviceAlerts.symbol(forDeviceNamed: "WH-1000XM5", majorClass: 4) == "headphones")
     }
+
+    // MARK: Reminders
+
+    @Test func remindersShowDueOnesFirstThenTheRest() {
+        let now = Date()
+        func item(_ title: String, due: TimeInterval?) -> NotchReminders.Item {
+            NotchReminders.Item(id: title, title: title, due: due.map { now.addingTimeInterval($0) }, color: .white)
+        }
+        let ordered = NotchReminders.ordered(
+            [item("Someday", due: nil), item("Later", due: 7_200), item("Late", due: -90_000), item("", due: 60)],
+            limit: 4)
+        #expect(ordered.map(\.title) == ["Late", "Later", "Someday"], "overdue first, untitled dropped")
+        #expect(NotchReminders.when(item("Late", due: -90_000), now: now) == "Overdue")
+        #expect(NotchReminders.when(item("Someday", due: nil), now: now) == nil)
+    }
+
+    // MARK: Shelf details
+
+    @Test func shelfDetailsAreReadFromTheFile() throws {
+        let url = FileManager.default.temporaryDirectory.appendingPathComponent("shelf-\(UUID().uuidString).txt")
+        try Data(repeating: 65, count: 2_048).write(to: url)
+        defer { try? FileManager.default.removeItem(at: url) }
+        let details = NotchShelf.details(of: NotchShelf.Item(id: UUID(), path: url.path, added: Date()))
+        #expect(details.size == 2_048)
+        #expect(details.kind?.isEmpty == false)
+        #expect(details.summary.contains("·"))
+    }
+
+    @Test func pagesWalkInTheAskedOrder() {
+        #expect(NotchHomePage.allCases == [.music, .today, .reminders, .timer, .shelf])
+        #expect(NotchHomePage.timer.title == "Pomodoro")
+        #expect(NotchHomePage.today.title == "Calendar")
+    }
 }

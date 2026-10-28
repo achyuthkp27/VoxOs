@@ -23,8 +23,12 @@ struct NotchTimer: Codable, Equatable {
     var ends: Date
     /// Focus sessions finished in this pomodoro, for the long break.
     var completedFocus: Int = 0
+    /// Set while paused: the time that was left. `ends` means nothing meanwhile.
+    var pausedRemaining: TimeInterval? = nil
 
-    func remaining(at now: Date) -> TimeInterval { max(0, ends.timeIntervalSince(now)) }
+    var isPaused: Bool { pausedRemaining != nil }
+
+    func remaining(at now: Date) -> TimeInterval { pausedRemaining ?? max(0, ends.timeIntervalSince(now)) }
 
     func progress(at now: Date) -> Double {
         guard duration > 0 else { return 1 }
@@ -112,6 +116,21 @@ final class NotchTimers: ObservableObject {
         schedule()
     }
 
+    func pause(now: Date = Date()) {
+        guard var timer = running, !timer.isPaused else { return }
+        timer.pausedRemaining = timer.remaining(at: now)
+        running = timer
+        save()
+    }
+
+    func resume(now: Date = Date()) {
+        guard var timer = running, let left = timer.pausedRemaining else { return }
+        timer.ends = now.addingTimeInterval(left)
+        timer.pausedRemaining = nil
+        running = timer
+        save()
+    }
+
     /// Skips to the next pomodoro phase, or ends a countdown early.
     func skip(now: Date = Date()) {
         guard let running else { return }
@@ -132,7 +151,7 @@ final class NotchTimers: ObservableObject {
     /// Called every second while something runs; also callable from tests with a chosen `now`.
     func advance(now: Date = Date()) {
         if let finished, now.timeIntervalSince(finished.at) >= Self.finishedLinger { self.finished = nil }
-        guard let running, running.remaining(at: now) <= 0 else { return }
+        guard let running, !running.isPaused, running.remaining(at: now) <= 0 else { return }
         let next = running.next(after: now, durations: durations)
         finished = Finished(label: label(for: running), next: next, at: now)
         self.running = next

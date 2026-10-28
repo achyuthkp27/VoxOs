@@ -10,6 +10,8 @@
 	<string>VoxOS needs to interact with your browser to detect the current website for applying website-specific configurations.</string>
 	<key>NSBluetoothAlwaysUsageDescription</key>
 	<string>VoxOS shows a short notice in the notch when a Bluetooth device such as your AirPods connects, with its battery.</string>
+	<key>NSRemindersFullAccessUsageDescription</key>
+	<string>VoxOS shows what is left on your Reminders list in the notch, and ticks items off when you do.</string>
 	<key>NSCalendarsFullAccessUsageDescription</key>
 	<string>VoxOS shows your next events on the notch's Today page.</string>
 	<key>NSAudioCaptureUsageDescription</key>

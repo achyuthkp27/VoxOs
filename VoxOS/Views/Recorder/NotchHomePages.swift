@@ -2,11 +2,12 @@ import AppKit
 import SwiftUI
 import UniformTypeIdentifiers
 
-/// The open notch's pages, switched from the small icons in its top-right corner.
+/// The open notch's pages, in the order a sideways swipe walks them.
 enum NotchHomePage: String, CaseIterable, Identifiable {
     case music
-    case timer
     case today
+    case reminders
+    case timer
     case shelf
 
     var id: String { rawValue }
@@ -14,8 +15,9 @@ enum NotchHomePage: String, CaseIterable, Identifiable {
     var symbol: String {
         switch self {
         case .music: return "music.note"
-        case .timer: return "timer"
         case .today: return "calendar"
+        case .reminders: return "checklist"
+        case .timer: return "timer"
         case .shelf: return "tray"
         }
     }
@@ -23,8 +25,9 @@ enum NotchHomePage: String, CaseIterable, Identifiable {
     var title: String {
         switch self {
         case .music: return String(localized: "Music")
-        case .timer: return String(localized: "Timer")
-        case .today: return String(localized: "Today")
+        case .today: return String(localized: "Calendar")
+        case .reminders: return String(localized: "Reminders")
+        case .timer: return String(localized: "Pomodoro")
         case .shelf: return String(localized: "Shelf")
         }
     }
@@ -83,69 +86,114 @@ struct NotchHomePageLabel: View {
 
 // MARK: - Timer
 
+/// A ring with the time in it, what is running, and the controls; or, idle, a ready ring and
+/// one clear way to start.
 struct NotchTimerPage: View {
     @ObservedObject var timers: NotchTimers
+    static let ringSize: CGFloat = 92
 
     var body: some View {
         TimelineView(.periodic(from: .now, by: 1)) { context in
-            if let running = timers.running {
-                runningView(running, now: context.date)
-            } else {
-                startView
+            HStack(spacing: 22) {
+                ring(now: context.date)
+                if let running = timers.running {
+                    runningDetails(running)
+                } else {
+                    startDetails
+                }
+                Spacer(minLength: 0)
             }
+            .frame(maxHeight: .infinity)
         }
         .padding(.horizontal, AgentComposer.panelInset)
         .padding(.bottom, NotchHome.Card.bottom)
     }
 
-    private func runningView(_ timer: NotchTimer, now: Date) -> some View {
-        HStack(spacing: 18) {
-            NotchTimerRing(progress: timer.progress(at: now), kind: timer.kind, lineWidth: 4)
-                .frame(width: 58, height: 58)
-            VStack(alignment: .leading, spacing: 2) {
-                Text(verbatim: NotchTimers.clock(timer.remaining(at: now)))
-                    .font(.appMono(size: 32, weight: .semibold))
-                    .foregroundStyle(.white)
+    private func ring(now: Date) -> some View {
+        let running = timers.running
+        return ZStack {
+            NotchTimerRing(
+                progress: running?.progress(at: now) ?? 0, kind: running?.kind ?? .focus, lineWidth: 5)
+            VStack(spacing: 1) {
+                Text(verbatim: NotchTimers.clock(running?.remaining(at: now) ?? timers.durations.focus))
+                    .font(.appMono(size: 21, weight: .semibold))
                     .monospacedDigit()
-                Text(verbatim: subtitle(timer))
-                    .font(.app(size: 12))
-                    .foregroundStyle(.white.opacity(0.5))
-                    .lineLimit(1)
+                    .foregroundStyle(.white.opacity(running == nil ? 0.45 : 1))
+                if running?.isPaused == true {
+                    Text("Paused")
+                        .font(.app(size: 10, weight: .medium))
+                        .foregroundStyle(.white.opacity(0.5))
+                }
             }
-            Spacer(minLength: 0)
-            if timer.kind.isPomodoro {
-                NotchRoundButton(symbol: "forward.end.fill", label: "Skip") { timers.skip() }
-            }
-            NotchRoundButton(symbol: "xmark", label: "Stop") { timers.cancel() }
         }
-        .frame(maxHeight: .infinity)
+        .frame(width: Self.ringSize, height: Self.ringSize)
     }
 
-    private func subtitle(_ timer: NotchTimer) -> String {
+    private func runningDetails(_ timer: NotchTimer) -> some View {
+        VStack(alignment: .leading, spacing: 10) {
+            VStack(alignment: .leading, spacing: 5) {
+                Text(verbatim: title(timer))
+                    .font(.app(size: 15, weight: .semibold))
+                    .foregroundStyle(.white)
+                    .lineLimit(1)
+                if timer.kind.isPomodoro { cycleDots(timer) }
+            }
+            HStack(spacing: 8) {
+                NotchRoundButton(
+                    symbol: timer.isPaused ? "play.fill" : "pause.fill", label: timer.isPaused ? "Resume" : "Pause"
+                ) {
+                    if timer.isPaused { timers.resume() } else { timers.pause() }
+                }
+                if timer.kind.isPomodoro {
+                    NotchRoundButton(symbol: "forward.end.fill", label: "Skip") { timers.skip() }
+                }
+                NotchRoundButton(symbol: "stop.fill", label: "Stop") { timers.cancel() }
+            }
+        }
+    }
+
+    /// Four dots for the four focus sessions before a long break: done ones filled, the one
+    /// under way ringed.
+    private func cycleDots(_ timer: NotchTimer) -> some View {
+        let done = timer.completedFocus % timers.durations.focusesBeforeLongBreak
+        return HStack(spacing: 5) {
+            ForEach(0..<timers.durations.focusesBeforeLongBreak, id: \.self) { index in
+                Circle()
+                    .fill(index < done ? NotchTimerRing.color(for: .focus) : .clear)
+                    .overlay(
+                        Circle().strokeBorder(
+                            .white.opacity(index == done && timer.kind == .focus ? 0.8 : 0.25), lineWidth: 1)
+                    )
+                    .frame(width: 7, height: 7)
+            }
+        }
+        .accessibilityLabel(Text("Focus \(done + 1) of \(timers.durations.focusesBeforeLongBreak)"))
+    }
+
+    private func title(_ timer: NotchTimer) -> String {
         switch timer.kind {
         case .countdown: return timer.label.isEmpty ? String(localized: "Timer") : timer.label
-        case .focus: return String(localized: "Focus · \(timer.completedFocus + 1) of 4")
+        case .focus: return String(localized: "Focus")
         case .shortBreak: return String(localized: "Short break")
         case .longBreak: return String(localized: "Long break")
         }
     }
 
-    private var startView: some View {
-        VStack(alignment: .leading, spacing: 12) {
-            Spacer(minLength: 0)
-            Text("Start a timer")
-                .font(.app(size: 15, weight: .semibold))
-                .foregroundStyle(.white)
-            HStack(spacing: 8) {
-                ForEach([5, 15, 25], id: \.self) { minutes in
-                    NotchChip(title: "\(minutes) min") { timers.startCountdown(minutes: Double(minutes)) }
-                }
-                NotchChip(title: String(localized: "Pomodoro"), prominent: true) { timers.startPomodoro() }
+    private var startDetails: some View {
+        VStack(alignment: .leading, spacing: 10) {
+            VStack(alignment: .leading, spacing: 3) {
+                Text("Focus")
+                    .font(.app(size: 15, weight: .semibold))
+                    .foregroundStyle(.white)
+                Text("25 min of focus, then 5 min off")
+                    .font(.app(size: 11))
+                    .foregroundStyle(.white.opacity(0.45))
             }
-            Text("Or say it: \u{201C}start a 25 minute pomodoro\u{201D}.")
-                .font(.app(size: 11))
-                .foregroundStyle(.white.opacity(0.4))
-            Spacer(minLength: 0)
+            HStack(spacing: 6) {
+                NotchChip(title: String(localized: "Start focus"), prominent: true) { timers.startPomodoro() }
+                NotchChip(title: String(localized: "5 min")) { timers.startCountdown(minutes: 5) }
+                NotchChip(title: String(localized: "15 min")) { timers.startCountdown(minutes: 15) }
+            }
         }
     }
 }
@@ -276,6 +324,98 @@ struct NotchTodayPage: View {
     }
 }
 
+// MARK: - Reminders
+
+struct NotchRemindersPage: View {
+    @ObservedObject var reminders: NotchReminders
+
+    var body: some View {
+        TimelineView(.periodic(from: .now, by: 60)) { context in
+            content(now: context.date)
+                .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .leading)
+        }
+        .padding(.horizontal, AgentComposer.panelInset)
+        .padding(.bottom, NotchHome.Card.bottom)
+        .onAppear { reminders.refresh() }
+    }
+
+    @ViewBuilder
+    private func content(now: Date) -> some View {
+        switch reminders.access {
+        case .notDetermined:
+            VStack(alignment: .leading, spacing: 8) {
+                Text("See what's left to do")
+                    .font(.app(size: 13, weight: .semibold))
+                    .foregroundStyle(.white)
+                NotchChip(title: String(localized: "Allow Reminders"), prominent: true) { reminders.requestAccess() }
+            }
+        case .denied:
+            VStack(alignment: .leading, spacing: 8) {
+                Text("Reminders access is off")
+                    .font(.app(size: 13, weight: .semibold))
+                    .foregroundStyle(.white)
+                NotchChip(title: String(localized: "Open Settings")) {
+                    if let url = URL(
+                        string: "x-apple.systempreferences:com.apple.preference.security?Privacy_Reminders")
+                    {
+                        NSWorkspace.shared.open(url)
+                    }
+                }
+            }
+        case .granted:
+            if reminders.items.isEmpty {
+                HStack(spacing: 8) {
+                    Image(systemName: "checkmark.circle.fill")
+                        .foregroundStyle(Color(red: 0.42, green: 0.86, blue: 0.56))
+                    Text("All done")
+                        .font(.app(size: 13, weight: .medium))
+                        .foregroundStyle(.white.opacity(0.7))
+                }
+            } else {
+                VStack(alignment: .leading, spacing: 7) {
+                    ForEach(reminders.items) { item in
+                        NotchReminderRow(item: item, now: now) { reminders.complete(item.id) }
+                    }
+                }
+            }
+        }
+    }
+}
+
+/// A reminder: a ring to tick, its title, and when it is due.
+private struct NotchReminderRow: View {
+    let item: NotchReminders.Item
+    let now: Date
+    let onComplete: () -> Void
+    @State private var hovered = false
+
+    var body: some View {
+        HStack(spacing: 10) {
+            Button(action: onComplete) {
+                Image(systemName: hovered ? "checkmark.circle" : "circle")
+                    .font(.system(size: 15, weight: .regular))
+                    .foregroundStyle(item.color)
+            }
+            .buttonStyle(.plain)
+            .onHover { hovered = $0 }
+            .accessibilityLabel(Text("Complete \(item.title)"))
+            Text(verbatim: item.title)
+                .font(.app(size: 13, weight: .medium))
+                .foregroundStyle(.white)
+                .lineLimit(1)
+            Spacer(minLength: 8)
+            if let when = NotchReminders.when(item, now: now) {
+                Text(verbatim: when)
+                    .font(.app(size: 11))
+                    .foregroundStyle(
+                        item.due.map { $0 < now } == true ? Color(red: 1, green: 0.45, blue: 0.4) : .white.opacity(0.45)
+                    )
+            }
+        }
+        .frame(height: 22)
+    }
+}
+
 // MARK: - Shelf
 
 struct NotchShelfPage: View {
@@ -283,16 +423,21 @@ struct NotchShelfPage: View {
     let dropping: Bool
     /// Tiles that fit beside the clear button; the rest are counted.
     static let visible = 5
+    /// The file whose details are open; nothing is read about a file until it is clicked.
+    @State private var selected: NotchShelf.Item.ID?
 
     var body: some View {
         Group {
             if shelf.items.isEmpty || dropping {
                 dropArea
+            } else if let item = shelf.items.first(where: { $0.id == selected }) {
+                NotchShelfDetail(item: item, shelf: shelf) { selected = nil }
+                    .frame(maxHeight: .infinity)
             } else {
                 // No sideways scrolling: a sideways swipe turns the page.
                 HStack(alignment: .center, spacing: 6) {
                     ForEach(shelf.items.prefix(Self.visible)) { item in
-                        NotchShelfTile(item: item) { shelf.remove(item.id) }
+                        NotchShelfTile(item: item) { selected = item.id }
                     }
                     if shelf.items.count > Self.visible {
                         Text(verbatim: "+\(shelf.items.count - Self.visible)")
@@ -332,10 +477,11 @@ struct NotchShelfPage: View {
     }
 }
 
-/// A file on the shelf: its icon and name. Drag it out to use it; it stays on the shelf.
+/// A file on the shelf: its icon and name. Click for its details and AirDrop; drag it out to
+/// use it, and it stays on the shelf.
 private struct NotchShelfTile: View {
     let item: NotchShelf.Item
-    let onRemove: () -> Void
+    let onSelect: () -> Void
     @State private var hovered = false
 
     var body: some View {
@@ -351,22 +497,88 @@ private struct NotchShelfTile: View {
         }
         .frame(width: 66, height: 70)
         .background(RoundedRectangle(cornerRadius: 10, style: .continuous).fill(.white.opacity(hovered ? 0.08 : 0)))
-        .overlay(alignment: .topTrailing) {
-            if hovered {
-                Button(action: onRemove) {
-                    Image(systemName: "xmark.circle.fill")
-                        .font(.system(size: 13))
-                        .foregroundStyle(.white.opacity(0.8), .black.opacity(0.6))
-                }
-                .buttonStyle(.plain)
-                .accessibilityLabel(Text("Remove \(item.name)"))
-            }
-        }
         .contentShape(Rectangle())
         .onHover { hovered = $0 }
+        .onTapGesture(perform: onSelect)
         .onDrag { NSItemProvider(contentsOf: item.url) ?? NSItemProvider() }
-        .onTapGesture(count: 2) { NSWorkspace.shared.open(item.url) }
-        .help(item.path)
+        .help(item.name)
+        .accessibilityAddTraits(.isButton)
+    }
+}
+
+/// One file, opened from its tile: what it is, and what to do with it — AirDrop it, open it,
+/// show it in Finder, or take it off the shelf.
+private struct NotchShelfDetail: View {
+    let item: NotchShelf.Item
+    let shelf: NotchShelf
+    let onClose: () -> Void
+    @State private var details: NotchShelf.Details?
+
+    var body: some View {
+        HStack(spacing: 14) {
+            Image(nsImage: NotchShelf.icon(for: item))
+                .resizable()
+                .frame(width: 52, height: 52)
+            VStack(alignment: .leading, spacing: 3) {
+                Text(verbatim: item.name)
+                    .font(.app(size: 13, weight: .semibold))
+                    .foregroundStyle(.white)
+                    .lineLimit(1)
+                    .truncationMode(.middle)
+                if let details {
+                    Text(verbatim: details.summary)
+                        .font(.app(size: 11))
+                        .foregroundStyle(.white.opacity(0.5))
+                        .lineLimit(1)
+                }
+                Text(verbatim: String(localized: "Added \(item.added.formatted(date: .omitted, time: .shortened))"))
+                    .font(.app(size: 11))
+                    .foregroundStyle(.white.opacity(0.35))
+            }
+            Spacer(minLength: 6)
+            HStack(spacing: 6) {
+                NotchServiceButton(service: NSSharingService(named: .sendViaAirDrop), label: "AirDrop") {
+                    NSSharingService(named: .sendViaAirDrop)?.perform(withItems: [item.url])
+                }
+                NotchRoundButton(symbol: "arrow.up.forward.app", label: "Open") { NSWorkspace.shared.open(item.url) }
+                NotchRoundButton(symbol: "folder", label: "Show in Finder") {
+                    NSWorkspace.shared.activateFileViewerSelecting([item.url])
+                }
+                NotchRoundButton(symbol: "trash", label: "Remove from the shelf") {
+                    shelf.remove(item.id)
+                    onClose()
+                }
+                NotchRoundButton(symbol: "xmark", label: "Back to the shelf", action: onClose)
+            }
+        }
+        .task(id: item.id) { details = NotchShelf.details(of: item) }
+    }
+}
+
+/// A round button showing a system sharing service's own icon, so AirDrop looks like AirDrop.
+private struct NotchServiceButton: View {
+    let service: NSSharingService?
+    let label: LocalizedStringKey
+    let action: () -> Void
+    @State private var hovered = false
+
+    var body: some View {
+        Button(action: action) {
+            Group {
+                if let image = service?.image {
+                    Image(nsImage: image).resizable().frame(width: 18, height: 18)
+                } else {
+                    Image(systemName: "square.and.arrow.up").font(.system(size: 12, weight: .semibold))
+                }
+            }
+            .frame(width: 32, height: 32)
+            .background(Circle().fill(.white.opacity(hovered ? 0.16 : 0.09)))
+            .contentShape(Circle())
+        }
+        .buttonStyle(.plain)
+        .disabled(service == nil)
+        .onHover { hovered = $0 }
+        .accessibilityLabel(Text(label))
     }
 }
 

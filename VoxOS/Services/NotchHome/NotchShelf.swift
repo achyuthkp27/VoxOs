@@ -74,6 +74,27 @@ final class NotchShelf: ObservableObject {
         if let data = try? JSONEncoder().encode(items) { try? data.write(to: storeURL, options: .atomic) }
     }
 
+    /// Read only when a file is clicked: its size and kind.
+    struct Details: Equatable {
+        let size: Int64?
+        let kind: String?
+
+        /// "1.2 MB · PDF document"
+        var summary: String {
+            [size.map { ByteCountFormatter.string(fromByteCount: $0, countStyle: .file) }, kind]
+                .compactMap { $0 }
+                .joined(separator: " · ")
+        }
+    }
+
+    nonisolated static func details(of item: Item) -> Details {
+        let values = try? item.url.resourceValues(forKeys: [
+            .fileSizeKey, .totalFileAllocatedSizeKey, .localizedTypeDescriptionKey, .isDirectoryKey,
+        ])
+        let size = values?.isDirectory == true ? nil : (values?.fileSize).map(Int64.init)
+        return Details(size: size, kind: values?.localizedTypeDescription)
+    }
+
     static func icon(for item: Item) -> NSImage {
         NSWorkspace.shared.icon(forFile: item.path)
     }

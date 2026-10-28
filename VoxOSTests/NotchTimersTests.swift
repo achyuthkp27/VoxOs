@@ -85,4 +85,18 @@ struct NotchTimersTests {
         #expect(AgentToolCatalog.onDemandSection(for: "open Safari") == nil)
         #expect(AgentControlMode.mutatingTools.isSuperset(of: ["timer_start", "pomodoro_start", "timer_cancel"]))
     }
+
+    @Test func pausingHoldsTheTimeLeft() {
+        let (timers, chimes, _) = make()
+        let start = Date()
+        timers.startCountdown(minutes: 1, now: start)
+        timers.pause(now: start.addingTimeInterval(20))
+        timers.advance(now: start.addingTimeInterval(300))
+        #expect(timers.running?.remaining(at: start.addingTimeInterval(300)) == 40, "time stands still")
+        #expect(chimes.count == 0)
+        timers.resume(now: start.addingTimeInterval(300))
+        #expect(timers.running?.ends == start.addingTimeInterval(340))
+        timers.advance(now: start.addingTimeInterval(340))
+        #expect(chimes.count == 1)
+    }
 }
