@@ -37,6 +37,10 @@ struct ClaudeCodeHookEvent: Equatable {
     let permissionSuggestionsKey: String?
     /// The questions of an AskUserQuestion call.
     let questions: [ClaudeCodeQuestion]?
+    /// ExitPlanMode: the plan as markdown, empty when the call did not carry it.
+    let plan: String?
+    /// The session's transcript, which says what hooks do not: its title, its branch, an Esc.
+    let transcriptPath: String?
     /// The CLI's process, when the hook reported it; set by the bridge, not part of the JSON.
     var cliPID: Int32?
 
@@ -70,7 +74,9 @@ struct ClaudeCodeHookEvent: Equatable {
             notificationType: object["notification_type"] as? String,
             permissionMode: object["permission_mode"] as? String,
             permissionSuggestionsKey: suggestions.flatMap { canonicalJSON($0) },
-            questions: toolName == "AskUserQuestion" ? ClaudeCodeQuestion.decode(toolInput?["questions"]) : nil
+            questions: toolName == "AskUserQuestion" ? ClaudeCodeQuestion.decode(toolInput?["questions"]) : nil,
+            plan: toolName == "ExitPlanMode" ? (toolInput?["plan"] as? String ?? "") : nil,
+            transcriptPath: (object["transcript_path"] as? String).flatMap { $0.isEmpty ? nil : $0 }
         )
     }
 
@@ -141,6 +147,9 @@ struct ClaudeCodeToolSummary: Equatable {
         case "Task", "Agent":
             title = String(localized: "Start an agent")
             detail = string("description")
+        case "ExitPlanMode":
+            title = String(localized: "Approve the plan")
+            detail = string("plan").split(separator: "\n").first.map(String.init) ?? ""
         default:
             if toolName.hasPrefix("mcp__") {
                 // mcp__<server>__<tool>. Server names can hold single underscores

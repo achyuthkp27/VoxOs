@@ -40,6 +40,9 @@ enum ClaudeCodeNotch {
         static let buttonGap: CGFloat = 12
         static let optionHeight: CGFloat = 38
         static let optionSpacing: CGFloat = 6
+        /// A plan scrolls inside a box this many lines tall.
+        static let planLines = 8
+        static let planLineHeight: CGFloat = 16
     }
 
     /// Lines a text needs at a rough characters-per-line, capped; a newline always starts one.
@@ -66,6 +69,10 @@ enum ClaudeCodeNotch {
             let needsButton = questions.contains(where: \.multiSelect)
             return head + tallest + (needsButton ? Card.buttonGap + Card.buttonHeight : 0) + Card.bottom
         }
+        if prompt.plan != nil {
+            return head + Card.titleLineHeight + Card.spacing + planBoxHeight + Card.buttonGap + Card.buttonHeight
+                + Card.bottom
+        }
         var height = head + Card.titleLineHeight
         if !prompt.summary.detail.isEmpty {
             let detailLines = lines(
@@ -74,6 +81,50 @@ enum ClaudeCodeNotch {
         }
         return height + Card.buttonGap + Card.buttonHeight + Card.bottom
     }
+    static var planBoxHeight: CGFloat { CGFloat(Card.planLines) * Card.planLineHeight + Card.detailPadding * 2 }
+
+    /// A plan's markdown, drawn plainly: headings in bold without their #, list markers as
+    /// bullets, inline styles as markdown gives them, fenced code in mono without its fences.
+    static func planText(_ markdown: String) -> AttributedString {
+        var pieces: [AttributedString] = []
+        var inFence = false
+        for raw in markdown.replacingOccurrences(of: "\r\n", with: "\n").split(
+            separator: "\n", omittingEmptySubsequences: false)
+        {
+            let line = String(raw)
+            let trimmed = line.trimmingCharacters(in: .whitespaces)
+            if trimmed.hasPrefix("```") {
+                inFence.toggle()
+                continue
+            }
+            var piece: AttributedString
+            if inFence {
+                piece = AttributedString(line)
+                piece.swiftUI.font = .appMono(size: 11, weight: .regular)
+            } else if trimmed.hasPrefix("#") {
+                piece = inlineMarkdown(trimmed.drop(while: { $0 == "#" }).trimmingCharacters(in: .whitespaces))
+                piece.swiftUI.font = .app(size: 12, weight: .semibold)
+            } else if let marker = ["- ", "* ", "+ "].first(where: { trimmed.hasPrefix($0) }) {
+                let indent = String(line.prefix(while: { $0 == " " }))
+                piece = inlineMarkdown(indent + "• " + trimmed.dropFirst(marker.count))
+            } else {
+                piece = inlineMarkdown(line)
+            }
+            pieces.append(piece)
+        }
+        var result = AttributedString()
+        for (index, piece) in pieces.enumerated() {
+            if index > 0 { result += AttributedString("\n") }
+            result += piece
+        }
+        return result
+    }
+
+    private static func inlineMarkdown(_ text: String) -> AttributedString {
+        (try? AttributedString(markdown: text, options: .init(interpretedSyntax: .inlineOnlyPreservingWhitespace)))
+            ?? AttributedString(text)
+    }
+
     /// Claude's own coral, for the glyph only.
     static let claudeColor = Color(red: 217 / 255, green: 119 / 255, blue: 87 / 255)
     static let doneColor = Color(red: 0.42, green: 0.86, blue: 0.56)
@@ -192,6 +243,8 @@ struct ClaudeCodeNotchView: View {
                     if let questions = prompt.questions {
                         ClaudeCodeQuestionCard(
                             prompt: prompt, questions: questions, onDecision: onDecision, onKeyboard: onKeyboard)
+                    } else if let plan = prompt.plan {
+                        ClaudeCodePlanCard(prompt: prompt, plan: plan, onDecision: onDecision, onKeyboard: onKeyboard)
                     } else {
                         ClaudeCodeApprovalCard(prompt: prompt, onDecision: onDecision)
                     }
@@ -254,7 +307,11 @@ struct ClaudeCodeNotchView: View {
         case .approval(let prompt, _):
             ClaudeCodeSpark(spinning: false)
                 .accessibilityLabel(
-                    Text(prompt.questions == nil ? "Claude Code is asking for permission" : "Claude Code is asking you")
+                    Text(
+                        prompt.plan != nil
+                            ? "Claude Code has a plan ready"
+                            : prompt.questions == nil
+                                ? "Claude Code is asking for permission" : "Claude Code is asking you")
                 )
         case .hidden:
             Color.clear
@@ -424,6 +481,123 @@ private struct ClaudeCodeApprovalCard: View {
         .padding(.top, Card.top)
         .padding(.horizontal, AgentComposer.panelInset)
         .padding(.bottom, Card.bottom)
+    }
+}
+
+/// ExitPlanMode: the plan to read, and the plan dialog's answers. "Keep planning" turns the
+/// buttons into a field for what to change, as the terminal's "No, keep planning" does.
+private struct ClaudeCodePlanCard: View {
+    typealias Card = ClaudeCodeNotch.Card
+    let prompt: ClaudeCodeActivity.PermissionPrompt
+    let plan: String
+    let onDecision: (UUID, ClaudeCodeActivity.Decision) -> Void
+    let onKeyboard: (Bool) -> Void
+    @State private var revising = false
+    @State private var feedback = ""
+    @FocusState private var fieldFocused: Bool
+
+    var body: some View {
+        VStack(alignment: .leading, spacing: Card.spacing) {
+            ClaudeCodeEyebrow(text: "Claude Code · \(prompt.project)")
+
+            Text("Approve the plan?")
+                .font(.app(size: 15, weight: .semibold))
+                .foregroundStyle(.white)
+                .lineLimit(1)
+                .frame(height: Card.titleLineHeight)
+
+            planBox
+
+            Group {
+                if revising { feedbackRow } else { buttons }
+            }
+            .padding(.top, Card.buttonGap - Card.spacing)
+        }
+        .padding(.top, Card.top)
+        .padding(.horizontal, AgentComposer.panelInset)
+        .padding(.bottom, Card.bottom)
+    }
+
+    private var planBox: some View {
+        Group {
+            if plan.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty {
+                Text("The plan is in the terminal.")
+                    .font(.app(size: 12))
+                    .foregroundStyle(.white.opacity(0.55))
+                    .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .topLeading)
+            } else {
+                ScrollView(.vertical) {
+                    Text(ClaudeCodeNotch.planText(plan))
+                        .font(.app(size: 12))
+                        .foregroundStyle(.white.opacity(0.88))
+                        .lineSpacing(2)
+                        .textSelection(.enabled)
+                        .frame(maxWidth: .infinity, alignment: .topLeading)
+                }
+                .scrollIndicators(.automatic)
+            }
+        }
+        .frame(height: CGFloat(Card.planLines) * Card.planLineHeight)
+        .padding(.horizontal, 10)
+        .padding(.vertical, Card.detailPadding)
+        .background(RoundedRectangle(cornerRadius: 10, style: .continuous).fill(.white.opacity(0.07)))
+    }
+
+    private var buttons: some View {
+        HStack(spacing: 4) {
+            ClaudeCodeQuietButton(
+                title: String(localized: "Auto-accept edits"),
+                help: String(localized: "Approve, and accept edits without asking for the rest of this session")
+            ) {
+                onDecision(prompt.id, .approvePlan(acceptEdits: true))
+            }
+            Spacer(minLength: 8)
+            ClaudeCodeNotchButton(title: String(localized: "Keep planning"), prominent: false) {
+                revising = true
+                onKeyboard(true)
+                fieldFocused = true
+            }
+            .padding(.trailing, 4)
+            ClaudeCodeNotchButton(title: String(localized: "Approve"), prominent: true) {
+                onDecision(prompt.id, .approvePlan(acceptEdits: false))
+            }
+        }
+    }
+
+    /// What to change; sent empty, Claude is only told to keep planning.
+    private var feedbackRow: some View {
+        HStack(spacing: 8) {
+            TextField(String(localized: "What should change?"), text: $feedback)
+                .textFieldStyle(.plain)
+                .font(.app(size: 13))
+                .foregroundStyle(.white)
+                .focused($fieldFocused)
+                .onSubmit(send)
+                .onExitCommand(perform: stopRevising)
+            ClaudeCodeNotchButton(title: String(localized: "Send"), prominent: true, action: send)
+        }
+        .padding(.leading, 12)
+        .padding(.trailing, 0)
+        .frame(height: Card.buttonHeight)
+        .background(
+            Capsule().strokeBorder(AppTheme.Accent.primary.opacity(0.7), lineWidth: 1)
+        )
+        .onAppear { fieldFocused = true }
+        // Answered in the terminal while typing here: the panel gives the keyboard back.
+        .onDisappear { onKeyboard(false) }
+    }
+
+    private func send() {
+        let text = feedback
+        stopRevising()
+        onDecision(prompt.id, .keepPlanning(text))
+    }
+
+    private func stopRevising() {
+        revising = false
+        feedback = ""
+        fieldFocused = false
+        onKeyboard(false)
     }
 }
 

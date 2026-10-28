@@ -42,6 +42,8 @@ final class ClaudeCodeActivity: ObservableObject {
         let received: Date
         /// AskUserQuestion: the questions to answer instead of allowing or denying.
         var questions: [ClaudeCodeQuestion]? = nil
+        /// ExitPlanMode: the plan to approve, as markdown; empty when the call did not carry it.
+        var plan: String? = nil
         /// What "Always allow" would allow, when the CLI offers it.
         var alwaysAllow: String? = nil
         /// The session is in a mode that "Allow in auto mode" would change.
@@ -58,6 +60,11 @@ final class ClaudeCodeActivity: ObservableObject {
         case deny
         /// AskUserQuestion: question text to the chosen label(s).
         case answer([String: String])
+        /// ExitPlanMode: go ahead. Without `acceptEdits` the session returns to the mode it had
+        /// before planning (the CLI's own rule); with it, edits are accepted without asking.
+        case approvePlan(acceptEdits: Bool)
+        /// ExitPlanMode: not yet; what to change, which may be empty.
+        case keepPlanning(String)
 
         var trailName: String {
             switch self {
@@ -66,6 +73,8 @@ final class ClaudeCodeActivity: ObservableObject {
             case .allowInAutoMode: return "allow auto mode"
             case .deny: return "deny"
             case .answer: return "answer"
+            case .approvePlan(let acceptEdits): return acceptEdits ? "approve plan, accept edits" : "approve plan"
+            case .keepPlanning: return "keep planning"
             }
         }
     }
@@ -179,9 +188,10 @@ final class ClaudeCodeActivity: ObservableObject {
             toolUseID: claimToolUse(for: event, now: now),
             received: now,
             questions: event.questions,
-            alwaysAllow: event.questions == nil
+            plan: event.plan,
+            alwaysAllow: event.questions == nil && event.plan == nil
                 ? ClaudeCodePermissionSuggestion.describe(event.permissionSuggestions) : nil,
-            canSwitchToAutoMode: event.questions == nil
+            canSwitchToAutoMode: event.questions == nil && event.plan == nil
                 && Self.modesThatCanSwitchToAuto.contains(event.permissionMode ?? "")
         )
         responders[prompt.id] = respond

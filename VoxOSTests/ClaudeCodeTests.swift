@@ -624,4 +624,74 @@ struct ClaudeCodeTests {
             ClaudeCodeHookEvent.decode(Self.payload("Notification", extra: ["notification_type": "idle_prompt"]))!)
         #expect(activity.status().isEmpty)
     }
+
+    // MARK: Plans
+
+    private static let planInput: [String: Any] = [
+        "plan": "# Plan\n\n- Add the card\n- **Test** it\n```\nmake test\n```"
+    ]
+
+    /// The CLI's plan dialog: approving returns the session to the mode it had before planning
+    /// (the CLI decides that itself, so nothing is sent); "auto-accept edits" is a session mode
+    /// change; "keep planning" is a denial whose message carries what to change.
+    @Test func planAnswersMatchTheTerminalsChoices() throws {
+        let plan = ClaudeCodeHookEvent.decode(
+            Self.payload("PermissionRequest", tool: "ExitPlanMode", input: Self.planInput))!
+        #expect(plan.plan?.hasPrefix("# Plan") == true)
+        #expect(Self.bashRequest.plan == nil)
+
+        let approve = try Self.decision(ClaudeCodeBridge.decisionBody(.approvePlan(acceptEdits: false), for: plan))
+        #expect(approve["behavior"] as? String == "allow")
+        #expect(approve["updatedPermissions"] == nil)
+        #expect(approve["updatedInput"] == nil, "the plan goes on as Claude wrote it")
+
+        let edits = try Self.decision(ClaudeCodeBridge.decisionBody(.approvePlan(acceptEdits: true), for: plan))
+        let update = (edits["updatedPermissions"] as? [[String: Any]])?.first
+        #expect(update?["type"] as? String == "setMode")
+        #expect(update?["mode"] as? String == "acceptEdits")
+        #expect(update?["destination"] as? String == "session")
+
+        let revise = try Self.decision(ClaudeCodeBridge.decisionBody(.keepPlanning("Split it in two"), for: plan))
+        #expect(revise["behavior"] as? String == "deny")
+        #expect((revise["message"] as? String)?.contains("Split it in two") == true)
+        let bare = try Self.decision(ClaudeCodeBridge.decisionBody(.keepPlanning("  "), for: plan))
+        #expect((bare["message"] as? String)?.isEmpty == false)
+    }
+
+    @Test func aPlanOffersOnlyThePlanChoices() {
+        let activity = ClaudeCodeActivity()
+        activity.request(
+            ClaudeCodeHookEvent.decode(Self.payload("PermissionRequest", tool: "ExitPlanMode", input: Self.planInput))!
+        ) { _ in }
+        let prompt = activity.prompts.first
+        #expect(prompt?.plan != nil)
+        #expect(prompt?.alwaysAllow == nil)
+        #expect(prompt?.canSwitchToAutoMode == false)
+
+        // A call without the plan still makes a plan card; the plan is then read in the terminal.
+        let empty = ClaudeCodeHookEvent.decode(Self.payload("PermissionRequest", tool: "ExitPlanMode", input: [:]))!
+        #expect(empty.plan == "")
+    }
+
+    @Test func thePlanCardFitsItsScrollingBox() {
+        let base = ClaudeCodeActivity.PermissionPrompt(
+            id: UUID(), sessionID: "s1", project: "p", summary: ClaudeCodeToolSummary(title: "Approve", detail: ""),
+            toolUseID: nil, received: Date())
+        var plan = base
+        plan.plan = String(repeating: "A long line of the plan.\n", count: 200)
+        let short = ClaudeCodeNotch.cardContentHeight(for: base)
+        let tall = ClaudeCodeNotch.cardContentHeight(for: plan)
+        #expect(tall > short)
+        plan.plan = "One line"
+        #expect(ClaudeCodeNotch.cardContentHeight(for: plan) == tall, "the box scrolls; the card does not grow")
+    }
+
+    @Test func planMarkdownIsDrawnPlainly() {
+        let text = String(ClaudeCodeNotch.planText(Self.planInput["plan"] as! String).characters)
+        #expect(text.hasPrefix("Plan\n"), "the heading keeps its words, not its #")
+        #expect(text.contains("• Add the card"))
+        #expect(text.contains("• Test it"), "bold is styled, not shown as **")
+        #expect(text.contains("make test"))
+        #expect(!text.contains("```"))
+    }
 }

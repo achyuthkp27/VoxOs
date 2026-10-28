@@ -191,7 +191,8 @@ final class ClaudeCodeBridge: @unchecked Sendable {
 
     /// The PermissionRequest output for a decision (see the hooks reference, "PermissionRequest
     /// decision control"). Answers to AskUserQuestion echo the questions back with an `answers`
-    /// map; allowing alone does not answer them.
+    /// map; allowing alone does not answer them. A plan sent back carries what to change as the
+    /// denial's message, which is how the terminal's "No, keep planning" feedback reaches Claude.
     static func decisionBody(_ decision: ClaudeCodeActivity.Decision, for event: ClaudeCodeHookEvent) -> Data {
         var verdict: [String: Any] = ["behavior": "allow"]
         switch decision {
@@ -208,6 +209,18 @@ final class ClaudeCodeBridge: @unchecked Sendable {
             var input = event.toolInput
             input["answers"] = answers
             verdict["updatedInput"] = input
+        case .approvePlan(let acceptEdits):
+            // The terminal's "Yes, auto-accept edits" is this same mode change.
+            if acceptEdits {
+                verdict["updatedPermissions"] = [["type": "setMode", "mode": "acceptEdits", "destination": "session"]]
+            }
+        case .keepPlanning(let feedback):
+            let text = feedback.trimmingCharacters(in: .whitespacesAndNewlines)
+            verdict = [
+                "behavior": "deny",
+                "message": text.isEmpty
+                    ? "The user wants to keep planning before approving this plan." : "Keep planning: \(text)",
+            ]
         }
         let output: [String: Any] = [
             "hookSpecificOutput": ["hookEventName": "PermissionRequest", "decision": verdict]
