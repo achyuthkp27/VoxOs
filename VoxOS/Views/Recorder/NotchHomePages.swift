@@ -21,7 +21,8 @@ enum NotchHomePage: String, CaseIterable, Identifiable {
         case .reminders: return "checklist"
         case .timer: return "timer"
         case .shelf: return "tray"
-        case .sound: return "slider.horizontal.3"
+        // A speaker, not sliders: in the corner, sliders read as Settings.
+        case .sound: return "speaker.wave.2.fill"
         }
     }
 
@@ -657,7 +658,7 @@ struct NotchSoundPage: View {
 
         var symbol: String {
             switch self {
-            case .apps: return "speaker.wave.2"
+            case .apps: return "square.grid.2x2"
             case .clipboard: return "doc.on.clipboard"
             case .mirror: return "person.crop.square"
             }
