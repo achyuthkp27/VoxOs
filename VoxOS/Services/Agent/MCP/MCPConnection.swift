@@ -442,9 +442,10 @@ final class MCPConnection: MCPClient, @unchecked Sendable {
         }
         let lastLine = tail.split(separator: "\n").last.map(String.init) ?? ""
         let detail = lastLine.isEmpty ? "exit status \(status)" : lastLine
-        for continuation in waiting { continuation.resume(throwing: MCPError.exited(detail)) }
         logger.notice("[\(self.config.name, privacy: .public)] exited: \(detail, privacy: .public)")
+        // State first: a caller woken by the failure below must already see the server as failed.
         setState(.failed(detail))
+        for continuation in waiting { continuation.resume(throwing: MCPError.exited(detail)) }
     }
 
     private func setState(_ newState: State) {
