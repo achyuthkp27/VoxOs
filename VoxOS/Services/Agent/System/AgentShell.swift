@@ -43,9 +43,15 @@ enum AgentShell {
                 // command whose output exceeds the pipe buffer.
                 let collected = NSMutableData()
                 let collectLock = NSLock()
+                let drained = DispatchSemaphore(value: 0)
                 pipe.fileHandleForReading.readabilityHandler = { handle in
                     let chunk = handle.availableData
-                    guard !chunk.isEmpty else { return }
+                    guard !chunk.isEmpty else {
+                        // End of file: every writer has closed the pipe.
+                        handle.readabilityHandler = nil
+                        drained.signal()
+                        return
+                    }
                     collectLock.lock()
                     collected.append(chunk)
                     collectLock.unlock()
@@ -73,7 +79,9 @@ enum AgentShell {
                 DispatchQueue.global().asyncAfter(deadline: .now() + timeoutSeconds, execute: watchdog)
                 process.waitUntilExit()
                 watchdog.cancel()
-                usleep(50_000)  // let the last readability callback land
+                // The last output can arrive after the exit is seen, later still on a busy Mac. Wait
+                // for the end of the pipe, but not for a background child that keeps it open.
+                _ = drained.wait(timeout: .now() + 2)
                 pipe.fileHandleForReading.readabilityHandler = nil
                 collectLock.lock()
                 var output = String(data: collected as Data, encoding: .utf8) ?? ""
