@@ -298,12 +298,14 @@ struct NotchHomeTests {
 
     /// Only the hardware notch opens the card; the band's wings, which the pointer crosses on the
     /// way to the menu bar, do not.
-    @Test func onlyTheNotchItselfOpensIt() {
+    @Test func onlyTheTopOfTheNotchOpensIt() {
         let notch = CGSize(width: 185, height: 32)
-        #expect(NotchHomeView.opensAt(CGPoint(x: 150, y: 10), width: 301, notch: notch), "centre")
-        #expect(!NotchHomeView.opensAt(CGPoint(x: 20, y: 10), width: 301, notch: notch), "left wing: the cover")
-        #expect(!NotchHomeView.opensAt(CGPoint(x: 285, y: 10), width: 301, notch: notch), "right wing: the bars")
-        #expect(!NotchHomeView.opensAt(CGPoint(x: 150, y: 80), width: 301, notch: notch), "below the notch")
+        #expect(NotchHomeView.opensAt(CGPoint(x: 150, y: 0), width: 301, notch: notch), "top of the screen")
+        #expect(NotchHomeView.opensAt(CGPoint(x: 150, y: 5), width: 301, notch: notch), "top strip")
+        #expect(!NotchHomeView.opensAt(CGPoint(x: 20, y: 0), width: 301, notch: notch), "left wing: the cover")
+        #expect(!NotchHomeView.opensAt(CGPoint(x: 285, y: 0), width: 301, notch: notch), "right wing: the bars")
+        #expect(!NotchHomeView.opensAt(CGPoint(x: 150, y: 20), width: 301, notch: notch), "lower notch, near tabs")
+        #expect(!NotchHomeView.opensAt(CGPoint(x: 150, y: 34), width: 301, notch: notch), "just under the notch")
     }
 
     // MARK: Battery

@@ -203,11 +203,16 @@ struct NotchHomeView: View {
     private var inset: CGFloat { NotchHome.radii(for: content).shoulder + NotchDesign.contentInset }
     private var notchRect: CGSize { CGSize(width: model.notchWidth, height: model.notchHeight) }
 
-    /// The hardware notch's span, centred in the window, with a few points to spare.
+    /// The top strip of the hardware notch's span, centred in the window. Browser tabs sit right
+    /// under the notch, so a pointer heading for them must not open the card; one pushed against
+    /// the top of the screen stops in this strip by itself.
     static func opensAt(_ point: CGPoint, width: CGFloat, notch: CGSize) -> Bool {
         let half = notch.width / 2 + 6
-        return abs(point.x - width / 2) <= half && point.y <= notch.height + 4
+        return abs(point.x - width / 2) <= half && point.y <= notch.height * hotStrip
     }
+
+    /// The share of the notch's height, from the top of the screen, that opens the card.
+    static let hotStrip: CGFloat = 0.2
 
     var body: some View {
         ZStack(alignment: .topLeading) {
