@@ -1248,6 +1248,10 @@ final class NotchHomeManager {
             .store(in: &cancellables)
         NotchFocus.shared.$notice.receive(on: RunLoop.main).sink { [weak self] _ in self?.refresh() }
             .store(in: &cancellables)
+        ClaudeCodeUsage.shared.$notice.receive(on: RunLoop.main).sink { [weak self] _ in self?.refresh() }
+            .store(in: &cancellables)
+        CodexActivity.shared.$notice.receive(on: RunLoop.main).sink { [weak self] _ in self?.refresh() }
+            .store(in: &cancellables)
         // Entering or leaving a full-screen app is a Space change.
         NSWorkspace.shared.notificationCenter.publisher(for: NSWorkspace.activeSpaceDidChangeNotification)
             .receive(on: RunLoop.main)
@@ -1316,7 +1320,8 @@ final class NotchHomeManager {
             blocked: uiManager.isRecorderPanelVisible || uiManager.isClaudeCodeCardVisible, hovered: hovered,
             dropping: dropping,
             notice: Self.notice(device: NotchDeviceAlerts.shared.notice, finished: timers.finished)
-                ?? NotchFocus.shared.notice ?? Self.downloadNotice(NotchDownloads.shared.finished),
+                ?? NotchFocus.shared.notice ?? ClaudeCodeUsage.shared.notice ?? CodexActivity.shared.notice
+                ?? Self.downloadNotice(NotchDownloads.shared.finished),
             timerRunning: timers.running != nil, musicPlaying: track?.isPlaying == true, meeting: meeting,
             privacy: NotchPrivacy.shared.state, level: NotchHUD.shared.level,
             downloads: NotchDownloads.shared.active)

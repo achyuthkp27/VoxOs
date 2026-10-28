@@ -142,11 +142,25 @@ final class ClaudeCodeBridge: @unchecked Sendable {
     }
 
     private func route(_ request: ClaudeCodeHTTP.Request, on connection: NWConnection) {
-        guard request.path == ClaudeCodeHooks.path else { return reply(404, on: connection) }
+        let paths = [ClaudeCodeHooks.path, ClaudeCodeStatusRelay.path, CodexNotify.path]
+        guard paths.contains(request.path) else { return reply(404, on: connection) }
         guard request.method == "POST" else { return reply(405, on: connection) }
         guard ClaudeCodeHTTP.isAllowedHost(request.headers["host"], port: port),
             request.headers[Self.markerHeader.lowercased()] != nil
         else { return reply(403, on: connection) }
+
+        // The status line's input and Codex's turn ends: read, never answered with anything.
+        if request.path != ClaudeCodeHooks.path {
+            reply(200, on: connection)
+            guard let object = try? JSONSerialization.jsonObject(with: request.body) as? [String: Any] else { return }
+            if request.path == ClaudeCodeStatusRelay.path {
+                let reading = ClaudeCodeUsage.reading(from: object)
+                Task { @MainActor in ClaudeCodeUsage.shared.receive(reading) }
+            } else if let turnEnd = CodexActivity.turnEnd(from: object) {
+                Task { @MainActor in CodexActivity.shared.turnEnded(project: turnEnd.project) }
+            }
+            return
+        }
 
         // Anything VoxOS does not understand is acknowledged and ignored, never refused: a
         // non-2xx answer would show the user a hook error in the CLI.

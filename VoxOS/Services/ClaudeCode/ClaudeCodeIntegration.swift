@@ -35,6 +35,10 @@ final class ClaudeCodeIntegration: ObservableObject {
     static var approvalsEnabled: Bool { UserDefaults.standard.bool(forKey: DefaultsKeys.claudeCodeApprovalsEnabled) }
     static var statusEnabled: Bool { UserDefaults.standard.bool(forKey: DefaultsKeys.claudeCodeStatusEnabled) }
     static var quietInTerminal: Bool { UserDefaults.standard.bool(forKey: DefaultsKeys.claudeCodeQuietInTerminal) }
+    static var repliesEnabled: Bool { UserDefaults.standard.bool(forKey: DefaultsKeys.claudeCodeRepliesEnabled) }
+    static var usageEnabled: Bool { UserDefaults.standard.bool(forKey: DefaultsKeys.claudeCodeUsageEnabled) }
+    static var codexEnabled: Bool { UserDefaults.standard.bool(forKey: DefaultsKeys.codexNotifyEnabled) }
+    static var speaksReplies: Bool { UserDefaults.standard.bool(forKey: DefaultsKeys.claudeCodeSpeaksReplies) }
 
     var port: UInt16 { ClaudeCodeBridge.defaultPort }
 
@@ -92,6 +96,37 @@ final class ClaudeCodeIntegration: ObservableObject {
         } else {
             removeHooks()
             stopBridge()
+            // Nothing is left pointing at a bridge that no longer listens.
+            if Self.usageEnabled { setUsageEnabled(false) }
+            if Self.codexEnabled { setCodexEnabled(false) }
+        }
+    }
+
+    /// Wraps the status line command (or puts the user's own back) for usage limits and costs.
+    func setUsageEnabled(_ enabled: Bool) {
+        UserDefaults.standard.set(enabled, forKey: DefaultsKeys.claudeCodeUsageEnabled)
+        guard !ProcessIdentity.isTestHost else { return }
+        do {
+            if enabled {
+                try ClaudeCodeStatusRelay.install(port: port, at: settingsURL)
+            } else {
+                try ClaudeCodeStatusRelay.uninstall(at: settingsURL)
+            }
+            problem = nil
+        } catch {
+            problem = error.localizedDescription
+        }
+    }
+
+    /// Adds (or removes) VoxOS's `notify` in Codex's config.
+    func setCodexEnabled(_ enabled: Bool) {
+        UserDefaults.standard.set(enabled, forKey: DefaultsKeys.codexNotifyEnabled)
+        guard !ProcessIdentity.isTestHost else { return }
+        do {
+            if enabled { try CodexNotify.install(port: port) } else { try CodexNotify.uninstall() }
+            problem = nil
+        } catch {
+            problem = error.localizedDescription
         }
     }
 

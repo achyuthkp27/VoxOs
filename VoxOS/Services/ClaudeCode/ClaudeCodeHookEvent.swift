@@ -41,6 +41,8 @@ struct ClaudeCodeHookEvent: Equatable {
     let plan: String?
     /// The session's transcript, which says what hooks do not: its title, its branch, an Esc.
     let transcriptPath: String?
+    /// Stop: Claude's last message of the turn.
+    let reply: String?
     /// The CLI's process, when the hook reported it; set by the bridge, not part of the JSON.
     var cliPID: Int32?
 
@@ -76,7 +78,11 @@ struct ClaudeCodeHookEvent: Equatable {
             permissionSuggestionsKey: suggestions.flatMap { canonicalJSON($0) },
             questions: toolName == "AskUserQuestion" ? ClaudeCodeQuestion.decode(toolInput?["questions"]) : nil,
             plan: toolName == "ExitPlanMode" ? (toolInput?["plan"] as? String ?? "") : nil,
-            transcriptPath: (object["transcript_path"] as? String).flatMap { $0.isEmpty ? nil : $0 }
+            transcriptPath: (object["transcript_path"] as? String).flatMap { $0.isEmpty ? nil : $0 },
+            reply: (object["last_assistant_message"] as? String).flatMap {
+                let text = $0.trimmingCharacters(in: .whitespacesAndNewlines)
+                return text.isEmpty ? nil : text
+            }
         )
     }
 

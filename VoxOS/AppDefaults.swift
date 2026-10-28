@@ -56,6 +56,12 @@ enum AppDefaults {
             DefaultsKeys.claudeCodeOfferAnswered: false,
             // On: the terminal in front is already asking; the band says a request waits.
             DefaultsKeys.claudeCodeQuietInTerminal: true,
+            // Off: the notch is for what needs the user; a finished turn is opt-in.
+            DefaultsKeys.claudeCodeRepliesEnabled: false,
+            DefaultsKeys.claudeCodeSpeaksReplies: false,
+            // Off: both edit another tool's settings.
+            DefaultsKeys.claudeCodeUsageEnabled: false,
+            DefaultsKeys.codexNotifyEnabled: false,
             DefaultsKeys.notchHomeEnabled: true,
             DefaultsKeys.notchDeviceAlertsEnabled: true,
             DefaultsKeys.notchHomeInFullScreen: false,

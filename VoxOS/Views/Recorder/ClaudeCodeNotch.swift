@@ -163,9 +163,12 @@ enum ClaudeCodeNotch {
         /// notch only says how many wait, as a band, until it is clicked.
         case waiting(Int)
 
+        /// Claude's last message when a turn ended (only when switched on).
+        case reply(ClaudeCodeActivity.Reply)
+
         var isCard: Bool {
             switch self {
-            case .approval, .offer: return true
+            case .approval, .offer, .reply: return true
             case .hidden, .status, .waiting: return false
             }
         }
@@ -173,7 +176,7 @@ enum ClaudeCodeNotch {
         /// Notch Home steps aside: for a card, and for a request waiting as a band.
         var hidesHome: Bool {
             switch self {
-            case .approval, .offer, .waiting: return true
+            case .approval, .offer, .waiting, .reply: return true
             case .hidden, .status: return false
             }
         }
@@ -184,7 +187,7 @@ enum ClaudeCodeNotch {
     static func content(
         prompts: [ClaudeCodeActivity.PermissionPrompt], status: ClaudeCodeActivity.Status, enabled: Bool,
         approvalsEnabled: Bool, statusEnabled: Bool, recorderVisible: Bool, offering: Bool = false,
-        homeVisible: Bool = false, quiet: Bool = false
+        homeVisible: Bool = false, quiet: Bool = false, reply: ClaudeCodeActivity.Reply? = nil
     ) -> Content {
         guard !recorderVisible else { return .hidden }
         if offering, !enabled { return .offer }
@@ -192,6 +195,7 @@ enum ClaudeCodeNotch {
         if approvalsEnabled, let first = prompts.first {
             return quiet ? .waiting(prompts.count) : .approval(first, waiting: prompts.count)
         }
+        if let reply { return .reply(reply) }
         // The music band says more than "working" does, so it keeps the notch.
         if statusEnabled, !status.isEmpty, !homeVisible { return .status(status) }
         return .hidden
@@ -211,6 +215,9 @@ enum ClaudeCodeNotch {
         case .offer:
             return CGSize(
                 width: max(NotchDesign.expandedWidth, notchWidth + wing * 2), height: notchHeight + offerContentHeight)
+        case .reply:
+            return CGSize(
+                width: max(NotchDesign.expandedWidth, notchWidth + wing * 2), height: notchHeight + replyContentHeight)
         }
     }
 
@@ -226,7 +233,7 @@ enum ClaudeCodeNotch {
         switch content {
         case .hidden: return NotchDesign.resting
         case .status, .waiting: return NotchDesign.listening
-        case .approval, .offer: return NotchDesign.expanded
+        case .approval, .offer, .reply: return NotchDesign.expanded
         }
     }
 
@@ -235,6 +242,16 @@ enum ClaudeCodeNotch {
             "See when a session is working, and allow or answer its requests here. This adds hooks to ~/.claude/settings.json."
     )
     static let offerMessageLineHeight: CGFloat = 16
+
+    /// A reply shows this many lines, scrolling past them.
+    static let replyLines = 4
+
+    /// Eyebrow, the reply's box, and the buttons.
+    static var replyContentHeight: CGFloat {
+        Card.top + Card.eyebrowHeight + Card.spacing + CGFloat(replyLines) * Card.planLineHeight + Card.detailPadding
+            * 2
+            + Card.buttonGap + Card.buttonHeight + Card.bottom
+    }
 
     /// Eyebrow, title, a two-line message, and the buttons.
     static var offerContentHeight: CGFloat {
@@ -266,6 +283,8 @@ struct ClaudeCodeNotchView: View {
     let onKeyboard: (Bool) -> Void
     /// The waiting band was clicked: show the card although the terminal is in front.
     let onReveal: () -> Void
+    let onSpeak: (String) -> Void
+    let onDismissReply: () -> Void
     let onOpenTerminal: (pid_t) -> Void
     @Environment(\.accessibilityReduceMotion) private var reduceMotion
 
@@ -293,6 +312,12 @@ struct ClaudeCodeNotchView: View {
                 .id(prompt.id)
                 .frame(height: ClaudeCodeNotch.cardContentHeight(for: prompt), alignment: .top)
                 .transition(.opacity)
+            }
+            if case .reply(let reply) = content {
+                ClaudeCodeReplyCard(reply: reply, onSpeak: onSpeak, onDismiss: onDismissReply)
+                    .id(reply.id)
+                    .frame(height: ClaudeCodeNotch.replyContentHeight, alignment: .top)
+                    .transition(.opacity)
             }
             if content == .offer {
                 ClaudeCodeOfferCard(onAnswer: onOffer)
@@ -347,6 +372,11 @@ struct ClaudeCodeNotchView: View {
         case .offer:
             ClaudeCodeSpark(spinning: false)
                 .accessibilityLabel(Text("Claude Code"))
+        case .reply:
+            Image(systemName: "checkmark")
+                .font(.system(size: 12, weight: .bold))
+                .foregroundStyle(ClaudeCodeNotch.doneColor)
+                .accessibilityLabel(Text("Claude Code finished"))
         case .waiting:
             ClaudeCodeSpark(spinning: false)
                 .accessibilityLabel(Text("Claude Code is waiting in its terminal. Click to answer here."))
@@ -567,6 +597,47 @@ private struct ClaudeCodeApprovalCard: View {
                 ClaudeCodeNotchButton(title: String(localized: "Allow"), prominent: true) {
                     onDecision(prompt.id, .allow)
                 }
+            }
+            .padding(.top, Card.buttonGap - Card.spacing)
+        }
+        .padding(.top, Card.top)
+        .padding(.horizontal, AgentComposer.panelInset)
+        .padding(.bottom, Card.bottom)
+    }
+}
+
+/// Claude's last message of a turn, to read or hear; it goes by itself after a few seconds.
+private struct ClaudeCodeReplyCard: View {
+    typealias Card = ClaudeCodeNotch.Card
+    let reply: ClaudeCodeActivity.Reply
+    let onSpeak: (String) -> Void
+    let onDismiss: () -> Void
+
+    var body: some View {
+        VStack(alignment: .leading, spacing: Card.spacing) {
+            ClaudeCodeEyebrow(
+                text: ([reply.project] + [reply.branch, reply.sessionTitle].compactMap { $0 }.filter { !$0.isEmpty })
+                    .joined(separator: " · "))
+            ScrollView(.vertical) {
+                Text(ClaudeCodeNotch.planText(reply.text))
+                    .font(.app(size: 12))
+                    .foregroundStyle(.white.opacity(0.88))
+                    .lineSpacing(2)
+                    .textSelection(.enabled)
+                    .frame(maxWidth: .infinity, alignment: .topLeading)
+            }
+            .frame(height: CGFloat(ClaudeCodeNotch.replyLines) * Card.planLineHeight)
+            .padding(.horizontal, 10)
+            .padding(.vertical, Card.detailPadding)
+            .background(RoundedRectangle(cornerRadius: 10, style: .continuous).fill(.white.opacity(0.07)))
+
+            HStack(spacing: 4) {
+                ClaudeCodeQuietButton(title: String(localized: "Read aloud"), help: String(localized: "Hear the reply"))
+                {
+                    onSpeak(reply.text)
+                }
+                Spacer(minLength: 8)
+                ClaudeCodeNotchButton(title: String(localized: "Done"), prominent: false, action: onDismiss)
             }
             .padding(.top, Card.buttonGap - Card.spacing)
         }
@@ -1029,6 +1100,8 @@ final class ClaudeCodeNotchManager {
     private var tickTask: Task<Void, Never>?
     /// The request the user clicked the waiting band for: it shows as a card from then on.
     private var revealed: UUID?
+    /// The reply already read aloud, so a refresh never reads it twice.
+    private var spokenReply: UUID?
     /// Each CLI's terminal app, found once per CLI process.
     private var terminals: [Int32: pid_t?] = [:]
     private let logger = Logger(subsystem: "com.achyuthkp.voxos", category: "ClaudeCodeNotch")
@@ -1042,6 +1115,8 @@ final class ClaudeCodeNotchManager {
         activity.$prompts.receive(on: RunLoop.main).sink { [weak self] _ in self?.refresh() }
             .store(in: &cancellables)
         activity.$sessions.receive(on: RunLoop.main).sink { [weak self] _ in self?.refresh() }
+            .store(in: &cancellables)
+        activity.$reply.receive(on: RunLoop.main).sink { [weak self] _ in self?.refresh() }
             .store(in: &cancellables)
         ClaudeCodeIntegration.shared.$isOffering.receive(on: RunLoop.main).sink { [weak self] _ in self?.refresh() }
             .store(in: &cancellables)
@@ -1077,6 +1152,14 @@ final class ClaudeCodeNotchManager {
         let now = Date()
         if let revealed, !activity.prompts.contains(where: { $0.id == revealed }) { self.revealed = nil }
         let first = activity.prompts.first
+        // Not while that session's terminal is in front: the reply is right there.
+        let shownReply = activity.reply.flatMap { reply in
+            terminalIsInFront(sessionID: reply.sessionID) ? nil : reply
+        }
+        if let shownReply, shownReply.id != spokenReply, ClaudeCodeIntegration.speaksReplies {
+            spokenReply = shownReply.id
+            ClaudeCodeSpeech.speak(shownReply.text)
+        }
         let quiet =
             ClaudeCodeIntegration.quietInTerminal
             && first.map { $0.id != revealed && terminalIsInFront(for: $0) } == true
@@ -1087,7 +1170,7 @@ final class ClaudeCodeNotchManager {
             statusEnabled: ClaudeCodeIntegration.statusEnabled,
             recorderVisible: uiManager.isRecorderPanelVisible,
             offering: ClaudeCodeIntegration.shared.isOffering && MasterSwitches.notchEnabled,
-            homeVisible: uiManager.isNotchHomeVisible, quiet: quiet)
+            homeVisible: uiManager.isNotchHomeVisible, quiet: quiet, reply: shownReply)
         scheduleTick(after: now)
         let sharing: NSWindow.SharingType = NotchHome.hiddenFromCapture ? .none : .readOnly
         if let panel, panel.sharingType != sharing { panel.sharingType = sharing }
@@ -1104,12 +1187,20 @@ final class ClaudeCodeNotchManager {
 
     /// The app running the request's session is the one in front.
     private func terminalIsInFront(for prompt: ClaudeCodeActivity.PermissionPrompt) -> Bool {
-        guard let terminal = terminal(for: prompt) else { return false }
+        terminalIsInFront(sessionID: prompt.sessionID)
+    }
+
+    private func terminalIsInFront(sessionID: String) -> Bool {
+        guard let terminal = terminal(sessionID: sessionID) else { return false }
         return terminal == NSWorkspace.shared.frontmostApplication?.processIdentifier
     }
 
     private func terminal(for prompt: ClaudeCodeActivity.PermissionPrompt) -> pid_t? {
-        guard let cli = activity.sessions[prompt.sessionID]?.cliPID else { return nil }
+        terminal(sessionID: prompt.sessionID)
+    }
+
+    private func terminal(sessionID: String) -> pid_t? {
+        guard let cli = activity.sessions[sessionID]?.cliPID else { return nil }
         if terminals.count > 64 { terminals = [:] }
         let terminal = terminals[cli] ?? ClaudeCodeTerminal.app(hosting: cli)
         terminals[cli] = terminal
@@ -1215,6 +1306,11 @@ final class ClaudeCodeNotchManager {
                 if wanted { panel.makeKey() } else { panel.resignKey() }
             },
             onReveal: { [weak self] in self?.reveal() },
+            onSpeak: { ClaudeCodeSpeech.speak($0) },
+            onDismissReply: { [weak activity] in
+                ClaudeCodeSpeech.stop()
+                activity?.dismissReply()
+            },
             onOpenTerminal: { [weak self] pid in self?.openTerminal(pid) })
         panel.contentView = NotchRecorderHostingController(rootView: view).view
         panel.sharingType = NotchHome.hiddenFromCapture ? .none : .readOnly

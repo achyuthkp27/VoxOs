@@ -100,6 +100,20 @@ final class ClaudeCodeActivity: ObservableObject {
         case noDecision
     }
 
+    /// Claude's last message when a turn ended, for the reply card.
+    struct Reply: Identifiable, Equatable {
+        let id: UUID
+        let sessionID: String
+        let project: String
+        let sessionTitle: String?
+        let branch: String?
+        let text: String
+        let at: Date
+    }
+
+    /// How long a reply stays in the notch.
+    static let replyLifetime: TimeInterval = 12
+
     /// What the status band shows when no request is waiting.
     struct Status: Equatable {
         var working: Int
@@ -125,6 +139,10 @@ final class ClaudeCodeActivity: ObservableObject {
 
     @Published private(set) var sessions: [String: Session] = [:]
     @Published private(set) var prompts: [PermissionPrompt] = []
+    /// The last turn's reply while it is shown; only when the reply card is switched on.
+    @Published private(set) var reply: Reply?
+    var showsReplies: () -> Bool = { ClaudeCodeIntegration.repliesEnabled }
+    private var replyClear: Task<Void, Never>?
 
     private var responders: [UUID: (Resolution) -> Void] = [:]
     private var recentToolUses: [String: [(id: String, key: String, at: Date)]] = [:]
@@ -155,6 +173,7 @@ final class ClaudeCodeActivity: ObservableObject {
         case .userPromptSubmit:
             update(event, phase: .working, now: now)
             settleSession(event.sessionID)
+            if reply?.sessionID == event.sessionID { dismissReply() }
         case .preToolUse:
             update(event, phase: .working, now: now)
             if let id = event.toolUseID, let key = toolKey(event) {
@@ -172,6 +191,7 @@ final class ClaudeCodeActivity: ObservableObject {
         case .stop:
             update(event, phase: .done, now: now)
             settleSession(event.sessionID)
+            if let text = event.reply, showsReplies() { show(text, for: event.sessionID, now: now) }
         case .stopFailure:
             update(event, phase: .failed, now: now)
             settleSession(event.sessionID)
@@ -288,6 +308,26 @@ final class ClaudeCodeActivity: ObservableObject {
         session.updated = now
         sessions[sessionID] = session
         settleSession(sessionID)
+    }
+
+    // MARK: Replies
+
+    private func show(_ text: String, for sessionID: String, now: Date) {
+        let session = sessions[sessionID]
+        reply = Reply(
+            id: UUID(), sessionID: sessionID, project: session?.project ?? "Claude Code",
+            sessionTitle: session?.title, branch: session?.branch, text: text, at: now)
+        replyClear?.cancel()
+        replyClear = Task { @MainActor [weak self] in
+            try? await Task.sleep(for: .seconds(Self.replyLifetime))
+            guard !Task.isCancelled else { return }
+            self?.reply = nil
+        }
+    }
+
+    func dismissReply() {
+        replyClear?.cancel()
+        reply = nil
     }
 
     // MARK: Session info

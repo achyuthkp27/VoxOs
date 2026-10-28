@@ -50,6 +50,16 @@ enum DefaultsKeys {
     static let claudeCodeStatusEnabled = "ClaudeCodeStatusEnabled"
     /// A request whose session's terminal is in front waits as a small band instead of a card.
     static let claudeCodeQuietInTerminal = "ClaudeCodeQuietInTerminal"
+    /// Claude's last message shows in the notch when a turn ends…
+    static let claudeCodeRepliesEnabled = "ClaudeCodeRepliesEnabled"
+    /// …and is read aloud.
+    static let claudeCodeSpeaksReplies = "ClaudeCodeSpeaksReplies"
+    /// The status line is wrapped so its input (usage limits, costs) also reaches VoxOS…
+    static let claudeCodeUsageEnabled = "ClaudeCodeUsageEnabled"
+    /// …and the user's own status line, to put back exactly.
+    static let claudeCodeOriginalStatusLine = "ClaudeCodeOriginalStatusLine"
+    /// Codex's notify sends turn ends to VoxOS.
+    static let codexNotifyEnabled = "CodexNotifyEnabled"
     /// The notch opens on hover into Music, Timer, Today and Shelf.
     static let notchHomeEnabled = "NotchHomeEnabled"
     /// A short notice in the notch when a Bluetooth device or Wi-Fi connects or drops, the sound
