@@ -56,6 +56,11 @@ struct MenuBarView: View {
                 "Voice Assistant",
                 isOn: Binding(get: { voiceEnabled }, set: { MasterSwitches.setVoiceEnabled($0) }))
             Toggle("Notch", isOn: Binding(get: { notchEnabled }, set: { MasterSwitches.setNotchEnabled($0) }))
+            Button("Open Notch Home") {
+                DistributedNotificationCenter.default().postNotificationName(
+                    NotchHome.openRequest, object: nil, userInfo: nil, deliverImmediately: true)
+            }
+            .disabled(!notchEnabled)
 
             Divider()
 

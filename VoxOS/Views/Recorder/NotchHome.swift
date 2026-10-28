@@ -161,6 +161,12 @@ enum NotchHome {
     static let tapInterval: TimeInterval = 0.35
     @MainActor private static var lastTap = Date.distantPast
 
+    /// Opens the card pinned, on the page named by the notification's object if any: from the menu
+    /// bar's "Open Notch Home", and from scripts on this Mac (screenshots, automation). Distributed
+    /// so a script can post it; all it can do is show the card.
+    static let openRequest = Notification.Name("com.achyuthkp.voxos.notchHome.open")
+    static let closeRequest = Notification.Name("com.achyuthkp.voxos.notchHome.close")
+
     static func clock(_ seconds: Double) -> String {
         let total = max(0, Int(seconds.rounded(.down)))
         return String(format: "%d:%02d", total / 60, total % 60)
@@ -1234,6 +1240,15 @@ final class NotchHomeManager {
                 self?.refresh()
             }
             .store(in: &cancellables)
+        let distributed = DistributedNotificationCenter.default()
+        distributed.publisher(for: NotchHome.openRequest).receive(on: RunLoop.main)
+            .sink { [weak self] note in
+                self?.openPinned(on: (note.object as? String).flatMap(NotchHomePage.init(rawValue:)))
+            }
+            .store(in: &cancellables)
+        distributed.publisher(for: NotchHome.closeRequest).receive(on: RunLoop.main)
+            .sink { [weak self] _ in self?.closePinned() }
+            .store(in: &cancellables)
         scrollMonitor = NSEvent.addLocalMonitorForEvents(matching: .scrollWheel) { [weak self] event in
             if let self, let panel = self.panel, event.window === panel { self.handleScroll(event, in: panel) }
             return event
@@ -1753,6 +1768,24 @@ final class NotchHomeManager {
         // Pages move only under the pointer, above; the shelf keeps its drags for files.
         if swipe == .nextPage || swipe == .previousPage { return }
         perform(swipe)
+    }
+
+    /// Open without the pointer, pinned so it stays until unpinned or closed.
+    private func openPinned(on page: NotchHomePage?) {
+        ActivityTrail.mark("notch home opened by request")
+        setHovered(true)
+        guard let model, model.content == .expanded else { return }
+        model.pinned = true
+        if let page, NotchHomePage.available(hasTrack: model.track != nil).contains(page) {
+            land()
+            model.page = page
+        }
+    }
+
+    private func closePinned() {
+        guard hovered else { return }
+        model?.pinned = false
+        setHovered(false)
     }
 
     private func togglePin() {
