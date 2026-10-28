@@ -29,9 +29,11 @@ Decisions, and what they rest on (measured on macOS 26 unless noted):
 - **Menu bar.** Status items are drawn into the menu bar, not as windows, so free space beside the
   notch is read through Accessibility, off the main thread with a short timeout per app; a band
   that lasts (music, a timer) is not drawn where it would cover an item.
-- **Gestures.** Closed: toward the middle puts a band away, outward brings it back. Open:
-  sideways turns pages, up and down changes player. Scroll phases are read from a local event
-  monitor; momentum is ignored.
+- **Gestures.** Closed: a plainly sideways swipe toward the middle puts a band away, outward
+  brings it back. Open: the page follows the fingers with the next one beside it, and on letting
+  go slides on (past a fifth of the card, or flicked) or settles back, easing out without
+  overshoot; up and down changes player. A swipe locks to one axis after 8 pt. Scroll phases are
+  read from a local event monitor; momentum is ignored.
 - **Permissions.** Calendar, Reminders and Bluetooth need their usage strings and, under the
   hardened runtime, the matching entitlements (`personal-information.calendars`,
   `device.bluetooth`); without them requests fail silently or block. Calendar and Reminders are
