@@ -43,6 +43,10 @@ enum ClaudeCodeNotch {
         /// A plan scrolls inside a box this many lines tall.
         static let planLines = 8
         static let planLineHeight: CGFloat = 16
+        /// A change scrolls inside a box at most this many lines tall.
+        static let diffLines = 7
+        static let diffLineHeight: CGFloat = 15
+        static let diffPadding: CGFloat = 6
     }
 
     /// Lines a text needs at a rough characters-per-line, capped; a newline always starts one.
@@ -79,6 +83,9 @@ enum ClaudeCodeNotch {
                 of: prompt.summary.detail, perLine: Card.detailCharactersPerLine, max: Card.detailMaxLines)
             height += Card.spacing + CGFloat(detailLines) * Card.detailLineHeight + Card.detailPadding * 2
         }
+        if let diff = prompt.diff, !diff.isEmpty {
+            height += Card.spacing + diffBoxHeight(lines: diff.count)
+        }
         return height + Card.buttonGap + Card.buttonHeight + Card.bottom
     }
     /// Whose request it is: the folder, the branch when there is one, and the session's title,
@@ -88,6 +95,10 @@ enum ClaudeCodeNotch {
         if let branch = prompt.branch, !branch.isEmpty { parts.append(branch) }
         if let title = prompt.sessionTitle, !title.isEmpty { parts.append(title) }
         return parts
+    }
+
+    static func diffBoxHeight(lines count: Int) -> CGFloat {
+        CGFloat(Swift.min(count, Card.diffLines)) * Card.diffLineHeight + Card.diffPadding * 2
     }
 
     static var planBoxHeight: CGFloat { CGFloat(Card.planLines) * Card.planLineHeight + Card.detailPadding * 2 }
@@ -491,6 +502,10 @@ private struct ClaudeCodeApprovalCard: View {
                     .help(prompt.summary.detail)
             }
 
+            if let diff = prompt.diff, !diff.isEmpty {
+                ClaudeCodeDiffBox(lines: diff)
+            }
+
             HStack(spacing: 4) {
                 if let alwaysAllow = prompt.alwaysAllow {
                     ClaudeCodeQuietButton(title: String(localized: "Always allow"), help: alwaysAllow) {
@@ -519,6 +534,54 @@ private struct ClaudeCodeApprovalCard: View {
         .padding(.top, Card.top)
         .padding(.horizontal, AgentComposer.panelInset)
         .padding(.bottom, Card.bottom)
+    }
+}
+
+/// The change an Edit or Write would make, removed lines red and added green, scrolling once
+/// it is taller than the box.
+private struct ClaudeCodeDiffBox: View {
+    typealias Card = ClaudeCodeNotch.Card
+    let lines: [ClaudeCodeDiff.Line]
+
+    var body: some View {
+        ScrollView(.vertical) {
+            VStack(alignment: .leading, spacing: 0) {
+                ForEach(Array(lines.enumerated()), id: \.offset) { _, line in
+                    Text(verbatim: line.marker + " " + line.text)
+                        .font(.appMono(size: 11, weight: .regular))
+                        .foregroundStyle(color(line.kind))
+                        .lineLimit(1)
+                        .truncationMode(.tail)
+                        .frame(maxWidth: .infinity, alignment: .leading)
+                        .frame(height: Card.diffLineHeight)
+                        .padding(.horizontal, 8)
+                        .background(fill(line.kind))
+                }
+            }
+        }
+        .scrollIndicators(.automatic)
+        .frame(height: CGFloat(Swift.min(lines.count, Card.diffLines)) * Card.diffLineHeight)
+        .padding(.vertical, Card.diffPadding)
+        .background(RoundedRectangle(cornerRadius: 10, style: .continuous).fill(.white.opacity(0.05)))
+        .clipShape(RoundedRectangle(cornerRadius: 10, style: .continuous))
+        .accessibilityElement(children: .combine)
+        .accessibilityLabel(Text("Change: \(lines.count) lines"))
+    }
+
+    private func color(_ kind: ClaudeCodeDiff.Line.Kind) -> Color {
+        switch kind {
+        case .removed: return ClaudeCodeNotch.failedColor
+        case .added: return ClaudeCodeNotch.doneColor
+        case .note: return .white.opacity(0.45)
+        }
+    }
+
+    private func fill(_ kind: ClaudeCodeDiff.Line.Kind) -> Color {
+        switch kind {
+        case .removed: return ClaudeCodeNotch.failedColor.opacity(0.1)
+        case .added: return ClaudeCodeNotch.doneColor.opacity(0.1)
+        case .note: return .clear
+        }
     }
 }
 

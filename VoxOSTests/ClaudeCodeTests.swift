@@ -824,4 +824,57 @@ struct ClaudeCodeTests {
                 prompts: activity.prompts, status: .none, enabled: true, approvalsEnabled: true, statusEnabled: false,
                 recorderVisible: true, quiet: true) == .hidden, "the recorder still outranks it")
     }
+
+    // MARK: Changes
+
+    @Test func anEditShowsOnlyTheLinesThatChange() {
+        let lines = ClaudeCodeDiff.edit(old: "a\nb\nc\nd", new: "a\nB\nc\nd")
+        #expect(lines == [.init(kind: .removed, text: "b"), .init(kind: .added, text: "B")])
+        #expect(ClaudeCodeDiff.edit(old: "same", new: "same").isEmpty)
+        // Measured on the card: a long line changed near its end showed only the shared start.
+        let tweak = ClaudeCodeDiff.edit(
+            old: "    static let size = Animation.timingCurve(0.45, 0, 0.55, 1, duration: 0.34)",
+            new: "    static let size = Animation.timingCurve(0.45, 0, 0.55, 1, duration: 0.30)")
+        #expect(tweak.map(\.text) == ["static let size = … duration: 0.34)", "static let size = … duration: 0.30)"])
+        let early = ClaudeCodeDiff.edit(
+            old: "let x = " + String(repeating: "a", count: 70), new: "let y = " + String(repeating: "a", count: 70))
+        #expect(early.first?.text.hasPrefix("let x") == true, "a difference in view is left where it is")
+        let indented = ClaudeCodeDiff.edit(old: "    a = 1\n      b = 2", new: "    a = 3\n      b = 2")
+        #expect(indented.map(\.text) == ["a = 1", "a = 3"], "shared indentation is dropped")
+        #expect(ClaudeCodeDiff.edit(old: "", new: "new\n") == [.init(kind: .added, text: "new")])
+    }
+
+    @Test func multiEditsAndWritesAreShownAndLongOnesCut() {
+        let multi = ClaudeCodeDiff.lines(
+            toolName: "MultiEdit",
+            input: ["edits": [["old_string": "x", "new_string": "y"], ["old_string": "1", "new_string": "2"]]])
+        #expect(multi?.map(\.marker) == ["-", "+", " ", "-", "+"], "a gap between edits")
+        let long = String(repeating: "line\n", count: ClaudeCodeDiff.maxLines + 10)
+        let write = ClaudeCodeDiff.lines(toolName: "Write", input: ["content": long])
+        #expect(write?.count == ClaudeCodeDiff.maxLines + 1)
+        #expect(write?.last?.kind == .note)
+        #expect(ClaudeCodeDiff.lines(toolName: "Bash", input: ["command": "ls"]) == nil)
+    }
+
+    @Test func anEditRequestCarriesItsChangeAndTheCardMakesRoom() {
+        let activity = ClaudeCodeActivity()
+        activity.request(
+            ClaudeCodeHookEvent.decode(
+                Self.payload(
+                    "PermissionRequest", tool: "Edit",
+                    input: [
+                        "file_path": "/Users/me/Projects/VoxOs/a.swift", "old_string": "let a = 1",
+                        "new_string": "let a = 2",
+                    ]))!
+        ) { _ in }
+        let edit = try? #require(activity.prompts.first)
+        #expect(edit?.diff?.count == 2)
+        var bare = edit
+        bare?.diff = nil
+        if let edit, let bare {
+            #expect(ClaudeCodeNotch.cardContentHeight(for: edit) > ClaudeCodeNotch.cardContentHeight(for: bare))
+        }
+        _ = ask(activity)
+        #expect(activity.prompts.last?.diff == nil, "a command has no change to show")
+    }
 }

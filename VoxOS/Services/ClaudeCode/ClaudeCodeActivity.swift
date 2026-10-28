@@ -49,6 +49,8 @@ final class ClaudeCodeActivity: ObservableObject {
         var questions: [ClaudeCodeQuestion]? = nil
         /// ExitPlanMode: the plan to approve, as markdown; empty when the call did not carry it.
         var plan: String? = nil
+        /// Edit, MultiEdit, Write: the lines the change removes and adds.
+        var diff: [ClaudeCodeDiff.Line]? = nil
         /// The session's title and branch, which tell two sessions in one folder apart.
         var sessionTitle: String? = nil
         var branch: String? = nil
@@ -209,6 +211,8 @@ final class ClaudeCodeActivity: ObservableObject {
             received: now,
             questions: event.questions,
             plan: event.plan,
+            diff: event.questions == nil && event.plan == nil
+                ? ClaudeCodeDiff.lines(toolName: event.toolName ?? "", input: event.toolInput) : nil,
             sessionTitle: sessions[event.sessionID]?.title,
             branch: sessions[event.sessionID]?.branch,
             alwaysAllow: event.questions == nil && event.plan == nil
