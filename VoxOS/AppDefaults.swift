@@ -59,6 +59,9 @@ enum AppDefaults {
             DefaultsKeys.notchHomeEnabled: true,
             DefaultsKeys.notchDeviceAlertsEnabled: true,
             DefaultsKeys.notchHomeInFullScreen: false,
+            DefaultsKeys.notchPrivacyEnabled: true,
+            // Needs Calendar access, which only the Calendar page asks for.
+            DefaultsKeys.notchMeetingsEnabled: true,
             DefaultsKeys.notchMusicEnabled: true,
             // Off: listening to the sound output turns on macOS's purple recording dot.
             DefaultsKeys.notchMusicBarsEnabled: false,
