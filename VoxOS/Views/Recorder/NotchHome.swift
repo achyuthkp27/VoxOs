@@ -735,6 +735,17 @@ enum NotchHomeApp {
         return name
     }
 
+    /// Brings the player forward, through Launch Services, which works from a background app.
+    static func open(_ bundleID: String?) {
+        guard let bundleID, let url = NSWorkspace.shared.urlForApplication(withBundleIdentifier: bundleID) else {
+            return
+        }
+        ActivityTrail.mark("notch home player opened")
+        let configuration = NSWorkspace.OpenConfiguration()
+        configuration.activates = true
+        NSWorkspace.shared.openApplication(at: url, configuration: configuration) { _, _ in }
+    }
+
     static func icon(for bundleID: String?) -> NSImage? {
         guard let bundleID else { return nil }
         if let icon = icons[bundleID] { return icon }
@@ -796,7 +807,15 @@ private struct NotchHomePlayer: View {
 
     var body: some View {
         HStack(alignment: .top, spacing: 18) {
-            NotchHomeCover(track: track, size: NotchHome.Card.coverSize)
+            // A click on the cover opens the app that is playing.
+            Button {
+                NotchHomeApp.open(track.bundleID)
+            } label: {
+                NotchHomeCover(track: track, size: NotchHome.Card.coverSize)
+            }
+            .buttonStyle(NotchCoverButtonStyle())
+            .help(NotchHomeApp.name(for: track.bundleID).map { "Open \($0)" } ?? "Open the player")
+            .accessibilityLabel(Text("Open \(NotchHomeApp.name(for: track.bundleID) ?? "the player")"))
             VStack(alignment: .leading, spacing: 0) {
                 HStack(alignment: .top, spacing: 8) {
                     VStack(alignment: .leading, spacing: 3) {
@@ -888,6 +907,27 @@ private struct NotchHomeArtwork: View {
         .frame(width: size, height: size)
         .clipShape(RoundedRectangle(cornerRadius: radius, style: .continuous))
         .accessibilityHidden(true)
+    }
+}
+
+/// The cover dims a touch under the pointer and when pressed, as a button should.
+private struct NotchCoverButtonStyle: ButtonStyle {
+    func makeBody(configuration: Configuration) -> some View {
+        Pressable(configuration: configuration)
+    }
+
+    /// A view of its own, since a style cannot hold the hover state.
+    private struct Pressable: View {
+        let configuration: Configuration
+        @State private var hovered = false
+
+        var body: some View {
+            configuration.label
+                .opacity(configuration.isPressed ? 0.75 : hovered ? 0.9 : 1)
+                .scaleEffect(configuration.isPressed ? 0.98 : 1)
+                .animation(.easeOut(duration: 0.12), value: configuration.isPressed)
+                .onHover { hovered = $0 }
+        }
     }
 }
 
