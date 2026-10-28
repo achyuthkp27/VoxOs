@@ -15,7 +15,7 @@ Decisions, and what they rest on (measured on macOS 26 unless noted):
   ScreenCaptureKit, but any system-audio capture lights macOS's purple recording dot. So the tap
   runs only if Live Music Bars is on (off by default), and then only while live bars are on
   screen (the band or the open Music page); with it off, the bars are ambient and listen to
-  nothing.
+  nothing. A click on the player's bars switches the setting.
 - **Battery.** Nothing polls without a reason. Live bars fall back to ambient in Low Power Mode
   and, if the user says so, on battery (`PowerState`). The tap lingers 3 s after the bars hide,
   because a hover that opens the card over the band would otherwise rebuild it each time. Bar

@@ -289,7 +289,7 @@ struct NotchHomeView: View {
             if let track = model.track {
                 NotchHomePlayer(
                     track: track, modes: model.modes, liveBars: model.liveBars, onShuffle: onShuffle,
-                    onRepeat: onRepeat)
+                    onRepeat: onRepeat, onToggleBars: { barsEnabled.toggle() })
             }
         case .timer:
             NotchTimerPage(timers: .shared)
@@ -477,6 +477,7 @@ private struct NotchHomePlayer: View {
     let liveBars: Bool
     let onShuffle: () -> Void
     let onRepeat: () -> Void
+    let onToggleBars: () -> Void
 
     var body: some View {
         HStack(alignment: .top, spacing: 18) {
@@ -495,11 +496,20 @@ private struct NotchHomePlayer: View {
                     }
                     Spacer(minLength: 0)
                     if track.isPlaying {
-                        NotchLevelBars(
-                            color: track.tint, bars: 4, barWidth: 2.5, spacing: 2, maxHeight: 14,
-                            source: liveBars ? .live : .ambient
-                        )
-                        .frame(width: 18, height: 16)
+                        // A click switches Live Music Bars, so they need not live in Settings to
+                        // be tried; ambient bars are dimmer, so the switch shows.
+                        Button(action: onToggleBars) {
+                            NotchLevelBars(
+                                color: track.tint, bars: 4, barWidth: 2.5, spacing: 2, maxHeight: 14,
+                                source: liveBars ? .live : .ambient
+                            )
+                            .opacity(liveBars ? 1 : 0.55)
+                            .frame(width: 18, height: 16)
+                            .contentShape(Rectangle())
+                        }
+                        .buttonStyle(.plain)
+                        .help(liveBars ? "Live music bars: on" : "Live music bars: off")
+                        .accessibilityLabel(Text(liveBars ? "Turn live music bars off" : "Turn live music bars on"))
                     }
                 }
                 .padding(.top, 4)
