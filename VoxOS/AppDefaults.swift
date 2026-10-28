@@ -54,6 +54,8 @@ enum AppDefaults {
             // narrating that a session is busy.
             DefaultsKeys.claudeCodeStatusEnabled: false,
             DefaultsKeys.claudeCodeOfferAnswered: false,
+            // On: the terminal in front is already asking; the band says a request waits.
+            DefaultsKeys.claudeCodeQuietInTerminal: true,
             DefaultsKeys.notchHomeEnabled: true,
             DefaultsKeys.notchDeviceAlertsEnabled: true,
             DefaultsKeys.notchHomeInFullScreen: false,

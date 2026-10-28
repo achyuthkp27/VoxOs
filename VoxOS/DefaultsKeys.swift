@@ -48,6 +48,8 @@ enum DefaultsKeys {
     static let claudeCodeApprovalsEnabled = "ClaudeCodeApprovalsEnabled"
     /// The notch shows when a session is working and when it finishes.
     static let claudeCodeStatusEnabled = "ClaudeCodeStatusEnabled"
+    /// A request whose session's terminal is in front waits as a small band instead of a card.
+    static let claudeCodeQuietInTerminal = "ClaudeCodeQuietInTerminal"
     /// The notch opens on hover into Music, Timer, Today and Shelf.
     static let notchHomeEnabled = "NotchHomeEnabled"
     /// A short notice in the notch when a Bluetooth device or Wi-Fi connects or drops.

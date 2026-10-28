@@ -34,6 +34,7 @@ final class ClaudeCodeIntegration: ObservableObject {
     static var isEnabled: Bool { UserDefaults.standard.bool(forKey: DefaultsKeys.claudeCodeEnabled) }
     static var approvalsEnabled: Bool { UserDefaults.standard.bool(forKey: DefaultsKeys.claudeCodeApprovalsEnabled) }
     static var statusEnabled: Bool { UserDefaults.standard.bool(forKey: DefaultsKeys.claudeCodeStatusEnabled) }
+    static var quietInTerminal: Bool { UserDefaults.standard.bool(forKey: DefaultsKeys.claudeCodeQuietInTerminal) }
 
     var port: UInt16 { ClaudeCodeBridge.defaultPort }
 

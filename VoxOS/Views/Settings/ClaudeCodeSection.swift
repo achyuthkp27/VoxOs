@@ -7,6 +7,7 @@ struct ClaudeCodeSection: View {
     @AppStorage(DefaultsKeys.claudeCodeEnabled) private var enabled = false
     @AppStorage(DefaultsKeys.claudeCodeApprovalsEnabled) private var approvalsEnabled = true
     @AppStorage(DefaultsKeys.claudeCodeStatusEnabled) private var statusEnabled = false
+    @AppStorage(DefaultsKeys.claudeCodeQuietInTerminal) private var quietInTerminal = true
 
     var body: some View {
         Section {
@@ -18,6 +19,17 @@ struct ClaudeCodeSection: View {
                 Toggle(
                     "Allow or Deny Requests from the Notch",
                     isOn: Binding(get: { approvalsEnabled }, set: { integration.setApprovalsEnabled($0) }))
+
+                if approvalsEnabled {
+                    Toggle(isOn: $quietInTerminal) {
+                        HStack(spacing: 2) {
+                            Text("Quiet While Its Terminal Is in Front")
+                            InfoTip(
+                                "When the app running the session is in front, a request waits as a small band with a count instead of a card, since the terminal is asking too. Click the band to answer in the notch."
+                            )
+                        }
+                    }
+                }
 
                 Toggle("Show When a Session Is Working", isOn: $statusEnabled)
 

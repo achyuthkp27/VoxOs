@@ -63,8 +63,9 @@ class RecorderUIManager: ObservableObject, RecorderPanelPresenting {
     /// Claude Code's band or approval card is on screen (see ClaudeCodeNotchManager). The idle tab
     /// hides under it, as it does under the recorder.
     @Published var isClaudeCodeSurfaceVisible = false
-    /// A Claude Code request, question or offer card in particular: the notch home hides under
-    /// it, but takes the place of Claude Code's "working" band.
+    /// A Claude Code request, question or offer card in particular, or a request waiting as a
+    /// band while its terminal is in front: the notch home hides under it, but takes the place of
+    /// Claude Code's "working" band.
     @Published var isClaudeCodeCardVisible = false
     /// The notch home's music band or player is on screen (see NotchHomeManager).
     @Published var isNotchHomeVisible = false

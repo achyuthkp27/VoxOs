@@ -789,4 +789,39 @@ struct ClaudeCodeTests {
         for _ in 0..<200 where !fired.value { try await Task.sleep(for: .milliseconds(10)) }
         #expect(fired.value)
     }
+
+    // MARK: Terminal in front
+
+    @Test func theTerminalIsTheNearestAppAboveTheCLI() {
+        // CLI → zsh → login → terminal app, as under cmux.
+        let parents: [pid_t: pid_t] = [400: 300, 300: 200, 200: 100]
+        #expect(ClaudeCodeTerminal.app(hosting: 400, parentOf: { parents[$0] }, isApp: { $0 == 100 }) == 100)
+        #expect(ClaudeCodeTerminal.app(hosting: 400, parentOf: { parents[$0] }, isApp: { _ in false }) == nil, "tmux")
+        #expect(ClaudeCodeTerminal.app(hosting: 7, parentOf: { $0 }, isApp: { _ in false }) == nil, "a loop ends")
+        // The test host is launchd's child, which counts as no parent.
+        #expect(ClaudeCodeTerminal.parent(of: getpid()) == (getppid() > 1 ? getppid() : nil))
+    }
+
+    @Test func aRequestWaitsAsABandWhileItsTerminalIsInFront() {
+        let activity = ClaudeCodeActivity()
+        _ = ask(activity)
+        _ = ask(activity, session: "s2")
+        let quiet = ClaudeCodeNotch.content(
+            prompts: activity.prompts, status: .none, enabled: true, approvalsEnabled: true, statusEnabled: false,
+            recorderVisible: false, quiet: true)
+        #expect(quiet == .waiting(2))
+        #expect(!quiet.isCard)
+        #expect(quiet.hidesHome, "a waiting request outranks the music band")
+        #expect(
+            ClaudeCodeNotch.size(for: quiet, notchWidth: 185, notchHeight: 32)
+                == ClaudeCodeNotch.size(for: .status(.none), notchWidth: 185, notchHeight: 32))
+        let loud = ClaudeCodeNotch.content(
+            prompts: activity.prompts, status: .none, enabled: true, approvalsEnabled: true, statusEnabled: false,
+            recorderVisible: false, quiet: false)
+        #expect(loud.isCard)
+        #expect(
+            ClaudeCodeNotch.content(
+                prompts: activity.prompts, status: .none, enabled: true, approvalsEnabled: true, statusEnabled: false,
+                recorderVisible: true, quiet: true) == .hidden, "the recorder still outranks it")
+    }
 }
