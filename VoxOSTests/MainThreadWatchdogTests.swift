@@ -25,12 +25,13 @@ struct MainThreadWatchdogTests {
     @Test @MainActor func aBlockedMainThreadIsWrittenToTheLogWithTheTrail() async throws {
         let url = FileManager.default.temporaryDirectory.appendingPathComponent("hang-\(UUID().uuidString).log")
         defer { try? FileManager.default.removeItem(at: url) }
-        ActivityTrail.clear()
-        ActivityTrail.mark("test marker before the stall")
         let watchdog = MainThreadWatchdog(logURL: url)
         watchdog.start()
         defer { watchdog.stop() }
         try await Task.sleep(for: .milliseconds(700))  // let it get a first pong
+        // Marked right before the stall: suites running beside this one mark the trail on main
+        // too, and during the wait they could push an earlier mark out of it.
+        ActivityTrail.mark("test marker before the stall")
         Thread.sleep(forTimeInterval: MainThreadWatchdog.threshold + 0.8)  // block main on purpose
         try await Task.sleep(for: .milliseconds(900))  // let it notice the recovery
         let log = try String(contentsOf: url, encoding: .utf8)
