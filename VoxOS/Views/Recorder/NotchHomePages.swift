@@ -9,6 +9,7 @@ enum NotchHomePage: String, CaseIterable, Identifiable {
     case reminders
     case timer
     case shelf
+    case clipboard
     /// Per-app volume.
     case sound
     case mirror
@@ -22,6 +23,7 @@ enum NotchHomePage: String, CaseIterable, Identifiable {
         case .reminders: return "checklist"
         case .timer: return "timer"
         case .shelf: return "tray"
+        case .clipboard: return "doc.on.clipboard"
         case .sound: return "slider.horizontal.3"
         case .mirror: return "person.crop.square"
         }
@@ -34,16 +36,21 @@ enum NotchHomePage: String, CaseIterable, Identifiable {
         case .reminders: return String(localized: "Reminders")
         case .timer: return String(localized: "Pomodoro")
         case .shelf: return String(localized: "Shelf")
+        case .clipboard: return String(localized: "Clipboard")
         case .sound: return String(localized: "Sound")
         case .mirror: return String(localized: "Mirror")
         }
     }
 
-    /// Music only while there is a track; Sound and Mirror when switched on; the rest always.
-    static func available(hasTrack: Bool, sound: Bool = true, mirror: Bool = true) -> [NotchHomePage] {
+    /// Music only while there is a track; Clipboard, Sound and Mirror when switched on; the rest
+    /// always.
+    static func available(hasTrack: Bool, sound: Bool = true, mirror: Bool = true, clipboard: Bool = true)
+        -> [NotchHomePage]
+    {
         allCases.filter { page in
             switch page {
             case .music: return hasTrack
+            case .clipboard: return clipboard
             case .sound: return sound
             case .mirror: return mirror
             default: return true
@@ -649,6 +656,65 @@ struct NotchRoundButton: View {
         .buttonStyle(.plain)
         .onHover { hovered = $0 }
         .accessibilityLabel(Text(label))
+    }
+}
+
+// MARK: - Clipboard
+
+/// The last pieces of text copied; a click copies one again.
+struct NotchClipboardPage: View {
+    @ObservedObject var clipboard: NotchClipboard
+    @State private var copied: UUID?
+
+    var body: some View {
+        Group {
+            if clipboard.items.isEmpty {
+                VStack(spacing: 6) {
+                    Image(systemName: "doc.on.clipboard").font(.system(size: 18, weight: .medium))
+                    Text("Text you copy shows here, to copy again").font(.app(size: 12))
+                }
+                .foregroundStyle(.white.opacity(0.45))
+                .frame(maxWidth: .infinity, maxHeight: .infinity)
+            } else {
+                ScrollView(.vertical) {
+                    VStack(spacing: 4) {
+                        ForEach(clipboard.items) { item in
+                            Button {
+                                clipboard.copy(item)
+                                copied = item.id
+                            } label: {
+                                HStack(spacing: 10) {
+                                    Text(verbatim: item.text.replacingOccurrences(of: "\n", with: " "))
+                                        .font(.app(size: 12))
+                                        .foregroundStyle(.white.opacity(0.88))
+                                        .lineLimit(1)
+                                        .truncationMode(.tail)
+                                    Spacer(minLength: 6)
+                                    Text(
+                                        copied == item.id
+                                            ? "Copied" : item.at.formatted(.relative(presentation: .named))
+                                    )
+                                    .font(.app(size: 10))
+                                    .foregroundStyle(.white.opacity(0.4))
+                                }
+                                .padding(.horizontal, 10)
+                                .frame(height: 26)
+                                .background(
+                                    RoundedRectangle(cornerRadius: 8, style: .continuous).fill(.white.opacity(0.06))
+                                )
+                                .contentShape(Rectangle())
+                            }
+                            .buttonStyle(.plain)
+                            .help(item.text)
+                        }
+                    }
+                    .padding(.vertical, 6)
+                }
+                .scrollIndicators(.automatic)
+            }
+        }
+        .padding(.horizontal, AgentComposer.panelInset)
+        .padding(.bottom, NotchHome.Card.bottom)
     }
 }
 

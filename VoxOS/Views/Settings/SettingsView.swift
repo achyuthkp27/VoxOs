@@ -54,6 +54,8 @@ struct SettingsView: View {
     @AppStorage(DefaultsKeys.notchFocusEnabled) private var notchFocusEnabled = true
     @AppStorage(DefaultsKeys.notchMixerEnabled) private var notchMixerEnabled = true
     @AppStorage(DefaultsKeys.notchMirrorEnabled) private var notchMirrorEnabled = true
+    @AppStorage(DefaultsKeys.notchClipboardEnabled) private var notchClipboardEnabled = false
+    @AppStorage(DefaultsKeys.notchLyricsEnabled) private var notchLyricsEnabled = false
     @AppStorage(DefaultsKeys.notchMeetingsEnabled) private var notchMeetingsEnabled = true
     @AppStorage(DefaultsKeys.notchMusicEnabled) private var notchMusicEnabled = true
     @AppStorage(DefaultsKeys.notchMusicBarsEnabled) private var notchMusicBarsEnabled = false
@@ -119,7 +121,7 @@ struct SettingsView: View {
         "Volume & Brightness in the Notch", "volume", "brightness", "HUD", "keys",
         "Hide from Screenshots & Sharing", "screenshot", "screen sharing", "privacy",
         "Downloads", "download", "Focus", "do not disturb", "Per-App Volume", "mixer", "app volume", "Mirror",
-        "camera", "webcam", "keep awake", "caffeinate",
+        "camera", "webcam", "keep awake", "caffeinate", "Clipboard History", "clipboard", "Lyrics", "lyrics",
         "Show in Full Screen", "full screen", "fullscreen", "Follow the Display in Use", "external display",
         "monitor", "display",
     ]
@@ -695,6 +697,22 @@ struct SettingsView: View {
                                 Text("Per-App Volume")
                                 InfoTip(
                                     "A Sound page with each playing app and its own volume. An app turned down is played on through a system audio tap, which needs System Audio Recording and shows macOS's purple dot until every app is back at full."
+                                )
+                            }
+                        }
+                        Toggle(isOn: $notchClipboardEnabled) {
+                            HStack(spacing: 2) {
+                                Text("Clipboard History")
+                                InfoTip(
+                                    "A Clipboard page with the last few pieces of text you copied; a click copies one again. Kept in memory only, never what a password manager marks as secret. Off by default: it checks the clipboard once a second."
+                                )
+                            }
+                        }
+                        Toggle(isOn: $notchLyricsEnabled) {
+                            HStack(spacing: 2) {
+                                Text("Lyrics")
+                                InfoTip(
+                                    "The line being sung, under the artist on the Music page, from lrclib.net. Looking a song up sends its title and artist there, once per song, only while the Music page is open."
                                 )
                             }
                         }

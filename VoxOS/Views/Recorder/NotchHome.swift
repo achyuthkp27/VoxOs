@@ -254,6 +254,7 @@ struct NotchHomeView: View {
     let onJoin: (NotchToday.Event) -> Void
     let onPin: () -> Void
     @ObservedObject var keepAwake = NotchKeepAwake.shared
+    @ObservedObject var lyrics = NotchLyrics.shared
     @AppStorage(DefaultsKeys.notchMusicBarsEnabled) private var barsEnabled = false
     @Environment(\.accessibilityReduceMotion) private var reduceMotion
 
@@ -376,8 +377,8 @@ struct NotchHomeView: View {
         case .music:
             if let track = model.track {
                 NotchHomePlayer(
-                    track: track, modes: model.modes, liveBars: model.liveBars, onShuffle: onShuffle,
-                    onRepeat: onRepeat, onToggleBars: { barsEnabled.toggle() })
+                    track: track, modes: model.modes, liveBars: model.liveBars, lyrics: lyrics.lines,
+                    onShuffle: onShuffle, onRepeat: onRepeat, onToggleBars: { barsEnabled.toggle() })
             }
         case .timer:
             NotchTimerPage(timers: .shared)
@@ -387,6 +388,8 @@ struct NotchHomeView: View {
             NotchRemindersPage(reminders: .shared)
         case .shelf:
             NotchShelfPage(shelf: .shared, dropping: model.dropping)
+        case .clipboard:
+            NotchClipboardPage(clipboard: .shared)
         case .sound:
             NotchSoundPage(mixer: .shared)
         case .mirror:
@@ -801,6 +804,8 @@ private struct NotchHomePlayer: View {
     let track: NotchTrack
     let modes: NotchPlaybackModes.State?
     let liveBars: Bool
+    /// Timed lines for the track, when lyrics are on and it has them.
+    let lyrics: [NotchLyrics.Line]
     let onShuffle: () -> Void
     let onRepeat: () -> Void
     let onToggleBars: () -> Void
@@ -827,6 +832,22 @@ private struct NotchHomePlayer: View {
                             .font(.app(size: 12))
                             .foregroundStyle(.white.opacity(0.5))
                             .lineLimit(1)
+                        if !lyrics.isEmpty {
+                            // Half a second is close enough to the singing and cheap to draw.
+                            TimelineView(.periodic(from: .now, by: 0.5)) { context in
+                                Text(
+                                    verbatim: NotchLyrics.line(at: track.position(at: context.date) ?? 0, in: lyrics)
+                                        ?? ""
+                                )
+                                .font(.app(size: 11, weight: .medium))
+                                .foregroundStyle(track.tint.opacity(0.9))
+                                .lineLimit(1)
+                                .animation(
+                                    .easeOut(duration: 0.2),
+                                    value: NotchLyrics.line(
+                                        at: track.position(at: context.date) ?? 0, in: lyrics))
+                            }
+                        }
                     }
                     Spacer(minLength: 0)
                     if track.isPlaying {
@@ -1299,6 +1320,7 @@ final class NotchHomeManager {
         if enabled && NotchPrivacy.isEnabled { NotchPrivacy.shared.start() } else { NotchPrivacy.shared.stop() }
         if enabled && NotchDownloads.isEnabled { NotchDownloads.shared.start() } else { NotchDownloads.shared.stop() }
         if enabled && NotchFocus.isEnabled { NotchFocus.shared.start() } else { NotchFocus.shared.stop() }
+        if enabled && NotchClipboard.isEnabled { NotchClipboard.shared.start() } else { NotchClipboard.shared.stop() }
         // Switched off: every app back to full, which also ends its tap.
         if !(enabled && NotchMixer.isEnabled), mixerWasOn { NotchMixer.shared.reset() }
         mixerWasOn = enabled && NotchMixer.isEnabled
@@ -1358,6 +1380,12 @@ final class NotchHomeManager {
         }
 
         if uiManager.isNotchHomeVisible != content.isVisible { uiManager.isNotchHomeVisible = content.isVisible }
+        // The sung line is looked up only while the Music page is open with lyrics switched on.
+        if NotchLyrics.isEnabled, content == .expanded, model?.page == .music, let track {
+            NotchLyrics.shared.load(title: track.title, artist: track.artist, duration: track.duration)
+        } else if !NotchLyrics.isEnabled {
+            NotchLyrics.shared.clear()
+        }
         let sharing: NSWindow.SharingType = NotchHome.hiddenFromCapture ? .none : .readOnly
         if let panel, panel.sharingType != sharing { panel.sharingType = sharing }
     }
@@ -1578,9 +1606,10 @@ final class NotchHomeManager {
     nonisolated static func page(
         after page: NotchHomePage, forward: Bool, hasTrack: Bool,
         sound: Bool = UserDefaults.standard.bool(forKey: DefaultsKeys.notchMixerEnabled),
-        mirror: Bool = UserDefaults.standard.bool(forKey: DefaultsKeys.notchMirrorEnabled)
+        mirror: Bool = UserDefaults.standard.bool(forKey: DefaultsKeys.notchMirrorEnabled),
+        clipboard: Bool = UserDefaults.standard.bool(forKey: DefaultsKeys.notchClipboardEnabled)
     ) -> NotchHomePage {
-        let pages = NotchHomePage.available(hasTrack: hasTrack, sound: sound, mirror: mirror)
+        let pages = NotchHomePage.available(hasTrack: hasTrack, sound: sound, mirror: mirror, clipboard: clipboard)
         guard let index = pages.firstIndex(of: page) else { return pages.first ?? page }
         return pages[(index + (forward ? 1 : -1) + pages.count) % pages.count]
     }
@@ -1914,7 +1943,8 @@ final class NotchHomeManager {
         }
         // A page that went away (no track, or switched off in Settings) gives way to the day.
         let available = NotchHomePage.available(
-            hasTrack: track != nil, sound: NotchMixer.isEnabled, mirror: NotchHome.mirrorEnabled)
+            hasTrack: track != nil, sound: NotchMixer.isEnabled, mirror: NotchHome.mirrorEnabled,
+            clipboard: NotchClipboard.isEnabled)
         if !available.contains(model.page) { model.page = .today }
         if panel.isVisible, model.content == content { return }
         resizeTask?.cancel()

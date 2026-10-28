@@ -85,6 +85,10 @@ enum DefaultsKeys {
     static let notchMixerEnabled = "NotchMixerEnabled"
     /// The Mirror page: the camera, only on request.
     static let notchMirrorEnabled = "NotchMirrorEnabled"
+    /// The Clipboard page: text copied lately, kept in memory only.
+    static let notchClipboardEnabled = "NotchClipboardEnabled"
+    /// The sung line on the Music page, from lrclib.net.
+    static let notchLyricsEnabled = "NotchLyricsEnabled"
     /// A band with a mute switch while another app uses the microphone or a camera.
     static let notchPrivacyEnabled = "NotchPrivacyEnabled"
     /// A countdown band for the next meeting, with Join when it has a call link.

@@ -76,6 +76,10 @@ enum AppDefaults {
             DefaultsKeys.notchFocusEnabled: true,
             DefaultsKeys.notchMixerEnabled: true,
             DefaultsKeys.notchMirrorEnabled: true,
+            // Off: watching the clipboard is a wake-up a second, and what is copied is private.
+            DefaultsKeys.notchClipboardEnabled: false,
+            // Off: a lookup tells lrclib.net what is playing.
+            DefaultsKeys.notchLyricsEnabled: false,
             DefaultsKeys.notchPrivacyEnabled: true,
             // Needs Calendar access, which only the Calendar page asks for.
             DefaultsKeys.notchMeetingsEnabled: true,
