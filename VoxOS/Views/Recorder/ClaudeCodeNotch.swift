@@ -81,6 +81,15 @@ enum ClaudeCodeNotch {
         }
         return height + Card.buttonGap + Card.buttonHeight + Card.bottom
     }
+    /// Whose request it is: the folder, the branch when there is one, and the session's title,
+    /// which tells two sessions in one folder apart. The spark beside the notch says Claude Code.
+    static func eyebrowParts(for prompt: ClaudeCodeActivity.PermissionPrompt) -> [String] {
+        var parts = [prompt.project]
+        if let branch = prompt.branch, !branch.isEmpty { parts.append(branch) }
+        if let title = prompt.sessionTitle, !title.isEmpty { parts.append(title) }
+        return parts
+    }
+
     static var planBoxHeight: CGFloat { CGFloat(Card.planLines) * Card.planLineHeight + Card.detailPadding * 2 }
 
     /// A plan's markdown, drawn plainly: headings in bold without their #, list markers as
@@ -327,7 +336,7 @@ struct ClaudeCodeNotchView: View {
                 .foregroundStyle(.white.opacity(0.75))
                 .accessibilityLabel(Text("\(status.working) sessions working"))
         case .approval(_, let waiting) where waiting > 1:
-            Text(verbatim: "+\(waiting - 1)")
+            Text("+\(waiting - 1) waiting")
                 .font(.appMono(size: 11, weight: .semibold))
                 .foregroundStyle(.white.opacity(0.75))
                 .accessibilityLabel(Text("\(waiting - 1) more waiting"))
@@ -428,7 +437,7 @@ private struct ClaudeCodeApprovalCard: View {
 
     var body: some View {
         VStack(alignment: .leading, spacing: Card.spacing) {
-            ClaudeCodeEyebrow(text: "Claude Code · \(prompt.project)")
+            ClaudeCodeEyebrow(text: ClaudeCodeNotch.eyebrowParts(for: prompt).joined(separator: " · "))
 
             Text(prompt.summary.title)
                 .font(.app(size: 15, weight: .semibold))
@@ -498,7 +507,7 @@ private struct ClaudeCodePlanCard: View {
 
     var body: some View {
         VStack(alignment: .leading, spacing: Card.spacing) {
-            ClaudeCodeEyebrow(text: "Claude Code · \(prompt.project)")
+            ClaudeCodeEyebrow(text: ClaudeCodeNotch.eyebrowParts(for: prompt).joined(separator: " · "))
 
             Text("Approve the plan?")
                 .font(.app(size: 15, weight: .semibold))
@@ -713,7 +722,7 @@ private struct ClaudeCodeQuestionCard: View {
     }
 
     private var eyebrow: String {
-        var parts = ["Claude Code", prompt.project]
+        var parts = ClaudeCodeNotch.eyebrowParts(for: prompt)
         if !question.header.isEmpty { parts.append(question.header) }
         if questions.count > 1 { parts.append("\(index + 1)/\(questions.count)") }
         return parts.joined(separator: " · ")

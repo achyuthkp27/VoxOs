@@ -30,6 +30,11 @@ final class ClaudeCodeActivity: ObservableObject {
         var updated: Date
         /// The CLI process behind the session, when known.
         var cliPID: Int32?
+        var transcriptPath: String? = nil
+        /// From the transcript: the session's title and branch, and when they were last read.
+        var title: String? = nil
+        var branch: String? = nil
+        var infoRead: Date? = nil
     }
 
     struct PermissionPrompt: Identifiable, Equatable {
@@ -44,6 +49,9 @@ final class ClaudeCodeActivity: ObservableObject {
         var questions: [ClaudeCodeQuestion]? = nil
         /// ExitPlanMode: the plan to approve, as markdown; empty when the call did not carry it.
         var plan: String? = nil
+        /// The session's title and branch, which tell two sessions in one folder apart.
+        var sessionTitle: String? = nil
+        var branch: String? = nil
         /// What "Always allow" would allow, when the CLI offers it.
         var alwaysAllow: String? = nil
         /// The session is in a mode that "Allow in auto mode" would change.
@@ -110,6 +118,8 @@ final class ClaudeCodeActivity: ObservableObject {
     static let promptLifetime: TimeInterval = 590
     /// How far back a PreToolUse can be and still be the one a PermissionRequest is about.
     static let correlationWindow: TimeInterval = 10
+    /// A session's title and branch are read again for a request after this long.
+    static let infoLifetime: TimeInterval = 30
 
     @Published private(set) var sessions: [String: Session] = [:]
     @Published private(set) var prompts: [PermissionPrompt] = []
@@ -121,6 +131,14 @@ final class ClaudeCodeActivity: ObservableObject {
     private var bashWatches: [UUID: (cliPID: Int32, command: String, known: Set<Int32>)] = [:]
     /// The CLI's child processes; replaced in tests.
     var childProcesses: (Int32) -> [ClaudeCodeChildProcess] = ClaudeCodeProcesses.children
+    /// Reads a transcript's title and branch off the main thread; replaced in tests.
+    var readInfo: @Sendable (String) async -> ClaudeCodeTranscript.Info = { path in
+        await Task.detached(priority: .utility) { ClaudeCodeTranscript.info(at: path) }.value
+    }
+    /// Esc ends a turn with no hook, and only the "working" band shows that a turn runs, so a
+    /// working session's transcript is followed only while that band is on.
+    var followsTranscripts: () -> Bool = { ClaudeCodeIntegration.statusEnabled }
+    private var watches: [String: ClaudeCodeTranscriptWatch] = [:]
 
     init() {}
 
@@ -158,6 +176,7 @@ final class ClaudeCodeActivity: ObservableObject {
         case .sessionEnd:
             sessions[event.sessionID] = nil
             recentToolUses[event.sessionID] = nil
+            stopFollowing(event.sessionID)
             settleSession(event.sessionID)
         case .notification where event.notificationType == "idle_prompt":
             // Waiting for the user's next prompt: the turn is over. Esc ends a turn without a
@@ -166,6 +185,7 @@ final class ClaudeCodeActivity: ObservableObject {
                 session.phase = .idle
                 session.updated = now
                 sessions[event.sessionID] = session
+                stopFollowing(event.sessionID)
             }
         case .notification, .permissionRequest:
             // Any other notification is the CLI announcing the dialog the notch is already showing.
@@ -189,6 +209,8 @@ final class ClaudeCodeActivity: ObservableObject {
             received: now,
             questions: event.questions,
             plan: event.plan,
+            sessionTitle: sessions[event.sessionID]?.title,
+            branch: sessions[event.sessionID]?.branch,
             alwaysAllow: event.questions == nil && event.plan == nil
                 ? ClaudeCodePermissionSuggestion.describe(event.permissionSuggestions) : nil,
             canSwitchToAutoMode: event.questions == nil && event.plan == nil
@@ -196,6 +218,7 @@ final class ClaudeCodeActivity: ObservableObject {
         )
         responders[prompt.id] = respond
         prompts.append(prompt)
+        refreshInfo(of: event.sessionID, now: now)
         if event.toolName == "Bash", let pid = sessions[event.sessionID]?.cliPID {
             bashWatches[prompt.id] = (pid, prompt.summary.detail, Set(childProcesses(pid).map(\.pid)))
         }
@@ -238,6 +261,7 @@ final class ClaudeCodeActivity: ObservableObject {
             guard ended || now.timeIntervalSince(session.updated) >= Self.staleAfter else { continue }
             sessions[id] = nil
             recentToolUses[id] = nil
+            stopFollowing(id)
             settleSession(id)
         }
     }
@@ -249,6 +273,61 @@ final class ClaudeCodeActivity: ObservableObject {
     /// Answers every waiting request with no decision, as when the integration is switched off.
     func settleAll() {
         settle { _ in true }
+    }
+
+    /// Esc in the terminal: the turn is over, and whatever it was waiting on with it.
+    func interrupted(_ sessionID: String, now: Date = Date()) {
+        stopFollowing(sessionID)
+        guard var session = sessions[sessionID], session.phase == .working else { return }
+        ActivityTrail.mark("claude session interrupted")
+        session.phase = .idle
+        session.updated = now
+        sessions[sessionID] = session
+        settleSession(sessionID)
+    }
+
+    // MARK: Session info
+
+    /// Reads the session's title and branch for a request, at most every `infoLifetime`; the
+    /// card shows what is already known meanwhile and fills in when the read lands.
+    private func refreshInfo(of sessionID: String, now: Date) {
+        guard let session = sessions[sessionID], let path = session.transcriptPath,
+            session.infoRead.map({ now.timeIntervalSince($0) >= Self.infoLifetime }) ?? true
+        else { return }
+        sessions[sessionID]?.infoRead = now
+        let read = readInfo
+        Task { @MainActor [weak self] in
+            let info = await read(path)
+            self?.apply(info, to: sessionID)
+        }
+    }
+
+    func apply(_ info: ClaudeCodeTranscript.Info, to sessionID: String) {
+        guard var session = sessions[sessionID] else { return }
+        let branch = info.branch == "HEAD" ? nil : info.branch
+        if session.title != info.title || session.branch != branch {
+            session.title = info.title
+            session.branch = branch
+            sessions[sessionID] = session
+        }
+        for index in prompts.indices where prompts[index].sessionID == sessionID {
+            if prompts[index].sessionTitle != info.title { prompts[index].sessionTitle = info.title }
+            if prompts[index].branch != branch { prompts[index].branch = branch }
+        }
+    }
+
+    /// While a session works and the band is on, its transcript is followed for an Esc.
+    private func follow(_ session: Session) {
+        guard session.phase == .working else { return stopFollowing(session.id) }
+        guard watches[session.id] == nil, followsTranscripts(), let path = session.transcriptPath else { return }
+        let id = session.id
+        watches[id] = ClaudeCodeTranscriptWatch(path: path) { [weak self] in
+            Task { @MainActor in self?.interrupted(id) }
+        }
+    }
+
+    private func stopFollowing(_ sessionID: String) {
+        watches.removeValue(forKey: sessionID)?.cancel()
     }
 
     // MARK: Status
@@ -295,7 +374,9 @@ final class ClaudeCodeActivity: ObservableObject {
         session.phase = phase
         session.updated = now
         if let pid = event.cliPID { session.cliPID = pid }
+        if let path = event.transcriptPath { session.transcriptPath = path }
         sessions[event.sessionID] = session
+        follow(session)
     }
 
     private func toolKey(_ event: ClaudeCodeHookEvent) -> String? {

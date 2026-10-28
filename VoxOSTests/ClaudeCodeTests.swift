@@ -694,4 +694,99 @@ struct ClaudeCodeTests {
         #expect(text.contains("make test"))
         #expect(!text.contains("```"))
     }
+
+    // MARK: Transcripts
+
+    private static func line(_ object: [String: Any]) -> String {
+        ClaudeCodeHookEvent.canonicalJSON(object)!
+    }
+
+    @Test func theNewestTitleAndBranchWinAndARenameBeatsTheGeneratedTitle() {
+        let lines = [
+            Self.line(["type": "user", "gitBranch": "main", "message": ["content": "hi"]]),
+            Self.line(["type": "ai-title", "aiTitle": "Generated title"]),
+            Self.line(["type": "custom-title", "customTitle": "Renamed"]),
+            Self.line(["type": "assistant", "gitBranch": "feature/bars"]),
+            Self.line(["type": "ai-title", "aiTitle": "Generated again"]),
+        ].map { Substring($0) }
+        let info = ClaudeCodeTranscript.info(inLines: lines)
+        #expect(info.title == "Renamed")
+        #expect(info.branch == "feature/bars")
+        #expect(
+            ClaudeCodeTranscript.info(inLines: [Substring(Self.line(["type": "ai-title", "aiTitle": "Only"]))]).title
+                == "Only")
+    }
+
+    @Test func theTranscriptIsReadFromItsEndAndItsStart() throws {
+        let url = FileManager.default.temporaryDirectory.appendingPathComponent("voxos-\(UUID().uuidString).jsonl")
+        defer { try? FileManager.default.removeItem(at: url) }
+        // A title only at the start, then more than the tail of filler, then the newest branch.
+        var text = Self.line(["type": "ai-title", "aiTitle": "Early title"]) + "\n"
+        let filler = Self.line(["type": "assistant", "gitBranch": "old", "text": String(repeating: "x", count: 1000)])
+        for _ in 0..<(ClaudeCodeTranscript.tailBytes / 1000 + 20) { text += filler + "\n" }
+        text += Self.line(["type": "user", "gitBranch": "main"]) + "\n"
+        try Data(text.utf8).write(to: url)
+        let info = ClaudeCodeTranscript.info(at: url.path)
+        #expect(info.title == "Early title")
+        #expect(info.branch == "main")
+        #expect(ClaudeCodeTranscript.info(at: url.path + ".missing") == ClaudeCodeTranscript.Info())
+    }
+
+    @Test func aRequestNamesItsSessionOnceTheTranscriptIsRead() async throws {
+        let activity = ClaudeCodeActivity()
+        activity.readInfo = { _ in ClaudeCodeTranscript.Info(title: "Battery fixes", branch: "main") }
+        _ = ask(activity)
+        for _ in 0..<100 where activity.prompts.first?.branch == nil {
+            try await Task.sleep(for: .milliseconds(10))
+        }
+        let prompt = try #require(activity.prompts.first)
+        #expect(prompt.branch == "main")
+        #expect(prompt.sessionTitle == "Battery fixes")
+        #expect(ClaudeCodeNotch.eyebrowParts(for: prompt) == ["VoxOs", "main", "Battery fixes"])
+
+        activity.apply(ClaudeCodeTranscript.Info(title: nil, branch: "HEAD"), to: "s1")
+        #expect(ClaudeCodeNotch.eyebrowParts(for: activity.prompts[0]) == ["VoxOs"], "a detached HEAD is no branch")
+    }
+
+    @Test func anEscEndsTheTurnAndItsRequests() {
+        let activity = ClaudeCodeActivity()
+        activity.followsTranscripts = { false }
+        activity.receive(Self.event("UserPromptSubmit"))
+        let (_, answers) = ask(activity)
+        activity.interrupted("s1")
+        #expect(activity.status().isEmpty)
+        #expect(activity.prompts.isEmpty)
+        #expect(answers.values == [.noDecision])
+    }
+
+    private final class Flag: @unchecked Sendable {
+        private let lock = NSLock()
+        private var raised = false
+        var value: Bool { lock.withLock { raised } }
+        func raise() { lock.withLock { raised = true } }
+    }
+
+    @Test func anEscWrittenToTheTranscriptIsSeenAtOnce() async throws {
+        let url = FileManager.default.temporaryDirectory.appendingPathComponent("voxos-\(UUID().uuidString).jsonl")
+        defer { try? FileManager.default.removeItem(at: url) }
+        let interrupt =
+            Self.line([
+                "type": "user", "message": ["content": [["type": "text", "text": "[Request interrupted by user]"]]],
+            ])
+            + "\n"
+        // An Esc already in the file is history.
+        try Data(interrupt.utf8).write(to: url)
+        let fired = Flag()
+        let watch = try #require(ClaudeCodeTranscriptWatch(path: url.path) { fired.raise() })
+        defer { watch.cancel() }
+        let handle = try FileHandle(forWritingTo: url)
+        handle.seekToEndOfFile()
+        handle.write(Data((Self.line(["type": "assistant", "gitBranch": "main"]) + "\n").utf8))
+        try await Task.sleep(for: .milliseconds(300))
+        #expect(!fired.value, "other lines are not an Esc")
+        handle.write(Data(interrupt.utf8))
+        try handle.close()
+        for _ in 0..<200 where !fired.value { try await Task.sleep(for: .milliseconds(10)) }
+        #expect(fired.value)
+    }
 }
