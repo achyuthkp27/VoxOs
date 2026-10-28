@@ -40,6 +40,19 @@ It does two things:
 - 🔒 **Privacy-first** — transcription is always local; the agent loop can run entirely on-device via Ollama
 - 🖥️ **Notch-docked recorder UI** — a compact panel that molds around the camera notch, with a left-edge
   hover history sidebar for past interactions
+- 🎵 **Notch Home** — between dictations the notch opens into a small card: the playing track with its
+  controls, Calendar, Weather, Reminders, a Pomodoro timer, a file shelf, and per-app volume; collapsed, it
+  shows one thing at a time (a track, a timer, a meeting countdown, a download, volume and brightness)
+- 🧩 **Claude Code in the notch** — allow or deny a session's requests, answer its questions and approve its
+  plans from the notch, through local hooks
+
+## Screenshots
+
+<p align="center">
+  <img src="docs/screenshots/notch-music.png" width="480" alt="Notch Home's Music page: the cover, title, progress and controls" />
+  <br />
+  <img src="docs/screenshots/notch-pomodoro.png" width="480" alt="Notch Home's Pomodoro page: a 25-minute focus ring with Start focus, 5 min and 15 min" />
+</p>
 
 ## Build
 
