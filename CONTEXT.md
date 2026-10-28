@@ -46,7 +46,8 @@ It is a fork of VoiceInk (GPL v3) with the cursor-voice tool layer (MIT) ported 
 - **Notch Home** — `NotchHomeManager`'s panel on the notch between dictations (ADR 0007). Collapsed
   it is a **band** (a notice, the next meeting, a mic or camera in use, a timer or the track) or a
   bare notch-sized target; the top strip of the notch, or a file dragged toward it, opens the
-  **card** with its **pages**: Music, Calendar, Reminders, Pomodoro, Shelf.
+  **card** with its **pages**: Music, Calendar, Weather, Reminders, Pomodoro, Shelf, Sound.
+  Holding the notch row asks the Agent.
 - **Live music bars** — bars driven by the real output through `SystemAudioLevels` (a Core Audio
   tap), in the band and on the Music page, only when the setting is on (a click on the player's
   bars switches it) and `PowerState` allows: never in Low Power Mode, on battery only if allowed.
@@ -55,8 +56,14 @@ It is a fork of VoiceInk (GPL v3) with the cursor-voice tool layer (MIT) ported 
 - **Level band** — `NotchHUD`: volume or brightness just changed with the keys, shown in the notch
   in place of macOS's pop-up (in the open card's top row while it is open).
 - **Sound page** — the last page, for the extras: per-app volume (`NotchMixer`, process taps),
-  the clipboard (`NotchClipboard`) and the camera mirror (`NotchMirror`, on request only), each
-  behind its own switch, with keeping awake and pinning the card.
+  the clipboard (`NotchClipboard`), the user's Shortcuts (`NotchShortcuts`) and the camera mirror
+  (`NotchMirror`, on request only), each behind its own switch, with keeping awake and pinning the
+  card.
+- **Notice** — a band that passes by itself: a device, Focus, Claude Code limits, a Codex or
+  Gemini CLI turn (`CodexActivity`, `GeminiActivity`), a CI result (`ClaudeCodeCIWatch`), rain
+  soon (`NotchRainWatch`), an unread count (`NotchUnread`) or a finished download.
+- **Master switches** — `MasterSwitches`: the voice assistant and the notch, each switched off
+  as a whole from the dashboard, the menu bar menu or its own Settings page.
 
 ## Invariants
 

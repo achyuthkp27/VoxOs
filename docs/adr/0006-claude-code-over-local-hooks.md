@@ -48,3 +48,16 @@ Added the same day, also measured:
 - A session's terminal app is the nearest regular app above its CLI (CLI, zsh, login, cmux). While
   it is in front, the terminal is already asking, so a request waits as a small band with a count
   until clicked; a CLI under tmux or ssh has no such app and keeps the card.
+- After a session's Bash `git push`, `gh run list` (through the login shell) is asked once a
+  minute for the run started after the push, until it completes or 45 minutes pass, and the
+  notch says how it ended. Nothing runs between pushes.
+- Limits and costs come from the status line: VoxOS wraps the user's status line command so it
+  still draws the line while VoxOS gets a copy of its input (`rate_limits`, `cost`); switching
+  this off puts the user's command back.
+- Other CLIs use the same listener, each on its own path, and can only be heard, not answered.
+  Codex runs its `notify` program with the event as the last argument, so curl with
+  `--data-binary` last posts it (a notify of the user's own is never replaced). Gemini CLI has
+  command hooks in ~/.gemini/settings.json like Claude Code's, but its `Notification` hook only
+  reports a permission prompt (measured on 0.46.0), so the notch says the terminal is waiting
+  and clears that when a tool runs (`AfterTool`), the turn ends (`AfterAgent`) or the session
+  closes. Gemini reads a hook's output as its answer, so curl's goes to /dev/null.

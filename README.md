@@ -44,7 +44,8 @@ It does two things:
   controls, Calendar, Weather, Reminders, a Pomodoro timer, a file shelf, and per-app volume; collapsed, it
   shows one thing at a time (a track, a timer, a meeting countdown, a download, volume and brightness)
 - 🧩 **Claude Code in the notch** — allow or deny a session's requests, answer its questions and approve its
-  plans from the notch, through local hooks
+  plans from the notch, through local hooks; it also says when a push's CI run ends, and when a Codex or
+  Gemini CLI turn ends
 
 ## Screenshots
 

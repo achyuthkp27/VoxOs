@@ -8,8 +8,9 @@ a time — a notice (a device, the sound output, the power, a finished timer), t
 microphone or camera in use, a running timer, the playing track — and otherwise a notch-sized
 black target that disappears into the hardware notch. Only the top strip of the notch opens it on
 hover (browser tabs sit right under the notch); the band's wings do not, so the pointer can cross
-them to the menu bar. Open, it is one card of fixed height with five pages walked by a sideways
-swipe or click-drag: Music, Calendar, Reminders, Pomodoro, Shelf.
+them to the menu bar. Open, it is one card of fixed height with seven pages walked by a sideways
+swipe or click-drag: Music, Calendar, Weather, Reminders, Pomodoro, Shelf, Sound. Held down, the
+notch row asks the Agent, as ⌃⌃ does, behind the voice assistant's own switch.
 
 Decisions, and what they rest on (measured on macOS 26 unless noted):
 - **Music bars.** Real bars come from a Core Audio process tap (`SystemAudioLevels`), not
@@ -64,5 +65,20 @@ Decisions, and what they rest on (measured on macOS 26 unless noted):
   the format is private, so anything unexpected reads as no Focus.
 - **Mirror, keep awake.** The camera runs only from a click until its page goes away; keeping
   awake is a display-sleep assertion let go at 10% on battery.
+- **Weather.** Open-Meteo through the Agent's own lookup (no key, no account), with `is_day` for
+  sun or moon. The scene is one Canvas at 30 frames a second that exists only while the Weather
+  page is on screen; Reduce Motion draws it still.
+- **Rain soon, unread counts.** Rain comes from Open-Meteo's 15-minute precipitation, read every
+  half hour, only once location access was granted from the Weather page. Unread counts are the
+  Dock's badges (`AXStatusLabel` in its accessibility tree), read once a minute with slack and
+  not while the displays sleep; only a count that goes up is said.
+- **Shortcuts.** The Sound page lists the user's Shortcuts through macOS's `shortcuts` command
+  when its section opens, and runs one on a click; nothing is read in the background.
+- **Material.** Liquid Glass (`glassEffect`) by default, with the notch row kept black so the top
+  still reads as the hardware notch; solid black is the alternative. The cards of Claude Code use
+  the same surface.
+- **Settings.** The voice assistant and the notch each have their own Settings page and a master
+  switch (`MasterSwitches`), also on the dashboard and in the menu bar menu; the notch's switch
+  off hands any waiting Claude Code request back to the terminal.
 - **Nothing is fixed to one Mac.** Icons come from Bluetooth device classes, sizes from the
   screen's notch, players from bundle ids; tests use generic names.
