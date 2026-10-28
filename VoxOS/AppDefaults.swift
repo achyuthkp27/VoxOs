@@ -62,6 +62,7 @@ enum AppDefaults {
             // Off: both edit another tool's settings.
             DefaultsKeys.claudeCodeUsageEnabled: false,
             DefaultsKeys.codexNotifyEnabled: false,
+            DefaultsKeys.geminiHooksEnabled: false,
             DefaultsKeys.claudeCodeCIEnabled: true,
             DefaultsKeys.notchHomeEnabled: true,
             DefaultsKeys.notchDeviceAlertsEnabled: true,

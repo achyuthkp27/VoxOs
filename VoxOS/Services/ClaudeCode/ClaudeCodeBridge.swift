@@ -142,20 +142,23 @@ final class ClaudeCodeBridge: @unchecked Sendable {
     }
 
     private func route(_ request: ClaudeCodeHTTP.Request, on connection: NWConnection) {
-        let paths = [ClaudeCodeHooks.path, ClaudeCodeStatusRelay.path, CodexNotify.path]
+        let paths = [ClaudeCodeHooks.path, ClaudeCodeStatusRelay.path, CodexNotify.path, GeminiHooks.path]
         guard paths.contains(request.path) else { return reply(404, on: connection) }
         guard request.method == "POST" else { return reply(405, on: connection) }
         guard ClaudeCodeHTTP.isAllowedHost(request.headers["host"], port: port),
             request.headers[Self.markerHeader.lowercased()] != nil
         else { return reply(403, on: connection) }
 
-        // The status line's input and Codex's turn ends: read, never answered with anything.
+        // The status line's input, and Codex's and Gemini's events: read, never answered with anything.
         if request.path != ClaudeCodeHooks.path {
             reply(200, on: connection)
             guard let object = try? JSONSerialization.jsonObject(with: request.body) as? [String: Any] else { return }
             if request.path == ClaudeCodeStatusRelay.path {
                 let reading = ClaudeCodeUsage.reading(from: object)
                 Task { @MainActor in ClaudeCodeUsage.shared.receive(reading) }
+            } else if request.path == GeminiHooks.path {
+                guard let event = GeminiActivity.event(from: object) else { return }
+                Task { @MainActor in GeminiActivity.shared.receive(event) }
             } else if let turnEnd = CodexActivity.turnEnd(from: object) {
                 Task { @MainActor in CodexActivity.shared.turnEnded(project: turnEnd.project) }
             }

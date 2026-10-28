@@ -38,6 +38,7 @@ final class ClaudeCodeIntegration: ObservableObject {
     static var repliesEnabled: Bool { UserDefaults.standard.bool(forKey: DefaultsKeys.claudeCodeRepliesEnabled) }
     static var usageEnabled: Bool { UserDefaults.standard.bool(forKey: DefaultsKeys.claudeCodeUsageEnabled) }
     static var codexEnabled: Bool { UserDefaults.standard.bool(forKey: DefaultsKeys.codexNotifyEnabled) }
+    static var geminiEnabled: Bool { UserDefaults.standard.bool(forKey: DefaultsKeys.geminiHooksEnabled) }
     static var speaksReplies: Bool { UserDefaults.standard.bool(forKey: DefaultsKeys.claudeCodeSpeaksReplies) }
 
     var port: UInt16 { ClaudeCodeBridge.defaultPort }
@@ -99,6 +100,7 @@ final class ClaudeCodeIntegration: ObservableObject {
             // Nothing is left pointing at a bridge that no longer listens.
             if Self.usageEnabled { setUsageEnabled(false) }
             if Self.codexEnabled { setCodexEnabled(false) }
+            if Self.geminiEnabled { setGeminiEnabled(false) }
         }
     }
 
@@ -124,6 +126,18 @@ final class ClaudeCodeIntegration: ObservableObject {
         guard !ProcessIdentity.isTestHost else { return }
         do {
             if enabled { try CodexNotify.install(port: port) } else { try CodexNotify.uninstall() }
+            problem = nil
+        } catch {
+            problem = error.localizedDescription
+        }
+    }
+
+    /// Adds (or removes) VoxOS's hooks in Gemini CLI's settings.
+    func setGeminiEnabled(_ enabled: Bool) {
+        UserDefaults.standard.set(enabled, forKey: DefaultsKeys.geminiHooksEnabled)
+        guard !ProcessIdentity.isTestHost else { return }
+        do {
+            if enabled { try GeminiHooks.install(port: port) } else { try GeminiHooks.uninstall() }
             problem = nil
         } catch {
             problem = error.localizedDescription

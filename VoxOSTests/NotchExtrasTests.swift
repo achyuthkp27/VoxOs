@@ -72,6 +72,50 @@ struct NotchExtrasTests {
         #expect(CodexActivity.turnEnd(from: ["type": "something-else"]) == nil)
     }
 
+    // MARK: Gemini
+
+    @Test func geminisOwnHooksStayAndOursComeOffCleanly() {
+        let mine: [String: Any] = ["type": "command", "command": "~/bin/lint.sh"]
+        let settings: [String: Any] = [
+            "theme": "Dracula", "hooks": ["AfterTool": [["matcher": "write_file", "hooks": [mine]]]],
+        ]
+        let installed = GeminiHooks.installing(into: settings, port: 47317)
+        #expect(GeminiHooks.isInstalled(installed))
+        let hooks = installed["hooks"] as? [String: Any] ?? [:]
+        #expect(Set(hooks.keys) == Set(GeminiHooks.events))
+        #expect((hooks["AfterTool"] as? [[String: Any]])?.count == 2, "the user's group is kept beside ours")
+        let again = GeminiHooks.installing(into: installed, port: 47317)
+        #expect((again["hooks"] as? [String: Any])?["AfterAgent"].map { ($0 as? [Any])?.count } == 1, "never twice")
+
+        let removed = GeminiHooks.removing(from: installed)
+        #expect(!GeminiHooks.isInstalled(removed))
+        #expect(removed["theme"] as? String == "Dracula")
+        #expect(Set((removed["hooks"] as? [String: Any] ?? [:]).keys) == ["AfterTool"])
+        #expect(GeminiHooks.command(port: 47317).hasSuffix("|| true"), "a stopped VoxOS never fails a turn")
+        #expect(GeminiHooks.command(port: 47317).contains("-o /dev/null"), "Gemini reads a hook's output")
+    }
+
+    @Test func geminisEventsBecomeNoticesAndAWaitingOneLeavesWhenAToolRuns() {
+        #expect(
+            GeminiActivity.event(from: ["hook_event_name": "AfterAgent", "cwd": "/Users/me/app"])
+                == .turnEnded(project: "app"))
+        #expect(
+            GeminiActivity.event(from: [
+                "hook_event_name": "Notification", "notification_type": "ToolPermission",
+                "message": "Tool Shell requires execution",
+            ]) == .waiting(message: "Tool Shell requires execution"))
+        #expect(GeminiActivity.event(from: ["hook_event_name": "BeforeModel"]) == nil)
+
+        let activity = GeminiActivity()
+        activity.receive(.waiting(message: "Tool Shell requires execution"))
+        #expect(activity.notice?.detail == "Tool Shell requires execution")
+        activity.receive(.moved)
+        #expect(activity.notice == nil)
+        activity.receive(.turnEnded(project: "app"))
+        activity.receive(.moved)
+        #expect(activity.notice?.detail == "app", "a tool running later does not cut a turn's end short")
+    }
+
     // MARK: Replies
 
     @Test func aFinishedTurnsReplyShowsOnlyWhenAskedFor() {

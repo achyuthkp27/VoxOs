@@ -45,7 +45,11 @@ enum ClaudeCodeHooks {
         ]
     }
 
-    static func isVoxOSHook(_ hook: Any) -> Bool {
+    static func isVoxOSHook(_ hook: Any) -> Bool { isHook(hook, posting: path) }
+
+    /// A hook whose command (or URL) posts to the bridge at `path`. Gemini CLI's settings use the
+    /// same shape, with its own path.
+    static func isHook(_ hook: Any, posting path: String) -> Bool {
         guard let hook = hook as? [String: Any] else { return false }
         return [hook["command"], hook["url"]].contains { ($0 as? String)?.contains(path) == true }
     }
@@ -54,7 +58,7 @@ enum ClaudeCodeHooks {
 
     /// The settings with every VoxOS hook removed. Matcher groups left empty are dropped, and so
     /// is an event left with no groups, and `hooks` itself when nothing remains in it.
-    static func removing(from settings: [String: Any]) -> [String: Any] {
+    static func removing(from settings: [String: Any], posting path: String = path) -> [String: Any] {
         guard let hooks = settings["hooks"] as? [String: Any] else { return settings }
         var cleaned: [String: Any] = [:]
         for (event, value) in hooks {
@@ -68,7 +72,7 @@ enum ClaudeCodeHooks {
                     kept.append(group)
                     continue
                 }
-                let remaining = entries.filter { !isVoxOSHook($0) }
+                let remaining = entries.filter { !isHook($0, posting: path) }
                 if remaining.count == entries.count {
                     kept.append(group)
                 } else if !remaining.isEmpty {
@@ -126,12 +130,13 @@ enum ClaudeCodeHooks {
     // MARK: File
 
     enum FileError: LocalizedError {
-        case unreadable(String)
+        case unreadable(URL, String)
 
         var errorDescription: String? {
             switch self {
-            case .unreadable(let reason):
-                return String(localized: "Claude Code's settings.json could not be read: \(reason)")
+            case .unreadable(let url, let reason):
+                let file = (url.path as NSString).abbreviatingWithTildeInPath
+                return String(localized: "\(file) could not be read: \(reason)")
             }
         }
     }
@@ -148,11 +153,11 @@ enum ClaudeCodeHooks {
         do {
             data = try Data(contentsOf: url)
         } catch {
-            throw FileError.unreadable(error.localizedDescription)
+            throw FileError.unreadable(url, error.localizedDescription)
         }
         if data.allSatisfy({ $0 == 0x20 || $0 == 0x0A || $0 == 0x0D || $0 == 0x09 }) { return [:] }
         guard let object = try? JSONSerialization.jsonObject(with: data) as? [String: Any] else {
-            throw FileError.unreadable(String(localized: "it is not valid JSON"))
+            throw FileError.unreadable(url, String(localized: "it is not valid JSON"))
         }
         return object
     }

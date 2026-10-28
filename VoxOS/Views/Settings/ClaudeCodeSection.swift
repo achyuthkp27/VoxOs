@@ -12,6 +12,7 @@ struct ClaudeCodeSection: View {
     @AppStorage(DefaultsKeys.claudeCodeSpeaksReplies) private var speaksReplies = false
     @AppStorage(DefaultsKeys.claudeCodeUsageEnabled) private var usageEnabled = false
     @AppStorage(DefaultsKeys.codexNotifyEnabled) private var codexEnabled = false
+    @AppStorage(DefaultsKeys.geminiHooksEnabled) private var geminiEnabled = false
     @AppStorage(DefaultsKeys.claudeCodeCIEnabled) private var ciEnabled = true
     @ObservedObject private var usage = ClaudeCodeUsage.shared
 
@@ -74,6 +75,17 @@ struct ClaudeCodeSection: View {
                             Text("Codex: Notice When a Turn Ends")
                             InfoTip(
                                 "Adds a notify line to ~/.codex/config.toml (after a backup) that tells VoxOS when a Codex turn ends. A notify of your own is never replaced. Codex cannot hand approvals to another app, so only the end of a turn shows."
+                            )
+                        }
+                    }
+                }
+
+                if GeminiHooks.geminiInstalled {
+                    Toggle(isOn: Binding(get: { geminiEnabled }, set: { integration.setGeminiEnabled($0) })) {
+                        HStack(spacing: 2) {
+                            Text("Gemini CLI: Turns and Approvals")
+                            InfoTip(
+                                "Adds hooks to ~/.gemini/settings.json (after a backup) that tell VoxOS when a Gemini turn ends and when a tool waits for your approval. Your own hooks are never touched. Gemini's hooks cannot answer an approval, so you still answer it in the terminal."
                             )
                         }
                     }

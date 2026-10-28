@@ -1248,6 +1248,8 @@ final class NotchHomeManager {
             .store(in: &cancellables)
         CodexActivity.shared.$notice.receive(on: RunLoop.main).sink { [weak self] _ in self?.refresh() }
             .store(in: &cancellables)
+        GeminiActivity.shared.$notice.receive(on: RunLoop.main).sink { [weak self] _ in self?.refresh() }
+            .store(in: &cancellables)
         ClaudeCodeCIWatch.shared.$notice.receive(on: RunLoop.main).sink { [weak self] _ in self?.refresh() }
             .store(in: &cancellables)
         NotchRainWatch.shared.$notice.receive(on: RunLoop.main).sink { [weak self] _ in self?.refresh() }
@@ -1334,7 +1336,8 @@ final class NotchHomeManager {
             blocked: uiManager.isRecorderPanelVisible || uiManager.isClaudeCodeCardVisible, hovered: hovered,
             dropping: dropping,
             notice: Self.notice(device: NotchDeviceAlerts.shared.notice, finished: timers.finished)
-                ?? NotchFocus.shared.notice ?? ClaudeCodeUsage.shared.notice ?? CodexActivity.shared.notice
+                ?? NotchFocus.shared.notice ?? ClaudeCodeUsage.shared.notice ?? GeminiActivity.shared.notice
+                ?? CodexActivity.shared.notice
                 ?? ClaudeCodeCIWatch.shared.notice ?? NotchRainWatch.shared.notice ?? NotchUnread.shared.notice
                 ?? Self.downloadNotice(NotchDownloads.shared.finished),
             timerRunning: timers.running != nil, musicPlaying: track?.isPlaying == true, meeting: meeting,

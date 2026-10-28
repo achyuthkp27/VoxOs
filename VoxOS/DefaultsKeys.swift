@@ -60,6 +60,7 @@ enum DefaultsKeys {
     static let claudeCodeOriginalStatusLine = "ClaudeCodeOriginalStatusLine"
     /// Codex's notify sends turn ends to VoxOS.
     static let codexNotifyEnabled = "CodexNotifyEnabled"
+    static let geminiHooksEnabled = "GeminiHooksEnabled"
     /// After a session pushes, the notch says how its CI run ended.
     static let claudeCodeCIEnabled = "ClaudeCodeCIEnabled"
     /// The notch opens on hover into Music, Timer, Today and Shelf.
