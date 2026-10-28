@@ -561,6 +561,8 @@ private struct NotchShelfDetail: View {
                     shelf.airDrop(item.url)
                 }
                 NotchRoundButton(symbol: "arrow.up.forward.app", label: "Open") { NSWorkspace.shared.open(item.url) }
+                NotchRoundButton(symbol: "doc.on.doc", label: "Copy the file") { shelf.copy(item) }
+                NotchRoundButton(symbol: "doc.zipper", label: "Compress to a zip") { shelf.compress(item) }
                 NotchRoundButton(symbol: "folder", label: "Show in Finder") {
                     NSWorkspace.shared.activateFileViewerSelecting([item.url])
                 }

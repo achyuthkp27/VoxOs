@@ -65,6 +65,42 @@ final class NotchShelf: ObservableObject {
         service.perform(withItems: [url])
     }
 
+    /// The file itself on the clipboard, to paste into a mail or a chat.
+    func copy(_ item: Item) {
+        let board = NSPasteboard.general
+        board.clearContents()
+        board.writeObjects([item.url as NSURL])
+    }
+
+    /// A zip beside the file (or folder), added to the shelf when done. Archive Utility's own
+    /// tool, so the zip opens anywhere; done off the main thread.
+    func compress(_ item: Item) {
+        let source = item.url
+        let target = Self.zipURL(for: source, exists: { FileManager.default.fileExists(atPath: $0.path) })
+        Task.detached(priority: .userInitiated) {
+            let process = Process()
+            process.executableURL = URL(fileURLWithPath: "/usr/bin/ditto")
+            process.arguments = ["-c", "-k", "--sequesterRsrc", "--keepParent", source.path, target.path]
+            guard (try? process.run()) != nil else { return }
+            process.waitUntilExit()
+            guard process.terminationStatus == 0 else { return }
+            await MainActor.run { NotchShelf.shared.add([target]) }
+        }
+    }
+
+    /// "Name.zip", or "Name 2.zip" and on when that is taken.
+    nonisolated static func zipURL(for source: URL, exists: (URL) -> Bool) -> URL {
+        let folder = source.deletingLastPathComponent()
+        let base = source.lastPathComponent
+        var candidate = folder.appendingPathComponent(base + ".zip")
+        var number = 2
+        while exists(candidate) {
+            candidate = folder.appendingPathComponent("\(base) \(number).zip")
+            number += 1
+        }
+        return candidate
+    }
+
     func remove(_ id: UUID) {
         items.removeAll { $0.id == id }
         save()
