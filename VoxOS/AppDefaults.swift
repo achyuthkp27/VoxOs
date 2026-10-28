@@ -61,6 +61,8 @@ enum AppDefaults {
             DefaultsKeys.notchHomeInFullScreen: false,
             // Off: the notch stays on the display with one (or, with none, the menu bar's).
             DefaultsKeys.notchFollowsActiveDisplay: false,
+            DefaultsKeys.voiceAssistantEnabled: true,
+            DefaultsKeys.notchMasterEnabled: true,
             DefaultsKeys.notchHUDEnabled: true,
             // Off: a screenshot of a notch bug should show the notch.
             DefaultsKeys.notchHiddenFromCapture: false,

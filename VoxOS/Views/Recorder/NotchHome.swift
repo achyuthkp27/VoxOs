@@ -76,7 +76,9 @@ enum NotchHome {
         var isVisible: Bool { self != .hidden && self != .bare }
     }
 
-    static var isEnabled: Bool { UserDefaults.standard.bool(forKey: DefaultsKeys.notchHomeEnabled) }
+    static var isEnabled: Bool {
+        MasterSwitches.notchEnabled && UserDefaults.standard.bool(forKey: DefaultsKeys.notchHomeEnabled)
+    }
     static var musicEnabled: Bool { UserDefaults.standard.bool(forKey: DefaultsKeys.notchMusicEnabled) }
     static var barsEnabled: Bool { UserDefaults.standard.bool(forKey: DefaultsKeys.notchMusicBarsEnabled) }
     static var barsOnBattery: Bool { UserDefaults.standard.bool(forKey: DefaultsKeys.notchMusicBarsOnBattery) }

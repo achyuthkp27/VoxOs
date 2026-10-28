@@ -59,6 +59,10 @@ enum DefaultsKeys {
     static let notchHomeInFullScreen = "NotchHomeInFullScreen"
     /// Notch Home and Claude Code's cards move to the display holding the front app's window.
     static let notchFollowsActiveDisplay = "NotchFollowsActiveDisplay"
+    /// Dashboard master switch: dictation and the Agent by their shortcuts.
+    static let voiceAssistantEnabled = "VoiceAssistantEnabled"
+    /// Dashboard master switch: everything VoxOS draws in the notch between dictations.
+    static let notchMasterEnabled = "NotchMasterEnabled"
     /// Volume and brightness keys show their level in the notch instead of macOS's pop-up.
     static let notchHUDEnabled = "NotchHUDEnabled"
     /// The notch's panels are left out of screenshots, recordings and screen sharing.

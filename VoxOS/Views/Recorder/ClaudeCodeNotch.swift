@@ -1081,10 +1081,12 @@ final class ClaudeCodeNotchManager {
             ClaudeCodeIntegration.quietInTerminal
             && first.map { $0.id != revealed && terminalIsInFront(for: $0) } == true
         let content = ClaudeCodeNotch.content(
-            prompts: activity.prompts, status: activity.status(now: now), enabled: ClaudeCodeIntegration.isEnabled,
+            prompts: activity.prompts, status: activity.status(now: now),
+            enabled: ClaudeCodeIntegration.isEnabled && MasterSwitches.notchEnabled,
             approvalsEnabled: ClaudeCodeIntegration.approvalsEnabled,
             statusEnabled: ClaudeCodeIntegration.statusEnabled,
-            recorderVisible: uiManager.isRecorderPanelVisible, offering: ClaudeCodeIntegration.shared.isOffering,
+            recorderVisible: uiManager.isRecorderPanelVisible,
+            offering: ClaudeCodeIntegration.shared.isOffering && MasterSwitches.notchEnabled,
             homeVisible: uiManager.isNotchHomeVisible, quiet: quiet)
         scheduleTick(after: now)
         let sharing: NSWindow.SharingType = NotchHome.hiddenFromCapture ? .none : .readOnly

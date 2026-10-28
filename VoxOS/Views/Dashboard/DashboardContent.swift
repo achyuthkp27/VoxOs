@@ -147,6 +147,10 @@ struct DashboardContent: View {
             greetingHeader
                 .padding(.bottom, 6)
 
+            nameEditorDismissArea {
+                DashboardMasterSwitches(availableWidth: availableWidth)
+            }
+
             if !isAccessibilityEnabled || !modeManager.hasEnabledConfiguration {
                 nameEditorDismissArea {
                     VStack(spacing: DashboardLayout.labelSpacing) {
@@ -903,6 +907,75 @@ private struct DashboardNotice: View {
         }
         .dashboardCard(padding: 14)
         .accessibilityElement(children: .contain)
+    }
+}
+
+/// The two master switches: the voice assistant, and the notch.
+private struct DashboardMasterSwitches: View {
+    let availableWidth: CGFloat
+    @AppStorage(DefaultsKeys.voiceAssistantEnabled) private var voiceEnabled = true
+    @AppStorage(DefaultsKeys.notchMasterEnabled) private var notchEnabled = true
+
+    var body: some View {
+        let voice = DashboardMasterSwitch(
+            icon: "waveform", title: "Voice Assistant",
+            detail: "Dictation and the Agent from their shortcuts",
+            isOn: Binding(get: { voiceEnabled }, set: { MasterSwitches.setVoiceEnabled($0) }))
+        let notch = DashboardMasterSwitch(
+            icon: "rectangle.topthird.inset.filled", title: "Notch",
+            detail: "Notch Home, Claude Code cards, volume and brightness",
+            isOn: Binding(get: { notchEnabled }, set: { MasterSwitches.setNotchEnabled($0) }))
+        if DashboardLayout.isWide(availableWidth) {
+            HStack(spacing: DashboardLayout.gridSpacing) {
+                voice
+                notch
+            }
+        } else {
+            VStack(spacing: DashboardLayout.gridSpacing) {
+                voice
+                notch
+            }
+        }
+    }
+}
+
+private struct DashboardMasterSwitch: View {
+    let icon: String
+    let title: LocalizedStringKey
+    let detail: LocalizedStringKey
+    @Binding var isOn: Bool
+
+    var body: some View {
+        HStack(alignment: .center, spacing: 12) {
+            Image(systemName: icon)
+                .font(.app(size: 15, weight: .medium))
+                .foregroundStyle(isOn ? AppTheme.Accent.primary : AppTheme.Text.secondary)
+                .frame(width: 24)
+                .accessibilityHidden(true)
+
+            VStack(alignment: .leading, spacing: 2) {
+                Text(title)
+                    .font(.app(size: 13, weight: .semibold))
+                    .foregroundStyle(AppTheme.Text.primary)
+                    .lineLimit(1)
+                Text(isOn ? detail : "Off")
+                    .font(.app(size: 12, weight: .regular))
+                    .foregroundStyle(AppTheme.Text.secondary)
+                    .lineLimit(1)
+            }
+
+            Spacer(minLength: 12)
+
+            Toggle("", isOn: $isOn)
+                .toggleStyle(.switch)
+                .labelsHidden()
+                .controlSize(.small)
+        }
+        .frame(maxWidth: .infinity)
+        .dashboardCard(padding: 14)
+        .accessibilityElement(children: .combine)
+        .accessibilityLabel(Text(title))
+        .accessibilityValue(Text(isOn ? "On" : "Off"))
     }
 }
 

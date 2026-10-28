@@ -17,6 +17,12 @@ enum ShortcutStore {
             return nil
         }
 
+        // The dashboard's voice assistant switch: off, the shortcuts that start dictation or the
+        // Agent read as unset, so no monitor listens for them.
+        guard !action.isVoice || MasterSwitches.voiceEnabled else {
+            return nil
+        }
+
         return rawShortcut(for: action)
     }
 

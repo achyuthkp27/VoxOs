@@ -25,4 +25,35 @@ struct ShortcutStoreSuspensionTests {
         ShortcutStore.resume(action)
         #expect(ShortcutStore.shortcut(for: action) == shortcut)
     }
+
+    /// The dashboard's voice assistant switch hides the shortcuts that start dictation or the
+    /// Agent, the same way, and leaves the others alone.
+    @MainActor
+    @Test func theVoiceSwitchHidesOnlyVoiceShortcuts() {
+        let voice = ShortcutAction.secondaryRecording
+        let other = ShortcutAction.pasteLastTranscription
+        let voiceShortcut = Shortcut.key(keyCode: UInt16(kVK_ANSI_8), modifierFlags: [.control, .option])
+        let otherShortcut = Shortcut.key(keyCode: UInt16(kVK_ANSI_9), modifierFlags: [.control, .option])
+        let wasOn = MasterSwitches.voiceEnabled
+        ShortcutStore.removeShortcutStorage(for: voice)
+        ShortcutStore.removeShortcutStorage(for: other)
+        defer {
+            MasterSwitches.setVoiceEnabled(wasOn)
+            ShortcutStore.removeShortcutStorage(for: voice)
+            ShortcutStore.removeShortcutStorage(for: other)
+        }
+        ShortcutStore.setShortcut(voiceShortcut, for: voice)
+        ShortcutStore.setShortcut(otherShortcut, for: other)
+        MasterSwitches.setVoiceEnabled(true)
+
+        MasterSwitches.setVoiceEnabled(false)
+        #expect(ShortcutStore.shortcut(for: voice) == nil, "dictation's shortcut is not listened for")
+        #expect(ShortcutStore.rawShortcut(for: voice) == voiceShortcut, "…and is kept")
+        #expect(ShortcutStore.shortcut(for: other) == otherShortcut, "pasting the last one still works")
+        #expect(ShortcutAction.agentDoubleTap.isVoice && ShortcutAction.mode(UUID()).isVoice)
+        #expect(!ShortcutAction.openHistoryWindow.isVoice)
+
+        MasterSwitches.setVoiceEnabled(true)
+        #expect(ShortcutStore.shortcut(for: voice) == voiceShortcut)
+    }
 }

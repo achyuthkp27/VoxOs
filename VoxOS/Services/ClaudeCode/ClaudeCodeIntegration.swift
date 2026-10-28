@@ -97,7 +97,7 @@ final class ClaudeCodeIntegration: ObservableObject {
 
     func setApprovalsEnabled(_ enabled: Bool) {
         UserDefaults.standard.set(enabled, forKey: DefaultsKeys.claudeCodeApprovalsEnabled)
-        bridge.setApprovalsEnabled(enabled)
+        bridge.setApprovalsEnabled(Self.holdsRequests)
         // A request already in the notch goes back to the terminal rather than staying answerable.
         if !enabled { ClaudeCodeActivity.shared.settleAll() }
     }
@@ -133,8 +133,18 @@ final class ClaudeCodeIntegration: ObservableObject {
         refreshInstallState()
     }
 
+    /// Requests are held for the notch only while there is a notch to answer them in.
+    private static var holdsRequests: Bool { approvalsEnabled && MasterSwitches.notchEnabled }
+
+    /// The dashboard's notch switch: off, requests go back to the terminal and new ones are not
+    /// held; on again, they are.
+    func notchSwitchChanged() {
+        bridge.setApprovalsEnabled(Self.holdsRequests)
+        if !Self.holdsRequests { ClaudeCodeActivity.shared.settleAll() }
+    }
+
     private func startBridge() {
-        bridge.start(port: port, approvalsEnabled: Self.approvalsEnabled)
+        bridge.start(port: port, approvalsEnabled: Self.holdsRequests)
         let activity = ClaudeCodeActivity.shared
         activityWatch = activity.$prompts.combineLatest(activity.$sessions)
             .receive(on: RunLoop.main)
