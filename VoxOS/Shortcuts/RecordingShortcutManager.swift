@@ -51,6 +51,10 @@ class RecordingShortcutManager: ObservableObject {
     private var recorderPanelShortcutManager: RecorderPanelShortcutManager
     private let modeShortcutManager: ModeShortcutManager
     private var shortcutChangeObserver: NSObjectProtocol?
+    private var notchAgentObserver: NSObjectProtocol?
+
+    /// A long press on the notch asks the Agent, as ⌃⌃ does.
+    static let askAgentFromNotch = Notification.Name("VoxOSAskAgentFromNotch")
     private var pendingMonitoringRefresh: Task<Void, Never>?
     private let shortcutModeHandler: RecordingShortcutModeHandler
     private let primaryRecordingShortcutModeSource: RecordingShortcutModeSource
@@ -185,6 +189,16 @@ class RecordingShortcutManager: ObservableObject {
             },
             shortcutModeHandler: shortcutModeHandler
         )
+
+        notchAgentObserver = NotificationCenter.default.addObserver(
+            forName: Self.askAgentFromNotch, object: nil, queue: .main
+        ) { [weak self] _ in
+            Task { @MainActor in
+                // The voice assistant's switch covers this way in too.
+                guard let self, MasterSwitches.voiceEnabled else { return }
+                await self.triggerAgent()
+            }
+        }
 
         shortcutChangeObserver = NotificationCenter.default.addObserver(
             forName: ShortcutStore.shortcutDidChange,

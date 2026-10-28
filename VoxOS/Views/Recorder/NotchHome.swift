@@ -145,6 +145,9 @@ enum NotchHome {
         ClaudeCodeNotch.frame(for: size, screenFrame: screenFrame)
     }
 
+    /// How long the notch is held to ask the Agent.
+    static let askHold: TimeInterval = 0.5
+
     /// How long the pointer may be outside the open card before it closes.
     static let leaveGrace: TimeInterval = 0.22
 
@@ -402,7 +405,7 @@ struct NotchHomeView: View {
     }
 
     /// One thing in each wing. Open, the left wing names the page (behind the cover on Music)
-    /// and the right one switches pages.
+    /// and the right one switches pages. Held down, the notch asks the Agent, as ⌃⌃ does.
     private var notchRow: some View {
         HStack(spacing: 0) {
             leftWing
@@ -411,6 +414,11 @@ struct NotchHomeView: View {
         }
         .padding(.horizontal, inset)
         .frame(width: size.width, height: model.notchHeight)
+        .contentShape(Rectangle())
+        .onLongPressGesture(minimumDuration: NotchHome.askHold) {
+            NotchHome.tap()
+            NotificationCenter.default.post(name: RecordingShortcutManager.askAgentFromNotch, object: nil)
+        }
     }
 
     @ViewBuilder
