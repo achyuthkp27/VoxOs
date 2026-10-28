@@ -1248,6 +1248,12 @@ final class NotchHomeManager {
             .store(in: &cancellables)
         CodexActivity.shared.$notice.receive(on: RunLoop.main).sink { [weak self] _ in self?.refresh() }
             .store(in: &cancellables)
+        ClaudeCodeCIWatch.shared.$notice.receive(on: RunLoop.main).sink { [weak self] _ in self?.refresh() }
+            .store(in: &cancellables)
+        NotchRainWatch.shared.$notice.receive(on: RunLoop.main).sink { [weak self] _ in self?.refresh() }
+            .store(in: &cancellables)
+        NotchUnread.shared.$notice.receive(on: RunLoop.main).sink { [weak self] _ in self?.refresh() }
+            .store(in: &cancellables)
         // Entering or leaving a full-screen app is a Space change.
         NSWorkspace.shared.notificationCenter.publisher(for: NSWorkspace.activeSpaceDidChangeNotification)
             .receive(on: RunLoop.main)
@@ -1305,6 +1311,8 @@ final class NotchHomeManager {
         if enabled && NotchDownloads.isEnabled { NotchDownloads.shared.start() } else { NotchDownloads.shared.stop() }
         if enabled && NotchFocus.isEnabled { NotchFocus.shared.start() } else { NotchFocus.shared.stop() }
         if enabled && NotchClipboard.isEnabled { NotchClipboard.shared.start() } else { NotchClipboard.shared.stop() }
+        NotchRainWatch.shared.setActive(enabled && NotchRainWatch.isEnabled && NotchRainWatch.locationAllowed)
+        if enabled && NotchUnread.isEnabled { NotchUnread.shared.start() } else { NotchUnread.shared.stop() }
         // Switched off: every app back to full, which also ends its tap.
         if !(enabled && NotchMixer.isEnabled), mixerWasOn { NotchMixer.shared.reset() }
         mixerWasOn = enabled && NotchMixer.isEnabled
@@ -1327,6 +1335,7 @@ final class NotchHomeManager {
             dropping: dropping,
             notice: Self.notice(device: NotchDeviceAlerts.shared.notice, finished: timers.finished)
                 ?? NotchFocus.shared.notice ?? ClaudeCodeUsage.shared.notice ?? CodexActivity.shared.notice
+                ?? ClaudeCodeCIWatch.shared.notice ?? NotchRainWatch.shared.notice ?? NotchUnread.shared.notice
                 ?? Self.downloadNotice(NotchDownloads.shared.finished),
             timerRunning: timers.running != nil, musicPlaying: track?.isPlaying == true, meeting: meeting,
             privacy: NotchPrivacy.shared.state, level: NotchHUD.shared.level,

@@ -139,4 +139,49 @@ struct NotchExtrasTests {
         #expect(NotchShelf.zipURL(for: source, exists: { taken.contains($0.path) }).path == "/tmp/Report.pdf 3.zip")
         #expect(NotchShelf.zipURL(for: source, exists: { _ in false }).lastPathComponent == "Report.pdf.zip")
     }
+
+    // MARK: Pushes, rain, unread, shortcuts
+
+    @Test func onlyARealPushStartsACIWatch() {
+        #expect(ClaudeCodeCIWatch.isPush("git push"))
+        #expect(ClaudeCodeCIWatch.isPush("git push origin main"))
+        #expect(ClaudeCodeCIWatch.isPush("make test && git push -q origin main"))
+        #expect(ClaudeCodeCIWatch.isPush("git -C repo push"))
+        #expect(!ClaudeCodeCIWatch.isPush("echo 'git push later'"), "words in a string")
+        #expect(!ClaudeCodeCIWatch.isPush("git pushd"))
+        #expect(!ClaudeCodeCIWatch.isPush("git status"))
+    }
+
+    @Test func aCIRunIsReadFromGitHubsCLI() {
+        let done = Data(#"[{"status":"completed","conclusion":"failure","createdAt":"2026-10-28T15:25:44Z"}]"#.utf8)
+        let run = ClaudeCodeCIWatch.run(fromJSON: done)
+        #expect(run?.completed == true)
+        #expect(run?.conclusion == "failure")
+        let going = Data(#"[{"status":"in_progress","conclusion":"","createdAt":"2026-10-28T15:25:44Z"}]"#.utf8)
+        #expect(ClaudeCodeCIWatch.run(fromJSON: going)?.conclusion == nil)
+        #expect(ClaudeCodeCIWatch.run(fromJSON: Data("[]".utf8)) == nil)
+    }
+
+    @Test func rainSoonIsReadInQuarterHours() {
+        let json: [String: Any] = [
+            "current": ["temperature_2m": 20.0, "weather_code": 2],
+            "minutely_15": ["precipitation": [0.0, 0.0, 0.4, 1.2]],
+        ]
+        #expect(AgentWeather.summarize(json)?["rain_in_minutes"] as? Int == 30)
+        let dry: [String: Any] = [
+            "current": ["temperature_2m": 20.0, "weather_code": 0], "minutely_15": ["precipitation": [0.0, 0.0]],
+        ]
+        #expect(AgentWeather.summarize(dry)?["rain_in_minutes"] == nil)
+    }
+
+    @Test func onlyACountThatRoseIsNews() {
+        #expect(NotchUnread.risen(from: ["Mail": 2], to: ["Mail": 4])?.0 == "Mail")
+        #expect(NotchUnread.risen(from: ["Mail": 4], to: ["Mail": 1]) == nil, "read some: nothing to say")
+        #expect(NotchUnread.risen(from: [:], to: ["Messages": 1])?.1 == 1)
+        #expect(NotchUnread.risen(from: ["Mail": 1, "Messages": 1], to: ["Mail": 2, "Messages": 5])?.0 == "Messages")
+    }
+
+    @Test func shortcutsAreListedOnePerLine() {
+        #expect(NotchShortcuts.names(from: "Focus Mode\n  Send ETA \n\n") == ["Focus Mode", "Send ETA"])
+    }
 }

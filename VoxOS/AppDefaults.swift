@@ -62,6 +62,7 @@ enum AppDefaults {
             // Off: both edit another tool's settings.
             DefaultsKeys.claudeCodeUsageEnabled: false,
             DefaultsKeys.codexNotifyEnabled: false,
+            DefaultsKeys.claudeCodeCIEnabled: true,
             DefaultsKeys.notchHomeEnabled: true,
             DefaultsKeys.notchDeviceAlertsEnabled: true,
             DefaultsKeys.notchHomeInFullScreen: false,
@@ -80,6 +81,9 @@ enum AppDefaults {
             DefaultsKeys.notchClipboardEnabled: false,
             // Off: a lookup tells lrclib.net what is playing.
             DefaultsKeys.notchLyricsEnabled: false,
+            DefaultsKeys.notchRainEnabled: true,
+            DefaultsKeys.notchUnreadEnabled: true,
+            DefaultsKeys.notchShortcutsEnabled: true,
             DefaultsKeys.notchPrivacyEnabled: true,
             // Needs Calendar access, which only the Calendar page asks for.
             DefaultsKeys.notchMeetingsEnabled: true,

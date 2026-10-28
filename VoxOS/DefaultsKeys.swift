@@ -60,6 +60,8 @@ enum DefaultsKeys {
     static let claudeCodeOriginalStatusLine = "ClaudeCodeOriginalStatusLine"
     /// Codex's notify sends turn ends to VoxOS.
     static let codexNotifyEnabled = "CodexNotifyEnabled"
+    /// After a session pushes, the notch says how its CI run ended.
+    static let claudeCodeCIEnabled = "ClaudeCodeCIEnabled"
     /// The notch opens on hover into Music, Timer, Today and Shelf.
     static let notchHomeEnabled = "NotchHomeEnabled"
     /// A short notice in the notch when a Bluetooth device or Wi-Fi connects or drops, the sound
@@ -89,6 +91,12 @@ enum DefaultsKeys {
     static let notchClipboardEnabled = "NotchClipboardEnabled"
     /// The sung line on the Music page, from lrclib.net.
     static let notchLyricsEnabled = "NotchLyricsEnabled"
+    /// A notice when rain is about to start.
+    static let notchRainEnabled = "NotchRainEnabled"
+    /// A notice when an app's unread count in the Dock goes up.
+    static let notchUnreadEnabled = "NotchUnreadEnabled"
+    /// On the Sound page: the user's Shortcuts, to run with a click.
+    static let notchShortcutsEnabled = "NotchShortcutsEnabled"
     /// A band with a mute switch while another app uses the microphone or a camera.
     static let notchPrivacyEnabled = "NotchPrivacyEnabled"
     /// A countdown band for the next meeting, with Join when it has a call link.

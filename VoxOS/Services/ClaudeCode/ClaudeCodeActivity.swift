@@ -185,6 +185,11 @@ final class ClaudeCodeActivity: ObservableObject {
             }
         case .postToolUse, .postToolUseFailure:
             update(event, phase: .working, now: now)
+            if event.kind == .postToolUse, event.toolName == "Bash", let cwd = event.cwd,
+                let command = event.summary?.detail, ClaudeCodeCIWatch.isPush(command)
+            {
+                ClaudeCodeCIWatch.shared.pushed(in: cwd, at: now)
+            }
             if let id = event.toolUseID {
                 settle { $0.toolUseID == id }
             }

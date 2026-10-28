@@ -655,6 +655,7 @@ struct NotchSoundPage: View {
     enum Section: String, CaseIterable, Identifiable {
         case apps
         case clipboard
+        case shortcuts
         case mirror
 
         var id: String { rawValue }
@@ -663,6 +664,7 @@ struct NotchSoundPage: View {
             switch self {
             case .apps: return "square.grid.2x2"
             case .clipboard: return "doc.on.clipboard"
+            case .shortcuts: return "square.2.layers.3d"
             case .mirror: return "person.crop.square"
             }
         }
@@ -671,6 +673,7 @@ struct NotchSoundPage: View {
             switch self {
             case .apps: return "App volumes"
             case .clipboard: return "Clipboard"
+            case .shortcuts: return "Shortcuts"
             case .mirror: return "Mirror"
             }
         }
@@ -686,12 +689,15 @@ struct NotchSoundPage: View {
     @AppStorage(DefaultsKeys.notchMixerEnabled) private var appsOn = true
     @AppStorage(DefaultsKeys.notchClipboardEnabled) private var clipboardOn = false
     @AppStorage(DefaultsKeys.notchMirrorEnabled) private var mirrorOn = true
+    @AppStorage(DefaultsKeys.notchShortcutsEnabled) private var shortcutsOn = true
+    @ObservedObject private var shortcuts = NotchShortcuts.shared
 
     private var sections: [Section] {
         Section.allCases.filter { section in
             switch section {
             case .apps: return appsOn
             case .clipboard: return clipboardOn
+            case .shortcuts: return shortcutsOn
             case .mirror: return mirrorOn
             }
         }
@@ -723,6 +729,7 @@ struct NotchSoundPage: View {
                 switch shown {
                 case .apps: apps
                 case .clipboard: clipboardList
+                case .shortcuts: shortcutsList
                 case .mirror: mirrorView
                 case nil:
                     Text("Switch on app volumes, the clipboard or the mirror in Settings → Notch Home")
@@ -736,9 +743,13 @@ struct NotchSoundPage: View {
         .padding(.top, 2)
         .padding(.horizontal, AgentComposer.panelInset)
         .padding(.bottom, NotchHome.Card.bottom)
-        .onAppear { mixer.setVisible(shown == .apps) }
+        .onAppear {
+            mixer.setVisible(shown == .apps)
+            if shown == .shortcuts { shortcuts.reload() }
+        }
         .onChange(of: shown) { old, new in
             mixer.setVisible(new == .apps)
+            if new == .shortcuts { shortcuts.reload() }
             if old == .mirror { mirror.stop() }
         }
         // Leaving the page, or the card closing, stops the camera and the app list's listening.
@@ -777,6 +788,44 @@ struct NotchSoundPage: View {
                 VStack(spacing: 4) {
                     ForEach(clipboard.items) { item in
                         NotchClipboardRow(item: item) { clipboard.copy(item) }
+                    }
+                }
+            }
+            .scrollIndicators(.automatic)
+        }
+    }
+
+    // MARK: Shortcuts
+
+    @ViewBuilder
+    private var shortcutsList: some View {
+        if shortcuts.names.isEmpty {
+            NotchPageHint(symbol: "square.2.layers.3d", text: "Your Shortcuts show here, to run with a click")
+        } else {
+            ScrollView(.vertical) {
+                LazyVGrid(columns: [GridItem(.adaptive(minimum: 120), spacing: 6)], spacing: 6) {
+                    ForEach(shortcuts.names, id: \.self) { name in
+                        Button {
+                            shortcuts.run(name)
+                        } label: {
+                            HStack(spacing: 6) {
+                                if shortcuts.running == name {
+                                    ProgressView().controlSize(.mini)
+                                } else {
+                                    Image(systemName: "play.fill").font(.system(size: 8, weight: .bold))
+                                }
+                                Text(verbatim: name).font(.app(size: 11, weight: .medium)).lineLimit(1)
+                            }
+                            .foregroundStyle(.white.opacity(0.88))
+                            .padding(.horizontal, 10)
+                            .frame(maxWidth: .infinity, minHeight: 24, alignment: .leading)
+                            .background(
+                                RoundedRectangle(cornerRadius: 8, style: .continuous).fill(.white.opacity(0.07))
+                            )
+                            .contentShape(Rectangle())
+                        }
+                        .buttonStyle(.plain)
+                        .help(name)
                     }
                 }
             }

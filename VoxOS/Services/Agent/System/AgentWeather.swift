@@ -32,6 +32,8 @@ enum AgentWeather {
             .init(
                 name: "daily", value: "temperature_2m_max,temperature_2m_min,precipitation_probability_max,weather_code"
             ),
+            .init(name: "minutely_15", value: "precipitation"),
+            .init(name: "forecast_minutely_15", value: "8"),
             .init(name: "timezone", value: "auto"),
             .init(name: "forecast_days", value: "2"),
         ]
@@ -50,6 +52,11 @@ enum AgentWeather {
         if let wind = current["wind_speed_10m"] as? Double { out["wind_kmh"] = wind }
         if let humidity = current["relative_humidity_2m"] as? Double { out["humidity_pct"] = humidity }
         if let day = int(current["is_day"]) { out["is_day"] = day == 1 }
+        // Minutes until the first quarter hour with rain in the next two hours: 0 is now.
+        if let quarters = (json["minutely_15"] as? [String: Any])?["precipitation"] as? [Any] {
+            let amounts = quarters.map { number(["v": $0], "v") ?? 0 }
+            if let first = amounts.firstIndex(where: { $0 >= 0.1 }) { out["rain_in_minutes"] = first * 15 }
+        }
 
         if let daily = json["daily"] as? [String: Any],
             let highs = daily["temperature_2m_max"] as? [Double], let lows = daily["temperature_2m_min"] as? [Double]

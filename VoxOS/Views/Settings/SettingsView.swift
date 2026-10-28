@@ -65,6 +65,9 @@ struct SettingsView: View {
     @AppStorage(DefaultsKeys.notchMirrorEnabled) private var notchMirrorEnabled = true
     @AppStorage(DefaultsKeys.notchClipboardEnabled) private var notchClipboardEnabled = false
     @AppStorage(DefaultsKeys.notchLyricsEnabled) private var notchLyricsEnabled = false
+    @AppStorage(DefaultsKeys.notchRainEnabled) private var notchRainEnabled = true
+    @AppStorage(DefaultsKeys.notchUnreadEnabled) private var notchUnreadEnabled = true
+    @AppStorage(DefaultsKeys.notchShortcutsEnabled) private var notchShortcutsEnabled = true
     @AppStorage(DefaultsKeys.notchMeetingsEnabled) private var notchMeetingsEnabled = true
     @AppStorage(DefaultsKeys.notchMusicEnabled) private var notchMusicEnabled = true
     @AppStorage(DefaultsKeys.notchMusicBarsEnabled) private var notchMusicBarsEnabled = false
@@ -131,7 +134,8 @@ struct SettingsView: View {
         "mute", "Meeting Countdown", "meeting", "zoom", "join",
         "Volume & Brightness in the Notch", "volume", "brightness", "HUD", "keys",
         "Hide from Screenshots & Sharing", "screenshot", "screen sharing", "privacy",
-        "Downloads", "download", "Focus", "do not disturb", "Per-App Volume", "mixer", "app volume", "Mirror",
+        "Rain Soon", "rain", "Unread Counts", "unread", "badge", "Shortcuts", "shortcut", "Downloads", "download",
+        "Focus", "do not disturb", "Per-App Volume", "mixer", "app volume", "Mirror",
         "camera", "webcam", "keep awake", "caffeinate", "Clipboard History", "clipboard", "Lyrics", "lyrics",
         "Show in Full Screen", "full screen", "fullscreen", "Follow the Display in Use", "external display",
         "monitor", "display",
@@ -773,6 +777,28 @@ struct SettingsView: View {
                                 Text("Clipboard History")
                                 InfoTip(
                                     "On the Sound page: the last few pieces of text you copied; a click copies one again. Kept in memory only, never what a password manager marks as secret. Off by default: it checks the clipboard once a second."
+                                )
+                            }
+                        }
+                        Toggle(isOn: $notchUnreadEnabled) {
+                            HStack(spacing: 2) {
+                                Text("Unread Counts")
+                                InfoTip(
+                                    "A notice when Mail, Messages or another app's unread badge in the Dock goes up, read from the Dock once a minute."
+                                )
+                            }
+                        }
+                        Toggle(isOn: $notchShortcutsEnabled) {
+                            HStack(spacing: 2) {
+                                Text("Shortcuts")
+                                InfoTip("On the Sound page: your Shortcuts, each run with a click.")
+                            }
+                        }
+                        Toggle(isOn: $notchRainEnabled) {
+                            HStack(spacing: 2) {
+                                Text("Rain Soon")
+                                InfoTip(
+                                    "A notice when rain is about to start where you are, from the weather checked every half hour. Only once location access has been given on the Weather page."
                                 )
                             }
                         }

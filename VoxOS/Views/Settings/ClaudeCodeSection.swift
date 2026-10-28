@@ -12,6 +12,7 @@ struct ClaudeCodeSection: View {
     @AppStorage(DefaultsKeys.claudeCodeSpeaksReplies) private var speaksReplies = false
     @AppStorage(DefaultsKeys.claudeCodeUsageEnabled) private var usageEnabled = false
     @AppStorage(DefaultsKeys.codexNotifyEnabled) private var codexEnabled = false
+    @AppStorage(DefaultsKeys.claudeCodeCIEnabled) private var ciEnabled = true
     @ObservedObject private var usage = ClaudeCodeUsage.shared
 
     var body: some View {
@@ -57,6 +58,15 @@ struct ClaudeCodeSection: View {
                     }
                 }
                 if usageEnabled { usageSummary }
+
+                Toggle(isOn: $ciEnabled) {
+                    HStack(spacing: 2) {
+                        Text("CI Result After a Push")
+                        InfoTip(
+                            "When a session runs git push, the notch says how that push's GitHub Actions run ended. GitHub's gh CLI is asked once a minute until the run completes, and only then."
+                        )
+                    }
+                }
 
                 if CodexNotify.codexInstalled {
                     Toggle(isOn: Binding(get: { codexEnabled }, set: { integration.setCodexEnabled($0) })) {
