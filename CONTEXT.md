@@ -38,9 +38,9 @@ It is a fork of VoiceInk (GPL v3) with the cursor-voice tool layer (MIT) ported 
 - **Claude Code bridge** — `ClaudeCodeBridge`, a listener on 127.0.0.1:47317 that Claude Code's
   hooks post to through curl (ADR 0006). Settings → Claude Code installs the hooks in
   `~/.claude/settings.json` (`ClaudeCodeHooks`) and removes them when switched off.
-- **Claude Code notch** — `ClaudeCodeNotchManager`'s own panel: a band beside the notch while a
-  session works, a check when it finishes, and an approval card (Deny / Allow) for a
-  PermissionRequest. Hidden while the recorder is up; the idle tab hides under it.
+- **Claude Code notch** — `ClaudeCodeNotchManager`'s own panel: a card for a PermissionRequest
+  (Allow, Deny, Always allow, Auto mode) or an AskUserQuestion (options, or "Other…" typed in),
+  and, only if turned on, a band while a session works. Hidden while the recorder is up.
 - **Notch Home** — `NotchHomeManager`'s panel on the notch between dictations (ADR 0007). Collapsed
   it is a **band** (one notice, timer or track) or a bare notch-sized target; hovering the notch
   opens the **card** with its **pages**: Music, Calendar, Reminders, Pomodoro, Shelf.
