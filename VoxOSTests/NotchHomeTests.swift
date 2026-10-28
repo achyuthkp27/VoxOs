@@ -305,4 +305,29 @@ struct NotchHomeTests {
         #expect(!NotchHomeView.opensAt(CGPoint(x: 285, y: 10), width: 301, notch: notch), "right wing: the bars")
         #expect(!NotchHomeView.opensAt(CGPoint(x: 150, y: 80), width: 301, notch: notch), "below the notch")
     }
+
+    // MARK: Battery
+
+    @Test func liveBarsListenOnlyWhenPowerAllows() {
+        #expect(NotchHome.liveBars(enabled: true, lowPowerMode: false, onBattery: false, allowedOnBattery: false))
+        #expect(NotchHome.liveBars(enabled: true, lowPowerMode: false, onBattery: true, allowedOnBattery: true))
+        #expect(
+            !NotchHome.liveBars(enabled: true, lowPowerMode: false, onBattery: true, allowedOnBattery: false),
+            "on battery when the user said not to")
+        #expect(
+            !NotchHome.liveBars(enabled: true, lowPowerMode: true, onBattery: false, allowedOnBattery: true),
+            "Low Power Mode always wins")
+        #expect(!NotchHome.liveBars(enabled: false, lowPowerMode: false, onBattery: false, allowedOnBattery: true))
+    }
+
+    @Test func ambientBarsTickSlowerThanLiveOnes() {
+        #expect(LevelBarsNSView.interval(for: .live) == 1.0 / 30)
+        #expect(LevelBarsNSView.interval(for: .ambient) == 1.0 / 20)
+    }
+
+    @Test func barsStopTickingOutsideAWindow() {
+        let view = LevelBarsNSView(bars: 4, barWidth: 3, spacing: 2, maxHeight: 14)
+        view.source = .ambient
+        #expect(!view.isTicking, "no window: nothing can see the bars")
+    }
 }

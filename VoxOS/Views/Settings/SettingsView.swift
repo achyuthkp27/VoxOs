@@ -48,6 +48,7 @@ struct SettingsView: View {
     @AppStorage(DefaultsKeys.notchHomeInFullScreen) private var notchHomeInFullScreen = false
     @AppStorage(DefaultsKeys.notchMusicEnabled) private var notchMusicEnabled = true
     @AppStorage(DefaultsKeys.notchMusicBarsEnabled) private var notchMusicBarsEnabled = false
+    @AppStorage(DefaultsKeys.notchMusicBarsOnBattery) private var notchMusicBarsOnBattery = true
     @AppStorage(DictationSend.stopWhenQuietKey) private var dictationStopWhenQuiet = false
     @AppStorage(DictationSend.pressReturnKey) private var dictationPressReturn = false
     @AppStorage(AgentAutoSend.pauseKey) private var agentAutoSendPause = AgentAutoSend.Pause.normal.rawValue
@@ -100,7 +101,8 @@ struct SettingsView: View {
         "Shows live text while recording with realtime models.",
         "Edge History", "Left-Edge History", "battery", "hover", "power",
         "Notch Material", "Liquid Glass", "Solid Black", "Always-Visible Notch Tab", "notch", "tab",
-        "Music in the Notch", "Live Music Bars", "music", "now playing", "visualizer", "Notch Home",
+        "Music in the Notch", "Live Music Bars", "Live Bars on Battery", "music", "now playing", "visualizer",
+        "Notch Home",
         "Device Alerts", "bluetooth", "airpods", "wifi", "timer", "pomodoro", "shelf", "calendar",
         "Show in Full Screen", "full screen", "fullscreen",
     ]
@@ -658,6 +660,16 @@ struct SettingsView: View {
                                 InfoTip(
                                     "Bars beside the notch and in the player that move with what is actually playing. They listen to the Mac's sound output while music plays, which needs the System Audio Recording permission and shows macOS's purple recording dot meanwhile. Off, the bars still move but listen to nothing. Nothing is recorded or stored."
                                 )
+                            }
+                        }
+                        if notchMusicBarsEnabled {
+                            Toggle(isOn: $notchMusicBarsOnBattery) {
+                                HStack(spacing: 2) {
+                                    Text("Live Bars on Battery")
+                                    InfoTip(
+                                        "Off, the bars stay ambient while the Mac runs on battery and listen to nothing. In Low Power Mode they always do."
+                                    )
+                                }
                             }
                         }
                     }

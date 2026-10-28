@@ -564,6 +564,15 @@ struct ClaudeCodeTests {
         #expect(arguments?.isEmpty == false)
     }
 
+    // MARK: Expiry checks
+
+    @Test func checksRunOnlyWhileSomethingCanExpire() {
+        #expect(ClaudeCodeIntegration.expiryInterval(prompts: 1, sessions: 1) == 0.5, "a card waits")
+        #expect(ClaudeCodeIntegration.expiryInterval(prompts: 1, sessions: 0) == 0.5)
+        #expect(ClaudeCodeIntegration.expiryInterval(prompts: 0, sessions: 2) == 5, "sessions only")
+        #expect(ClaudeCodeIntegration.expiryInterval(prompts: 0, sessions: 0) == nil, "nothing runs")
+    }
+
     // MARK: First-launch offer
 
     @Test func theOfferIsMadeOnceAndOnlyWhereItHelps() {

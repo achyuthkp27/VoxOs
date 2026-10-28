@@ -62,6 +62,13 @@ enum NotchHome {
     static var isEnabled: Bool { UserDefaults.standard.bool(forKey: DefaultsKeys.notchHomeEnabled) }
     static var musicEnabled: Bool { UserDefaults.standard.bool(forKey: DefaultsKeys.notchMusicEnabled) }
     static var barsEnabled: Bool { UserDefaults.standard.bool(forKey: DefaultsKeys.notchMusicBarsEnabled) }
+    static var barsOnBattery: Bool { UserDefaults.standard.bool(forKey: DefaultsKeys.notchMusicBarsOnBattery) }
+
+    /// Live bars listen only while the setting is on, Low Power Mode is off, and the Mac is on its
+    /// adapter or the user lets them run on battery. Otherwise the bars are ambient.
+    static func liveBars(enabled: Bool, lowPowerMode: Bool, onBattery: Bool, allowedOnBattery: Bool) -> Bool {
+        enabled && !lowPowerMode && (!onBattery || allowedOnBattery)
+    }
     static var showsInFullScreen: Bool { UserDefaults.standard.bool(forKey: DefaultsKeys.notchHomeInFullScreen) }
 
     static func content(
@@ -163,6 +170,8 @@ final class NotchHomeModel: ObservableObject {
     @Published var pagedForward = true
     /// Files are being dragged over the notch.
     @Published var dropping = false
+    /// The bars follow the real output (see `NotchHome.liveBars`); otherwise they are ambient.
+    @Published var liveBars = false
     let notchWidth: CGFloat
     let notchHeight: CGFloat
 
@@ -279,7 +288,7 @@ struct NotchHomeView: View {
         case .music:
             if let track = model.track {
                 NotchHomePlayer(
-                    track: track, modes: model.modes, barsEnabled: barsEnabled, onShuffle: onShuffle,
+                    track: track, modes: model.modes, liveBars: model.liveBars, onShuffle: onShuffle,
                     onRepeat: onRepeat)
             }
         case .timer:
@@ -361,7 +370,7 @@ struct NotchHomeView: View {
                 // so no recording dot.
                 NotchLevelBars(
                     color: track.tint, bars: 4, barWidth: 3, spacing: 2.5, maxHeight: 14,
-                    source: barsEnabled ? .live : .ambient
+                    source: model.liveBars ? .live : .ambient
                 )
                 .frame(width: NotchHome.artSize, height: 16)
                 .accessibilityLabel(Text("Playing"))
@@ -465,7 +474,7 @@ private struct NotchHomeCover: View {
 private struct NotchHomePlayer: View {
     let track: NotchTrack
     let modes: NotchPlaybackModes.State?
-    let barsEnabled: Bool
+    let liveBars: Bool
     let onShuffle: () -> Void
     let onRepeat: () -> Void
 
@@ -488,7 +497,7 @@ private struct NotchHomePlayer: View {
                     if track.isPlaying {
                         NotchLevelBars(
                             color: track.tint, bars: 4, barWidth: 2.5, spacing: 2, maxHeight: 14,
-                            source: barsEnabled ? .live : .ambient
+                            source: liveBars ? .live : .ambient
                         )
                         .frame(width: 18, height: 16)
                     }
@@ -632,8 +641,9 @@ private struct NotchHomeControl: View {
 
 // MARK: - Bars
 
-/// Bars driven by SystemAudioLevels, drawn as plain CALayers updated at 30 Hz. A SwiftUI
-/// TimelineView or Canvas doing the same costs far more CPU for five rectangles.
+/// Bars driven by SystemAudioLevels, drawn as plain CALayers updated by a timer (see
+/// `LevelBarsNSView.interval`). A SwiftUI TimelineView or Canvas doing the same costs far more CPU
+/// for five rectangles.
 struct NotchLevelBars: NSViewRepresentable {
     enum Source {
         /// The Mac's real output, from SystemAudioLevels.
@@ -674,12 +684,17 @@ final class LevelBarsNSView: NSView {
     var color: NSColor = .white {
         didSet { bars.forEach { $0.backgroundColor = color.cgColor } }
     }
-    var source: NotchLevelBars.Source = .live
+    var source: NotchLevelBars.Source = .live {
+        didSet { if source != oldValue { schedule() } }
+    }
     private let bars: [CALayer]
     private let barWidth: CGFloat
     private let spacing: CGFloat
     private let maxHeight: CGFloat
     private var timer: Timer?
+    var isTicking: Bool { timer?.isValid == true }
+    private var occlusionWatch: NSObjectProtocol?
+    private var awayWatch: AnyCancellable?
 
     init(bars count: Int, barWidth: CGFloat, spacing: CGFloat, maxHeight: CGFloat) {
         self.barWidth = barWidth
@@ -699,12 +714,46 @@ final class LevelBarsNSView: NSView {
 
     override var isFlipped: Bool { true }
 
+    deinit {
+        if let occlusionWatch { NotificationCenter.default.removeObserver(occlusionWatch) }
+    }
+
     override func viewDidMoveToWindow() {
         super.viewDidMoveToWindow()
+        if let occlusionWatch { NotificationCenter.default.removeObserver(occlusionWatch) }
+        occlusionWatch = nil
+        awayWatch = nil
+        if let window {
+            occlusionWatch = NotificationCenter.default.addObserver(
+                forName: NSWindow.didChangeOcclusionStateNotification, object: window, queue: .main
+            ) { [weak self] _ in self?.schedule() }
+            awayWatch = PowerState.shared.$isAway.dropFirst().receive(on: RunLoop.main)
+                .sink { [weak self] _ in self?.schedule() }
+        }
+        schedule()
+    }
+
+    /// Live bars follow the music at 30 frames a second; ambient motion is slow enough for 20.
+    static func interval(for source: NotchLevelBars.Source) -> TimeInterval {
+        source == .live ? 1.0 / 30 : 1.0 / 20
+    }
+
+    /// Ticks only while the bars can be seen: in a window that is on screen, with the displays
+    /// awake and the screen unlocked.
+    private func schedule() {
+        let visible =
+            window?.occlusionState.contains(.visible) == true && !PowerState.shared.isAway
+        guard visible else {
+            timer?.invalidate()
+            timer = nil
+            return
+        }
+        let interval = Self.interval(for: source)
+        if let timer, timer.isValid, timer.timeInterval == interval { return }
         timer?.invalidate()
-        timer = nil
-        guard window != nil else { return }
-        let timer = Timer(timeInterval: 1.0 / 30, repeats: true) { [weak self] _ in self?.tick() }
+        let timer = Timer(timeInterval: interval, repeats: true) { [weak self] _ in self?.tick() }
+        // A little slack lets macOS fold these wake-ups into the display's own.
+        timer.tolerance = interval * 0.1
         RunLoop.main.add(timer, forMode: .common)
         self.timer = timer
         tick()
@@ -824,6 +873,9 @@ final class NotchHomeManager {
         NotificationCenter.default.publisher(for: UserDefaults.didChangeNotification).receive(on: RunLoop.main)
             .sink { [weak self] _ in self?.refresh() }
             .store(in: &cancellables)
+        // Battery, Low Power Mode, displays asleep or the screen locked.
+        PowerState.shared.objectWillChange.receive(on: RunLoop.main).sink { [weak self] _ in self?.refresh() }
+            .store(in: &cancellables)
         LifecycleObserver.shared.publisher(for: [.screenConfigurationChanged, .systemDidWake])
             .receive(on: RunLoop.main)
             .sink { [weak self] _ in
@@ -868,12 +920,25 @@ final class NotchHomeManager {
         model?.tracks = tracks
         apply(content, track: track, timerRunning: timers.running != nil, on: screen)
 
-        // Listening turns on macOS's purple recording dot, so it happens only when the setting is
-        // on, and only while live bars are on screen: in the band or on the open Music page.
+        // Listening turns on macOS's purple recording dot, so it happens only when live bars are
+        // allowed, and only while they are on screen (in the band or on the open Music page) and
+        // someone can see them.
+        let power = PowerState.shared
+        let liveBars = NotchHome.liveBars(
+            enabled: NotchHome.barsEnabled, lowPowerMode: power.lowPowerMode, onBattery: power.onBattery,
+            allowedOnBattery: NotchHome.barsOnBattery)
+        if model?.liveBars != liveBars { model?.liveBars = liveBars }
+        let playing = track?.isPlaying == true && !power.isAway
         let showsBars =
-            NotchHome.barsEnabled && track?.isPlaying == true
-            && (content == .playing || (content == .expanded && model?.page == .music))
-        if showsBars { SystemAudioLevels.shared.start() } else { SystemAudioLevels.shared.stop() }
+            liveBars && playing && (content == .playing || (content == .expanded && model?.page == .music))
+        if showsBars {
+            SystemAudioLevels.shared.start()
+        } else {
+            // While live bars are allowed they are likely back in a moment: the card opening over
+            // the band, or a player that flickers to paused as a track starts (measured: the tap
+            // was built twice within 1.3 s without this). Turned off, the tap goes at once.
+            SystemAudioLevels.shared.stop(linger: liveBars ? 3 : 0)
+        }
 
         if uiManager.isNotchHomeVisible != content.isVisible { uiManager.isNotchHomeVisible = content.isVisible }
     }

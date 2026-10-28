@@ -58,6 +58,7 @@ enum DefaultsKeys {
     static let notchMusicEnabled = "NotchMusicEnabled"
     /// The notch's music bars follow the real audio (needs System Audio Recording).
     static let notchMusicBarsEnabled = "NotchMusicBarsEnabled"
+    static let notchMusicBarsOnBattery = "NotchMusicBarsOnBattery"
     /// The one-time "Show Claude Code in the notch?" card has been answered.
     static let claudeCodeOfferAnswered = "ClaudeCodeOfferAnswered"
     static let transcriptionPrompt = "TranscriptionPrompt"

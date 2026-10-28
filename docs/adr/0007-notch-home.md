@@ -16,6 +16,12 @@ Decisions, and what they rest on (measured on macOS 26 unless noted):
   runs only if Live Music Bars is on (off by default), and then only while live bars are on
   screen (the band or the open Music page); with it off, the bars are ambient and listen to
   nothing.
+- **Battery.** Nothing polls without a reason. Live bars fall back to ambient in Low Power Mode
+  and, if the user says so, on battery (`PowerState`). The tap lingers 3 s after the bars hide,
+  because a hover that opens the card over the band would otherwise rebuild it each time. Bar
+  timers tick at 30 Hz live and 20 Hz ambient, only while their window is visible and the
+  displays are awake. Claude Code's checks run every 0.5 s only while a card waits, and the
+  main-thread watchdog rests while the screen sleeps or is locked.
 - **Several players.** MediaRemote names one player. Music and Spotify are followed through their
   distributed notifications and AppleScript (`NotchPlayers`) beside MediaRemote's player, and the
   card's controls act on the player shown.

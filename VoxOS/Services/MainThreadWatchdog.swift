@@ -1,3 +1,4 @@
+import Combine
 import Foundation
 
 /// A short trail of what the app was doing, so a stall can be read instead of guessed at.
@@ -47,6 +48,7 @@ final class MainThreadWatchdog {
     static let shared = MainThreadWatchdog()
     static let threshold: TimeInterval = 1.0
     static let interval: TimeInterval = 0.5
+    static let pausedInterval: TimeInterval = 5
     static var defaultLogURL: URL {
         FileManager.default.homeDirectoryForCurrentUser.appendingPathComponent("Library/Logs/VoxOS/hang.log")
     }
@@ -58,6 +60,8 @@ final class MainThreadWatchdog {
     private var lastPong = ProcessInfo.processInfo.systemUptime
     private var stallStart: TimeInterval?
     private var thread: Thread?
+    private var paused = false
+    private var awayWatch: AnyCancellable?
     /// Watchdog thread only. Stacks taken during the current stall, to skip repeats.
     private var sampler: MainThreadSampler?
     private var stallSamples = 0
@@ -77,6 +81,12 @@ final class MainThreadWatchdog {
         let thread = Thread { [weak self] in
             while !Thread.current.isCancelled {
                 guard let self else { return }
+                if self.isPaused {
+                    Thread.sleep(forTimeInterval: Self.pausedInterval)
+                    // Back from a pause the clock starts afresh, so the pause is not taken for a stall.
+                    self.pong()
+                    continue
+                }
                 DispatchQueue.main.async { [weak self] in self?.pong() }
                 Thread.sleep(forTimeInterval: Self.interval)
                 self.check()
@@ -92,6 +102,17 @@ final class MainThreadWatchdog {
     func stop() {
         thread?.cancel()
         thread = nil
+    }
+
+    /// Rests while `away` says so: nobody sees a hang while the displays sleep or the screen is
+    /// locked, and the pings would only keep waking the Mac.
+    func pause(while away: AnyPublisher<Bool, Never>) {
+        awayWatch = away.sink { [weak self] in self?.isPaused = $0 }
+    }
+
+    private var isPaused: Bool {
+        get { lock.withLock { paused } }
+        set { lock.withLock { paused = newValue } }
     }
 
     private func pong() {

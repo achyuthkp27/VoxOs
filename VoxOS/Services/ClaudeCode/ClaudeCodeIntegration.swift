@@ -21,6 +21,8 @@ final class ClaudeCodeIntegration: ObservableObject {
     private let bridge: ClaudeCodeBridge
     private let settingsURL: URL
     private var expiryTimer: Timer?
+    private var expiryInterval: TimeInterval?
+    private var activityWatch: AnyCancellable?
     private let logger = Logger(subsystem: "com.achyuthkp.voxos", category: "ClaudeCodeIntegration")
 
     init(bridge: ClaudeCodeBridge = .shared, settingsURL: URL = ClaudeCodeHooks.userSettingsURL) {
@@ -132,22 +134,48 @@ final class ClaudeCodeIntegration: ObservableObject {
 
     private func startBridge() {
         bridge.start(port: port, approvalsEnabled: Self.approvalsEnabled)
+        let activity = ClaudeCodeActivity.shared
+        activityWatch = activity.$prompts.combineLatest(activity.$sessions)
+            .receive(on: RunLoop.main)
+            .sink { [weak self] prompts, sessions in
+                self?.scheduleExpiry(every: Self.expiryInterval(prompts: prompts.count, sessions: sessions.count))
+            }
+    }
+
+    private func stopBridge() {
+        activityWatch = nil
+        scheduleExpiry(every: nil)
+        bridge.stop()
+        ClaudeCodeActivity.shared.settleAll()
+    }
+
+    /// How often waiting requests and open sessions are checked. Each check is cheap (a
+    /// kill(pid, 0) per session, a child-process listing only while a Bash request waits), but a
+    /// timer that never stops wakes the Mac all day. A waiting card is checked twice a second, so
+    /// one answered in the terminal, or left by a CLI that was killed, leaves the notch within half
+    /// a second; open sessions with nothing waiting only need their CLI noticed gone; with
+    /// neither, nothing runs.
+    nonisolated static func expiryInterval(prompts: Int, sessions: Int) -> TimeInterval? {
+        if prompts > 0 { return 0.5 }
+        if sessions > 0 { return 5 }
+        return nil
+    }
+
+    private func scheduleExpiry(every interval: TimeInterval?) {
+        guard interval != expiryInterval else { return }
+        expiryInterval = interval
         expiryTimer?.invalidate()
-        // Cheap — a kill(pid, 0) per session, and a child-process listing only while a Bash
-        // request waits — and frequent enough that a card answered in the terminal, or left by a
-        // CLI that was killed, leaves the notch within half a second.
-        expiryTimer = Timer.scheduledTimer(withTimeInterval: 0.5, repeats: true) { _ in
+        expiryTimer = nil
+        guard let interval else { return }
+        let timer = Timer(timeInterval: interval, repeats: true) { _ in
             Task { @MainActor in
                 ClaudeCodeActivity.shared.expire()
                 ClaudeCodeActivity.shared.noticeStartedCommands()
             }
         }
-    }
-
-    private func stopBridge() {
-        expiryTimer?.invalidate()
-        expiryTimer = nil
-        bridge.stop()
-        ClaudeCodeActivity.shared.settleAll()
+        // Lets macOS fold this wake-up into others nearby.
+        timer.tolerance = interval * 0.2
+        RunLoop.main.add(timer, forMode: .common)
+        expiryTimer = timer
     }
 }

@@ -60,6 +60,7 @@ enum AppDefaults {
             DefaultsKeys.notchMusicEnabled: true,
             // Off: listening to the sound output turns on macOS's purple recording dot.
             DefaultsKeys.notchMusicBarsEnabled: false,
+            DefaultsKeys.notchMusicBarsOnBattery: true,
             RecorderDisplaySettingsKeys.showLiveTranscript: true,
 
             // Cleanup

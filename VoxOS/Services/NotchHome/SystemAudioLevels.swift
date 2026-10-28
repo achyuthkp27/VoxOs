@@ -32,6 +32,8 @@ final class SystemAudioLevels: @unchecked Sendable {
     private var aggregateID = AudioObjectID(kAudioObjectUnknown)
     private var procID: AudioDeviceIOProcID?
     private var wanted = false
+    /// The tap's end, scheduled by a lingering stop; cancelled if the bars come back first.
+    private var pendingTearDown: DispatchWorkItem?
     /// The first seconds after each start are logged (callbacks, loudest sample, levels), so a
     /// tap that delivers silence shows up in Console instead of as bars that just sit still.
     private var reportUntil = Date.distantPast
@@ -48,17 +50,41 @@ final class SystemAudioLevels: @unchecked Sendable {
         controlQueue.async { [self] in
             guard !wanted else { return }
             wanted = true
+            if let pendingTearDown {
+                // Still listening from a moment ago: that tap is kept rather than built again.
+                pendingTearDown.cancel()
+                self.pendingTearDown = nil
+                if aggregateID != kAudioObjectUnknown { return }
+                unwatchDefaultOutput()
+            }
             build()
             watchDefaultOutput()
         }
     }
 
-    func stop() {
+    /// With `linger`, the tap is kept that long first, so bars that hide and come straight back
+    /// (the card opening over the band, a page swiped past) reuse it: building a tap and its
+    /// aggregate device costs more than seconds of listening. Without, it goes at once, as when
+    /// the setting is turned off and the recording dot should go with it.
+    func stop(linger: TimeInterval = 0) {
         controlQueue.async { [self] in
-            guard wanted else { return }
+            guard wanted || pendingTearDown != nil else { return }
+            // Already winding down: a later call does not push the end back.
+            if !wanted, linger > 0 { return }
             wanted = false
-            unwatchDefaultOutput()
-            tearDown()
+            pendingTearDown?.cancel()
+            let work = DispatchWorkItem { [self] in
+                pendingTearDown = nil
+                unwatchDefaultOutput()
+                tearDown()
+            }
+            if linger > 0 {
+                pendingTearDown = work
+                controlQueue.asyncAfter(deadline: .now() + linger, execute: work)
+            } else {
+                pendingTearDown = nil
+                work.perform()
+            }
         }
     }
 
@@ -201,7 +227,16 @@ final class SystemAudioLevels: @unchecked Sendable {
         let listener: AudioObjectPropertyListenerBlock = { [weak self] _, _ in
             guard let self else { return }
             self.controlQueue.async {
-                guard self.wanted else { return }
+                guard self.wanted else {
+                    // A lingering tap on the old output is not worth keeping.
+                    if let pending = self.pendingTearDown {
+                        pending.cancel()
+                        self.pendingTearDown = nil
+                        self.unwatchDefaultOutput()
+                        self.tearDown()
+                    }
+                    return
+                }
                 self.tearDown()
                 self.build()
             }
