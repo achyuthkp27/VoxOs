@@ -647,4 +647,23 @@ struct AgentLogicTests {
         let reply = session.finishFollowUp("")
         #expect(reply.content == AssistantSession.emptyReplyMessage)
     }
+
+    // MARK: Notch timers by voice
+
+    @Test func timersAreSaidPlainly() {
+        func ask(_ text: String) -> AgentQuickIntents.TimerRequest? { AgentQuickIntents.timerRequest(in: text) }
+        #expect(ask("set a 10 minute timer") == .countdown(minutes: 10))
+        #expect(ask("set a 10-minute timer") == .countdown(minutes: 10))
+        #expect(ask("timer for 25 minutes") == .countdown(minutes: 25))
+        #expect(ask("start a five minute timer") == .countdown(minutes: 5))
+        #expect(ask("set a 1 hour timer") == .countdown(minutes: 60))
+        #expect(ask("timer 90 seconds") == .countdown(minutes: 1.5))
+        #expect(ask("start focus") == .focus)
+        #expect(ask("start a pomodoro session") == .focus)
+        #expect(ask("stop the timer") == .stop)
+        #expect(ask("cancel my pomodoro") == .stop)
+        #expect(ask("what's a good timer app") == nil, "a question about timers is not a timer")
+        #expect(ask("open the timer page") == nil)
+        #expect(ask("start safari") == nil)
+    }
 }

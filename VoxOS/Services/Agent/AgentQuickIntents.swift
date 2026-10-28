@@ -14,6 +14,10 @@ enum AgentQuickIntents {
 
         AgentAutoClose.beginRun()
         setPendingSuggestions([])
+        // Before apps: "start focus" or "start a timer" is not an app called "focus".
+        if let timer = timerRequest(in: lower) {
+            return await MainActor.run { perform(timer) }
+        }
         switch appRequest(in: lower) {
         case .found(let app):
             if let blocked = blockedOpenReply(app) { return blocked }
@@ -39,6 +43,84 @@ enum AgentQuickIntents {
         }
 
         return nil
+    }
+
+    // MARK: Timers
+
+    /// A timer for the notch, said plainly: "set a 10 minute timer", "timer for 25 minutes",
+    /// "start focus", "stop the timer".
+    enum TimerRequest: Equatable {
+        case countdown(minutes: Double)
+        case focus
+        case stop
+    }
+
+    private static let numberWords: [String: Double] = [
+        "one": 1, "two": 2, "three": 3, "four": 4, "five": 5, "six": 6, "seven": 7, "eight": 8, "nine": 9,
+        "ten": 10, "fifteen": 15, "twenty": 20, "twenty five": 25, "thirty": 30, "forty": 40, "forty five": 45,
+        "fifty": 50, "sixty": 60, "a": 1, "an": 1, "half an": 0.5,
+    ]
+
+    static func timerRequest(in lower: String) -> TimerRequest? {
+        let text = lower.replacingOccurrences(of: "-", with: " ")
+        if text.range(
+            of: #"^(please )?(stop|cancel|end|clear)( the| my)? (timer|focus|pomodoro)"#, options: .regularExpression)
+            != nil
+        {
+            return .stop
+        }
+        if text.range(
+            of: #"^(please )?(start|begin)( a| my| the)? (focus|pomodoro)( session| timer)?$"#,
+            options: .regularExpression)
+            != nil
+        {
+            return .focus
+        }
+        guard text.contains("timer") else { return nil }
+        let amount = #"(\d+(?:\.\d+)?|half an|twenty five|forty five|[a-z]+)"#
+        let unit = #"(minutes?|mins?|hours?|hrs?|seconds?|secs?)"#
+        for pattern in [amount + #"\s*"# + unit + #"\s+timer"#, #"timer\s+(?:for\s+)?"# + amount + #"\s*"# + unit] {
+            guard let regex = try? NSRegularExpression(pattern: pattern),
+                let match = regex.firstMatch(in: text, range: NSRange(text.startIndex..., in: text)),
+                let amountRange = Range(match.range(at: 1), in: text),
+                let unitRange = Range(match.range(at: 2), in: text)
+            else { continue }
+            let word = String(text[amountRange])
+            guard let value = Double(word) ?? numberWords[word], value > 0 else { continue }
+            let unitWord = text[unitRange]
+            let minutes =
+                unitWord.hasPrefix("h") ? value * 60 : unitWord.hasPrefix("s") ? value / 60 : value
+            guard minutes <= 24 * 60 else { return nil }
+            return .countdown(minutes: minutes)
+        }
+        return nil
+    }
+
+    @MainActor
+    private static func perform(_ timer: TimerRequest) -> String {
+        let timers = NotchTimers.shared
+        switch timer {
+        case .countdown(let minutes):
+            timers.startCountdown(minutes: minutes)
+            return "Timer set for \(spoken(minutes))."
+        case .focus:
+            timers.startPomodoro()
+            return "Focus started: \(Int(timers.durations.focus / 60)) minutes."
+        case .stop:
+            guard timers.running != nil else { return "No timer is running." }
+            timers.cancel()
+            return "Timer stopped."
+        }
+    }
+
+    private static func spoken(_ minutes: Double) -> String {
+        if minutes < 1 { return "\(Int((minutes * 60).rounded())) seconds" }
+        if minutes >= 60, minutes.truncatingRemainder(dividingBy: 60) == 0 {
+            let hours = Int(minutes / 60)
+            return hours == 1 ? "1 hour" : "\(hours) hours"
+        }
+        let whole = minutes.rounded() == minutes ? "\(Int(minutes))" : String(format: "%.1f", minutes)
+        return minutes == 1 ? "1 minute" : "\(whole) minutes"
     }
 
     private static let openVerbs = [
