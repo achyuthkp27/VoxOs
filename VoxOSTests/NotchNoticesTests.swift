@@ -196,4 +196,20 @@ struct NotchNoticesTests {
             NotchHomeManager.bandKey(.privacy(open), track: nil, timer: nil)
                 != NotchHomeManager.bandKey(.privacy(withCamera), track: nil, timer: nil), "a camera is news")
     }
+
+    // MARK: Microphone
+
+    /// Measured on macOS 26: Siri's voice trigger reports running input with no microphone running
+    /// and no orange dot; the band showed a microphone while only music played.
+    @Test func onlyAMicrophoneThatRunsForSomeoneElseCounts() {
+        let me: pid_t = 100
+        let trigger = (pid: pid_t(848), bundleID: String?("com.apple.CoreSpeech"))
+        let call = (pid: pid_t(900), bundleID: String?("com.example.calls"))
+        let dictation = (pid: me, bundleID: String?("com.example.voxos"))
+        #expect(NotchPrivacy.listeners([trigger], me: me, inputRunning: false).isEmpty)
+        #expect(NotchPrivacy.listeners([trigger], me: me, inputRunning: true).isEmpty, "the voice trigger never counts")
+        #expect(NotchPrivacy.listeners([call], me: me, inputRunning: false).isEmpty, "no microphone runs")
+        #expect(NotchPrivacy.listeners([trigger, call, dictation], me: me, inputRunning: true).map(\.pid) == [900])
+        #expect(NotchPrivacy.listeners([dictation], me: me, inputRunning: true).isEmpty, "VoxOS's own dictation")
+    }
 }

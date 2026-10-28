@@ -8,7 +8,10 @@ import Foundation
 /// switch to mute the microphone.
 ///
 /// - Microphone: Core Audio's process objects (macOS 14+) say which processes run input, so
-///   VoxOS's own dictation is left out and the app listening can be named and shown.
+///   VoxOS's own dictation is left out and the app listening can be named and shown. That alone
+///   is not enough: Siri's voice trigger (corespeechd) reports running input all day while no
+///   microphone runs (measured on macOS 26). So an input device must also be running somewhere,
+///   which is when macOS lights its own orange dot, and the voice trigger never counts.
 /// - Cameras: CoreMediaIO says whether each one runs somewhere, not for whom.
 /// - Mute: the default input's own mute where it has one (the built-in microphone does),
 ///   otherwise its volume at zero and back. A mute made here is undone when the call ends or
@@ -75,6 +78,20 @@ final class NotchPrivacy: ObservableObject {
 
     /// The listening process is often an app's helper (a browser's audio service); the app is
     /// the nearest regular app above it. A system service with none is named by its own id.
+    /// Services that report running input without anyone listening: the voice trigger.
+    nonisolated static let backgroundListeners: Set<String> = ["com.apple.CoreSpeech"]
+
+    /// The processes really listening: none unless an input device runs, and never VoxOS itself
+    /// or a background listener.
+    nonisolated static func listeners(
+        _ clients: [(pid: pid_t, bundleID: String?)], me: pid_t, inputRunning: Bool
+    ) -> [(pid: pid_t, bundleID: String?)] {
+        guard inputRunning else { return [] }
+        return clients.filter { client in
+            client.pid != me && !(client.bundleID.map(backgroundListeners.contains) ?? false)
+        }
+    }
+
     private static func app(for reading: PrivacyWatcher.Reading) -> String? {
         for pid in reading.microphonePIDs {
             if let app = ClaudeCodeTerminal.app(hosting: pid),
@@ -207,6 +224,12 @@ private final class PrivacyWatcher: @unchecked Sendable {
         restoreMute()
         input = Self.read(Self.system, kAudioHardwarePropertyDefaultInputDevice) ?? AudioObjectID(kAudioObjectUnknown)
         if input != kAudioObjectUnknown {
+            // Whether it runs at all, for a call that starts on it.
+            var running = Self.address(kAudioDevicePropertyDeviceIsRunningSomewhere)
+            let block: AudioObjectPropertyListenerBlock = { [weak self] _, _ in self?.scheduleReading() }
+            if AudioObjectAddPropertyListenerBlock(input, &running, queue, block) == noErr {
+                inputListeners.append((input, running, block))
+            }
             for selector in [kAudioDevicePropertyMute, kAudioDevicePropertyVolumeScalar] {
                 var address = Self.address(selector, scope: kAudioObjectPropertyScopeInput)
                 guard AudioObjectHasProperty(input, &address) else { continue }
@@ -286,15 +309,19 @@ private final class PrivacyWatcher: @unchecked Sendable {
 
     private func read() {
         var reading = Reading()
-        let me = getpid()
+        var clients: [(pid: pid_t, bundleID: String?)] = []
         for process in processListeners.keys {
             guard Self.read(process, kAudioProcessPropertyIsRunningInput) == UInt32(1),
-                let pid: pid_t = Self.read(process, kAudioProcessPropertyPID), pid != me
+                let pid: pid_t = Self.read(process, kAudioProcessPropertyPID)
             else { continue }
-            reading.microphonePIDs.append(pid)
-            if let bundleID = Self.readString(process, kAudioProcessPropertyBundleID) {
-                reading.microphoneBundleIDs.append(bundleID)
-            }
+            clients.append((pid, Self.readString(process, kAudioProcessPropertyBundleID)))
+        }
+        let inputRunning = Self.inputDevices().contains {
+            Self.read($0, kAudioDevicePropertyDeviceIsRunningSomewhere) == UInt32(1)
+        }
+        for client in NotchPrivacy.listeners(clients, me: getpid(), inputRunning: inputRunning) {
+            reading.microphonePIDs.append(client.pid)
+            if let bundleID = client.bundleID { reading.microphoneBundleIDs.append(bundleID) }
         }
         reading.camera = cameraListeners.keys.contains { camera in
             var address = Self.cameraAddress(CMIOObjectPropertySelector(kCMIODevicePropertyDeviceIsRunningSomewhere))
@@ -345,6 +372,15 @@ private final class PrivacyWatcher: @unchecked Sendable {
         var objects = [AudioObjectID](repeating: 0, count: Int(size) / MemoryLayout<AudioObjectID>.size)
         guard AudioObjectGetPropertyData(object, &address, 0, nil, &size, &objects) == noErr else { return [] }
         return objects
+    }
+
+    /// Devices with input streams: microphones, headsets, interfaces.
+    private static func inputDevices() -> [AudioObjectID] {
+        readArray(system, kAudioHardwarePropertyDevices).filter { device in
+            var streams = address(kAudioDevicePropertyStreams, scope: kAudioObjectPropertyScopeInput)
+            var size: UInt32 = 0
+            return AudioObjectGetPropertyDataSize(device, &streams, 0, nil, &size) == noErr && size > 0
+        }
     }
 
     private static func isSettable(_ device: AudioObjectID, _ address: inout AudioObjectPropertyAddress) -> Bool {
