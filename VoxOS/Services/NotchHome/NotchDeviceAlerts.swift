@@ -4,8 +4,8 @@ import Foundation
 import IOBluetooth
 import Network
 
-/// A short notice in the notch when a Bluetooth device connects or disconnects, or Wi-Fi joins
-/// or drops.
+/// A short notice in the notch when a Bluetooth device connects or disconnects, Wi-Fi joins or
+/// drops, the sound moves to another output, or the power adapter or a low battery needs saying.
 ///
 /// Bluetooth (measured by others before us, and kept here as rules):
 /// - IOBluetooth needs NSBluetoothAlwaysUsageDescription (TCC aborts the app without it) and the
@@ -30,10 +30,19 @@ final class NotchDeviceAlerts: ObservableObject {
     nonisolated static let noticeLifetime: TimeInterval = 3.5
     nonisolated static let replayWindow: TimeInterval = 3
     nonisolated static let repeatWindow: TimeInterval = 10
+    /// macOS moves the sound to a headset a moment after it connects; that headset was announced
+    /// already, with its battery.
+    nonisolated static let outputAfterConnect: TimeInterval = 10
+    /// On battery, a notice as the charge falls to each of these.
+    nonisolated static let lowBatteryLevels = [20, 10, 5]
 
     @Published private(set) var notice: Notice?
 
     private let bluetooth = BluetoothWatcher()
+    private let output = NotchAudioOutput()
+    private var lastConnect: (name: String, at: Date)?
+    private var batteryWatch: AnyCancellable?
+    private var lastBattery: PowerState.Battery?
     private var pathMonitor: NWPathMonitor?
     private var wifiConnected: Bool?
     private var lastNotice: [String: Date] = [:]
@@ -45,7 +54,7 @@ final class NotchDeviceAlerts: ObservableObject {
     func start() {
         guard !started, !ProcessIdentity.isTestHost else { return }
         started = true
-        if Bundle.main.object(forInfoDictionaryKey: "NSBluetoothAlwaysUsageDescription") != nil {
+        if hasBluetoothUsage {
             bluetooth.start { [weak self] event in
                 Task { @MainActor in self?.bluetoothEvent(event) }
             }
@@ -57,6 +66,12 @@ final class NotchDeviceAlerts: ObservableObject {
         }
         monitor.start(queue: DispatchQueue(label: "com.achyuthkp.voxos.wifi-alerts"))
         pathMonitor = monitor
+        output.start { [weak self] device in
+            Task { @MainActor in self?.outputChanged(device) }
+        }
+        lastBattery = PowerState.shared.battery
+        batteryWatch = PowerState.shared.$battery.dropFirst().receive(on: RunLoop.main)
+            .sink { [weak self] battery in self?.batteryChanged(to: battery) }
     }
 
     func stop() {
@@ -66,6 +81,13 @@ final class NotchDeviceAlerts: ObservableObject {
         pathMonitor?.cancel()
         pathMonitor = nil
         wifiConnected = nil
+        output.stop()
+        batteryWatch = nil
+        lastBattery = nil
+    }
+
+    private var hasBluetoothUsage: Bool {
+        Bundle.main.object(forInfoDictionaryKey: "NSBluetoothAlwaysUsageDescription") != nil
     }
 
     // MARK: Events
@@ -73,6 +95,7 @@ final class NotchDeviceAlerts: ObservableObject {
     private func bluetoothEvent(_ event: BluetoothWatcher.Event) {
         let detail: String?
         if event.connected {
+            lastConnect = (event.name, Date())
             // Many earbuds report no battery; "Connected" keeps the right side from going blank.
             detail = event.battery.map { "\($0)%" } ?? String(localized: "Connected")
         } else {
@@ -90,6 +113,62 @@ final class NotchDeviceAlerts: ObservableObject {
             post(key: "wifi-on", symbol: "wifi", title: network ?? "Wi-Fi", detail: network == nil ? nil : "Wi-Fi")
         } else {
             post(key: "wifi-off", symbol: "wifi.slash", title: "Wi-Fi", detail: String(localized: "Disconnected"))
+        }
+    }
+
+    private func outputChanged(_ device: NotchAudioOutput.Device) {
+        if let lastConnect, lastConnect.name == device.name,
+            Date().timeIntervalSince(lastConnect.at) < Self.outputAfterConnect
+        {
+            return
+        }
+        let symbol = NotchAudioOutput.symbol(for: device)
+        let key = "output-\(device.name)"
+        guard device.isBluetooth, hasBluetoothUsage else {
+            return post(key: key, symbol: symbol, title: device.name, detail: String(localized: "Output"))
+        }
+        // A headset that was already connected (AirPods moving over from the phone) gets its
+        // battery here, as on connecting.
+        bluetooth.battery(named: device.name) { battery in
+            Task { @MainActor [weak self] in
+                self?.post(
+                    key: key, symbol: symbol, title: device.name,
+                    detail: battery.map { "\($0)%" } ?? String(localized: "Output"))
+            }
+        }
+    }
+
+    private func batteryChanged(to battery: PowerState.Battery?) {
+        defer { lastBattery = battery }
+        guard let notice = Self.batteryNotice(from: lastBattery, to: battery) else { return }
+        post(key: notice.key, symbol: notice.symbol, title: notice.title, detail: notice.detail)
+    }
+
+    /// The adapter going in or out, and the charge falling to a low level while on battery.
+    nonisolated static func batteryNotice(
+        from old: PowerState.Battery?, to new: PowerState.Battery?
+    ) -> (key: String, symbol: String, title: String, detail: String)? {
+        guard let old, let new else { return nil }
+        let percent = "\(new.percent)%"
+        if !old.onAdapter, new.onAdapter {
+            return ("power-on", "battery.100percent.bolt", String(localized: "Plugged in"), percent)
+        }
+        if old.onAdapter, !new.onAdapter {
+            return ("power-off", batterySymbol(new.percent), String(localized: "On battery"), percent)
+        }
+        if !new.onAdapter, let level = lowBatteryLevels.last(where: { old.percent > $0 && new.percent <= $0 }) {
+            return ("battery-low-\(level)", batterySymbol(new.percent), String(localized: "Low battery"), percent)
+        }
+        return nil
+    }
+
+    nonisolated static func batterySymbol(_ percent: Int) -> String {
+        switch percent {
+        case ..<13: return "battery.0percent"
+        case ..<38: return "battery.25percent"
+        case ..<63: return "battery.50percent"
+        case ..<88: return "battery.75percent"
+        default: return "battery.100percent"
         }
     }
 
@@ -177,6 +256,16 @@ private final class BluetoothWatcher: NSObject, @unchecked Sendable {
             disconnectNotifications.values.forEach { $0.unregister() }
             disconnectNotifications = [:]
             onEvent = nil
+        }
+    }
+
+    /// The battery of a connected device by name, on the Bluetooth queue.
+    func battery(named name: String, completion: @escaping @Sendable (Int?) -> Void) {
+        queue.async {
+            let device = (IOBluetoothDevice.pairedDevices() as? [IOBluetoothDevice])?.first {
+                $0.isConnected() && $0.name == name
+            }
+            completion(device.flatMap(Self.battery(of:)))
         }
     }
 

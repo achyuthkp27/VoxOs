@@ -10,8 +10,17 @@ import IOKit.ps
 final class PowerState: ObservableObject {
     static let shared = PowerState()
 
+    struct Battery: Equatable {
+        let percent: Int
+        let charging: Bool
+        /// On the adapter, whether or not it is charging (it holds at 80% to spare the battery).
+        let onAdapter: Bool
+    }
+
     /// Running on the battery, not an adapter. Always false on a Mac without one.
     @Published private(set) var onBattery = PowerState.readOnBattery()
+    /// The internal battery; nil on a Mac without one. Changes about once a percent.
+    @Published private(set) var battery = PowerState.readBattery()
     @Published private(set) var lowPowerMode = ProcessInfo.processInfo.isLowPowerModeEnabled
     /// The displays sleep or the screen is locked: nothing drawn is seen.
     @Published private(set) var isAway = false
@@ -60,8 +69,10 @@ final class PowerState: ObservableObject {
     }
 
     private func refreshPowerSource() {
-        let battery = Self.readOnBattery()
-        if battery != onBattery { onBattery = battery }
+        let onBattery = Self.readOnBattery()
+        if onBattery != self.onBattery { self.onBattery = onBattery }
+        let battery = Self.readBattery()
+        if battery != self.battery { self.battery = battery }
     }
 
     private func updateAway() {
@@ -74,5 +85,30 @@ final class PowerState: ObservableObject {
             let type = IOPSGetProvidingPowerSourceType(info)?.takeUnretainedValue()
         else { return false }
         return (type as String) == kIOPSBatteryPowerValue
+    }
+
+    nonisolated static func readBattery() -> Battery? {
+        guard let info = IOPSCopyPowerSourcesInfo()?.takeRetainedValue(),
+            let sources = IOPSCopyPowerSourcesList(info)?.takeRetainedValue() as? [CFTypeRef]
+        else { return nil }
+        for source in sources {
+            guard
+                let description = IOPSGetPowerSourceDescription(info, source)?.takeUnretainedValue() as? [String: Any],
+                description[kIOPSTypeKey] as? String == kIOPSInternalBatteryType
+            else { continue }
+            return battery(from: description)
+        }
+        return nil
+    }
+
+    /// From one power source's description (IOPowerSources keys).
+    nonisolated static func battery(from description: [String: Any]) -> Battery? {
+        guard let current = description[kIOPSCurrentCapacityKey] as? Int,
+            let maximum = description[kIOPSMaxCapacityKey] as? Int, maximum > 0
+        else { return nil }
+        return Battery(
+            percent: min(100, max(0, Int((Double(current) / Double(maximum) * 100).rounded()))),
+            charging: description[kIOPSIsChargingKey] as? Bool ?? false,
+            onAdapter: description[kIOPSPowerSourceStateKey] as? String == kIOPSACPowerValue)
     }
 }

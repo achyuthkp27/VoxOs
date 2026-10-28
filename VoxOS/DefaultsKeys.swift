@@ -52,7 +52,8 @@ enum DefaultsKeys {
     static let claudeCodeQuietInTerminal = "ClaudeCodeQuietInTerminal"
     /// The notch opens on hover into Music, Timer, Today and Shelf.
     static let notchHomeEnabled = "NotchHomeEnabled"
-    /// A short notice in the notch when a Bluetooth device or Wi-Fi connects or drops.
+    /// A short notice in the notch when a Bluetooth device or Wi-Fi connects or drops, the sound
+    /// moves to another output, or the adapter goes in or out or the battery runs low.
     static let notchDeviceAlertsEnabled = "NotchDeviceAlertsEnabled"
     /// Notch Home stays up over a full-screen app (a video, a game); off, it steps aside.
     static let notchHomeInFullScreen = "NotchHomeInFullScreen"

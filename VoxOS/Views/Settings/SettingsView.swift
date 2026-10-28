@@ -104,7 +104,8 @@ struct SettingsView: View {
         "Notch Material", "Liquid Glass", "Solid Black", "Always-Visible Notch Tab", "notch", "tab",
         "Music in the Notch", "Live Music Bars", "Live Bars on Battery", "music", "now playing", "visualizer",
         "Notch Home",
-        "Device Alerts", "bluetooth", "airpods", "wifi", "timer", "pomodoro", "shelf", "calendar",
+        "Device Alerts", "bluetooth", "airpods", "wifi", "output", "speakers", "headphones", "charging",
+        "low battery", "timer", "pomodoro", "shelf", "calendar",
         "Show in Full Screen", "full screen", "fullscreen",
     ]
     private static let generalTerms = [
@@ -648,7 +649,7 @@ struct SettingsView: View {
                             HStack(spacing: 2) {
                                 Text("Device Alerts")
                                 InfoTip(
-                                    "A short notice when AirPods or another Bluetooth device connects (with its battery), or when Wi-Fi joins or drops."
+                                    "A short notice when AirPods or another Bluetooth device connects (with its battery), when the sound moves to another output, when Wi-Fi joins or drops, and when the power adapter goes in or out or the battery runs low."
                                 )
                             }
                         }
