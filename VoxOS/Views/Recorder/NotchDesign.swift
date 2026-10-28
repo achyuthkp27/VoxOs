@@ -69,8 +69,9 @@ enum NotchDesign {
     /// How far down the band stays solid black before the glass takes over. The top has to read
     /// as part of the physical notch, so the glass only shows below it.
     static let glassDarkStop: CGFloat = 0.48
-    /// Behind the glass, so the band stays readable even over a bright wallpaper.
-    static let glassUnderlay = Color.black.opacity(0.6)
+    /// Behind the glass, so the band stays readable even over a bright wallpaper. Light enough
+    /// that the glass still reads as glass (at 0.6 it looked like Solid Black).
+    static let glassUnderlay = Color.black.opacity(0.35)
 
     /// Almost opaque, with the faintest blue so it reads as black glass rather than a flat fill.
     static let solid = Color(red: 0, green: 0, blue: 2 / 255, opacity: 0.98)
@@ -118,5 +119,32 @@ enum NotchDesign {
 
     static var waveformWidth: CGFloat {
         CGFloat(barWeights.count) * barWidth + CGFloat(barWeights.count - 1) * barSpacing
+    }
+}
+
+/// An open notch card in Liquid Glass: real glass under a dark tint, with the notch row black so
+/// it still reads as the hardware notch, fading into the glass below it rather than ending in a
+/// line.
+struct NotchGlassSurface<S: Shape>: View {
+    let shape: S
+    /// Height of the notch row, kept black.
+    let solidHeight: CGFloat
+    let totalHeight: CGFloat
+    /// How far the black fades into the glass.
+    static var fade: CGFloat { 26 }
+
+    var body: some View {
+        ZStack {
+            shape.fill(NotchDesign.glassUnderlay)
+                .liquidGlass(in: shape, tint: NotchDesign.glassTint)
+            shape.fill(NotchDesign.solid)
+                .mask(
+                    LinearGradient(
+                        stops: [
+                            .init(color: .white, location: 0),
+                            .init(color: .white, location: min(1, solidHeight / max(totalHeight, 1))),
+                            .init(color: .clear, location: min(1, (solidHeight + Self.fade) / max(totalHeight, 1))),
+                        ], startPoint: .top, endPoint: .bottom))
+        }
     }
 }

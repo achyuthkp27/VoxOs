@@ -561,9 +561,20 @@ struct NotchHomeView: View {
         }
     }
 
-    /// One black surface, top to bottom, and fully opaque while open: glass below a black notch
-    /// row read as a dark strip, and a card over a document must not let its text through.
+    /// Solid Black: one black surface, opaque while open, so a document's text never shows
+    /// through. Liquid Glass: the open card is glass below the notch row, the black fading into it.
+    @AppStorage(DefaultsKeys.notchMaterial) private var materialRaw = NotchDesign.Material.liquidGlass.rawValue
+
+    @ViewBuilder
     private var background: some View {
+        if content == .expanded, NotchDesign.Material.resolve(materialRaw) == .liquidGlass {
+            NotchGlassSurface(shape: shape, solidHeight: model.notchHeight, totalHeight: size.height)
+        } else {
+            solidBackground
+        }
+    }
+
+    private var solidBackground: some View {
         shape.fill(
             content == .expanded
                 ? Color(red: 0, green: 0, blue: 2 / 255)

@@ -688,9 +688,16 @@ struct SettingsView: View {
 
             if shows(.notch), search.matches(Self.notchTerms) {
                 Section("Notch Home") {
-                    Picker("Notch Material", selection: $notchMaterialRaw) {
+                    Picker(selection: $notchMaterialRaw) {
                         ForEach(NotchDesign.Material.allCases) { material in
                             Text(material.displayName).tag(material.rawValue)
+                        }
+                    } label: {
+                        HStack(spacing: 2) {
+                            Text("Notch Material")
+                            InfoTip(
+                                "Liquid Glass: the open card, Claude Code's cards and the recorder are glass below the notch, which stays black. Solid Black: one opaque black surface. Collapsed bands are black either way, as they sit beside the hardware notch."
+                            )
                         }
                     }
                     .pickerStyle(.menu)
