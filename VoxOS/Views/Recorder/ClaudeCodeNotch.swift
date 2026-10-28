@@ -248,6 +248,8 @@ enum ClaudeCodeNotch {
 @MainActor
 final class ClaudeCodeNotchModel: ObservableObject {
     @Published var content: ClaudeCodeNotch.Content = .hidden
+    /// The app the first request's session runs in, for a button that brings it to the front.
+    @Published var terminal: pid_t?
     let notchWidth: CGFloat
     let notchHeight: CGFloat
 
@@ -264,6 +266,7 @@ struct ClaudeCodeNotchView: View {
     let onKeyboard: (Bool) -> Void
     /// The waiting band was clicked: show the card although the terminal is in front.
     let onReveal: () -> Void
+    let onOpenTerminal: (pid_t) -> Void
     @Environment(\.accessibilityReduceMotion) private var reduceMotion
 
     private var content: ClaudeCodeNotch.Content { model.content }
@@ -375,11 +378,18 @@ struct ClaudeCodeNotchView: View {
                 .font(.appMono(size: 11, weight: .bold))
                 .foregroundStyle(ClaudeCodeNotch.claudeColor)
                 .accessibilityLabel(Text("\(count) waiting"))
-        case .approval(_, let waiting) where waiting > 1:
-            Text("+\(waiting - 1) waiting")
-                .font(.appMono(size: 11, weight: .semibold))
-                .foregroundStyle(.white.opacity(0.75))
-                .accessibilityLabel(Text("\(waiting - 1) more waiting"))
+        case .approval(_, let waiting):
+            HStack(spacing: 10) {
+                if waiting > 1 {
+                    Text("+\(waiting - 1) waiting")
+                        .font(.appMono(size: 11, weight: .semibold))
+                        .foregroundStyle(.white.opacity(0.75))
+                        .accessibilityLabel(Text("\(waiting - 1) more waiting"))
+                }
+                if let terminal = model.terminal {
+                    ClaudeCodeTerminalButton(pid: terminal) { onOpenTerminal(terminal) }
+                }
+            }
         default:
             Color.clear
         }
@@ -416,6 +426,35 @@ private struct ClaudeCodeSpark: View {
                 guard spinning else { return }
                 withAnimation(.linear(duration: 2.4).repeatForever(autoreverses: false)) { angle = 360 }
             }
+    }
+}
+
+/// The session's terminal app, by its own icon: a click brings it to the front, where the
+/// session is.
+private struct ClaudeCodeTerminalButton: View {
+    let pid: pid_t
+    let action: () -> Void
+    @State private var hovered = false
+
+    private var app: NSRunningApplication? { NSRunningApplication(processIdentifier: pid) }
+
+    var body: some View {
+        Button(action: action) {
+            Group {
+                if let icon = app?.icon {
+                    Image(nsImage: icon).resizable()
+                } else {
+                    Image(systemName: "terminal").font(.system(size: 11, weight: .semibold))
+                }
+            }
+            .frame(width: 16, height: 16)
+            .opacity(hovered ? 1 : 0.8)
+            .contentShape(Rectangle())
+        }
+        .buttonStyle(.plain)
+        .onHover { hovered = $0 }
+        .help(String(localized: "Open \(app?.localizedName ?? "the terminal")"))
+        .accessibilityLabel(Text("Open \(app?.localizedName ?? "the terminal")"))
     }
 }
 
@@ -1049,6 +1088,8 @@ final class ClaudeCodeNotchManager {
             homeVisible: uiManager.isNotchHomeVisible, quiet: quiet)
         scheduleTick(after: now)
         apply(content)
+        let terminal = first.flatMap(terminal(for:))
+        if model?.terminal != terminal { model?.terminal = terminal }
         if uiManager.isClaudeCodeSurfaceVisible != (content != .hidden) {
             uiManager.isClaudeCodeSurfaceVisible = content != .hidden
         }
@@ -1059,13 +1100,26 @@ final class ClaudeCodeNotchManager {
 
     /// The app running the request's session is the one in front.
     private func terminalIsInFront(for prompt: ClaudeCodeActivity.PermissionPrompt) -> Bool {
-        guard let cli = activity.sessions[prompt.sessionID]?.cliPID,
-            let front = NSWorkspace.shared.frontmostApplication?.processIdentifier
-        else { return false }
+        guard let terminal = terminal(for: prompt) else { return false }
+        return terminal == NSWorkspace.shared.frontmostApplication?.processIdentifier
+    }
+
+    private func terminal(for prompt: ClaudeCodeActivity.PermissionPrompt) -> pid_t? {
+        guard let cli = activity.sessions[prompt.sessionID]?.cliPID else { return nil }
         if terminals.count > 64 { terminals = [:] }
         let terminal = terminals[cli] ?? ClaudeCodeTerminal.app(hosting: cli)
         terminals[cli] = terminal
-        return terminal == front
+        return terminal
+    }
+
+    /// Activation through Launch Services, which brings an app forward from a background app
+    /// such as VoxOS; asking the app to activate itself is refused there.
+    private func openTerminal(_ pid: pid_t) {
+        guard let url = NSRunningApplication(processIdentifier: pid)?.bundleURL else { return }
+        ActivityTrail.mark("claude terminal opened from the notch")
+        let configuration = NSWorkspace.OpenConfiguration()
+        configuration.activates = true
+        NSWorkspace.shared.openApplication(at: url, configuration: configuration) { _, _ in }
     }
 
     private func reveal() {
@@ -1156,7 +1210,8 @@ final class ClaudeCodeNotchManager {
                 panel.acceptsKeyboard = wanted
                 if wanted { panel.makeKey() } else { panel.resignKey() }
             },
-            onReveal: { [weak self] in self?.reveal() })
+            onReveal: { [weak self] in self?.reveal() },
+            onOpenTerminal: { [weak self] pid in self?.openTerminal(pid) })
         panel.contentView = NotchRecorderHostingController(rootView: view).view
         self.model = model
         self.panel = panel
