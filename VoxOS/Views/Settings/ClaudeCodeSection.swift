@@ -6,7 +6,7 @@ struct ClaudeCodeSection: View {
     @ObservedObject private var integration = ClaudeCodeIntegration.shared
     @AppStorage(DefaultsKeys.claudeCodeEnabled) private var enabled = false
     @AppStorage(DefaultsKeys.claudeCodeApprovalsEnabled) private var approvalsEnabled = true
-    @AppStorage(DefaultsKeys.claudeCodeStatusEnabled) private var statusEnabled = true
+    @AppStorage(DefaultsKeys.claudeCodeStatusEnabled) private var statusEnabled = false
 
     var body: some View {
         Section {
@@ -49,7 +49,7 @@ struct ClaudeCodeSection: View {
             Text("Claude Code")
         } footer: {
             Text(
-                "Adds hooks to ~/.claude/settings.json that report to VoxOS on this Mac only (127.0.0.1). A request still shows in the terminal too; whichever you answer first wins. Sessions that were already running pick the hooks up after a restart. Turning this off removes the hooks."
+                "Adds hooks to ~/.claude/settings.json that report to VoxOS on this Mac only (127.0.0.1). A request still shows in the terminal too; whichever you answer first wins. Turning this off removes the hooks."
             )
             .font(.app(.caption))
             .foregroundStyle(.secondary)

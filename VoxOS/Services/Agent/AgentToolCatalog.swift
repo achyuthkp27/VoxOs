@@ -47,6 +47,11 @@ enum AgentToolCatalog {
             "Music: music_now_playing {} · music_play {\"query\"?,\"app\": \"spotify\"|\"music\"?} (Apple Music plays from the user's library; Spotify only opens its search) · music_control {\"action\": play|pause|toggle|next|previous|shuffle_on|shuffle_off|repeat_on|repeat_off|volume,\"value\": 0-100?,\"app\"?}"
         ),
         (
+            "timer",
+            ["timer", "pomodoro", "countdown", "focus session", "focus timer", "minutes timer", "time's up"],
+            "Timer (shown in the notch): timer_start {\"minutes\": num, \"label\"?} · pomodoro_start {} -> 25 min focus, 5 min breaks, a long break every 4th · timer_cancel {} · timer_status {} -> what is running and how long is left"
+        ),
+        (
             "notes",
             ["note", "notes"],
             "Notes: notes_search {\"query\",\"limit\"?} -> titles + snippets · notes_read {\"title\"} -> full text (notes_create makes one)"

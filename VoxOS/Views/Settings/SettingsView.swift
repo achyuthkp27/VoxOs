@@ -43,6 +43,10 @@ struct SettingsView: View {
     @AppStorage(AgentAutoClose.enabledKey) private var agentAutoCloseEnabled = true
     @AppStorage(DefaultsKeys.notchMaterial) private var notchMaterialRaw = NotchDesign.Material.liquidGlass.rawValue
     @AppStorage(DefaultsKeys.notchIdleTabEnabled) private var notchIdleTabEnabled = false
+    @AppStorage(DefaultsKeys.notchHomeEnabled) private var notchHomeEnabled = true
+    @AppStorage(DefaultsKeys.notchDeviceAlertsEnabled) private var notchDeviceAlertsEnabled = true
+    @AppStorage(DefaultsKeys.notchMusicEnabled) private var notchMusicEnabled = true
+    @AppStorage(DefaultsKeys.notchMusicBarsEnabled) private var notchMusicBarsEnabled = false
     @AppStorage(DictationSend.stopWhenQuietKey) private var dictationStopWhenQuiet = false
     @AppStorage(DictationSend.pressReturnKey) private var dictationPressReturn = false
     @AppStorage(AgentAutoSend.pauseKey) private var agentAutoSendPause = AgentAutoSend.Pause.normal.rawValue
@@ -95,6 +99,8 @@ struct SettingsView: View {
         "Shows live text while recording with realtime models.",
         "Edge History", "Left-Edge History", "battery", "hover", "power",
         "Notch Material", "Liquid Glass", "Solid Black", "Always-Visible Notch Tab", "notch", "tab",
+        "Music in the Notch", "Live Music Bars", "music", "now playing", "visualizer", "Notch Home",
+        "Device Alerts", "bluetooth", "airpods", "wifi", "timer", "pomodoro", "shelf", "calendar",
     ]
     private static let generalTerms = [
         "General", "Hide Dock Icon", "Launch at Login", "Automatically Check for Updates",
@@ -611,6 +617,38 @@ struct SettingsView: View {
                             InfoTip(
                                 "Off by default: the notch appears only on the shortcut. On, a slim tab stays under the notch between dictations; hover to see it, click to start recording. Only on displays with a notch."
                             )
+                        }
+                    }
+
+                    Toggle(isOn: $notchHomeEnabled) {
+                        HStack(spacing: 2) {
+                            Text("Notch Home")
+                            InfoTip(
+                                "Hover the notch, or drag files onto it, to open Music, Timer, Today and Shelf. Between hovers it shows one thing at a time: a notice, a running timer, or the playing track."
+                            )
+                        }
+                    }
+
+                    if notchHomeEnabled {
+                        Toggle("Music in the Notch", isOn: $notchMusicEnabled)
+                        Toggle(isOn: $notchDeviceAlertsEnabled) {
+                            HStack(spacing: 2) {
+                                Text("Device Alerts")
+                                InfoTip(
+                                    "A short notice when AirPods or another Bluetooth device connects (with its battery), or when Wi-Fi joins or drops."
+                                )
+                            }
+                        }
+                    }
+
+                    if notchHomeEnabled, notchMusicEnabled {
+                        Toggle(isOn: $notchMusicBarsEnabled) {
+                            HStack(spacing: 2) {
+                                Text("Live Music Bars")
+                                InfoTip(
+                                    "Bars in the open player that move with what is actually playing. They listen to the Mac's sound output only while the player is open, which needs the System Audio Recording permission and shows macOS's purple recording dot meanwhile. Nothing is recorded or stored."
+                                )
+                            }
                         }
                     }
 

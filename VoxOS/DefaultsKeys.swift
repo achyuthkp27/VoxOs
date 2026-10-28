@@ -48,6 +48,14 @@ enum DefaultsKeys {
     static let claudeCodeApprovalsEnabled = "ClaudeCodeApprovalsEnabled"
     /// The notch shows when a session is working and when it finishes.
     static let claudeCodeStatusEnabled = "ClaudeCodeStatusEnabled"
+    /// The notch opens on hover into Music, Timer, Today and Shelf.
+    static let notchHomeEnabled = "NotchHomeEnabled"
+    /// A short notice in the notch when a Bluetooth device or Wi-Fi connects or drops.
+    static let notchDeviceAlertsEnabled = "NotchDeviceAlertsEnabled"
+    /// The notch shows the playing track and opens into a player on hover.
+    static let notchMusicEnabled = "NotchMusicEnabled"
+    /// The notch's music bars follow the real audio (needs System Audio Recording).
+    static let notchMusicBarsEnabled = "NotchMusicBarsEnabled"
     /// The one-time "Show Claude Code in the notch?" card has been answered.
     static let claudeCodeOfferAnswered = "ClaudeCodeOfferAnswered"
     static let transcriptionPrompt = "TranscriptionPrompt"

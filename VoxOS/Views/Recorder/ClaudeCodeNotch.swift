@@ -98,13 +98,15 @@ enum ClaudeCodeNotch {
     /// A request outranks status; the recorder outranks both, since the user is talking to it.
     static func content(
         prompts: [ClaudeCodeActivity.PermissionPrompt], status: ClaudeCodeActivity.Status, enabled: Bool,
-        approvalsEnabled: Bool, statusEnabled: Bool, recorderVisible: Bool, offering: Bool = false
+        approvalsEnabled: Bool, statusEnabled: Bool, recorderVisible: Bool, offering: Bool = false,
+        homeVisible: Bool = false
     ) -> Content {
         guard !recorderVisible else { return .hidden }
         if offering, !enabled { return .offer }
         guard enabled else { return .hidden }
         if approvalsEnabled, let first = prompts.first { return .approval(first, waiting: prompts.count) }
-        if statusEnabled, !status.isEmpty { return .status(status) }
+        // The music band says more than "working" does, so it keeps the notch.
+        if statusEnabled, !status.isEmpty, !homeVisible { return .status(status) }
         return .hidden
     }
 
@@ -172,7 +174,6 @@ struct ClaudeCodeNotchView: View {
     @ObservedObject var model: ClaudeCodeNotchModel
     let onDecision: (UUID, ClaudeCodeActivity.Decision) -> Void
     let onOffer: (Bool) -> Void
-    @AppStorage(DefaultsKeys.notchMaterial) private var notchMaterialRaw = NotchDesign.Material.liquidGlass.rawValue
     @Environment(\.accessibilityReduceMotion) private var reduceMotion
 
     private var content: ClaudeCodeNotch.Content { model.content }
@@ -277,27 +278,10 @@ struct ClaudeCodeNotchView: View {
 
     // MARK: Material
 
-    @ViewBuilder
+    /// One black surface, as the music card: glass under a black notch row read as a dark strip
+    /// across the top.
     private var background: some View {
-        switch NotchDesign.Material.resolve(notchMaterialRaw) {
-        case .solidBlack:
-            shape.fill(NotchDesign.solid).overlay(rim)
-        case .liquidGlass:
-            ZStack {
-                shape.fill(NotchDesign.glassUnderlay)
-                    .liquidGlass(in: shape, tint: NotchDesign.glassTint)
-                // Solid for the height of the hardware notch, glass only below it.
-                shape.fill(NotchDesign.solid)
-                    .mask(
-                        LinearGradient(
-                            stops: [
-                                .init(color: .white, location: 0),
-                                .init(color: .white, location: min(1, model.notchHeight / max(size.height, 1))),
-                                .init(color: .clear, location: min(1, (model.notchHeight + 12) / max(size.height, 1))),
-                            ], startPoint: .top, endPoint: .bottom))
-                rim
-            }
-        }
+        shape.fill(NotchDesign.solid).overlay(rim)
     }
 
     private var rim: some View {
@@ -670,6 +654,8 @@ final class ClaudeCodeNotchManager {
             .store(in: &cancellables)
         uiManager.$isRecorderPanelVisible.receive(on: RunLoop.main).sink { [weak self] _ in self?.refresh() }
             .store(in: &cancellables)
+        uiManager.$isNotchHomeVisible.receive(on: RunLoop.main).sink { [weak self] _ in self?.refresh() }
+            .store(in: &cancellables)
         NotificationCenter.default.publisher(for: UserDefaults.didChangeNotification).receive(on: RunLoop.main)
             .sink { [weak self] _ in self?.refresh() }
             .store(in: &cancellables)
@@ -689,11 +675,15 @@ final class ClaudeCodeNotchManager {
             prompts: activity.prompts, status: activity.status(now: now), enabled: ClaudeCodeIntegration.isEnabled,
             approvalsEnabled: ClaudeCodeIntegration.approvalsEnabled,
             statusEnabled: ClaudeCodeIntegration.statusEnabled,
-            recorderVisible: uiManager.isRecorderPanelVisible, offering: ClaudeCodeIntegration.shared.isOffering)
+            recorderVisible: uiManager.isRecorderPanelVisible, offering: ClaudeCodeIntegration.shared.isOffering,
+            homeVisible: uiManager.isNotchHomeVisible)
         scheduleTick(after: now)
         apply(content)
         if uiManager.isClaudeCodeSurfaceVisible != (content != .hidden) {
             uiManager.isClaudeCodeSurfaceVisible = content != .hidden
+        }
+        if uiManager.isClaudeCodeCardVisible != content.isCard {
+            uiManager.isClaudeCodeCardVisible = content.isCard
         }
     }
 

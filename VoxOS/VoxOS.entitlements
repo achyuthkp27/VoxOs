@@ -33,5 +33,11 @@
 	<array>
 		<string>$(AppIdentifierPrefix)com.achyuthkp.VoxOS</string>
 	</array>
+	<key>com.apple.security.device.bluetooth</key>
+	<true/>
+	<key>com.apple.security.personal-information.calendars</key>
+	<true/>
+	<key>com.apple.security.personal-information.location</key>
+	<true/>
 </dict>
 </plist>

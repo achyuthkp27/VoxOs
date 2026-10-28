@@ -8,6 +8,12 @@
 	<string>VoxOS needs access to your microphone to record audio for transcription.</string>
 	<key>NSAppleEventsUsageDescription</key>
 	<string>VoxOS needs to interact with your browser to detect the current website for applying website-specific configurations.</string>
+	<key>NSBluetoothAlwaysUsageDescription</key>
+	<string>VoxOS shows a short notice in the notch when a Bluetooth device such as your AirPods connects, with its battery.</string>
+	<key>NSCalendarsFullAccessUsageDescription</key>
+	<string>VoxOS shows your next events on the notch's Today page.</string>
+	<key>NSAudioCaptureUsageDescription</key>
+	<string>VoxOS listens to what your Mac is playing only to move the music bars in the notch. Nothing is recorded or stored.</string>
 	<key>NSScreenCaptureUsageDescription</key>
 	<string>VoxOS needs screen recording access to understand context from your screen for improved transcription accuracy.</string>
 	<key>NSLocationUsageDescription</key>

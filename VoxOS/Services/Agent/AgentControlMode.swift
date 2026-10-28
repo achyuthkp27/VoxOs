@@ -86,6 +86,7 @@ enum AgentControlMode: String, CaseIterable, Identifiable {
         "system_volume", "lock_screen", "media_key",
         "obsidian_note", "open_in_editor", "maps_search", "maps_directions", "telegram_send", "ask_assistant",
         "messenger_open", "nudge_add", "nudge_done", "background_task", "background_cancel",
+        "timer_start", "pomodoro_start", "timer_cancel",
         "system_audio_start", "system_audio_stop",
         "set_control_mode", "messages_send", "secret_save", "linear_save_token", "remember", "take_screenshot",
         "macro_record_start", "macro_record_stop", "watch_for", "watch_for_audio", "watch_cancel",

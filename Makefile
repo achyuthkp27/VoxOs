@@ -13,6 +13,9 @@ WHISPER_CPP_DIR := $(DEPS_DIR)/whisper.cpp
 WHISPER_CPP_REF ?= c4ac0012a8f5a2082dfca6aad4ddfd8b2c02b337
 FRAMEWORK_PATH := $(WHISPER_CPP_DIR)/build-apple/whisper.xcframework
 LOCAL_DERIVED_DATA := $(CURDIR)/.local-build
+# Swift package checkouts for `make local`, kept outside LOCAL_DERIVED_DATA: that folder is wiped
+# on every build, which re-cloned every package (mlx-swift, swift-syntax, …) each time.
+LOCAL_PACKAGES := $(CURDIR)/.local-packages
 # Debug (default) builds fast and is unoptimised; `make local LOCAL_CONFIG=Release` builds the optimised app.
 LOCAL_CONFIG ?= Debug
 TEST_DERIVED_DATA := $(CURDIR)/.local-build-tests
@@ -94,6 +97,7 @@ local: check setup
 	fi; \
 	xcodebuild -project VoxOS.xcodeproj -scheme VoxOS -configuration $(LOCAL_CONFIG) \
 		-derivedDataPath "$(LOCAL_DERIVED_DATA)" \
+		-clonedSourcePackagesDirPath "$(LOCAL_PACKAGES)" \
 		-xcconfig LocalBuild.xcconfig \
 		-skipPackagePluginValidation \
 		-skipMacroValidation \

@@ -12,16 +12,16 @@ class PlaybackController: ObservableObject {
     private var lastKnownTrackInfo: TrackInfo?
     private var originalMediaAppBundleId: String?
     private var resumeTask: Task<Void, Never>?
+    /// The notch's music view wants the track too; one listener serves both.
+    private var isNowPlayingWanted = false
+
+    /// The track the system is playing, for the notch: title, artist, artwork, position.
+    @Published private(set) var nowPlaying: TrackInfo.Payload?
 
     @Published var isPauseMediaEnabled: Bool = UserDefaults.standard.bool(forKey: DefaultsKeys.isPauseMediaEnabled) {
         didSet {
             UserDefaults.standard.set(isPauseMediaEnabled, forKey: DefaultsKeys.isPauseMediaEnabled)
-
-            if isPauseMediaEnabled {
-                startMediaTracking()
-            } else {
-                stopMediaTracking()
-            }
+            updateMediaTracking()
         }
     }
 
@@ -30,15 +30,41 @@ class PlaybackController: ObservableObject {
 
         setupMediaControllerCallbacks()
 
-        if isPauseMediaEnabled {
+        updateMediaTracking()
+    }
+
+    /// Listens while pausing on dictation or the notch's music view needs the track.
+    func setNowPlayingWanted(_ wanted: Bool) {
+        guard wanted != isNowPlayingWanted else { return }
+        isNowPlayingWanted = wanted
+        updateMediaTracking()
+    }
+
+    private func updateMediaTracking() {
+        if isPauseMediaEnabled || isNowPlayingWanted {
             startMediaTracking()
+        } else {
+            stopMediaTracking()
         }
+    }
+
+    func seek(to seconds: Double) {
+        mediaController.setTime(seconds: seconds)
+    }
+
+    func toggleShuffle() {
+        mediaController.toggleShuffle()
+    }
+
+    func toggleRepeat() {
+        mediaController.toggleRepeat()
     }
 
     private func setupMediaControllerCallbacks() {
         mediaController.onTrackInfoReceived = { [weak self] trackInfo in
             self?.isMediaPlaying = trackInfo?.payload.isPlaying ?? false
             self?.lastKnownTrackInfo = trackInfo
+            self?.nowPlaying = trackInfo?.payload
         }
 
         mediaController.onListenerTerminated = {}
@@ -52,6 +78,7 @@ class PlaybackController: ObservableObject {
         mediaController.stopListening()
         isMediaPlaying = false
         lastKnownTrackInfo = nil
+        nowPlaying = nil
         wasPlayingWhenRecordingStarted = false
         originalMediaAppBundleId = nil
     }

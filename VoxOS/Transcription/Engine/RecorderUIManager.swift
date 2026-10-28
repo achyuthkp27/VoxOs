@@ -63,11 +63,17 @@ class RecorderUIManager: ObservableObject, RecorderPanelPresenting {
     /// Claude Code's band or approval card is on screen (see ClaudeCodeNotchManager). The idle tab
     /// hides under it, as it does under the recorder.
     @Published var isClaudeCodeSurfaceVisible = false
+    /// A Claude Code request, question or offer card in particular: the notch home hides under
+    /// it, but takes the place of Claude Code's "working" band.
+    @Published var isClaudeCodeCardVisible = false
+    /// The notch home's music band or player is on screen (see NotchHomeManager).
+    @Published var isNotchHomeVisible = false
 
     private var notchWindowManager: NotchWindowManager?
     private var miniWindowManager: MiniWindowManager?
     private var idleTabManager: NotchIdleTabManager?
     private var claudeCodeNotchManager: ClaudeCodeNotchManager?
+    private var notchHomeManager: NotchHomeManager?
     private var panelInvalidationTask: Task<Void, Never>?
     /// A hide waiting for the band's close animation to finish. A show cancels it.
     private var pendingHideTask: Task<Void, Never>?
@@ -97,6 +103,7 @@ class RecorderUIManager: ObservableObject, RecorderPanelPresenting {
         if !ProcessIdentity.isTestHost {
             idleTabManager = NotchIdleTabManager(uiManager: self)
             claudeCodeNotchManager = ClaudeCodeNotchManager(uiManager: self)
+            notchHomeManager = NotchHomeManager(uiManager: self)
             ClaudeCodeIntegration.shared.startIfEnabled()
         }
     }

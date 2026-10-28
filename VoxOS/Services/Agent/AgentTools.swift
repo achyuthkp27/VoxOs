@@ -260,6 +260,32 @@ enum AgentTools {
                     appName: "Maps", success: "opened directions to \(to) in Maps")
             }
 
+        case "timer_start":
+            let minutes = (args["minutes"] as? Double) ?? (args["minutes"] as? Int).map(Double.init) ?? 0
+            guard minutes > 0, minutes <= 24 * 60 else { return ["error": "minutes must be between 0 and 1440"] }
+            let label = s("label")
+            return await MainActor.run {
+                NotchTimers.shared.startCountdown(minutes: minutes, label: label)
+                let length = NotchTimers.clock(minutes * 60)
+                return ["result": "timer running in the notch: \(length)\(label.isEmpty ? "" : " for \(label)")"]
+            }
+        case "pomodoro_start":
+            return await MainActor.run {
+                NotchTimers.shared.startPomodoro()
+                return ["result": "pomodoro started: 25 minutes of focus, shown in the notch"]
+            }
+        case "timer_cancel":
+            return await MainActor.run {
+                let hadOne = NotchTimers.shared.running != nil
+                NotchTimers.shared.cancel()
+                return ["result": hadOne ? "timer cancelled" : "no timer was running"]
+            }
+        case "timer_status":
+            return await MainActor.run {
+                guard let running = NotchTimers.shared.running else { return ["result": "no timer running"] }
+                let left = NotchTimers.clock(running.remaining(at: Date()))
+                return ["result": "\(running.label.isEmpty ? "timer" : running.label): \(left) left"]
+            }
         case "nudge_add":
             let atRaw = s("at")
             let due = atRaw.isEmpty ? nil : AgentNudges.parseDue(atRaw)

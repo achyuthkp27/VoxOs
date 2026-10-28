@@ -600,4 +600,19 @@ struct ClaudeCodeTests {
         #expect(size.height == 32 + ClaudeCodeNotch.offerContentHeight)
         #expect(ClaudeCodeNotch.Content.offer.isCard)
     }
+
+    /// Esc ends a turn without a Stop event; the idle_prompt notification that follows a minute
+    /// later is what tells VoxOS the session stopped working.
+    @Test func anIdlePromptEndsWorking() {
+        let activity = ClaudeCodeActivity()
+        activity.receive(Self.event("UserPromptSubmit"))
+        #expect(activity.status().working == 1)
+        activity.receive(
+            ClaudeCodeHookEvent.decode(Self.payload("Notification", extra: ["notification_type": "permission_prompt"]))!
+        )
+        #expect(activity.status().working == 1, "a permission notification is not the end of the turn")
+        activity.receive(
+            ClaudeCodeHookEvent.decode(Self.payload("Notification", extra: ["notification_type": "idle_prompt"]))!)
+        #expect(activity.status().isEmpty)
+    }
 }

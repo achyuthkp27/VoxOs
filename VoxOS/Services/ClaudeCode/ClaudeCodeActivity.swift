@@ -150,8 +150,16 @@ final class ClaudeCodeActivity: ObservableObject {
             sessions[event.sessionID] = nil
             recentToolUses[event.sessionID] = nil
             settleSession(event.sessionID)
+        case .notification where event.notificationType == "idle_prompt":
+            // Waiting for the user's next prompt: the turn is over. Esc ends a turn without a
+            // Stop event, so this is what clears a session interrupted that way.
+            if var session = sessions[event.sessionID], session.phase == .working {
+                session.phase = .idle
+                session.updated = now
+                sessions[event.sessionID] = session
+            }
         case .notification, .permissionRequest:
-            // A notification is the CLI announcing the dialog the notch is already showing.
+            // Any other notification is the CLI announcing the dialog the notch is already showing.
             break
         }
     }

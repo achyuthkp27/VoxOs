@@ -50,8 +50,15 @@ enum AppDefaults {
             // Off until asked for: turning it on edits Claude Code's own settings file.
             DefaultsKeys.claudeCodeEnabled: false,
             DefaultsKeys.claudeCodeApprovalsEnabled: true,
-            DefaultsKeys.claudeCodeStatusEnabled: true,
+            // Off: the notch is for what needs the user (a request or a question), not for
+            // narrating that a session is busy.
+            DefaultsKeys.claudeCodeStatusEnabled: false,
             DefaultsKeys.claudeCodeOfferAnswered: false,
+            DefaultsKeys.notchHomeEnabled: true,
+            DefaultsKeys.notchDeviceAlertsEnabled: true,
+            DefaultsKeys.notchMusicEnabled: true,
+            // Off: listening to the sound output turns on macOS's purple recording dot.
+            DefaultsKeys.notchMusicBarsEnabled: false,
             RecorderDisplaySettingsKeys.showLiveTranscript: true,
 
             // Cleanup

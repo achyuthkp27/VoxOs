@@ -174,6 +174,8 @@ final class NotchIdleTabManager {
             .sink { [weak self] _ in self?.refresh() }.store(in: &cancellables)
         uiManager.$isClaudeCodeSurfaceVisible.receive(on: RunLoop.main)
             .sink { [weak self] _ in self?.refresh() }.store(in: &cancellables)
+        uiManager.$isNotchHomeVisible.receive(on: RunLoop.main)
+            .sink { [weak self] _ in self?.refresh() }.store(in: &cancellables)
         NotificationCenter.default.publisher(for: UserDefaults.didChangeNotification).receive(on: RunLoop.main)
             .sink { [weak self] _ in
                 // Only the tab's own switch matters; any other defaults write is noise.
@@ -201,7 +203,9 @@ final class NotchIdleTabManager {
         let show = NotchIdleTab.shouldShow(
             enabled: NotchIdleTab.isEnabled, style: uiManager.recorderPanelStyle, hasNotch: hasNotch,
             recorderPanelVisible: uiManager.isRecorderPanelVisible,
-            claudeCodeVisible: uiManager.isClaudeCodeSurfaceVisible)
+            // Notch Home is its own hover target on the notch; two would fight over the pointer.
+            claudeCodeVisible: uiManager.isClaudeCodeSurfaceVisible || uiManager.isNotchHomeVisible
+                || NotchHome.isEnabled)
         guard show, let screen else {
             // Hidden while hovered, which is what a click on the tab does: the panel never sees
             // the pointer leave, so it is rebuilt next time instead of coming back expanded.
