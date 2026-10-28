@@ -73,7 +73,8 @@ final class NotchDeviceAlerts: ObservableObject {
     private func bluetoothEvent(_ event: BluetoothWatcher.Event) {
         let detail: String?
         if event.connected {
-            detail = event.battery.map { "\($0)%" }
+            // Many earbuds report no battery; "Connected" keeps the right side from going blank.
+            detail = event.battery.map { "\($0)%" } ?? String(localized: "Connected")
         } else {
             detail = String(localized: "Disconnected")
         }
@@ -111,16 +112,36 @@ final class NotchDeviceAlerts: ObservableObject {
         return now.timeIntervalSince(last) >= repeatWindow
     }
 
-    nonisolated static func symbol(forDeviceNamed name: String, majorClass: UInt32) -> String {
-        let lower = name.lowercased()
-        if lower.contains("airpods max") { return "airpodsmax" }
-        if lower.contains("airpods pro") { return "airpodspro" }
-        if lower.contains("airpods") { return "airpods" }
-        if lower.contains("beats") || majorClass == 0x04 { return "headphones" }
-        if lower.contains("keyboard") { return "keyboard" }
-        if lower.contains("mouse") { return "computermouse" }
-        if lower.contains("trackpad") { return "rectangle.and.hand.point.up.left" }
-        return "dot.radiowaves.left.and.right"
+    /// The icon comes from the class every Bluetooth device reports (Bluetooth Assigned
+    /// Numbers: major 0x04 audio, 0x05 peripheral…); only Apple's earbuds need their product
+    /// name, since their class says no more than "headset".
+    nonisolated static func symbol(name: String, majorClass: UInt32, minorClass: UInt32) -> String {
+        let product = name.lowercased()
+        if product.contains("airpods max") { return "airpodsmax" }
+        if product.contains("airpods pro") { return "airpodspro" }
+        if product.contains("airpods") { return "airpods" }
+        switch majorClass {
+        case 0x01:
+            return "laptopcomputer"
+        case 0x02:
+            return "iphone"
+        case 0x04:
+            switch minorClass {
+            case 0x01, 0x02: return "earbuds"  // headset, hands-free
+            case 0x05: return "hifispeaker.fill"  // loudspeaker
+            default: return "headphones"
+            }
+        case 0x05:
+            // Bits 4–5: keyboard, pointing device or both; bits 0–3: joystick, gamepad…
+            if minorClass & 0x0F == 0x01 || minorClass & 0x0F == 0x02 { return "gamecontroller" }
+            switch minorClass & 0x30 {
+            case 0x10, 0x30: return "keyboard"
+            case 0x20: return "computermouse"
+            default: return "dot.radiowaves.left.and.right"
+            }
+        default:
+            return "dot.radiowaves.left.and.right"
+        }
     }
 }
 
@@ -183,7 +204,8 @@ private final class BluetoothWatcher: NSObject, @unchecked Sendable {
     private func event(for device: IOBluetoothDevice, address: String, name: String, connected: Bool) -> Event {
         Event(
             address: address, name: name,
-            symbol: NotchDeviceAlerts.symbol(forDeviceNamed: name, majorClass: device.deviceClassMajor),
+            symbol: NotchDeviceAlerts.symbol(
+                name: name, majorClass: device.deviceClassMajor, minorClass: device.deviceClassMinor),
             connected: connected, battery: connected ? Self.battery(of: device) : nil)
     }
 

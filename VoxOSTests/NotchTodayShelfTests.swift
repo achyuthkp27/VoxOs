@@ -98,10 +98,19 @@ struct NotchTodayShelfTests {
                 key: "bt-x-true", at: start.addingTimeInterval(NotchDeviceAlerts.repeatWindow), last: start))
     }
 
+    /// Icons come from the class a device reports, whatever its owner named it.
     @Test func devicesGetTheirOwnIcon() {
-        #expect(NotchDeviceAlerts.symbol(forDeviceNamed: "Achyuth's AirPods Pro", majorClass: 4) == "airpodspro")
-        #expect(NotchDeviceAlerts.symbol(forDeviceNamed: "Magic Keyboard", majorClass: 5) == "keyboard")
-        #expect(NotchDeviceAlerts.symbol(forDeviceNamed: "WH-1000XM5", majorClass: 4) == "headphones")
+        func symbol(_ name: String, _ major: UInt32, _ minor: UInt32) -> String {
+            NotchDeviceAlerts.symbol(name: name, majorClass: major, minorClass: minor)
+        }
+        #expect(symbol("AirPods Pro", 0x04, 0x01) == "airpodspro", "only Apple's earbuds need their name")
+        #expect(symbol("Buds", 0x04, 0x01) == "earbuds", "a headset")
+        #expect(symbol("Any name", 0x04, 0x06) == "headphones")
+        #expect(symbol("Any name", 0x04, 0x05) == "hifispeaker.fill")
+        #expect(symbol("Any name", 0x05, 0x10) == "keyboard")
+        #expect(symbol("Any name", 0x05, 0x20) == "computermouse")
+        #expect(symbol("Any name", 0x05, 0x02) == "gamecontroller")
+        #expect(symbol("Keyboard", 0x1F, 0) == "dot.radiowaves.left.and.right", "a name alone decides nothing")
     }
 
     // MARK: Reminders

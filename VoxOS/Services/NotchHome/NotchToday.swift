@@ -60,18 +60,22 @@ final class NotchToday: ObservableObject {
 
     /// Called when the Today page opens.
     func refresh(now: Date = Date()) {
-        calendarAccess = Self.currentAccess()
+        // The status read can lag a grant made in this run, so a grant seen here is kept.
+        if calendarAccess != .granted { calendarAccess = Self.currentAccess() }
         if calendarAccess == .granted { reloadEvents(now: now) }
         if weatherFetched.map({ now.timeIntervalSince($0) > Self.weatherLifetime }) ?? true { fetchWeather() }
     }
 
     func requestCalendarAccess() {
         Task { @MainActor in
-            // No usage description would make this return false at once without asking, and the
-            // status would stay notDetermined: the status, not the Bool, is what counts.
-            _ = try? await store.requestFullAccessToEvents()
-            calendarAccess = Self.currentAccess()
-            if calendarAccess == .granted { reloadEvents(now: Date()) }
+            // Without a usage description this returns false at once, without asking; with one, it
+            // returns the user's answer.
+            let granted = (try? await store.requestFullAccessToEvents()) ?? false
+            // The request's own answer, not the status read, which can lag it.
+            calendarAccess = granted ? .granted : Self.currentAccess()
+            guard calendarAccess == .granted else { return }
+            store.reset()
+            reloadEvents(now: Date())
         }
     }
 

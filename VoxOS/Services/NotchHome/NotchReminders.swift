@@ -44,15 +44,20 @@ final class NotchReminders: ObservableObject {
     }
 
     func refresh() {
-        access = Self.currentAccess()
+        // The status read can lag a grant made in this run (it still said notDetermined after
+        // the user allowed, measured on macOS 26), so a grant seen here is kept.
+        if access != .granted { access = Self.currentAccess() }
         if access == .granted { reload() }
     }
 
     func requestAccess() {
         Task { @MainActor in
-            _ = try? await store.requestFullAccessToReminders()
-            access = Self.currentAccess()
-            if access == .granted { reload() }
+            let granted = (try? await store.requestFullAccessToReminders()) ?? false
+            // The request's own answer, not the status read, which can lag it.
+            access = granted ? .granted : Self.currentAccess()
+            guard access == .granted else { return }
+            store.reset()
+            reload()
         }
     }
 
