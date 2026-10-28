@@ -41,6 +41,12 @@ It is a fork of VoiceInk (GPL v3) with the cursor-voice tool layer (MIT) ported 
 - **Claude Code notch** — `ClaudeCodeNotchManager`'s own panel: a band beside the notch while a
   session works, a check when it finishes, and an approval card (Deny / Allow) for a
   PermissionRequest. Hidden while the recorder is up; the idle tab hides under it.
+- **Notch Home** — `NotchHomeManager`'s panel on the notch between dictations (ADR 0007). Collapsed
+  it is a **band** (one notice, timer or track) or a bare notch-sized target; hovering the notch
+  opens the **card** with its **pages**: Music, Calendar, Reminders, Pomodoro, Shelf.
+- **Live music bars** — bars driven by the real output through `SystemAudioLevels` (a Core Audio
+  tap), only on the open Music page and only when the setting is on; the band's bars are ambient.
+- **Shelf** — files dropped on the notch, kept by path in `shelf.json`; details only when clicked.
 
 ## Invariants
 
