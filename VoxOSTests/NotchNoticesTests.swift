@@ -212,4 +212,133 @@ struct NotchNoticesTests {
         #expect(NotchPrivacy.listeners([trigger, call, dictation], me: me, inputRunning: true).map(\.pid) == [900])
         #expect(NotchPrivacy.listeners([dictation], me: me, inputRunning: true).isEmpty, "VoxOS's own dictation")
     }
+
+    // MARK: Volume and brightness
+
+    @Test func keysStepLikeMacOSDoes() {
+        // Expected values built from the step itself: a bare literal is typed apart from the Float.
+        let s = NotchHUD.step
+        let f = NotchHUD.fineStep
+        #expect(NotchHUD.stepped(5 * s, by: s) == 6 * s)
+        #expect(NotchHUD.stepped(5 * s, by: -s) == 4 * s)
+        #expect(NotchHUD.stepped(Float(0.37), by: s) == 6 * s, "between steps: up to the next one")
+        #expect(NotchHUD.stepped(Float(0.37), by: -s) == 5 * s, "and down to the one below")
+        #expect(NotchHUD.stepped(6 * s - Float(0.000_001), by: s) == 7 * s, "a rounding error under a step is on it")
+        #expect(NotchHUD.stepped(Float(1), by: s) == Float(1))
+        #expect(NotchHUD.stepped(Float(0), by: -s) == Float(0))
+        #expect(NotchHUD.stepped(32 * f, by: f) == 33 * f, "Option-Shift: a quarter step")
+    }
+
+    @Test func mediaKeysAreReadFromTheEventData() {
+        // NX_KEYTYPE_SOUND_UP pressed, NX_KEYTYPE_BRIGHTNESS_DOWN released, mute held (repeat).
+        #expect(MediaKeyTap.decode(0x0000_0A00).map { "\($0.key)\($0.down)" } == "volumeUptrue")
+        #expect(MediaKeyTap.decode(0x0003_0B00).map { "\($0.key)\($0.down)" } == "brightnessDownfalse")
+        #expect(MediaKeyTap.decode(0x0007_0A01)?.repeating == true)
+        #expect(MediaKeyTap.decode(0x0010_0A00) == nil, "play/pause is left to macOS")
+        #expect(MediaKeyTap.decode(0x0000_0000) == nil, "not a press or a release")
+    }
+
+    @Test func theLevelShowsWhatChanged() {
+        #expect(NotchHUD.Level(kind: .volume, value: 0.2).symbol == "speaker.wave.1.fill")
+        #expect(NotchHUD.Level(kind: .volume, value: 0.9).symbol == "speaker.wave.3.fill")
+        #expect(NotchHUD.Level(kind: .volume, value: 0.5, muted: true).symbol == "speaker.slash.fill")
+        #expect(NotchHUD.Level(kind: .brightness, value: 0.8).symbol == "sun.max.fill")
+        let level = NotchHUD.Level(kind: .volume, value: 0.5)
+        let notice = NotchHome.Notice(symbol: "wifi", title: "Home", detail: nil)
+        #expect(
+            NotchHome.content(
+                enabled: true, hasNotch: true, blocked: false, hovered: false, dropping: false, notice: notice,
+                timerRunning: true, musicPlaying: true, level: level) == .level(level), "a key just pressed comes first"
+        )
+        #expect(
+            NotchHome.content(
+                enabled: true, hasNotch: true, blocked: false, hovered: true, dropping: false, notice: nil,
+                timerRunning: false, musicPlaying: false, level: level) == .expanded, "open, the card stays open")
+    }
+
+    // MARK: Focus
+
+    @Test func theActiveFocusIsReadFromItsStore() {
+        let assertions: [String: Any] = [
+            "data": [
+                [
+                    "storeAssertionRecords": [
+                        [
+                            "assertionStartDateTimestamp": 100.0,
+                            "assertionDetails": ["assertionDetailsModeIdentifier": "old"],
+                        ],
+                        [
+                            "assertionStartDateTimestamp": 200.0,
+                            "assertionDetails": ["assertionDetailsModeIdentifier": "com.example.work"],
+                        ],
+                    ]
+                ]
+            ]
+        ]
+        #expect(NotchFocus.activeModeID(in: assertions) == "com.example.work", "the newest one")
+        #expect(NotchFocus.activeModeID(in: ["data": [["storeInvalidationRecords": []]]]) == nil, "none on")
+        #expect(NotchFocus.activeModeID(in: "not json we know") == nil)
+        let modes: [String: Any] = [
+            "data": [
+                [
+                    "modeConfigurations": [
+                        "com.example.work": ["mode": ["name": "Work", "symbolImageName": "briefcase"]]
+                    ]
+                ]
+            ]
+        ]
+        #expect(
+            NotchFocus.mode("com.example.work", in: modes)
+                == .init(id: "com.example.work", name: "Work", symbol: "briefcase"))
+        #expect(NotchFocus.mode("missing", in: modes) == nil)
+    }
+
+    // MARK: Downloads, keep awake
+
+    @Test func aDownloadIsNamedWithoutItsBrowserExtension() {
+        #expect(NotchDownloads.displayName(of: URL(fileURLWithPath: "/tmp/Report.pdf.crdownload")) == "Report.pdf")
+        #expect(NotchDownloads.displayName(of: URL(fileURLWithPath: "/tmp/Movie.mov.download")) == "Movie.mov")
+        #expect(NotchDownloads.displayName(of: URL(fileURLWithPath: "/tmp/notes.txt")) == "notes.txt")
+        let item = NotchDownloads.Item(id: ObjectIdentifier(NSObject()), name: "a.zip", fraction: 0.4)
+        let content = NotchHome.content(
+            enabled: true, hasNotch: true, blocked: false, hovered: false, dropping: false, notice: nil,
+            timerRunning: true, musicPlaying: true, downloads: [item, item])
+        #expect(content == .download(item, others: 1), "a download comes before a timer")
+        #expect(NotchHomeManager.downloadNotice("a.zip")?.detail == "Downloaded")
+    }
+
+    @Test func keepingAwakeStopsBeforeTheBatteryRunsOut() {
+        #expect(NotchKeepAwake.shouldLetGo(PowerState.Battery(percent: 9, charging: false, onAdapter: false)))
+        #expect(!NotchKeepAwake.shouldLetGo(PowerState.Battery(percent: 9, charging: true, onAdapter: true)))
+        #expect(!NotchKeepAwake.shouldLetGo(PowerState.Battery(percent: 50, charging: false, onAdapter: false)))
+    }
+
+    // MARK: Per-app volume
+
+    /// The tap gives interleaved stereo, the output wants one buffer per channel: each sample
+    /// lands in its channel at the level asked for.
+    @Test func anAppsSoundIsCopiedAtItsLevel() {
+        var source: [Float] = [1, -1, 0.5, -0.5]  // two frames, left and right interleaved
+        var left: [Float] = [9, 9]
+        var right: [Float] = [9, 9]
+        source.withUnsafeMutableBytes { sourceBytes in
+            left.withUnsafeMutableBytes { leftBytes in
+                right.withUnsafeMutableBytes { rightBytes in
+                    let input = AudioBufferList.allocate(maximumBuffers: 1)
+                    input[0] = AudioBuffer(
+                        mNumberChannels: 2, mDataByteSize: UInt32(sourceBytes.count), mData: sourceBytes.baseAddress)
+                    let output = AudioBufferList.allocate(maximumBuffers: 2)
+                    output[0] = AudioBuffer(
+                        mNumberChannels: 1, mDataByteSize: UInt32(leftBytes.count), mData: leftBytes.baseAddress)
+                    output[1] = AudioBuffer(
+                        mNumberChannels: 1, mDataByteSize: UInt32(rightBytes.count), mData: rightBytes.baseAddress)
+                    AppVolumeTap.copy(input.unsafePointer, to: output.unsafeMutablePointer, gain: 0.5)
+                    free(input.unsafeMutablePointer)
+                    free(output.unsafeMutablePointer)
+                }
+            }
+        }
+        #expect(left == [0.5, 0.25])
+        #expect(right == [-0.5, -0.25])
+    }
 }

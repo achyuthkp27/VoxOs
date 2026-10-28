@@ -4,6 +4,8 @@
 <dict>
 	<key>LSUIElement</key>
 	<false/>
+	<key>NSCameraUsageDescription</key>
+	<string>VoxOS shows your camera in the notch as a mirror, only while you have it open. Nothing is recorded or stored.</string>
 	<key>NSMicrophoneUsageDescription</key>
 	<string>VoxOS needs access to your microphone to record audio for transcription.</string>
 	<key>NSAppleEventsUsageDescription</key>

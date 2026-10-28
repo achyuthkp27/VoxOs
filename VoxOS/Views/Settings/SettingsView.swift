@@ -48,6 +48,12 @@ struct SettingsView: View {
     @AppStorage(DefaultsKeys.notchHomeInFullScreen) private var notchHomeInFullScreen = false
     @AppStorage(DefaultsKeys.notchPrivacyEnabled) private var notchPrivacyEnabled = true
     @AppStorage(DefaultsKeys.notchFollowsActiveDisplay) private var notchFollowsActiveDisplay = false
+    @AppStorage(DefaultsKeys.notchHUDEnabled) private var notchHUDEnabled = true
+    @AppStorage(DefaultsKeys.notchHiddenFromCapture) private var notchHiddenFromCapture = false
+    @AppStorage(DefaultsKeys.notchDownloadsEnabled) private var notchDownloadsEnabled = true
+    @AppStorage(DefaultsKeys.notchFocusEnabled) private var notchFocusEnabled = true
+    @AppStorage(DefaultsKeys.notchMixerEnabled) private var notchMixerEnabled = true
+    @AppStorage(DefaultsKeys.notchMirrorEnabled) private var notchMirrorEnabled = true
     @AppStorage(DefaultsKeys.notchMeetingsEnabled) private var notchMeetingsEnabled = true
     @AppStorage(DefaultsKeys.notchMusicEnabled) private var notchMusicEnabled = true
     @AppStorage(DefaultsKeys.notchMusicBarsEnabled) private var notchMusicBarsEnabled = false
@@ -110,6 +116,10 @@ struct SettingsView: View {
         "Device Alerts", "bluetooth", "airpods", "wifi", "output", "speakers", "headphones", "charging",
         "low battery", "timer", "pomodoro", "shelf", "calendar", "Mic & Camera in Use", "microphone", "camera",
         "mute", "Meeting Countdown", "meeting", "zoom", "join",
+        "Volume & Brightness in the Notch", "volume", "brightness", "HUD", "keys",
+        "Hide from Screenshots & Sharing", "screenshot", "screen sharing", "privacy",
+        "Downloads", "download", "Focus", "do not disturb", "Per-App Volume", "mixer", "app volume", "Mirror",
+        "camera", "webcam", "keep awake", "caffeinate",
         "Show in Full Screen", "full screen", "fullscreen", "Follow the Display in Use", "external display",
         "monitor", "display",
     ]
@@ -663,6 +673,52 @@ struct SettingsView: View {
                                 Text("Device Alerts")
                                 InfoTip(
                                     "A short notice when AirPods or another Bluetooth device connects (with its battery), when the sound moves to another output, when Wi-Fi joins or drops, and when the power adapter goes in or out or the battery runs low."
+                                )
+                            }
+                        }
+                        Toggle(isOn: $notchDownloadsEnabled) {
+                            HStack(spacing: 2) {
+                                Text("Downloads")
+                                InfoTip(
+                                    "A band with how far a download in the Downloads folder has got, and a notice when it is done."
+                                )
+                            }
+                        }
+                        Toggle(isOn: $notchFocusEnabled) {
+                            HStack(spacing: 2) {
+                                Text("Focus")
+                                InfoTip("A notice with the Focus's own name and symbol when one turns on or off.")
+                            }
+                        }
+                        Toggle(isOn: $notchMixerEnabled) {
+                            HStack(spacing: 2) {
+                                Text("Per-App Volume")
+                                InfoTip(
+                                    "A Sound page with each playing app and its own volume. An app turned down is played on through a system audio tap, which needs System Audio Recording and shows macOS's purple dot until every app is back at full."
+                                )
+                            }
+                        }
+                        Toggle(isOn: $notchMirrorEnabled) {
+                            HStack(spacing: 2) {
+                                Text("Mirror")
+                                InfoTip(
+                                    "A Mirror page that shows your camera, only after a click and only while the page is open."
+                                )
+                            }
+                        }
+                        Toggle(isOn: $notchHiddenFromCapture) {
+                            HStack(spacing: 2) {
+                                Text("Hide from Screenshots & Sharing")
+                                InfoTip(
+                                    "On: the notch's cards and bands are left out of screenshots, screen recordings and screen sharing, so a call never shows a Claude Code request or what is playing. Off by default, so a screenshot of the notch still shows it."
+                                )
+                            }
+                        }
+                        Toggle(isOn: $notchHUDEnabled) {
+                            HStack(spacing: 2) {
+                                Text("Volume & Brightness in the Notch")
+                                InfoTip(
+                                    "The volume and brightness keys show their level in the notch instead of macOS's pop-up, in the same steps (Option-Shift for finer ones). Needs Accessibility, which VoxOS already uses for its shortcuts. An external display's brightness, an output without a volume, and keys pressed while the notch is hidden stay with macOS."
                                 )
                             }
                         }

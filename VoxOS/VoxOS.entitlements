@@ -33,6 +33,8 @@
 	<array>
 		<string>$(AppIdentifierPrefix)com.achyuthkp.VoxOS</string>
 	</array>
+	<key>com.apple.security.device.camera</key>
+	<true/>
 	<key>com.apple.security.device.bluetooth</key>
 	<true/>
 	<key>com.apple.security.personal-information.calendars</key>

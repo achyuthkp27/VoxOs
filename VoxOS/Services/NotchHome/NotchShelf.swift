@@ -21,6 +21,9 @@ final class NotchShelf: ObservableObject {
     }
 
     @Published private(set) var items: [Item] = []
+    /// An AirDrop picker from the shelf is up: the card stays open under it until it is done.
+    @Published private(set) var isSharing = false
+    private var shareDelegate: ShareDelegate?
     private let storeURL: URL
     private let fileExists: (String) -> Bool
 
@@ -48,6 +51,18 @@ final class NotchShelf: ObservableObject {
         items.insert(contentsOf: paths.map { Item(id: UUID(), path: $0, added: now) }, at: 0)
         if items.count > Self.limit { items.removeLast(items.count - Self.limit) }
         save()
+    }
+
+    func airDrop(_ url: URL) {
+        guard let service = NSSharingService(named: .sendViaAirDrop) else { return }
+        let delegate = ShareDelegate { [weak self] in
+            self?.isSharing = false
+            self?.shareDelegate = nil
+        }
+        service.delegate = delegate
+        shareDelegate = delegate
+        isSharing = true
+        service.perform(withItems: [url])
     }
 
     func remove(_ id: UUID) {
@@ -97,5 +112,22 @@ final class NotchShelf: ObservableObject {
 
     static func icon(for item: Item) -> NSImage {
         NSWorkspace.shared.icon(forFile: item.path)
+    }
+}
+
+/// Says when AirDrop has sent, failed, or was cancelled (a cancel arrives as a failure).
+private final class ShareDelegate: NSObject, NSSharingServiceDelegate {
+    private let done: @MainActor () -> Void
+
+    init(done: @escaping @MainActor () -> Void) {
+        self.done = done
+    }
+
+    func sharingService(_ sharingService: NSSharingService, didShareItems items: [Any]) {
+        Task { @MainActor in done() }
+    }
+
+    func sharingService(_ sharingService: NSSharingService, didFailToShareItems items: [Any], error: any Error) {
+        Task { @MainActor in done() }
     }
 }

@@ -59,6 +59,18 @@ enum DefaultsKeys {
     static let notchHomeInFullScreen = "NotchHomeInFullScreen"
     /// Notch Home and Claude Code's cards move to the display holding the front app's window.
     static let notchFollowsActiveDisplay = "NotchFollowsActiveDisplay"
+    /// Volume and brightness keys show their level in the notch instead of macOS's pop-up.
+    static let notchHUDEnabled = "NotchHUDEnabled"
+    /// The notch's panels are left out of screenshots, recordings and screen sharing.
+    static let notchHiddenFromCapture = "NotchHiddenFromCapture"
+    /// A band while a download runs, and a notice when it is done.
+    static let notchDownloadsEnabled = "NotchDownloadsEnabled"
+    /// A notice when a Focus turns on or off.
+    static let notchFocusEnabled = "NotchFocusEnabled"
+    /// The Sound page: each playing app with its own volume.
+    static let notchMixerEnabled = "NotchMixerEnabled"
+    /// The Mirror page: the camera, only on request.
+    static let notchMirrorEnabled = "NotchMirrorEnabled"
     /// A band with a mute switch while another app uses the microphone or a camera.
     static let notchPrivacyEnabled = "NotchPrivacyEnabled"
     /// A countdown band for the next meeting, with Join when it has a call link.

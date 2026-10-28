@@ -1087,6 +1087,8 @@ final class ClaudeCodeNotchManager {
             recorderVisible: uiManager.isRecorderPanelVisible, offering: ClaudeCodeIntegration.shared.isOffering,
             homeVisible: uiManager.isNotchHomeVisible, quiet: quiet)
         scheduleTick(after: now)
+        let sharing: NSWindow.SharingType = NotchHome.hiddenFromCapture ? .none : .readOnly
+        if let panel, panel.sharingType != sharing { panel.sharingType = sharing }
         apply(content)
         let terminal = first.flatMap(terminal(for:))
         if model?.terminal != terminal { model?.terminal = terminal }
@@ -1213,6 +1215,7 @@ final class ClaudeCodeNotchManager {
             onReveal: { [weak self] in self?.reveal() },
             onOpenTerminal: { [weak self] pid in self?.openTerminal(pid) })
         panel.contentView = NotchRecorderHostingController(rootView: view).view
+        panel.sharingType = NotchHome.hiddenFromCapture ? .none : .readOnly
         self.model = model
         self.panel = panel
         logger.notice(

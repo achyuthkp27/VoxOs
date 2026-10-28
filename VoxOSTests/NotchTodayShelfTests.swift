@@ -141,7 +141,8 @@ struct NotchTodayShelfTests {
     }
 
     @Test func pagesWalkInTheAskedOrder() {
-        #expect(NotchHomePage.allCases == [.music, .today, .reminders, .timer, .shelf])
+        // The order asked for, then the pages added later, each behind its own switch.
+        #expect(NotchHomePage.allCases == [.music, .today, .reminders, .timer, .shelf, .sound, .mirror])
         #expect(NotchHomePage.timer.title == "Pomodoro")
         #expect(NotchHomePage.today.title == "Calendar")
     }

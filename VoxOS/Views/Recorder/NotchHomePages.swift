@@ -9,6 +9,9 @@ enum NotchHomePage: String, CaseIterable, Identifiable {
     case reminders
     case timer
     case shelf
+    /// Per-app volume.
+    case sound
+    case mirror
 
     var id: String { rawValue }
 
@@ -19,6 +22,8 @@ enum NotchHomePage: String, CaseIterable, Identifiable {
         case .reminders: return "checklist"
         case .timer: return "timer"
         case .shelf: return "tray"
+        case .sound: return "slider.horizontal.3"
+        case .mirror: return "person.crop.square"
         }
     }
 
@@ -29,12 +34,21 @@ enum NotchHomePage: String, CaseIterable, Identifiable {
         case .reminders: return String(localized: "Reminders")
         case .timer: return String(localized: "Pomodoro")
         case .shelf: return String(localized: "Shelf")
+        case .sound: return String(localized: "Sound")
+        case .mirror: return String(localized: "Mirror")
         }
     }
 
-    /// Music only while there is a track; the rest always.
-    static func available(hasTrack: Bool) -> [NotchHomePage] {
-        hasTrack ? allCases : allCases.filter { $0 != .music }
+    /// Music only while there is a track; Sound and Mirror when switched on; the rest always.
+    static func available(hasTrack: Bool, sound: Bool = true, mirror: Bool = true) -> [NotchHomePage] {
+        allCases.filter { page in
+            switch page {
+            case .music: return hasTrack
+            case .sound: return sound
+            case .mirror: return mirror
+            default: return true
+            }
+        }
     }
 
     /// What opening the notch shows: files being dragged in go to the shelf, a meeting about to
@@ -544,7 +558,7 @@ private struct NotchShelfDetail: View {
             Spacer(minLength: 6)
             HStack(spacing: 6) {
                 NotchServiceButton(service: NSSharingService(named: .sendViaAirDrop), label: "AirDrop") {
-                    NSSharingService(named: .sendViaAirDrop)?.perform(withItems: [item.url])
+                    shelf.airDrop(item.url)
                 }
                 NotchRoundButton(symbol: "arrow.up.forward.app", label: "Open") { NSWorkspace.shared.open(item.url) }
                 NotchRoundButton(symbol: "folder", label: "Show in Finder") {
@@ -633,5 +647,119 @@ struct NotchRoundButton: View {
         .buttonStyle(.plain)
         .onHover { hovered = $0 }
         .accessibilityLabel(Text(label))
+    }
+}
+
+// MARK: - Sound
+
+/// Each app that is playing, with its own volume under the system's.
+struct NotchSoundPage: View {
+    @ObservedObject var mixer: NotchMixer
+
+    var body: some View {
+        Group {
+            if mixer.apps.isEmpty {
+                VStack(spacing: 6) {
+                    Image(systemName: "speaker.wave.2")
+                        .font(.system(size: 18, weight: .medium))
+                    Text("Apps that are playing show here, each with its own volume")
+                        .font(.app(size: 12))
+                }
+                .foregroundStyle(.white.opacity(0.45))
+                .frame(maxWidth: .infinity, maxHeight: .infinity)
+            } else {
+                // No sideways scrolling: a sideways swipe turns the page.
+                ScrollView(.vertical) {
+                    VStack(spacing: 10) {
+                        ForEach(mixer.apps) { app in
+                            NotchAppVolumeRow(app: app) { mixer.setGain($0, for: app.bundleID) }
+                        }
+                    }
+                    .padding(.vertical, 8)
+                }
+                .scrollIndicators(.automatic)
+            }
+        }
+        .padding(.horizontal, AgentComposer.panelInset)
+        .padding(.bottom, NotchHome.Card.bottom)
+        .onAppear { mixer.setVisible(true) }
+        .onDisappear { mixer.setVisible(false) }
+    }
+}
+
+private struct NotchAppVolumeRow: View {
+    let app: NotchMixer.App
+    let onChange: (Float) -> Void
+
+    var body: some View {
+        HStack(spacing: 10) {
+            if let icon = NotchHomeApp.icon(for: app.bundleID) {
+                Image(nsImage: icon).resizable().frame(width: 22, height: 22)
+            }
+            Text(verbatim: app.name)
+                .font(.app(size: 12, weight: .semibold))
+                .foregroundStyle(.white)
+                .lineLimit(1)
+                .frame(width: 96, alignment: .leading)
+            Slider(value: Binding(get: { Double(app.gain) }, set: { onChange(Float($0)) }), in: 0...1)
+                .controlSize(.small)
+                .tint(.white)
+            Text(verbatim: "\(Int((app.gain * 100).rounded()))%")
+                .font(.appMono(size: 11, weight: .medium))
+                .foregroundStyle(.white.opacity(0.55))
+                .frame(width: 36, alignment: .trailing)
+        }
+        .accessibilityElement(children: .combine)
+        .accessibilityLabel(Text("\(app.name) volume"))
+    }
+}
+
+// MARK: - Mirror
+
+/// The camera as a mirror, only after a click and only while this page is open.
+struct NotchMirrorPage: View {
+    @ObservedObject var mirror: NotchMirror
+
+    var body: some View {
+        Group {
+            switch mirror.state {
+            case .on:
+                NotchMirrorPreview(session: mirror.session)
+                    .clipShape(RoundedRectangle(cornerRadius: 14, style: .continuous))
+                    .padding(.top, 4)
+            case .starting:
+                ProgressView().controlSize(.small).frame(maxWidth: .infinity, maxHeight: .infinity)
+            case .off, .denied, .noCamera:
+                VStack(spacing: 8) {
+                    Text(message)
+                        .font(.app(size: 12))
+                        .foregroundStyle(.white.opacity(0.55))
+                    if mirror.state == .denied {
+                        NotchChip(title: String(localized: "Open Settings")) {
+                            if let url = URL(
+                                string: "x-apple.systempreferences:com.apple.preference.security?Privacy_Camera")
+                            {
+                                NSWorkspace.shared.open(url)
+                            }
+                        }
+                    } else if mirror.state == .off {
+                        NotchChip(title: String(localized: "Show the camera"), prominent: true) { mirror.start() }
+                    }
+                }
+                .frame(maxWidth: .infinity, maxHeight: .infinity)
+            }
+        }
+        .padding(.horizontal, AgentComposer.panelInset)
+        .padding(.bottom, NotchHome.Card.bottom)
+        // Leaving the page, or the card closing, turns the camera off.
+        .onDisappear { mirror.stop() }
+    }
+
+    private var message: String {
+        switch mirror.state {
+        case .denied: return String(localized: "Camera access is off")
+        case .noCamera: return String(localized: "No camera found")
+        default: return String(localized: "A mirror, before a call. The camera stays off until you ask.")
+        }
     }
 }
