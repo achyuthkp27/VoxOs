@@ -1,0 +1,114 @@
+import Combine
+import Foundation
+import os
+
+/// The Claude Code switch in Settings: installs or removes the hooks, starts or stops the bridge,
+/// and says what state both are in.
+///
+/// Off by default, because turning it on edits ~/.claude/settings.json. Turning it off takes the
+/// hooks out again, so nothing is left pointing at a port that no longer answers.
+@MainActor
+final class ClaudeCodeIntegration: ObservableObject {
+    static let shared = ClaudeCodeIntegration()
+
+    @Published private(set) var bridgeState: ClaudeCodeBridge.State = .stopped
+    @Published private(set) var installState: ClaudeCodeHooks.InstallState = .notInstalled
+    /// The last install, removal or read that failed, in words for Settings.
+    @Published private(set) var problem: String?
+
+    private let bridge: ClaudeCodeBridge
+    private let settingsURL: URL
+    private var expiryTimer: Timer?
+    private let logger = Logger(subsystem: "com.achyuthkp.voxos", category: "ClaudeCodeIntegration")
+
+    init(bridge: ClaudeCodeBridge = .shared, settingsURL: URL = ClaudeCodeHooks.userSettingsURL) {
+        self.bridge = bridge
+        self.settingsURL = settingsURL
+        bridge.onStateChange = { [weak self] state in self?.bridgeState = state }
+    }
+
+    static var isEnabled: Bool { UserDefaults.standard.bool(forKey: DefaultsKeys.claudeCodeEnabled) }
+    static var approvalsEnabled: Bool { UserDefaults.standard.bool(forKey: DefaultsKeys.claudeCodeApprovalsEnabled) }
+    static var statusEnabled: Bool { UserDefaults.standard.bool(forKey: DefaultsKeys.claudeCodeStatusEnabled) }
+
+    var port: UInt16 { ClaudeCodeBridge.defaultPort }
+
+    /// At launch: listen if the user turned the integration on. The hooks are not rewritten here;
+    /// if the user removed them by hand, Settings shows that and offers to put them back.
+    func startIfEnabled() {
+        guard !ProcessIdentity.isTestHost, Self.isEnabled else { return }
+        startBridge()
+        refreshInstallState()
+    }
+
+    func setEnabled(_ enabled: Bool) {
+        UserDefaults.standard.set(enabled, forKey: DefaultsKeys.claudeCodeEnabled)
+        guard !ProcessIdentity.isTestHost else { return }
+        if enabled {
+            installHooks()
+            startBridge()
+        } else {
+            removeHooks()
+            stopBridge()
+        }
+    }
+
+    func setApprovalsEnabled(_ enabled: Bool) {
+        UserDefaults.standard.set(enabled, forKey: DefaultsKeys.claudeCodeApprovalsEnabled)
+        bridge.setApprovalsEnabled(enabled)
+        // A request already in the notch goes back to the terminal rather than staying answerable.
+        if !enabled { ClaudeCodeActivity.shared.settleAll() }
+    }
+
+    func installHooks() {
+        do {
+            try ClaudeCodeHooks.install(port: port, at: settingsURL)
+            problem = nil
+            logger.notice("Claude Code hooks installed")
+        } catch {
+            problem = error.localizedDescription
+            logger.error("Claude Code hooks not installed: \(error.localizedDescription, privacy: .public)")
+        }
+        refreshInstallState()
+    }
+
+    func refreshInstallState() {
+        do {
+            installState = try ClaudeCodeHooks.state(at: settingsURL, port: port)
+        } catch {
+            problem = error.localizedDescription
+        }
+    }
+
+    private func removeHooks() {
+        do {
+            try ClaudeCodeHooks.uninstall(at: settingsURL)
+            problem = nil
+        } catch {
+            problem = error.localizedDescription
+            logger.error("Claude Code hooks not removed: \(error.localizedDescription, privacy: .public)")
+        }
+        refreshInstallState()
+    }
+
+    private func startBridge() {
+        bridge.start(port: port, approvalsEnabled: Self.approvalsEnabled)
+        expiryTimer?.invalidate()
+        // Cheap — a kill(pid, 0) per session, and a child-process listing only while a Bash
+        // request waits — and frequent enough that a card answered in the terminal, or left by a
+        // CLI that was killed, leaves the notch within half a second.
+        expiryTimer = Timer.scheduledTimer(withTimeInterval: 0.5, repeats: true) { _ in
+            Task { @MainActor in
+                ClaudeCodeActivity.shared.expire()
+                ClaudeCodeActivity.shared.noticeStartedCommands()
+            }
+        }
+    }
+
+    private func stopBridge() {
+        expiryTimer?.invalidate()
+        expiryTimer = nil
+        bridge.stop()
+        ClaudeCodeActivity.shared.settleAll()
+    }
+}

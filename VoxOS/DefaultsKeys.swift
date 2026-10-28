@@ -42,6 +42,12 @@ enum DefaultsKeys {
     /// Keep a slim, clickable tab under the notch between dictations.
     static let notchIdleTabEnabled = "NotchIdleTabEnabled"
     static let edgeHistoryEnabled = "EdgeHistoryEnabled"
+    /// Claude Code in the notch: hooks installed in ~/.claude/settings.json and the bridge listening.
+    static let claudeCodeEnabled = "ClaudeCodeEnabled"
+    /// Permission requests can be allowed or denied from the notch.
+    static let claudeCodeApprovalsEnabled = "ClaudeCodeApprovalsEnabled"
+    /// The notch shows when a session is working and when it finishes.
+    static let claudeCodeStatusEnabled = "ClaudeCodeStatusEnabled"
     static let transcriptionPrompt = "TranscriptionPrompt"
     static let currentTranscriptionModel = "CurrentTranscriptionModel"
     static let currentModel = "CurrentModel"

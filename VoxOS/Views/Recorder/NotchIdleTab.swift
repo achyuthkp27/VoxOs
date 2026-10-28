@@ -44,11 +44,13 @@ enum NotchIdleTab {
     }
 
     /// The tab shows only when it adds something: the notch style is in use, the setting is on,
-    /// the display has a physical notch to hang from, and the recorder panel is not already up.
-    static func shouldShow(enabled: Bool, style: RecorderPanelStyle, hasNotch: Bool, recorderPanelVisible: Bool)
-        -> Bool
-    {
-        enabled && style == .notch && hasNotch && !recorderPanelVisible
+    /// the display has a physical notch to hang from, and neither the recorder panel nor Claude
+    /// Code's band is already up.
+    static func shouldShow(
+        enabled: Bool, style: RecorderPanelStyle, hasNotch: Bool, recorderPanelVisible: Bool,
+        claudeCodeVisible: Bool = false
+    ) -> Bool {
+        enabled && style == .notch && hasNotch && !recorderPanelVisible && !claudeCodeVisible
     }
 
     /// Off unless asked for: the notch should appear on the shortcut, not whenever the pointer
@@ -170,6 +172,8 @@ final class NotchIdleTabManager {
             .sink { [weak self] _ in self?.refresh() }.store(in: &cancellables)
         uiManager.$recorderPanelStyle.receive(on: RunLoop.main)
             .sink { [weak self] _ in self?.refresh() }.store(in: &cancellables)
+        uiManager.$isClaudeCodeSurfaceVisible.receive(on: RunLoop.main)
+            .sink { [weak self] _ in self?.refresh() }.store(in: &cancellables)
         NotificationCenter.default.publisher(for: UserDefaults.didChangeNotification).receive(on: RunLoop.main)
             .sink { [weak self] _ in
                 // Only the tab's own switch matters; any other defaults write is noise.
@@ -196,7 +200,8 @@ final class NotchIdleTabManager {
         let hasNotch = (screen?.safeAreaInsets.top ?? 0) > 0
         let show = NotchIdleTab.shouldShow(
             enabled: NotchIdleTab.isEnabled, style: uiManager.recorderPanelStyle, hasNotch: hasNotch,
-            recorderPanelVisible: uiManager.isRecorderPanelVisible)
+            recorderPanelVisible: uiManager.isRecorderPanelVisible,
+            claudeCodeVisible: uiManager.isClaudeCodeSurfaceVisible)
         guard show, let screen else {
             // Hidden while hovered, which is what a click on the tab does: the panel never sees
             // the pointer leave, so it is rebuilt next time instead of coming back expanded.

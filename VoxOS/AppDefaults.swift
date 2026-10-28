@@ -47,6 +47,10 @@ enum AppDefaults {
             // On by default so the feature is not silently removed; the cost of leaving it on
             // is a global mouse-move monitor, which is why it can be switched off.
             DefaultsKeys.edgeHistoryEnabled: true,
+            // Off until asked for: turning it on edits Claude Code's own settings file.
+            DefaultsKeys.claudeCodeEnabled: false,
+            DefaultsKeys.claudeCodeApprovalsEnabled: true,
+            DefaultsKeys.claudeCodeStatusEnabled: true,
             RecorderDisplaySettingsKeys.showLiveTranscript: true,
 
             // Cleanup

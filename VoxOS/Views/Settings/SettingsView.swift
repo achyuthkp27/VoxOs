@@ -78,6 +78,10 @@ struct SettingsView: View {
         "MCP Servers", "Model Context Protocol", "tools", "integrations", "Open Config", "Import from Claude Desktop",
         "Reload",
     ]
+    private static let claudeCodeTerms = [
+        "Claude Code", "Show Claude Code in the Notch", "Allow or Deny Requests from the Notch",
+        "Show When a Session Is Working", "Install Hooks", "hooks", "permission", "approve",
+    ]
     private static let pastingTerms = [
         "Pasting", "Match Writing Style to the App", "Keep Clipboard Content", "Restore Delay", "250ms", "500ms",
         "Paste Method",
@@ -105,6 +109,7 @@ struct SettingsView: View {
         systemAudioTerms,
         agentTerms,
         mcpTerms,
+        claudeCodeTerms,
         pastingTerms,
         transcriptionTerms,
         interfaceTerms,
@@ -479,6 +484,10 @@ struct SettingsView: View {
 
             if search.matches(Self.mcpTerms) {
                 MCPServersSection()
+            }
+
+            if search.matches(Self.claudeCodeTerms) {
+                ClaudeCodeSection()
             }
 
             if search.matches(Self.pastingTerms) {

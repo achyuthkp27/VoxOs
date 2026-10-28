@@ -35,6 +35,12 @@ It is a fork of VoiceInk (GPL v3) with the cursor-voice tool layer (MIT) ported 
 - **MCP server** — configured in `~/Library/Application Support/com.achyuthkp.VoxOS/mcp.json`
   (standard `mcpServers` format). stdio (`MCPConnection`) or Streamable HTTP
   (`MCPHTTPConnection`); tools appear as `mcp_<server>_<tool>`.
+- **Claude Code bridge** — `ClaudeCodeBridge`, a listener on 127.0.0.1:47317 that Claude Code's
+  hooks post to through curl (ADR 0006). Settings → Claude Code installs the hooks in
+  `~/.claude/settings.json` (`ClaudeCodeHooks`) and removes them when switched off.
+- **Claude Code notch** — `ClaudeCodeNotchManager`'s own panel: a band beside the notch while a
+  session works, a check when it finishes, and an approval card (Deny / Allow) for a
+  PermissionRequest. Hidden while the recorder is up; the idle tab hides under it.
 
 ## Invariants
 
