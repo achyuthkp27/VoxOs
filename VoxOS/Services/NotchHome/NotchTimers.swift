@@ -42,7 +42,8 @@ struct NotchTimer: Codable, Equatable {
             return nil
         case .focus:
             let done = completedFocus + 1
-            let long = done % durations.focusesBeforeLongBreak == 0
+            // Zero sessions: no long break, a short one after every focus.
+            let long = durations.focusesBeforeLongBreak > 0 && done % durations.focusesBeforeLongBreak == 0
             let length = long ? durations.longBreak : durations.shortBreak
             return NotchTimer(
                 kind: long ? .longBreak : .shortBreak, label: long ? "Long break" : "Break", duration: length,
@@ -65,11 +66,21 @@ final class NotchTimers: ObservableObject {
         var longBreak: TimeInterval = 15 * 60
         var focusesBeforeLongBreak = 4
 
-        /// What each can be set to on the Pomodoro page, in minutes (sessions for the last).
-        static let focusMinutes = 5...120
-        static let shortBreakMinutes = 1...30
-        static let longBreakMinutes = 5...60
-        static let sessions = 2...8
+        /// What each can be set to on the Pomodoro page, in minutes (sessions for the last, where 0
+        /// means never a long break).
+        static let focusMinutes = 1...180
+        static let shortBreakMinutes = 1...60
+        static let longBreakMinutes = 1...90
+        static let sessions = 0...12
+
+        /// How long a session of `kind` lasts; a plain countdown has no length of its own here.
+        func length(of kind: NotchTimer.Kind) -> TimeInterval {
+            switch kind {
+            case .focus, .countdown: return focus
+            case .shortBreak: return shortBreak
+            case .longBreak: return longBreak
+            }
+        }
     }
 
     /// How a pomodoro tells you a session ended, and whether the next one waits for you.
@@ -126,10 +137,18 @@ final class NotchTimers: ObservableObject {
         start(NotchTimer(kind: .countdown, label: label, duration: seconds, ends: now.addingTimeInterval(seconds)))
     }
 
-    func startPomodoro(now: Date = Date()) {
-        start(
-            NotchTimer(
-                kind: .focus, label: "Focus", duration: durations.focus, ends: now.addingTimeInterval(durations.focus)))
+    /// Starts a pomodoro with the session asked for, a focus or either break; it carries on from
+    /// there as usual.
+    func startPomodoro(_ kind: NotchTimer.Kind = .focus, now: Date = Date()) {
+        let kind: NotchTimer.Kind = kind == .countdown ? .focus : kind
+        let length = durations.length(of: kind)
+        let label: String
+        switch kind {
+        case .shortBreak: label = "Break"
+        case .longBreak: label = "Long break"
+        default: label = "Focus"
+        }
+        start(NotchTimer(kind: kind, label: label, duration: length, ends: now.addingTimeInterval(length)))
     }
 
     func cancel() {

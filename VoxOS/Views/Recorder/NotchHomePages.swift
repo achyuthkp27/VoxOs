@@ -103,6 +103,8 @@ struct NotchTimerPage: View {
     /// The timer, its settings, or one setting being changed. Back to the timer whenever the page
     /// goes away, since the view goes with it.
     @State private var panel: Panel = .timer
+    /// What START begins: a focus session or either break, picked under the time.
+    @State private var startKind: NotchTimer.Kind = .focus
 
     enum Panel: Equatable {
         case timer
@@ -153,7 +155,7 @@ struct NotchTimerPage: View {
 
     private func timerFace(at now: Date) -> some View {
         let running = timers.running
-        let kind = running?.kind ?? .focus
+        let kind = running?.kind ?? startKind
         return VStack(spacing: 10) {
             ZStack {
                 NotchPomodoroRing(progress: running?.progress(at: now) ?? 0, kind: kind)
@@ -161,23 +163,32 @@ struct NotchTimerPage: View {
                     Image(systemName: Self.symbol(for: kind))
                         .font(.system(size: 14))
                         .foregroundStyle(.white.opacity(0.85))
-                    Text(verbatim: Self.clock(running?.remaining(at: now) ?? timers.durations.focus))
+                    Text(verbatim: Self.clock(running?.remaining(at: now) ?? timers.durations.length(of: startKind)))
                         .font(.app(size: 38, weight: .semibold, design: .rounded))
                         .monospacedDigit()
                         .foregroundStyle(.white)
                         .contentTransition(.numericText(countsDown: true))
                     if kind.isPomodoro { sessionMarks(running) }
-                    Text(verbatim: caption(running))
-                        .font(.app(size: 9, weight: .medium))
-                        .tracking(1.2)
-                        .foregroundStyle(.white.opacity(0.5))
-                        .lineLimit(1)
+                    if running == nil {
+                        kindMenu
+                    } else {
+                        Text(verbatim: caption(running))
+                            .font(.app(size: 9, weight: .medium))
+                            .tracking(1.2)
+                            .foregroundStyle(.white.opacity(0.5))
+                            .lineLimit(1)
+                    }
                 }
                 .frame(width: Self.ringSize - 24)
             }
             .frame(width: Self.ringSize, height: Self.ringSize)
             .contextMenu {
+                // Any session can be started at any time, whatever is running.
+                ForEach(Self.startable, id: \.self) { kind in
+                    Button("Start \(Self.name(of: kind))") { timers.startPomodoro(kind) }
+                }
                 if running != nil {
+                    Divider()
                     Button("Skip to the Next Session") { timers.skip() }
                 }
             }
@@ -190,7 +201,7 @@ struct NotchTimerPage: View {
                     if let running {
                         if running.isPaused { timers.resume() } else { timers.pause() }
                     } else {
-                        timers.startPomodoro()
+                        timers.startPomodoro(startKind)
                     }
                 }
                 Spacer(minLength: 0)
@@ -228,6 +239,40 @@ struct NotchTimerPage: View {
         case .shortBreak: return running.completedFocus % total
         case .focus: return running.completedFocus % total + 1
         }
+    }
+
+    /// The sessions START can begin.
+    nonisolated static let startable: [NotchTimer.Kind] = [.focus, .shortBreak, .longBreak]
+
+    nonisolated static func name(of kind: NotchTimer.Kind) -> String {
+        switch kind {
+        case .shortBreak: return String(localized: "Short Break")
+        case .longBreak: return String(localized: "Long Break")
+        default: return String(localized: "Focus")
+        }
+    }
+
+    /// The caption under the time while nothing runs, as a menu of what START begins.
+    private var kindMenu: some View {
+        Menu {
+            ForEach(Self.startable, id: \.self) { kind in
+                Toggle(
+                    Self.name(of: kind),
+                    isOn: Binding(get: { startKind == kind }, set: { if $0 { startKind = kind } }))
+            }
+        } label: {
+            HStack(spacing: 3) {
+                Text(verbatim: Self.name(of: startKind).uppercased())
+                Image(systemName: "chevron.down").font(.system(size: 7, weight: .bold))
+            }
+            .font(.app(size: 9, weight: .medium))
+            .tracking(1.2)
+            .foregroundStyle(.white.opacity(0.6))
+        }
+        .menuStyle(.borderlessButton)
+        .menuIndicator(.hidden)
+        .fixedSize()
+        .help(Text("Choose what Start begins"))
     }
 
     private func caption(_ running: NotchTimer?) -> String {
@@ -322,11 +367,12 @@ struct NotchTimerPage: View {
                     .font(.app(size: 12))
                     .foregroundStyle(.white.opacity(0.9))
                 Spacer(minLength: 8)
-                Text(verbatim: String(format: "%02d", value(of: setting)))
+                Text(verbatim: Self.figure(value(of: setting), for: setting))
                     .font(.app(size: 15, weight: .semibold, design: .rounded))
                     .monospacedDigit()
                     .foregroundStyle(.white)
                 Text(Self.unit(of: setting))
+                    .opacity(setting == .sessions && value(of: setting) == 0 ? 0 : 1)
                     .font(.app(size: 10))
                     .foregroundStyle(.white.opacity(0.5))
                     .frame(width: 30, alignment: .leading)
@@ -368,7 +414,7 @@ struct NotchTimerPage: View {
             HStack(spacing: 24) {
                 NotchStepButton(symbol: "minus", label: "Less") { set(setting, to: current - 1) }
                     .disabled(current <= range.lowerBound)
-                Text(verbatim: String(format: "%02d", current))
+                Text(verbatim: Self.figure(current, for: setting))
                     .font(.app(size: 36, weight: .semibold, design: .rounded))
                     .monospacedDigit()
                     .foregroundStyle(.white)
@@ -377,7 +423,7 @@ struct NotchTimerPage: View {
                 NotchStepButton(symbol: "plus", label: "More") { set(setting, to: current + 1) }
                     .disabled(current >= range.upperBound)
             }
-            Text(Self.unit(of: setting))
+            Text(setting == .sessions && current == 0 ? "no long break" : Self.unit(of: setting))
                 .font(.app(size: 12))
                 .foregroundStyle(.white.opacity(0.5))
         }
@@ -422,6 +468,11 @@ struct NotchTimerPage: View {
         case .longBreak: return "Long Break"
         case .sessions: return "Long Break After"
         }
+    }
+
+    /// "25", "05", or "Off" for no long break.
+    nonisolated static func figure(_ value: Int, for setting: Setting) -> String {
+        setting == .sessions && value == 0 ? String(localized: "Off") : String(format: "%02d", value)
     }
 
     private static func unit(of setting: Setting) -> LocalizedStringKey {

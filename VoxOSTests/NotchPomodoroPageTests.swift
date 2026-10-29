@@ -38,6 +38,35 @@ struct NotchPomodoroPageTests {
         #expect(timers.running?.remaining(at: start.addingTimeInterval(9999)) == timers.durations.shortBreak)
     }
 
+    @Test func anySessionCanBeStarted() {
+        let (timers, _) = timers()
+        timers.durations.shortBreak = 7 * 60
+        let start = Date()
+        timers.startPomodoro(.shortBreak, now: start)
+        #expect(timers.running?.kind == .shortBreak)
+        #expect(timers.running?.remaining(at: start) == 7 * 60)
+        timers.startPomodoro(.longBreak, now: start)
+        #expect(timers.running?.kind == .longBreak)
+        #expect(timers.running?.duration == timers.durations.longBreak)
+        timers.advance(now: start.addingTimeInterval(timers.durations.longBreak))
+        #expect(timers.running?.kind == .focus, "a break is followed by a focus")
+    }
+
+    @Test func noLongBreakWhenItIsOff() {
+        let (timers, _) = timers()
+        timers.durations.focusesBeforeLongBreak = 0
+        var now = Date()
+        timers.startPomodoro(now: now)
+        var kinds: [NotchTimer.Kind] = []
+        for _ in 0..<10 {
+            now = timers.running!.ends
+            timers.advance(now: now)
+            kinds.append(timers.running!.kind)
+        }
+        #expect(!kinds.contains(.longBreak))
+        #expect(NotchTimerPage.litSessions(timers.running, total: 0) == 0)
+    }
+
     @Test func soundCanBeSwitchedOff() {
         final class Count { var value = 0 }
         let count = Count()
@@ -61,7 +90,9 @@ struct NotchPomodoroPageTests {
         #expect(NotchTimerPage.litSessions(timer(.longBreak, done: 4), total: 4) == 4)
         #expect(NotchTimerPage.clock(5 * 60) == "05:00")
         #expect(NotchTimerPage.clock(59.2) == "01:00", "rounded up, as a countdown shows it")
-        #expect(NotchTimerPage.range(of: .sessions) == 2...8)
+        #expect(NotchTimerPage.range(of: .sessions) == 0...12)
+        #expect(NotchTimerPage.figure(0, for: .sessions) == "Off")
+        #expect(NotchTimerPage.figure(5, for: .shortBreak) == "05")
     }
 
     @Test func pagesTakeTheHeightTheyNeed() {
