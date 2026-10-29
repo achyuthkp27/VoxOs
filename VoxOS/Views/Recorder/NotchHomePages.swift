@@ -429,15 +429,19 @@ struct NotchTimerPage: View {
     }
 }
 
-/// The pomodoro's progress: a grey track, and the time gone as an arc that warms from orange to red
-/// clockwise from the top, glowing a little. A plain timer draws in white.
+/// The pomodoro's progress: a grey track, and the time gone as an arc in VoxOS's own violet,
+/// running from a cool periwinkle through the brand colour to magenta clockwise from the top,
+/// glowing a little. A plain timer draws in white.
 struct NotchPomodoroRing: View {
     let progress: Double
     let kind: NotchTimer.Kind
     var lineWidth: CGFloat = 7
 
-    static let accent = Color(red: 1, green: 0.25, blue: 0.2)
-    static let warm = Color(red: 1, green: 0.62, blue: 0.26)
+    static let accent = AppTheme.Accent.brand
+    /// The arc's start: the brand colour's lighter, bluer neighbour.
+    static let lead = Color(red: 0.42, green: 0.58, blue: 1)
+    /// The arc's end, toward magenta.
+    static let tail = Color(red: 0.82, green: 0.38, blue: 0.94)
 
     var body: some View {
         ZStack {
@@ -458,7 +462,7 @@ struct NotchPomodoroRing: View {
         guard kind != .countdown else { return AnyShapeStyle(Color.white) }
         return AnyShapeStyle(
             AngularGradient(
-                colors: [Self.warm, Self.accent], center: .center, startAngle: .degrees(0),
+                colors: [Self.lead, Self.accent, Self.tail], center: .center, startAngle: .degrees(0),
                 endAngle: .degrees(360 * max(progress, 0.01))))
     }
 }
@@ -549,7 +553,7 @@ struct NotchTimerRing: View {
     static func color(for kind: NotchTimer.Kind) -> Color {
         switch kind {
         case .countdown: return .white
-        case .focus: return Color(red: 1, green: 0.45, blue: 0.4)
+        case .focus: return NotchPomodoroRing.accent
         case .shortBreak, .longBreak: return Color(red: 0.42, green: 0.86, blue: 0.56)
         }
     }
