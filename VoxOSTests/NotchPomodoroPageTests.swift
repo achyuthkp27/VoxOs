@@ -106,6 +106,7 @@ struct NotchPomodoroPageTests {
 
     @Test func pagesTakeTheHeightTheyNeed() {
         #expect(NotchHome.Card.height(for: .reminders) == NotchHome.Card.height)
+        #expect(NotchHome.Card.height(for: .sound, mirrorShown: true) == NotchHome.Card.height(for: .weather))
         #expect(NotchHome.Card.height(for: .music, panelOpen: true) > NotchHome.Card.height(for: .music))
         #expect(NotchHome.Card.height(for: .music) == NotchHome.Card.height, "the player keeps its compact card")
         #expect(NotchHome.Card.height(for: .weather) > NotchHome.Card.height)

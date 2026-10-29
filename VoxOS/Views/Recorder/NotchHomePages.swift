@@ -1068,6 +1068,8 @@ struct NotchSoundPage: View {
     @ObservedObject var keepAwake: NotchKeepAwake
     let pinned: Bool
     let onPin: () -> Void
+    /// Whether the mirror is the part shown, for the card's height.
+    var onMirrorShown: (Bool) -> Void = { _ in }
     @State private var section: Section?
     @AppStorage(DefaultsKeys.notchMixerEnabled) private var appsOn = true
     @AppStorage(DefaultsKeys.notchClipboardEnabled) private var clipboardOn = false
@@ -1124,15 +1126,18 @@ struct NotchSoundPage: View {
         .padding(.bottom, NotchHome.Card.bottom)
         .onAppear {
             mixer.setVisible(shown == .apps)
+            onMirrorShown(shown == .mirror)
         }
         .onChange(of: shown) { old, new in
             mixer.setVisible(new == .apps)
             if old == .mirror { mirror.stop() }
+            onMirrorShown(new == .mirror)
         }
         // Leaving the page, or the card closing, stops the camera and the app list's listening.
         .onDisappear {
             mixer.setVisible(false)
             mirror.stop()
+            onMirrorShown(false)
         }
     }
 
@@ -1178,7 +1183,7 @@ struct NotchSoundPage: View {
     private var mirrorView: some View {
         switch mirror.state {
         case .on:
-            NotchMirrorPreview(session: mirror.session)
+            NotchMirrorPreview(layer: mirror.previewLayer)
                 .clipShape(RoundedRectangle(cornerRadius: 12, style: .continuous))
         case .starting:
             ProgressView().controlSize(.small).frame(maxWidth: .infinity, maxHeight: .infinity)

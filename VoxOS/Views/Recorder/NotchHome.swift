@@ -50,11 +50,13 @@ enum NotchHome {
 
         /// The open card's height on a page: compact, except where a page has more to show. Fixed
         /// per page, never per reading, so a refresh cannot move the card's edge under the pointer.
-        static func height(for page: NotchHomePage, panelOpen: Bool = false) -> CGFloat {
+        static func height(for page: NotchHomePage, panelOpen: Bool = false, mirrorShown: Bool = false) -> CGFloat {
             switch page {
             case .music: return panelOpen ? NotchMusicPanel.Layout.cardHeight : height
             case .weather: return NotchWeatherPage.cardHeight
             case .timer: return NotchTimerPage.cardHeight
+            // The camera needs room to be seen: as tall as Weather while the mirror shows.
+            case .sound: return mirrorShown ? NotchWeatherPage.cardHeight : height
             default: return height
             }
         }
@@ -253,6 +255,8 @@ final class NotchHomeModel: ObservableObject {
     @Published var nextUp: NowPlayingQueue.Item?
     /// The format the playing track plays in, for the badge under the artist.
     @Published var audioFormat: NowPlayingQueue.AudioFormat?
+    /// The Sound page shows the camera mirror, which takes a taller card.
+    @Published var mirrorShown = false
     /// While pages move: how far the current page is from its place, in points…
     @Published var pageOffset: CGFloat = 0
     /// …and the page shown beside it: the one coming in under the fingers, or the one sliding
@@ -469,7 +473,7 @@ struct NotchHomeView: View {
         case .sound:
             NotchSoundPage(
                 mixer: .shared, clipboard: .shared, mirror: .shared, keepAwake: .shared, pinned: model.pinned,
-                onPin: onPin)
+                onPin: onPin, onMirrorShown: { model.mirrorShown = $0 })
         }
     }
 
@@ -2125,6 +2129,7 @@ final class NotchHomeManager {
         // Opening: the card at its page's height from the first frame.
         if content == .expanded {
             model.musicPanel = nil
+            model.mirrorShown = false
             model.cardHeight = NotchHome.Card.height(for: model.page)
         }
         let target = NotchHome.size(
@@ -2217,6 +2222,10 @@ final class NotchHomeManager {
             self?.setNeedsRefresh()
         }
         .store(in: &cancellables)
+        // Showing or leaving the camera mirror changes the Sound page's height.
+        model.$mirrorShown.dropFirst().removeDuplicates().receive(on: RunLoop.main)
+            .sink { [weak self] _ in self?.fitCard() }
+            .store(in: &cancellables)
         // Opening or closing the Music page's list changes its height; Up Next reads the queue.
         model.$musicPanel.dropFirst().removeDuplicates().receive(on: RunLoop.main)
             .sink { [weak self] tab in
@@ -2265,7 +2274,8 @@ final class NotchHomeManager {
     /// shrinking, the card shrinks first and the window after, so the card is never cut off.
     private func fitCard() {
         guard let model, let panel, let screen else { return }
-        let height = NotchHome.Card.height(for: model.page, panelOpen: model.musicPanel != nil)
+        let height = NotchHome.Card.height(
+            for: model.page, panelOpen: model.musicPanel != nil, mirrorShown: model.mirrorShown)
         guard height != model.cardHeight else { return }
         guard model.content == .expanded, panel.isVisible else {
             model.cardHeight = height

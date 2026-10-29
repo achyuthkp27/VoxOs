@@ -19,10 +19,28 @@ final class NotchMirror: ObservableObject {
 
     @Published private(set) var state: State = .off
     nonisolated let session = AVCaptureSession()
+    /// The picture, attached to the session before it first runs: a session started with nothing
+    /// to show its frames to builds no capture graph, and one attached afterwards fails with a
+    /// runtime error (-11800), leaving a blank mirror.
+    let previewLayer = AVCaptureVideoPreviewLayer()
     private let queue = DispatchQueue(label: "com.achyuthkp.voxos.mirror")
     private var configured = false
+    private var failure: NSObjectProtocol?
 
-    private init() {}
+    private init() {
+        previewLayer.session = session
+        previewLayer.videoGravity = .resizeAspectFill
+        // A session that fails while running goes back to off, so "Show the camera" is offered again.
+        failure = NotificationCenter.default.addObserver(
+            forName: AVCaptureSession.runtimeErrorNotification, object: session, queue: .main
+        ) { [weak self] _ in
+            Task { @MainActor in
+                guard let self, self.state == .on || self.state == .starting else { return }
+                ActivityTrail.mark("notch mirror failed")
+                self.stop()
+            }
+        }
+    }
 
     func start() {
         guard state == .off || state == .denied || state == .noCamera else { return }
@@ -73,6 +91,10 @@ final class NotchMirror: ObservableObject {
                     if hasCamera { self?.queue.async { session.stopRunning() } }
                     return
                 }
+                if let connection = self.previewLayer.connection, connection.isVideoMirroringSupported {
+                    connection.automaticallyAdjustsVideoMirroring = false
+                    connection.isVideoMirrored = true
+                }
                 self.state = hasCamera ? .on : .noCamera
                 ActivityTrail.mark("notch mirror on")
             }
@@ -80,18 +102,14 @@ final class NotchMirror: ObservableObject {
     }
 }
 
-/// The camera's picture, mirrored like a mirror, filling its frame.
+/// The camera's picture, mirrored like a mirror, filling its frame: the mirror's own preview
+/// layer, hosted here while the view is on screen.
 struct NotchMirrorPreview: NSViewRepresentable {
-    let session: AVCaptureSession
+    let layer: AVCaptureVideoPreviewLayer
 
     func makeNSView(context: Context) -> NSView {
         let view = NSView()
-        let layer = AVCaptureVideoPreviewLayer(session: session)
-        layer.videoGravity = .resizeAspectFill
-        if let connection = layer.connection, connection.isVideoMirroringSupported {
-            connection.automaticallyAdjustsVideoMirroring = false
-            connection.isVideoMirrored = true
-        }
+        layer.removeFromSuperlayer()
         layer.autoresizingMask = [.layerWidthSizable, .layerHeightSizable]
         // A layer-hosting view: the layer first, then wantsLayer.
         view.layer = layer
