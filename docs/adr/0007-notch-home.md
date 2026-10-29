@@ -8,10 +8,10 @@ notice (a device, the sound output, the power, a finished timer), the next meeti
 camera in use, a running timer, the playing track — and otherwise a notch-sized black target that
 disappears into the hardware notch. Only the top strip of the notch opens it on hover (browser tabs
 sit right under the notch); the band's wings do not, so the pointer can cross them to the menu bar.
-Open, it is one card with seven pages walked by a sideways swipe or click-drag, each at a fixed
-height of its own (`NotchHome.Card.height(for:)`), so a refresh never moves its edge: Music,
-Calendar, Weather, Reminders, Pomodoro, Shelf, Sound. Held down, the notch row asks the Agent, as ⌃⌃
-does, behind the voice assistant's own switch.
+Open, it is one card with six pages walked by a sideways swipe or click-drag, each at a fixed height
+of its own (`NotchHome.Card.height(for:)`), so a refresh never moves its edge: Music, Calendar (with
+the reminders under the events), Weather, Pomodoro, Shelf, Sound. Held down, the notch row asks the
+Agent, as ⌃⌃ does, behind the voice assistant's own switch.
 
 Decisions, and what they rest on (measured on macOS 26 unless noted):
 - **Music bars.** Real bars come from a Core Audio process tap (`SystemAudioLevels`), not

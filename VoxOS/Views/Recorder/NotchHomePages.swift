@@ -7,7 +7,6 @@ enum NotchHomePage: String, CaseIterable, Identifiable {
     case music
     case today
     case weather
-    case reminders
     case timer
     case shelf
     /// Per-app volume, with the clipboard, the camera mirror, keeping awake and pinning.
@@ -20,7 +19,6 @@ enum NotchHomePage: String, CaseIterable, Identifiable {
         case .music: return "music.note"
         case .today: return "calendar"
         case .weather: return "cloud.sun.fill"
-        case .reminders: return "checklist"
         case .timer: return "timer"
         case .shelf: return "tray"
         // A speaker, not sliders: in the corner, sliders read as Settings.
@@ -33,7 +31,6 @@ enum NotchHomePage: String, CaseIterable, Identifiable {
         case .music: return String(localized: "Music")
         case .today: return String(localized: "Calendar")
         case .weather: return String(localized: "Weather")
-        case .reminders: return String(localized: "Reminders")
         case .timer: return String(localized: "Pomodoro")
         case .shelf: return String(localized: "Shelf")
         case .sound: return String(localized: "Sound")
@@ -624,21 +621,40 @@ struct NotchTimerRing: View {
 
 struct NotchTodayPage: View {
     @ObservedObject var today: NotchToday
+    @ObservedObject var reminders: NotchReminders
+
+    /// Reminders listed under the events here; the rest wait in Reminders itself.
+    static let reminderRows = 3
+
+    /// The card's height on this page: the events, and the reminders under them.
+    static var cardHeight: CGFloat {
+        let events: CGFloat = CGFloat(NotchToday.eventLimit) * 26 + CGFloat(NotchToday.eventLimit - 1) * 9
+        let list: CGFloat = CGFloat(reminderRows) * 22 + CGFloat(reminderRows - 1) * 7
+        return NotchHome.Card.top + 6 + events + 21 + list + NotchHome.Card.bottom + 10
+    }
 
     var body: some View {
         TimelineView(.periodic(from: .now, by: 30)) { context in
             HStack(alignment: .center, spacing: 22) {
                 dateAndWeather(now: context.date)
                     .frame(width: 128, alignment: .leading)
-                Rectangle().fill(.white.opacity(0.08)).frame(width: 1, height: 72)
-                events(now: context.date)
-                    .frame(maxWidth: .infinity, alignment: .leading)
+                Rectangle().fill(.white.opacity(0.08)).frame(width: 1).frame(maxHeight: .infinity)
+                    .padding(.vertical, 10)
+                VStack(alignment: .leading, spacing: 10) {
+                    events(now: context.date)
+                    Rectangle().fill(.white.opacity(0.08)).frame(height: 1)
+                    NotchRemindersList(reminders: reminders, now: context.date, rows: Self.reminderRows)
+                }
+                .frame(maxWidth: .infinity, alignment: .leading)
             }
             .frame(maxHeight: .infinity)
         }
         .padding(.horizontal, AgentComposer.panelInset)
         .padding(.bottom, NotchHome.Card.bottom)
-        .onAppear { today.refresh() }
+        .onAppear {
+            today.refresh()
+            reminders.refresh()
+        }
     }
 
     private func dateAndWeather(now: Date) -> some View {
@@ -726,17 +742,14 @@ struct NotchTodayPage: View {
 
 // MARK: - Reminders
 
-struct NotchRemindersPage: View {
+/// The reminders on the Calendar page, under the events: a ring to tick each one.
+private struct NotchRemindersList: View {
     @ObservedObject var reminders: NotchReminders
+    let now: Date
+    let rows: Int
 
     var body: some View {
-        TimelineView(.periodic(from: .now, by: 60)) { context in
-            content(now: context.date)
-                .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .leading)
-        }
-        .padding(.horizontal, AgentComposer.panelInset)
-        .padding(.bottom, NotchHome.Card.bottom)
-        .onAppear { reminders.refresh() }
+        content(now: now)
     }
 
     @ViewBuilder
@@ -773,7 +786,7 @@ struct NotchRemindersPage: View {
                 }
             } else {
                 VStack(alignment: .leading, spacing: 7) {
-                    ForEach(reminders.items) { item in
+                    ForEach(reminders.items.prefix(rows)) { item in
                         NotchReminderRow(item: item, now: now) { reminders.complete(item.id) }
                     }
                 }

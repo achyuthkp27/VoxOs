@@ -55,6 +55,7 @@ enum NotchHome {
             case .music: return panelOpen ? NotchMusicPanel.Layout.cardHeight : height
             case .weather: return NotchWeatherPage.cardHeight
             case .timer: return NotchTimerPage.cardHeight
+            case .today: return NotchTodayPage.cardHeight
             // The camera needs room to be seen: as tall as Weather while the mirror shows.
             case .sound: return mirrorShown ? NotchWeatherPage.cardHeight : height
             default: return height
@@ -463,11 +464,9 @@ struct NotchHomeView: View {
         case .timer:
             NotchTimerPage(timers: .shared)
         case .today:
-            NotchTodayPage(today: .shared)
+            NotchTodayPage(today: .shared, reminders: .shared)
         case .weather:
             NotchWeatherPage(today: .shared)
-        case .reminders:
-            NotchRemindersPage(reminders: .shared)
         case .shelf:
             NotchShelfPage(shelf: .shared, dropping: model.dropping)
         case .sound:
