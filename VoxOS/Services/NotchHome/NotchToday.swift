@@ -82,7 +82,8 @@ final class NotchToday: ObservableObject {
         case denied
     }
 
-    nonisolated static let eventLimit = 3
+    /// How many events the Calendar page lists; it scrolls past the first few.
+    nonisolated static let eventLimit = 100
     static let weatherLifetime: TimeInterval = 30 * 60
     /// The countdown shows from this long before a meeting…
     nonisolated static let meetingLead: TimeInterval = 5 * 60

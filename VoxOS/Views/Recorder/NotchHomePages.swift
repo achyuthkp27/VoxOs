@@ -623,13 +623,14 @@ struct NotchTodayPage: View {
     @ObservedObject var today: NotchToday
     @ObservedObject var reminders: NotchReminders
 
-    /// Reminders listed under the events here; the rest wait in Reminders itself.
-    static let reminderRows = 3
+    /// Events and reminders in view at once; the column scrolls to the rest.
+    static let visibleEvents = 3
+    static let visibleReminders = 3
 
-    /// The card's height on this page: the events, and the reminders under them.
+    /// The card's height on this page: three events, and three reminders under them.
     static var cardHeight: CGFloat {
-        let events: CGFloat = CGFloat(NotchToday.eventLimit) * 26 + CGFloat(NotchToday.eventLimit - 1) * 9
-        let list: CGFloat = CGFloat(reminderRows) * 22 + CGFloat(reminderRows - 1) * 7
+        let events: CGFloat = CGFloat(visibleEvents) * 26 + CGFloat(visibleEvents - 1) * 9
+        let list: CGFloat = CGFloat(visibleReminders) * 22 + CGFloat(visibleReminders - 1) * 7
         return NotchHome.Card.top + 6 + events + 21 + list + NotchHome.Card.bottom + 10
     }
 
@@ -640,11 +641,17 @@ struct NotchTodayPage: View {
                     .frame(width: 128, alignment: .leading)
                 Rectangle().fill(.white.opacity(0.08)).frame(width: 1).frame(maxHeight: .infinity)
                     .padding(.vertical, 10)
-                VStack(alignment: .leading, spacing: 10) {
-                    events(now: context.date)
-                    Rectangle().fill(.white.opacity(0.08)).frame(height: 1)
-                    NotchRemindersList(reminders: reminders, now: context.date, rows: Self.reminderRows)
+                // However many there are: the column scrolls, the card keeps its height.
+                ScrollView(.vertical) {
+                    VStack(alignment: .leading, spacing: 10) {
+                        events(now: context.date)
+                        Rectangle().fill(.white.opacity(0.08)).frame(height: 1)
+                        NotchRemindersList(reminders: reminders, now: context.date)
+                    }
+                    .padding(.vertical, 10)
+                    .frame(maxWidth: .infinity, alignment: .leading)
                 }
+                .scrollIndicators(.automatic)
                 .frame(maxWidth: .infinity, alignment: .leading)
             }
             .frame(maxHeight: .infinity)
@@ -746,7 +753,6 @@ struct NotchTodayPage: View {
 private struct NotchRemindersList: View {
     @ObservedObject var reminders: NotchReminders
     let now: Date
-    let rows: Int
 
     var body: some View {
         content(now: now)
@@ -786,7 +792,7 @@ private struct NotchRemindersList: View {
                 }
             } else {
                 VStack(alignment: .leading, spacing: 7) {
-                    ForEach(reminders.items.prefix(rows)) { item in
+                    ForEach(reminders.items) { item in
                         NotchReminderRow(item: item, now: now) { reminders.complete(item.id) }
                     }
                 }

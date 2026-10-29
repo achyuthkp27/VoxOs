@@ -18,7 +18,8 @@ final class NotchReminders: ObservableObject {
         let color: Color
     }
 
-    nonisolated static let limit = 4
+    /// How many reminders the Calendar page lists; it scrolls past the first few.
+    nonisolated static let limit = 100
 
     @Published private(set) var items: [Item] = []
     @Published private(set) var access: NotchToday.CalendarAccess = NotchReminders.currentAccess()
