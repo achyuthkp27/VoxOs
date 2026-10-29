@@ -13,13 +13,64 @@
 VoxOS is a native macOS voice dictation and voice-to-action agent, built for my own day-to-day use —
 not distributed or sold.
 
-It does two things:
+It does three things:
 
 1. **Dictation** — hold a shortcut, speak, and it transcribes locally (Whisper / Parakeet) and pastes cleaned-up
    text wherever your cursor is.
 2. **Agent Mode** — hold a different shortcut, speak a request, and it acts on your Mac: add calendar events,
    set reminders, draft emails, send WhatsApp/Slack/iMessage messages, find files, open apps and URLs, and more,
    using a provider-agnostic JSON tool-calling loop (works with local Ollama, Local CLI, or any hosted provider).
+3. **The notch** — between dictations the MacBook's notch becomes a small home for the things you glance at:
+   music, your calendar, the weather, reminders, a Pomodoro timer, a file shelf and sound controls, plus
+   Claude Code's requests, all a hover away.
+
+## The notch
+
+Push the pointer to the top of the notch, or drag a file toward it, and it opens into a card whose pages you
+swipe between. The rest of the time it stays the size of the notch and shows one thing at a time.
+
+**Pages, when it is open**
+
+- 🎵 **Music** — the cover, the title and "Artist — Album", the lyric under way or the track's format
+  (Lossless, Hi-Res Lossless, Dolby Atmos), and its position; the star (Apple Music favourites), shuffle,
+  previous, play/pause, next and repeat; and a list with **Up Next** — the queue, numbered, a double-click
+  plays one — and **Output**, to send the sound to another device. In a track's last seconds it says what
+  is up next. Apple Music, Spotify and any app macOS reports as playing; dots switch between players. Live
+  Music Bars move with the actual audio when switched on.
+- 📅 **Calendar** — the date and the weather, the next events with **Join** for a video call, and under
+  them your reminders, ticked off from the notch.
+- 🌤️ **Weather** — the place and when it was read; the temperature with the conditions and today's high and
+  low; rain chance, humidity, feels like and wind; and the next five days, each with its chance of rain and
+  its range as a bar on the week's, coloured by temperature. Open-Meteo, no key or account.
+- 🍅 **Pomodoro** — a ring with the time and the sessions done, and Start, Pause and Reset; start a focus,
+  a short break or a long break, whichever you want. Settings for each length, how many sessions come before a
+  long break (or none), the sound, and whether the next session starts on its own. Plain timers start by voice.
+- 🗂️ **Shelf** — drop files on the notch to keep them at hand; open, copy, zip, reveal or remove them.
+- 🔊 **Sound** — each playing app's own volume, clipboard history, a camera mirror, keeping
+  the Mac awake, and pinning the card open.
+
+**One thing at a time, when it is closed**
+
+- The playing track with its cover and bars, a running timer, or a download's progress.
+- The next meeting, counting down, with **Join**.
+- Another app using the microphone or camera; a click on the microphone mutes it.
+- Volume and brightness, in place of macOS's own pop-up.
+- A short notice when something happens: a Bluetooth device or Wi-Fi connects or drops, the sound moves to
+  another output, the charger is plugged in or the battery runs low, a timer ends, rain is due within two
+  hours, a Focus mode comes on, or an app's unread count goes up.
+
+**Claude Code and other CLIs**
+
+- Allow or deny a Claude Code session's requests, answer its questions and approve its plans from the notch,
+  through local hooks. See when a session is working, its reply when a turn ends (read aloud if you like),
+  your usage limits and costs, and the CI result after a push. Codex turns, and Gemini CLI turns and
+  approvals, show there too.
+
+**Everything else**
+
+- Hold the notch to ask the Agent. Liquid Glass or solid black. Hidden from screenshots and screen sharing if
+  you want. Follows the display in use, and optionally stays in full screen. Every part has its own switch in
+  Settings → Notch, and nothing that needs a permission asks for it before you open its page.
 
 ## Features
 
@@ -50,9 +101,9 @@ It does two things:
 ## Screenshots
 
 <p align="center">
-  <img src="docs/screenshots/notch-music.png" width="480" alt="Notch Home's Music page: the cover, title, progress and controls" />
+  <img src="docs/screenshots/notch-music.png" width="480" alt="Notch Home's Music page: the cover, the title and Artist — Album, the progress line, and the star, shuffle, previous, pause, next, repeat and Up Next buttons" />
   <br />
-  <img src="docs/screenshots/notch-pomodoro.png" width="480" alt="Notch Home's Pomodoro page: a 25-minute focus ring with Start focus, 5 min and 15 min" />
+  <img src="docs/screenshots/notch-pomodoro.png" width="480" alt="Notch Home's Pomodoro page: a 25-minute focus ring with the session marks, Reset, Start and Settings" />
 </p>
 
 ## Build
