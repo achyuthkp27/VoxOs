@@ -1,9 +1,9 @@
 import AppKit
 import Combine
-import CoreAudio
 import MediaRemoteAdapter
 import QuartzCore
 import SwiftUI
+import VoxOSNowPlaying
 import os
 
 /// The notch between dictations. Collapsed it says one thing at a time; hovered (or with files
@@ -50,9 +50,9 @@ enum NotchHome {
 
         /// The open card's height on a page: compact, except where a page has more to show. Fixed
         /// per page, never per reading, so a refresh cannot move the card's edge under the pointer.
-        static func height(for page: NotchHomePage, outputOpen: Bool = false) -> CGFloat {
+        static func height(for page: NotchHomePage, panelOpen: Bool = false) -> CGFloat {
             switch page {
-            case .music: return outputOpen ? NotchOutputPanel.Layout.cardHeight : NotchHomePlayer.Layout.cardHeight
+            case .music: return panelOpen ? NotchMusicPanel.Layout.cardHeight : height
             case .weather: return NotchWeatherPage.cardHeight
             case .timer: return NotchTimerPage.cardHeight
             default: return height
@@ -184,6 +184,9 @@ enum NotchHome {
     static let openRequest = Notification.Name("com.achyuthkp.voxos.notchHome.open")
     static let closeRequest = Notification.Name("com.achyuthkp.voxos.notchHome.close")
 
+    /// How much of the queue Up Next lists.
+    static let queueLength = 25
+
     static func clock(_ seconds: Double) -> String {
         let total = max(0, Int(seconds.rounded(.down)))
         return String(format: "%d:%02d", total / 60, total % 60)
@@ -235,8 +238,14 @@ final class NotchHomeModel: ObservableObject {
     @Published var cardHeight: CGFloat = NotchHome.Card.height
     /// Apple Music's star for the track shown; nil where the player has none.
     @Published var favorite: Bool?
-    /// The Music page shows where the sound goes in place of the player.
-    @Published var musicOutputOpen = false
+    /// The Music page's list (Up Next or Output) in place of the player; nil shows the player.
+    @Published var musicPanel: NotchMusicPanel.Tab?
+    /// The queue, playing track first, while Up Next is open; nil until it has been read.
+    @Published var queue: [NowPlayingQueue.Item]?
+    /// The track after the playing one, for "Up Next" in its last seconds.
+    @Published var nextUp: NowPlayingQueue.Item?
+    /// The format the playing track plays in, for the badge under the artist.
+    @Published var audioFormat: NowPlayingQueue.AudioFormat?
     /// While pages move: how far the current page is from its place, in points…
     @Published var pageOffset: CGFloat = 0
     /// …and the page shown beside it: the one coming in under the fingers, or the one sliding
@@ -320,7 +329,7 @@ struct NotchHomeView: View {
                         .transition(reduceMotion ? .opacity : .blurIn)
                 }
             }
-            if content == .expanded, model.page == .music, model.sidePage == nil, !model.musicOutputOpen,
+            if content == .expanded, model.page == .music, model.sidePage == nil, model.musicPanel == nil,
                 model.tracks.count > 1
             {
                 playerDots
@@ -399,8 +408,7 @@ struct NotchHomeView: View {
                 .accessibilityAddTraits(selected ? .isSelected : [])
             }
         }
-        // Centred on the cover.
-        .frame(height: (NotchHomePlayer.Layout.top + NotchHomePlayer.Layout.cover / 2) * 2)
+        .frame(height: NotchHome.Card.height)
         .padding(.leading, 8)
         .offset(y: model.notchHeight)
     }
@@ -417,17 +425,28 @@ struct NotchHomeView: View {
         }
     }
 
+    /// Plays a track from Up Next, then reads the queue again once the player has moved on.
+    private func playQueued(_ offset: Int, _ item: NowPlayingQueue.Item) {
+        Task { @MainActor [weak model] in
+            await NowPlayingQueue.play(offset: offset, id: item.id)
+            try? await Task.sleep(for: .milliseconds(600))
+            model?.queue = await NowPlayingQueue.read(length: NotchHome.queueLength)
+        }
+    }
+
     @ViewBuilder
     private func pageView(_ page: NotchHomePage) -> some View {
         switch page {
         case .music:
-            if model.musicOutputOpen {
-                NotchOutputPanel(onClose: { model.musicOutputOpen = false })
+            if let tab = model.musicPanel {
+                NotchMusicPanel(
+                    tab: tab, queue: model.queue, rate: model.track?.rate ?? 1, onTab: { model.musicPanel = $0 },
+                    onPlay: { offset, item in playQueued(offset, item) }, onClose: { model.musicPanel = nil })
             } else if let track = model.track {
                 NotchHomePlayer(
-                    track: track, modes: model.modes, favorite: model.favorite, liveBars: model.liveBars,
-                    lyrics: lyrics.lines, onShuffle: onShuffle, onRepeat: onRepeat,
-                    onFavorite: { toggleFavorite(track) }, onOutput: { model.musicOutputOpen = true },
+                    track: track, modes: model.modes, favorite: model.favorite, format: model.audioFormat,
+                    next: model.nextUp, liveBars: model.liveBars, lyrics: lyrics.lines, onShuffle: onShuffle,
+                    onRepeat: onRepeat, onFavorite: { toggleFavorite(track) }, onList: { model.musicPanel = .upNext },
                     onToggleBars: { barsEnabled.toggle() })
             }
         case .timer:
@@ -816,112 +835,146 @@ private struct NotchHomeCover: View {
     }
 }
 
-/// The player, laid out as a card reads: the cover with the title, "Artist — Album" and the lyric
-/// under way; the position with the time gone and the time left; and the controls in one row —
-/// the star, shuffle, previous, play, next, repeat, and where the sound goes.
+/// The cover on the left; names, a hairline of progress and the controls beside it, top and
+/// bottom aligned with the cover. Times show only while the pointer is on the line.
 private struct NotchHomePlayer: View {
     let track: NotchTrack
     let modes: NotchPlaybackModes.State?
     /// Apple Music's star for this track; nil where the player has none.
     let favorite: Bool?
+    /// The format the track plays in, for the badge under the artist.
+    let format: NowPlayingQueue.AudioFormat?
+    /// The track after this one, for "Up Next" in the last seconds.
+    let next: NowPlayingQueue.Item?
     let liveBars: Bool
     /// Timed lines for the track, when lyrics are on and it has them.
     let lyrics: [NotchLyrics.Line]
     let onShuffle: () -> Void
     let onRepeat: () -> Void
     let onFavorite: () -> Void
-    let onOutput: () -> Void
+    let onList: () -> Void
     let onToggleBars: () -> Void
 
-    enum Layout {
-        static let cover: CGFloat = 56
-        static let scrubber: CGFloat = 22
-        static let transport: CGFloat = 32
-        static let headerGap: CGFloat = 8
-        static let scrubberGap: CGFloat = 4
-        static let top: CGFloat = NotchHome.Card.top + 2
-
-        /// The card's height on the Music page.
-        static var cardHeight: CGFloat {
-            let rows: CGFloat = cover + headerGap + scrubber + scrubberGap + transport
-            return top + rows + NotchHome.Card.bottom + 4
-        }
-    }
-
-    /// Music's red: the star, and shuffle and repeat while they are on.
-    static let lit = Color(.sRGB, red: 250 / 255, green: 36 / 255, blue: 60 / 255)
+    /// How long before the end the artist line gives way to the next track.
+    static let peek: TimeInterval = 10
 
     var body: some View {
-        VStack(spacing: 0) {
-            header
-            Spacer(minLength: Layout.headerGap)
-            NotchMusicScrubber(track: track) { NotchPlayers.perform(.seek($0), on: track.bundleID) }
-                .frame(height: Layout.scrubber)
-            Spacer(minLength: Layout.scrubberGap)
-            transport
-                .frame(height: Layout.transport)
-        }
-        .padding(.top, Layout.top)
-        .padding(.horizontal, AgentComposer.panelInset + 6)
-        .padding(.bottom, NotchHome.Card.bottom)
-    }
-
-    private var subtitle: String {
-        [track.artist, track.album ?? ""].filter { !$0.isEmpty }.joined(separator: " — ")
-    }
-
-    private var header: some View {
-        HStack(alignment: .center, spacing: 12) {
+        HStack(alignment: .top, spacing: 18) {
             // A click on the cover opens the app that is playing.
             Button {
                 NotchHomeApp.open(track.bundleID)
             } label: {
-                NotchHomeCover(track: track, size: Layout.cover)
-                    // Paused, the cover steps back a little, as the player itself shows it.
-                    .scaleEffect(track.isPlaying ? 1 : 0.9)
-                    .opacity(track.isPlaying ? 1 : 0.6)
-                    .animation(.smooth(duration: 0.22), value: track.isPlaying)
+                NotchHomeCover(track: track, size: NotchHome.Card.coverSize)
             }
             .buttonStyle(NotchCoverButtonStyle())
             .help(NotchHomeApp.name(for: track.bundleID).map { "Open \($0)" } ?? "Open the player")
             .accessibilityLabel(Text("Open \(NotchHomeApp.name(for: track.bundleID) ?? "the player")"))
-            VStack(alignment: .leading, spacing: 2) {
-                Text(verbatim: track.title)
-                    .font(.app(size: 15, weight: .bold))
-                    .foregroundStyle(.white)
-                    .lineLimit(1)
-                if !subtitle.isEmpty {
-                    Text(verbatim: subtitle)
-                        .font(.app(size: 12))
-                        .foregroundStyle(.white.opacity(0.6))
-                        .lineLimit(1)
+            VStack(alignment: .leading, spacing: 0) {
+                HStack(alignment: .top, spacing: 8) {
+                    VStack(alignment: .leading, spacing: 3) {
+                        Text(verbatim: track.title)
+                            .font(.app(size: 15, weight: .semibold))
+                            .foregroundStyle(.white)
+                            .lineLimit(1)
+                        if next != nil, track.duration ?? 0 > Self.peek {
+                            NotchTicking(every: 1, while: track.isPlaying) { tick in subtitle(at: tick.date) }
+                        } else {
+                            subtitle(at: Date())
+                        }
+                        if !lyrics.isEmpty {
+                            // Half a second is close enough to the singing and cheap to draw.
+                            NotchTicking(every: 0.5, while: track.isPlaying) { tick in lyric(at: tick.date) }
+                        } else if let format {
+                            NotchAudioFormatBadge(format: format)
+                        }
+                    }
+                    Spacer(minLength: 0)
+                    if track.isPlaying {
+                        // A click switches Live Music Bars, so they need not live in Settings to
+                        // be tried; ambient bars are dimmer, so the switch shows.
+                        Button(action: onToggleBars) {
+                            NotchLevelBars(
+                                color: track.tint, bars: 4, barWidth: 2.5, spacing: 2, maxHeight: 14,
+                                source: liveBars ? .live : .ambient
+                            )
+                            .opacity(liveBars ? 1 : 0.55)
+                            .frame(width: 18, height: 16)
+                            .contentShape(Rectangle())
+                        }
+                        .buttonStyle(.plain)
+                        .help(liveBars ? "Live music bars: on" : "Live music bars: off")
+                        .accessibilityLabel(Text(liveBars ? "Turn live music bars off" : "Turn live music bars on"))
+                    }
                 }
-                if !lyrics.isEmpty {
-                    NotchTicking(every: 0.5, while: track.isPlaying) { context in lyric(at: context.date) }
+                .padding(.top, 4)
+
+                Spacer(minLength: 0)
+
+                NotchHomeProgress(track: track) { NotchPlayers.perform(.seek($0), on: track.bundleID) }
+                    .frame(height: NotchHome.Card.progressHeight)
+
+                HStack(spacing: 0) {
+                    if let favorite {
+                        NotchHomeControl(
+                            symbol: favorite ? "star.fill" : "star", size: 11,
+                            label: favorite ? "Remove from Favorites" : "Favorite", lit: favorite, action: onFavorite)
+                        Spacer(minLength: 0)
+                    }
+                    NotchHomeControl(
+                        symbol: "shuffle", size: 11, label: "Shuffle", lit: modes?.shuffle == true, action: onShuffle)
+                    Spacer(minLength: 0)
+                    NotchHomeControl(symbol: "backward.fill", size: 13, label: "Previous") {
+                        NotchPlayers.perform(.previous, on: track.bundleID)
+                    }
+                    Spacer(minLength: 0)
+                    NotchHomeControl(
+                        symbol: track.isPlaying ? "pause.fill" : "play.fill", size: 19,
+                        label: track.isPlaying ? "Pause" : "Play"
+                    ) {
+                        NotchPlayers.perform(.toggle, on: track.bundleID)
+                    }
+                    Spacer(minLength: 0)
+                    NotchHomeControl(symbol: "forward.fill", size: 13, label: "Next") {
+                        NotchPlayers.perform(.next, on: track.bundleID)
+                    }
+                    Spacer(minLength: 0)
+                    NotchHomeControl(
+                        symbol: modes?.repeatMode == .one ? "repeat.1" : "repeat", size: 11, label: "Repeat",
+                        lit: modes.map { $0.repeatMode != .off } ?? false, action: onRepeat)
+                    Spacer(minLength: 0)
+                    NotchHomeControl(symbol: "list.bullet", size: 11, label: "Up Next and Output", action: onList)
                 }
+                .frame(height: NotchHome.Card.controlsHeight)
+                .padding(.top, 4)
             }
-            Spacer(minLength: 0)
-            if track.isPlaying {
-                // A click switches Live Music Bars, so they need not live in Settings to be tried;
-                // ambient bars are dimmer, so the switch shows.
-                Button(action: onToggleBars) {
-                    NotchLevelBars(
-                        color: track.tint, bars: 5, barWidth: 2.5, spacing: 2, maxHeight: 16,
-                        source: liveBars ? .live : .ambient
-                    )
-                    .opacity(liveBars ? 1 : 0.55)
-                    .frame(width: 22, height: 18)
-                    .contentShape(Rectangle())
-                }
-                .buttonStyle(.plain)
-                .help(liveBars ? "Live music bars: on" : "Live music bars: off")
-                .accessibilityLabel(Text(liveBars ? "Turn live music bars off" : "Turn live music bars on"))
-            }
+            .frame(height: NotchHome.Card.coverSize)
         }
-        .frame(height: Layout.cover)
+        .padding(.top, NotchHome.Card.top)
+        .padding(.horizontal, AgentComposer.panelInset)
+        .padding(.bottom, NotchHome.Card.bottom)
     }
 
-    /// The line being sung; half a second is close enough to the singing and cheap to draw.
+    /// "Artist — Album"; in the last seconds of a track, the one coming next.
+    private func subtitle(at date: Date) -> some View {
+        let remaining = (track.duration ?? 0) - (track.position(at: date) ?? 0)
+        let peeking = next != nil && track.isPlaying && remaining > 0 && remaining <= Self.peek
+        return Group {
+            if peeking, let next {
+                HStack(spacing: 4) {
+                    Image(systemName: "forward.end.alt.fill").font(.system(size: 8, weight: .semibold))
+                    Text("Up Next").font(.app(size: 12, weight: .semibold))
+                    Text(verbatim: next.title).font(.app(size: 12))
+                }
+                .foregroundStyle(.white.opacity(0.6))
+            } else {
+                Text(verbatim: [track.artist, track.album ?? ""].filter { !$0.isEmpty }.joined(separator: " — "))
+                    .font(.app(size: 12))
+                    .foregroundStyle(.white.opacity(0.5))
+            }
+        }
+        .lineLimit(1)
+    }
+
     private func lyric(at date: Date) -> some View {
         let line = NotchLyrics.line(at: track.position(at: date) ?? 0, in: lyrics)
         return Text(verbatim: line ?? "")
@@ -929,159 +982,6 @@ private struct NotchHomePlayer: View {
             .foregroundStyle(track.tint.opacity(0.9))
             .lineLimit(1)
             .animation(.easeOut(duration: 0.2), value: line)
-    }
-
-    private var transport: some View {
-        HStack(spacing: 8) {
-            NotchMusicButton(
-                symbol: favorite == true ? "star.fill" : "star", size: 15, width: 32,
-                label: favorite == true ? "Remove from Favorites" : "Favorite", lit: favorite == true,
-                action: onFavorite
-            )
-            // Kept in its place when the player has no star, so the row never shifts.
-            .opacity(favorite == nil ? 0 : 1)
-            .disabled(favorite == nil)
-            NotchMusicButton(
-                symbol: "shuffle", size: 15, width: 32, label: "Shuffle", lit: modes?.shuffle == true,
-                action: onShuffle)
-            NotchMusicButton(symbol: "backward.fill", size: 18, width: 42, label: "Previous") {
-                NotchPlayers.perform(.previous, on: track.bundleID)
-            }
-            NotchMusicButton(
-                symbol: track.isPlaying ? "pause.fill" : "play.fill", size: 24, width: 42,
-                label: track.isPlaying ? "Pause" : "Play"
-            ) {
-                NotchPlayers.perform(.toggle, on: track.bundleID)
-            }
-            NotchMusicButton(symbol: "forward.fill", size: 18, width: 42, label: "Next") {
-                NotchPlayers.perform(.next, on: track.bundleID)
-            }
-            NotchMusicButton(
-                symbol: modes?.repeatMode == .one ? "repeat.1" : "repeat", size: 15, width: 32, label: "Repeat",
-                lit: modes.map { $0.repeatMode != .off } ?? false, action: onRepeat)
-            NotchMusicButton(symbol: "airplayaudio", size: 15, width: 32, label: "Output", action: onOutput)
-        }
-        .frame(maxWidth: .infinity)
-    }
-}
-
-/// Where the sound goes, in place of the player: every output device, the current one ticked; a
-/// click moves the Mac's sound there. Read when it opens and after each choice; nothing is polled.
-private struct NotchOutputPanel: View {
-    let onClose: () -> Void
-    @State private var devices: [NotchAudioOutput.Device] = []
-    @State private var current = AudioObjectID(kAudioObjectUnknown)
-
-    enum Layout {
-        static let header: CGFloat = 22
-        static let row: CGFloat = 34
-        static let rows = 4
-
-        /// Four rows under the header, whatever is connected; more scroll.
-        static var cardHeight: CGFloat {
-            let list: CGFloat = CGFloat(rows) * row + CGFloat(rows - 1) * 2
-            return NotchHome.Card.top + 4 + header + 6 + list + NotchHome.Card.bottom + 4
-        }
-    }
-
-    var body: some View {
-        VStack(alignment: .leading, spacing: 6) {
-            HStack(spacing: 6) {
-                Text("Output")
-                    .font(.app(size: 11, weight: .semibold))
-                    .foregroundStyle(.white)
-                    .padding(.horizontal, 10)
-                    .frame(height: Layout.header)
-                    .background(Capsule().fill(.white.opacity(0.12)))
-                Spacer(minLength: 0)
-                Button(action: onClose) {
-                    Image(systemName: "xmark")
-                        .font(.system(size: 10, weight: .semibold))
-                        .foregroundStyle(.white.opacity(0.8))
-                        .frame(width: Layout.header, height: Layout.header)
-                        .background(Circle().fill(.white.opacity(0.1)))
-                        .contentShape(Circle())
-                }
-                .buttonStyle(.plain)
-                .accessibilityLabel(Text("Back to the Player"))
-            }
-            if devices.isEmpty {
-                Text("No output devices")
-                    .font(.app(size: 12))
-                    .foregroundStyle(.white.opacity(0.55))
-                    .padding(.top, 8)
-            } else {
-                ScrollView(.vertical, showsIndicators: devices.count > Layout.rows) {
-                    VStack(spacing: 2) {
-                        ForEach(devices, id: \.id) { device in row(device) }
-                    }
-                }
-            }
-            Spacer(minLength: 0)
-        }
-        .padding(.top, NotchHome.Card.top + 4)
-        .padding(.horizontal, AgentComposer.panelInset + 6)
-        .padding(.bottom, NotchHome.Card.bottom)
-        .onAppear(perform: reload)
-    }
-
-    private func row(_ device: NotchAudioOutput.Device) -> some View {
-        let selected = device.id == current
-        return Button {
-            current = device.id
-            Task.detached(priority: .userInitiated) {
-                NotchAudioOutput.makeDefaultOutput(device.id)
-                await MainActor.run { reload() }
-            }
-        } label: {
-            HStack(spacing: 10) {
-                Image(systemName: NotchAudioOutput.pickerSymbol(for: device))
-                    .font(.system(size: 12, weight: .medium))
-                    .foregroundStyle(.white.opacity(selected ? 1 : 0.75))
-                    .frame(width: 22)
-                Text(verbatim: device.name)
-                    .font(.app(size: 12, weight: selected ? .semibold : .regular))
-                    .foregroundStyle(.white.opacity(0.9))
-                    .lineLimit(1)
-                Spacer(minLength: 0)
-                if selected {
-                    Image(systemName: "checkmark")
-                        .font(.system(size: 10, weight: .bold))
-                        .foregroundStyle(.white)
-                }
-            }
-            .padding(.horizontal, 8)
-            .frame(height: Layout.row)
-            .contentShape(Rectangle())
-        }
-        .buttonStyle(NotchRowButtonStyle())
-        .accessibilityAddTraits(selected ? .isSelected : [])
-    }
-
-    private func reload() {
-        devices = NotchAudioOutput.outputDevices()
-        current = NotchAudioOutput.defaultOutput()
-    }
-}
-
-/// A list row that washes under the pointer and when pressed.
-private struct NotchRowButtonStyle: ButtonStyle {
-    func makeBody(configuration: Configuration) -> some View {
-        Row(configuration: configuration)
-    }
-
-    private struct Row: View {
-        let configuration: ButtonStyleConfiguration
-        @State private var hovered = false
-
-        var body: some View {
-            configuration.label
-                .background(
-                    RoundedRectangle(cornerRadius: 7, style: .continuous)
-                        .fill(.white.opacity(configuration.isPressed ? 0.12 : hovered ? 0.07 : 0))
-                )
-                .onHover { hovered = $0 }
-        }
     }
 }
 
@@ -1129,84 +1029,78 @@ private struct NotchCoverButtonStyle: ButtonStyle {
     }
 }
 
-/// The position: the time gone, the line, and the time left. A click on the line jumps there; a
-/// drag would fight the card's sideways swipe between pages, so the line is clicked, not dragged.
-private struct NotchMusicScrubber: View {
+/// A hairline you can click to jump. The times appear above it only while the pointer is on it;
+/// the rest of the time the line says enough.
+private struct NotchHomeProgress: View {
     let track: NotchTrack
     let onSeek: (Double) -> Void
     @State private var hovered = false
 
     var body: some View {
-        NotchTicking(every: 1, while: track.isPlaying) { context in line(at: context.date) }
+        NotchTicking(every: 1, while: track.isPlaying) { tick in line(at: tick.date) }
             .onHover { inside in withAnimation(.easeOut(duration: 0.15)) { hovered = inside } }
-            .accessibilityElement(children: .ignore)
-            .accessibilityLabel(Text("Position"))
-            .accessibilityValue(Text(verbatim: NotchHome.clock(track.position(at: Date()) ?? 0)))
     }
 
     private func line(at date: Date) -> some View {
+        let position = track.position(at: date) ?? 0
         let duration = track.duration ?? 0
-        let position = min(track.position(at: date) ?? 0, duration > 0 ? duration : .infinity)
-        let width: CGFloat = duration >= 3600 ? 50 : 40
-        return HStack(spacing: 8) {
-            Text(verbatim: duration > 0 ? NotchHome.clock(position) : "")
-                .frame(width: width, alignment: .leading)
-            GeometryReader { geo in
-                let fraction = duration > 0 ? min(1, max(0, position / duration)) : 0
-                ZStack(alignment: .leading) {
-                    Capsule().fill(.white.opacity(0.22))
-                    Capsule().fill(.white).frame(width: max(6, geo.size.width * fraction))
-                    if hovered, duration > 0 {
-                        Circle().fill(.white).frame(width: 12, height: 12)
-                            .offset(x: min(max(geo.size.width * fraction - 6, 0), geo.size.width - 12))
-                            .transition(.opacity)
+        return GeometryReader { geo in
+            let fraction = duration > 0 ? min(1, position / duration) : 0
+            ZStack(alignment: .leading) {
+                Capsule().fill(.white.opacity(0.14))
+                Capsule().fill(.white.opacity(hovered ? 0.95 : 0.75)).frame(
+                    width: max(3, geo.size.width * fraction))
+            }
+            .frame(height: hovered ? 4 : 3)
+            .frame(maxHeight: .infinity)
+            .overlay(alignment: .top) {
+                if hovered, duration > 0 {
+                    HStack {
+                        Text(verbatim: NotchHome.clock(position))
+                        Spacer()
+                        Text(verbatim: NotchHome.clock(duration))
                     }
-                }
-                .frame(height: 6)
-                .frame(maxHeight: .infinity)
-                .contentShape(Rectangle())
-                .onTapGesture { location in
-                    guard duration > 0 else { return }
-                    onSeek(Double(min(max(location.x / max(geo.size.width, 1), 0), 1)) * duration)
+                    .font(.appMono(size: 9, weight: .medium))
+                    .foregroundStyle(.white.opacity(0.55))
+                    .offset(y: -9)
+                    .transition(.opacity)
                 }
             }
-            Text(verbatim: duration > 0 ? "-" + NotchHome.clock(max(0, duration - position)) : "")
-                .frame(width: width, alignment: .trailing)
+            .contentShape(Rectangle())
+            .onTapGesture { location in
+                guard duration > 0 else { return }
+                onSeek(Double(location.x / max(geo.size.width, 1)) * duration)
+            }
         }
-        .font(.app(size: 11, weight: .medium, design: .rounded))
-        .monospacedDigit()
-        .foregroundStyle(.white.opacity(0.55))
     }
 }
 
-/// One of the player's controls: a glyph with a wash under the pointer; shuffle, repeat and the
-/// star turn Music's red while on.
-private struct NotchMusicButton: View {
+private struct NotchHomeControl: View {
     let symbol: String
     let size: CGFloat
-    let width: CGFloat
     let label: LocalizedStringKey
-    var lit = false
+    /// Shuffle and repeat: lit while on.
+    var lit: Bool? = nil
     let action: () -> Void
     @State private var hovered = false
 
     var body: some View {
         Button(action: action) {
             Image(systemName: symbol)
-                .font(.system(size: size, weight: .medium))
-                .foregroundStyle(lit ? NotchHomePlayer.lit : .white)
-                .contentTransition(.symbolEffect(.replace))
-                .frame(width: width, height: 30)
-                .background(
-                    RoundedRectangle(cornerRadius: 10, style: .continuous).fill(.white.opacity(hovered ? 0.13 : 0))
-                )
+                .font(.system(size: size, weight: .semibold))
+                .foregroundStyle(color)
+                .frame(width: 30, height: NotchHome.Card.controlsHeight)
                 .contentShape(Rectangle())
         }
         .buttonStyle(.plain)
         .onHover { hovered = $0 }
-        .help(Text(label))
         .accessibilityLabel(Text(label))
-        .accessibilityAddTraits(lit ? .isSelected : [])
+        .accessibilityAddTraits(lit == true ? .isSelected : [])
+    }
+
+    private var color: Color {
+        if let lit { return lit ? AppTheme.Accent.primary : .white.opacity(hovered ? 0.8 : 0.45) }
+        return .white.opacity(hovered ? 1 : 0.85)
     }
 }
 
@@ -2202,7 +2096,12 @@ final class NotchHomeManager {
         guard let screen else { return }
         if panel == nil { buildPanel(on: screen) }
         guard let panel, let model else { return }
-        if model.track != track { model.track = track }
+        if model.track != track {
+            let changed = model.track?.id != track?.id
+            model.track = track
+            // A new track while the card is open: its star, format and what follows are re-read.
+            if changed, model.content == .expanded { readModes(of: track) }
+        }
         if content == .expanded, model.content != .expanded {
             land()
             model.page = NotchHomePage.preferred(
@@ -2218,7 +2117,7 @@ final class NotchHomeManager {
 
         // Opening: the card at its page's height from the first frame.
         if content == .expanded {
-            model.musicOutputOpen = false
+            model.musicPanel = nil
             model.cardHeight = NotchHome.Card.height(for: model.page)
         }
         let target = NotchHome.size(
@@ -2245,6 +2144,8 @@ final class NotchHomeManager {
     /// Shuffle and repeat are read when the player opens, for the players that can say.
     private func readModes(of track: NotchTrack?) {
         model?.modes = nil
+        readQueueHead(of: track)
+        if model?.musicPanel == .upNext { readQueue() }
         model?.favorite = nil
         if NotchPlaybackModes.canFavorite(track?.bundleID) {
             Task { @MainActor [weak model] in
@@ -2309,18 +2210,47 @@ final class NotchHomeManager {
             self?.setNeedsRefresh()
         }
         .store(in: &cancellables)
-        // Opening or closing the Output list changes the Music page's height.
-        model.$musicOutputOpen.dropFirst().removeDuplicates().receive(on: RunLoop.main)
-            .sink { [weak self] _ in self?.fitCard() }
+        // Opening or closing the Music page's list changes its height; Up Next reads the queue.
+        model.$musicPanel.dropFirst().removeDuplicates().receive(on: RunLoop.main)
+            .sink { [weak self] tab in
+                self?.fitCard()
+                if tab == .upNext { self?.readQueue() }
+            }
             .store(in: &cancellables)
         logger.notice("Notch home built")
+    }
+
+    /// The playing track's format and the one after it, from MediaRemote's queue: one short read
+    /// when the card opens or the track changes.
+    private func readQueueHead(of track: NotchTrack?) {
+        model?.audioFormat = nil
+        model?.nextUp = nil
+        guard track != nil else { return }
+        Task { @MainActor [weak model] in
+            let items = await NowPlayingQueue.read(length: 2)
+            guard model?.track?.id == track?.id, let items else { return }
+            model?.audioFormat = items.first?.format
+            model?.nextUp = items.count > 1 ? items[1] : nil
+        }
+    }
+
+    /// Up Next's list: read when it opens, and when the track changes while it is open.
+    private func readQueue() {
+        guard let model else { return }
+        model.queue = nil
+        let id = model.track?.id
+        Task { @MainActor [weak model] in
+            let items = await NowPlayingQueue.read(length: NotchHome.queueLength)
+            guard model?.track?.id == id else { return }
+            model?.queue = items ?? []
+        }
     }
 
     /// The open card follows its page's height. Growing, the window grows first and the card with it;
     /// shrinking, the card shrinks first and the window after, so the card is never cut off.
     private func fitCard() {
         guard let model, let panel, let screen else { return }
-        let height = NotchHome.Card.height(for: model.page, outputOpen: model.musicOutputOpen)
+        let height = NotchHome.Card.height(for: model.page, panelOpen: model.musicPanel != nil)
         guard height != model.cardHeight else { return }
         guard model.content == .expanded, panel.isVisible else {
             model.cardHeight = height

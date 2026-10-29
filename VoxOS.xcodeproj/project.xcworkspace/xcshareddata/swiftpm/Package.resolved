@@ -1,5 +1,5 @@
 {
-  "originHash" : "15c38058afe4ec7fe9d718e5c988a04a0d0f495adc1485cf989bdc8b7a560ab7",
+  "originHash" : "fbd53df7566662c28bff4b44e2e7f36a3a4092ce5fe414c1f87ecc23b1bc2e7e",
   "pins" : [
     {
       "identity" : "axswift",
@@ -24,7 +24,6 @@
       "kind" : "remoteSourceControl",
       "location" : "https://github.com/FluidInference/FluidAudio",
       "state" : {
-        "branch" : "main",
         "revision" : "503b4bd1bbf7220882de39fe8ae6716aae4132da"
       }
     },
@@ -50,7 +49,6 @@
       "kind" : "remoteSourceControl",
       "location" : "https://github.com/Beingpax/mediaremote-adapter",
       "state" : {
-        "branch" : "master",
         "revision" : "b97fa53f0654c8e33519e8a601b0bead3abd310a"
       }
     },
@@ -85,7 +83,6 @@
       "kind" : "remoteSourceControl",
       "location" : "https://github.com/Beingpax/SelectedTextKit.git",
       "state" : {
-        "branch" : "performance/off-main-menu-action",
         "revision" : "05a3e5177300d800c2785be83ba2ba7fa775e41a"
       }
     },
