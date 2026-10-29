@@ -119,4 +119,55 @@ final class NotchAudioOutput: @unchecked Sendable {
         AudioObjectGetPropertyData(id, &transportAddress, 0, nil, &size, &transport)
         return Device(id: id, name: text, transport: transport)
     }
+
+    // MARK: Choosing
+
+    /// The devices the Music page's Output list offers: every one with output channels, less the
+    /// virtual and aggregate plumbing apps make for themselves. No permission is needed.
+    static func outputDevices() -> [Device] {
+        var address = AudioObjectPropertyAddress(
+            mSelector: kAudioHardwarePropertyDevices, mScope: kAudioObjectPropertyScopeGlobal,
+            mElement: kAudioObjectPropertyElementMain)
+        var size: UInt32 = 0
+        let system = AudioObjectID(kAudioObjectSystemObject)
+        guard AudioObjectGetPropertyDataSize(system, &address, 0, nil, &size) == noErr, size > 0 else { return [] }
+        var ids = [AudioObjectID](repeating: 0, count: Int(size) / MemoryLayout<AudioObjectID>.size)
+        guard AudioObjectGetPropertyData(system, &address, 0, nil, &size, &ids) == noErr else { return [] }
+        return ids.filter(hasOutput).compactMap(device).filter { isWorthANotice(transport: $0.transport) }
+    }
+
+    private static func hasOutput(_ id: AudioObjectID) -> Bool {
+        var address = AudioObjectPropertyAddress(
+            mSelector: kAudioDevicePropertyStreamConfiguration, mScope: kAudioObjectPropertyScopeOutput,
+            mElement: kAudioObjectPropertyElementMain)
+        var size: UInt32 = 0
+        guard AudioObjectGetPropertyDataSize(id, &address, 0, nil, &size) == noErr, size > 0 else { return false }
+        let raw = UnsafeMutableRawPointer.allocate(
+            byteCount: Int(size), alignment: MemoryLayout<AudioBufferList>.alignment)
+        defer { raw.deallocate() }
+        guard AudioObjectGetPropertyData(id, &address, 0, nil, &size, raw) == noErr else { return false }
+        let buffers = UnsafeMutableAudioBufferListPointer(raw.assumingMemoryBound(to: AudioBufferList.self))
+        return buffers.contains { $0.mNumberChannels > 0 }
+    }
+
+    /// Makes `id` the Mac's sound output. Core Audio answers success for a write it refuses, so the
+    /// answer is whether the default output reads back as `id`.
+    @discardableResult
+    static func makeDefaultOutput(_ id: AudioObjectID) -> Bool {
+        var address = defaultOutputAddress
+        var device = id
+        let size = UInt32(MemoryLayout<AudioObjectID>.size)
+        AudioObjectSetPropertyData(AudioObjectID(kAudioObjectSystemObject), &address, 0, nil, size, &device)
+        return defaultOutput() == id
+    }
+
+    /// The Output list's glyph: the laptop for its own speakers, as a picker names places.
+    static func pickerSymbol(for device: Device) -> String {
+        if device.transport == kAudioDeviceTransportTypeBuiltIn,
+            !device.name.localizedCaseInsensitiveContains("headphone")
+        {
+            return "laptopcomputer"
+        }
+        return symbol(for: device)
+    }
 }

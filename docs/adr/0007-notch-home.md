@@ -2,15 +2,16 @@
 
 Status: accepted (2026-10-28)
 
-Notch Home (`NotchHomeManager`) is its own persistent panel at `.statusBar + 1`, under Claude
-Code's cards (`+2`) and the recorder (`+3`), which both hide it. Collapsed it shows one thing at
-a time — a notice (a device, the sound output, the power, a finished timer), the next meeting, a
-microphone or camera in use, a running timer, the playing track — and otherwise a notch-sized
-black target that disappears into the hardware notch. Only the top strip of the notch opens it on
-hover (browser tabs sit right under the notch); the band's wings do not, so the pointer can cross
-them to the menu bar. Open, it is one card of fixed height with seven pages walked by a sideways
-swipe or click-drag: Music, Calendar, Weather, Reminders, Pomodoro, Shelf, Sound. Held down, the
-notch row asks the Agent, as ⌃⌃ does, behind the voice assistant's own switch.
+Notch Home (`NotchHomeManager`) is its own persistent panel at `.statusBar + 1`, under Claude Code's
+cards (`+2`) and the recorder (`+3`), which both hide it. Collapsed it shows one thing at a time — a
+notice (a device, the sound output, the power, a finished timer), the next meeting, a microphone or
+camera in use, a running timer, the playing track — and otherwise a notch-sized black target that
+disappears into the hardware notch. Only the top strip of the notch opens it on hover (browser tabs
+sit right under the notch); the band's wings do not, so the pointer can cross them to the menu bar.
+Open, it is one card with seven pages walked by a sideways swipe or click-drag, each at a fixed
+height of its own (`NotchHome.Card.height(for:)`), so a refresh never moves its edge: Music,
+Calendar, Weather, Reminders, Pomodoro, Shelf, Sound. Held down, the notch row asks the Agent, as ⌃⌃
+does, behind the voice assistant's own switch.
 
 Decisions, and what they rest on (measured on macOS 26 unless noted):
 - **Music bars.** Real bars come from a Core Audio process tap (`SystemAudioLevels`), not
@@ -60,7 +61,7 @@ Decisions, and what they rest on (measured on macOS 26 unless noted):
   pause never lets full volume through) and played on through a private aggregate device whose IO
   runs only while the app plays. It is system audio capture, so the purple dot shows meanwhile.
 - **Downloads, Focus.** Downloads come from the progress browsers publish for files in Downloads
-  (`Progress.addSubscriber`), throttled to two updates a second. Focus is read from
+  (`Progress.addSubscriber`), throttled to one update a second. Focus is read from
   ~/Library/DoNotDisturb/DB (Assertions.json, ModeConfigurations.json) when that folder changes;
   the format is private, so anything unexpected reads as no Focus.
 - **Mirror, keep awake.** The camera runs only from a click until its page goes away; keeping

@@ -3,7 +3,7 @@ import Testing
 
 @testable import VoxOS
 
-/// The Pomodoro page's settings and marks.
+/// The Pomodoro page's settings and marks, and the height each Notch Home page opens at.
 @Suite
 @MainActor
 struct NotchPomodoroPageTests {
@@ -62,5 +62,15 @@ struct NotchPomodoroPageTests {
         #expect(NotchTimerPage.clock(5 * 60) == "05:00")
         #expect(NotchTimerPage.clock(59.2) == "01:00", "rounded up, as a countdown shows it")
         #expect(NotchTimerPage.range(of: .sessions) == 2...8)
+    }
+
+
+    @Test func pagesTakeTheHeightTheyNeed() {
+        #expect(NotchHome.Card.height(for: .reminders) == NotchHome.Card.height)
+        #expect(NotchHome.Card.height(for: .music, outputOpen: true) > NotchHome.Card.height(for: .music))
+        #expect(NotchHome.Card.height(for: .weather) > NotchHome.Card.height)
+        #expect(NotchHome.Card.height(for: .timer) > NotchHome.Card.height)
+        let tall = NotchHome.size(for: .expanded, notchWidth: 180, notchHeight: 32, cardHeight: 260)
+        #expect(tall.height == 292)
     }
 }

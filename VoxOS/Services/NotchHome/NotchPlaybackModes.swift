@@ -102,6 +102,51 @@ enum NotchPlaybackModes {
         return await read(bundleID)
     }
 
+    // MARK: Favorite
+
+    /// The star: Music's own favourite, which it reads and sets through scripting. Spotify's
+    /// scripting has none, and MediaRemote does not report one, so other players show no star.
+    static func canFavorite(_ bundleID: String?) -> Bool { bundleID == music }
+
+    static let favoriteReadScript = #"""
+        tell application id "com.apple.Music"
+            if player state is stopped then return "unknown"
+            return (favorited of current track) as text
+        end tell
+        """#
+
+    /// Sets the star and waits up to three seconds for Music to agree, so the answer read back is
+    /// the one it settled on rather than the value from before the change.
+    static func favoriteWriteScript(to on: Bool) -> String {
+        """
+        tell application id "com.apple.Music"
+            if player state is stopped then return "unknown"
+            set favorited of current track to \(on)
+            repeat 10 times
+                if (favorited of current track) is \(on) then exit repeat
+                delay 0.3
+            end repeat
+            return (favorited of current track) as text
+        end tell
+        """
+    }
+
+    /// Never launches Music: only asked while Music is the player shown.
+    static func readFavorite(_ bundleID: String?) async -> Bool? {
+        guard canFavorite(bundleID) else { return nil }
+        return parseFavorite(await AgentAppleScript.runDetached(favoriteReadScript, timeout: 3)["result"] as? String)
+    }
+
+    static func setFavorite(_ bundleID: String?, to on: Bool) async -> Bool? {
+        guard canFavorite(bundleID) else { return nil }
+        return parseFavorite(
+            await AgentAppleScript.runDetached(favoriteWriteScript(to: on), timeout: 5)["result"] as? String)
+    }
+
+    static func parseFavorite(_ output: String?) -> Bool? {
+        Bool(output?.trimmingCharacters(in: .whitespacesAndNewlines).lowercased() ?? "")
+    }
+
     static func cycleRepeat(_ bundleID: String?, from state: State?) async -> State? {
         guard let bundleID, let state else {
             await MainActor.run { PlaybackController.shared.toggleRepeat() }

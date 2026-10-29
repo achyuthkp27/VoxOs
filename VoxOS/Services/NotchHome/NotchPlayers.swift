@@ -32,6 +32,8 @@ final class NotchPlayers: ObservableObject {
         let stamp: Date
         var artwork: NSImage?
         var artworkKey: String?
+        /// From the player's notification; nil where it did not say.
+        var album: String? = nil
 
         var trackKey: String { "\(bundleID)|\(title)|\(artist)" }
 
@@ -184,7 +186,8 @@ final class NotchPlayers: ObservableObject {
         else { return nil }
         return Entry(
             bundleID: music, title: title, artist: info["Artist"] as? String ?? "", isPlaying: state == "Playing",
-            duration: number(info["Total Time"]).map { $0 / 1000 }, position: nil, stamp: now)
+            duration: number(info["Total Time"]).map { $0 / 1000 }, position: nil, stamp: now,
+            album: info["Album"] as? String)
     }
 
     /// Spotify's PlaybackStateChanged: Name, Artist, Player State, Duration (ms), Playback
@@ -196,7 +199,7 @@ final class NotchPlayers: ObservableObject {
         return Entry(
             bundleID: spotify, title: title, artist: info["Artist"] as? String ?? "", isPlaying: state == "Playing",
             duration: number(info["Duration"]).map { $0 / 1000 }, position: number(info["Playback Position"]),
-            stamp: now)
+            stamp: now, album: info["Album"] as? String)
     }
 
     /// "title␟artist␟playing␟duration␟position"; durations are seconds for Music, milliseconds
