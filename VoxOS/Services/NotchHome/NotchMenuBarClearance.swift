@@ -36,14 +36,18 @@ enum NotchMenuBarClearance {
         let limitedBy: String
     }
 
-    /// Measures both sides off the main thread. `apps` are the running apps that can own status
-    /// items (VoxOS's own excluded: the band may sit over its own icon); `front` is the app whose
-    /// menus are showing.
-    static func measure(notchMinX: CGFloat, notchMaxX: CGFloat, front: pid_t?, apps: [pid_t]) async -> Measurement {
+    /// Measures both sides off the main thread; `front` is the app whose menus are showing. Status
+    /// items can belong to any running app that is not barred from the menu bar (VoxOS's own
+    /// excluded: the band may sit over its own icon). Each app's activation policy is a round trip
+    /// to Launch Services, which can take seconds while it is busy (an install, `lsregister`), so
+    /// the list is read here too, never on the main thread (measured on macOS 26).
+    static func measure(notchMinX: CGFloat, notchMaxX: CGFloat, front: pid_t?) async -> Measurement {
         await Task.detached(priority: .utility) {
             guard AXIsProcessTrusted() else { return Measurement(wing: nil, limitedBy: "no Accessibility") }
             let menus = front.flatMap { menusMaxX(of: $0, before: notchMinX) }
             let own = ProcessInfo.processInfo.processIdentifier
+            let apps = NSWorkspace.shared.runningApplications.filter { $0.activationPolicy != .prohibited }
+                .map(\.processIdentifier)
             let status = apps.filter { $0 != own }
                 .compactMap { pid in statusItemsMinX(of: pid, after: notchMaxX).map { (pid, $0) } }
                 .min { $0.1 < $1.1 }

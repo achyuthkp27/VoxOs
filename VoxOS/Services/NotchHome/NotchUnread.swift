@@ -7,7 +7,9 @@ import Combine
 ///
 /// The Dock already knows every badge; its accessibility tree gives each item's count
 /// (AXStatusLabel), with the Accessibility access VoxOS has for its shortcuts. Read once a minute
-/// with slack, not while the displays sleep; a count that only went down says nothing.
+/// with slack, not while the displays sleep; a count that only went down says nothing. The Dock
+/// answers through Accessibility, which can take seconds while it is busy, so it is read off the
+/// main thread, with a time limit (it stalled the main thread for 1.8 s, measured on macOS 26).
 @MainActor
 final class NotchUnread: ObservableObject {
     static let shared = NotchUnread()
@@ -20,6 +22,10 @@ final class NotchUnread: ObservableObject {
     private var timer: Timer?
     private var awayWatch: AnyCancellable?
     private var clearTask: Task<Void, Never>?
+    private var reading = false
+
+    /// How long one Accessibility request to the Dock may take before it is given up.
+    nonisolated static let dockTimeout: Float = 1
 
     static var isEnabled: Bool { UserDefaults.standard.bool(forKey: DefaultsKeys.notchUnreadEnabled) }
 
@@ -53,7 +59,18 @@ final class NotchUnread: ObservableObject {
     }
 
     private func check() {
-        let now = Self.dockBadges()
+        guard !reading else { return }
+        reading = true
+        Task { @MainActor [weak self] in
+            let now = await Task.detached(priority: .utility) { Self.dockBadges() }.value
+            self?.received(now)
+        }
+    }
+
+    private func received(_ now: [String: Int]) {
+        reading = false
+        // Stopped while the Dock was being read.
+        guard awayWatch != nil else { return }
         defer { counts = now }
         // The first reading is the baseline, not news.
         guard let before = counts, let (app, count) = Self.risen(from: before, to: now) else { return }
@@ -75,10 +92,11 @@ final class NotchUnread: ObservableObject {
     }
 
     /// Dock item title to its badge, for items with a numeric badge.
-    static func dockBadges() -> [String: Int] {
+    nonisolated static func dockBadges() -> [String: Int] {
         guard let dock = NSRunningApplication.runningApplications(withBundleIdentifier: "com.apple.dock").first
         else { return [:] }
         let app = AXUIElementCreateApplication(dock.processIdentifier)
+        AXUIElementSetMessagingTimeout(app, dockTimeout)
         var badges: [String: Int] = [:]
         for list in children(of: app) {
             for item in children(of: list) {
@@ -91,7 +109,7 @@ final class NotchUnread: ObservableObject {
         return badges
     }
 
-    private static func children(of element: AXUIElement) -> [AXUIElement] {
+    private nonisolated static func children(of element: AXUIElement) -> [AXUIElement] {
         var value: CFTypeRef?
         guard AXUIElementCopyAttributeValue(element, kAXChildrenAttribute as CFString, &value) == .success else {
             return []
@@ -99,7 +117,7 @@ final class NotchUnread: ObservableObject {
         return value as? [AXUIElement] ?? []
     }
 
-    private static func string(_ element: AXUIElement, _ attribute: String) -> String? {
+    private nonisolated static func string(_ element: AXUIElement, _ attribute: String) -> String? {
         var value: CFTypeRef?
         guard AXUIElementCopyAttributeValue(element, attribute as CFString, &value) == .success else { return nil }
         return value as? String

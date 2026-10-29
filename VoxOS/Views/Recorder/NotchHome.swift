@@ -1735,13 +1735,10 @@ final class NotchHomeManager {
         let notchMinX = screen.frame.midX - notchWidth / 2
         let notchMaxX = screen.frame.midX + notchWidth / 2
         let front = NSWorkspace.shared.frontmostApplication?.processIdentifier
-        let apps = NSWorkspace.shared.runningApplications.filter { $0.activationPolicy != .prohibited }
-            .map(\.processIdentifier)
         clearanceRequest += 1
         let request = clearanceRequest
         Task { @MainActor [weak self] in
-            let measured = await NotchMenuBarClearance.measure(
-                notchMinX: notchMinX, notchMaxX: notchMaxX, front: front, apps: apps)
+            let measured = await NotchMenuBarClearance.measure(notchMinX: notchMinX, notchMaxX: notchMaxX, front: front)
             guard let self, request == self.clearanceRequest, measured.wing != self.allowedWing else { return }
             self.allowedWing = measured.wing
             self.logger.notice(
