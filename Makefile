@@ -22,10 +22,12 @@ TEST_DERIVED_DATA := $(CURDIR)/.local-build-tests
 # Xcode registers every app it builds with Launch Services, and Spotlight lists registered apps:
 # a build product left registered shows as a second "VoxOS" beside the installed one.
 LSREGISTER := /System/Library/Frameworks/CoreServices.framework/Frameworks/LaunchServices.framework/Support/lsregister
-# Unregisters the test run's build products. Run when a test run ends, and again when one starts,
-# for a run that was interrupted before it could (its host stayed listed as a second "VoxOS").
+# Unregisters and deletes the test run's app bundles. Run when a test run ends, and again when one
+# starts, for a run that was interrupted before it could. The host has its own bundle id but the
+# app's name and icon, so any copy left on disk can come back in Spotlight as a second "VoxOS"
+# (Spotlight kept listing it after it was unregistered); the next run rebuilds the bundles.
 UNREGISTER_TEST_APPS = for app in $(TEST_DERIVED_DATA)/Build/Products/*/*.app; do \
-	[ -d "$$app" ] && "$(LSREGISTER)" -u "$$app" >/dev/null 2>&1; done; true
+	[ -d "$$app" ] && { "$(LSREGISTER)" -u "$$app" >/dev/null 2>&1; rm -rf "$$app"; }; done; true
 # The test host is the app itself. Sharing the app's bundle identifier let macOS resolve
 # the login item to whichever copy ran last, so a test run re-pointed it at this throwaway
 # build and the next login tried to start a bundle that cannot load whisper.framework.
