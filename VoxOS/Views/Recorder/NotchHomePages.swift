@@ -331,7 +331,8 @@ struct NotchTimerPage: View {
                 case .notifications:
                     VStack(spacing: 6) {
                         optionRow("Sound When a Session Ends", isOn: $timers.options.sound)
-                        optionRow("Start the Next Session on Its Own", isOn: $timers.options.startsNextOnItsOwn)
+                        optionRow("Start Breaks on Their Own", isOn: $timers.options.startsBreaksOnTheirOwn)
+                        optionRow("Start Focus on Its Own After a Break", isOn: $timers.options.startsFocusOnItsOwn)
                     }
                     .padding(.top, 4)
                 }
@@ -382,15 +383,21 @@ struct NotchTimerPage: View {
         .buttonStyle(.plain)
     }
 
+    /// A label on the left and its switch on the right, lined up with the Duration rows.
     private func optionRow(_ title: LocalizedStringKey, isOn: Binding<Bool>) -> some View {
-        Toggle(isOn: isOn) {
+        HStack(spacing: 8) {
             Text(title)
                 .font(.app(size: 12))
                 .foregroundStyle(.white.opacity(0.9))
+                .lineLimit(1)
+            Spacer(minLength: 8)
+            Toggle(isOn: isOn) { Text(title) }
+                .labelsHidden()
+                .toggleStyle(.switch)
+                .controlSize(.mini)
+                .tint(NotchPomodoroRing.accent)
         }
-        .toggleStyle(.switch)
-        .controlSize(.mini)
-        .tint(NotchPomodoroRing.accent)
+        .frame(height: 22)
     }
 
     // MARK: One setting

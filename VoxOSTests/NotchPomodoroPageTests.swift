@@ -24,18 +24,41 @@ struct NotchPomodoroPageTests {
         #expect(again.durations.focus == 50 * 60)
         #expect(again.durations.focusesBeforeLongBreak == 3)
         #expect(again.options.sound == false)
-        #expect(again.options.startsNextOnItsOwn)
+        #expect(again.options.startsBreaksOnTheirOwn && again.options.startsFocusOnItsOwn)
     }
 
-    @Test func theNextSessionCanWaitToBeStarted() {
+    @Test func theOldSingleSwitchAnswersForBoth() throws {
+        let saved = try JSONDecoder().decode(
+            NotchTimers.PomodoroOptions.self, from: Data(#"{"sound":true,"startsNextOnItsOwn":false}"#.utf8))
+        #expect(!saved.startsBreaksOnTheirOwn && !saved.startsFocusOnItsOwn)
+        let fresh = try JSONDecoder().decode(NotchTimers.PomodoroOptions.self, from: Data("{}".utf8))
+        #expect(fresh.startsBreaksOnTheirOwn && fresh.startsFocusOnItsOwn && fresh.sound)
+    }
+
+    @Test func aBreakCanWaitToBeStarted() {
         let (timers, _) = timers()
-        timers.options.startsNextOnItsOwn = false
+        timers.options.startsBreaksOnTheirOwn = false
         let start = Date()
         timers.startPomodoro(now: start)
         timers.advance(now: start.addingTimeInterval(timers.durations.focus))
         #expect(timers.running?.kind == .shortBreak)
         #expect(timers.running?.isPaused == true)
         #expect(timers.running?.remaining(at: start.addingTimeInterval(9999)) == timers.durations.shortBreak)
+    }
+
+    @Test func focusAfterABreakCanStartOnItsOwnOrWait() {
+        let (timers, _) = timers()
+        let start = Date()
+        timers.startPomodoro(.shortBreak, now: start)
+        timers.advance(now: start.addingTimeInterval(timers.durations.shortBreak))
+        #expect(timers.running?.kind == .focus)
+        #expect(timers.running?.isPaused == false, "on by default: focus starts by itself")
+
+        timers.options.startsFocusOnItsOwn = false
+        timers.startPomodoro(.shortBreak, now: start)
+        timers.advance(now: start.addingTimeInterval(timers.durations.shortBreak))
+        #expect(timers.running?.kind == .focus)
+        #expect(timers.running?.isPaused == true, "off: focus waits for Resume")
     }
 
     @Test func anySessionCanBeStarted() {

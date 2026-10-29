@@ -83,11 +83,44 @@ final class NotchTimers: ObservableObject {
         }
     }
 
-    /// How a pomodoro tells you a session ended, and whether the next one waits for you.
+    /// How a pomodoro tells you a session ended, and whether the next one waits for you. Off, the
+    /// next session is ready, paused at its full length, until you press Start.
     struct PomodoroOptions: Equatable, Codable {
         var sound = true
-        /// Off: the next session is ready, paused at its full length, until you press Start.
-        var startsNextOnItsOwn = true
+        /// A break starts by itself when a focus session ends.
+        var startsBreaksOnTheirOwn = true
+        /// A focus session starts by itself when a break ends.
+        var startsFocusOnItsOwn = true
+
+        init() {}
+
+        init(from decoder: Decoder) throws {
+            let values = try decoder.container(keyedBy: CodingKeys.self)
+            sound = try values.decodeIfPresent(Bool.self, forKey: .sound) ?? true
+            // One switch for both before they were separate: it answers for each until changed.
+            let both = try values.decodeIfPresent(Bool.self, forKey: .startsNextOnItsOwn) ?? true
+            startsBreaksOnTheirOwn = try values.decodeIfPresent(Bool.self, forKey: .startsBreaksOnTheirOwn) ?? both
+            startsFocusOnItsOwn = try values.decodeIfPresent(Bool.self, forKey: .startsFocusOnItsOwn) ?? both
+        }
+
+        func encode(to encoder: Encoder) throws {
+            var values = encoder.container(keyedBy: CodingKeys.self)
+            try values.encode(sound, forKey: .sound)
+            try values.encode(startsBreaksOnTheirOwn, forKey: .startsBreaksOnTheirOwn)
+            try values.encode(startsFocusOnItsOwn, forKey: .startsFocusOnItsOwn)
+        }
+
+        /// Whether the session that follows starts by itself.
+        func startsOnItsOwn(_ next: NotchTimer.Kind) -> Bool {
+            next == .focus ? startsFocusOnItsOwn : startsBreaksOnTheirOwn
+        }
+
+        private enum CodingKeys: String, CodingKey {
+            case sound
+            case startsNextOnItsOwn
+            case startsBreaksOnTheirOwn
+            case startsFocusOnItsOwn
+        }
     }
 
     /// The finished timer, shown in the notch for a moment.
@@ -195,7 +228,9 @@ final class NotchTimers: ObservableObject {
         if let finished, now.timeIntervalSince(finished.at) >= Self.finishedLinger { self.finished = nil }
         guard let running, !running.isPaused, running.remaining(at: now) <= 0 else { return }
         var next = running.next(after: now, durations: durations)
-        if !options.startsNextOnItsOwn, let length = next?.duration { next?.pausedRemaining = length }
+        if let kind = next?.kind, !options.startsOnItsOwn(kind), let length = next?.duration {
+            next?.pausedRemaining = length
+        }
         finished = Finished(label: label(for: running), next: next, at: now)
         self.running = next
         if options.sound { chime() }
