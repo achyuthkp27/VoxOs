@@ -84,7 +84,6 @@ enum AppDefaults {
             DefaultsKeys.notchLyricsEnabled: false,
             DefaultsKeys.notchRainEnabled: true,
             DefaultsKeys.notchUnreadEnabled: true,
-            DefaultsKeys.notchShortcutsEnabled: true,
             DefaultsKeys.notchPrivacyEnabled: true,
             // Needs Calendar access, which only the Calendar page asks for.
             DefaultsKeys.notchMeetingsEnabled: true,

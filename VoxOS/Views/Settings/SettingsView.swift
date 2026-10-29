@@ -67,7 +67,6 @@ struct SettingsView: View {
     @AppStorage(DefaultsKeys.notchLyricsEnabled) private var notchLyricsEnabled = false
     @AppStorage(DefaultsKeys.notchRainEnabled) private var notchRainEnabled = true
     @AppStorage(DefaultsKeys.notchUnreadEnabled) private var notchUnreadEnabled = true
-    @AppStorage(DefaultsKeys.notchShortcutsEnabled) private var notchShortcutsEnabled = true
     @AppStorage(DefaultsKeys.notchMeetingsEnabled) private var notchMeetingsEnabled = true
     @AppStorage(DefaultsKeys.notchMusicEnabled) private var notchMusicEnabled = true
     @AppStorage(DefaultsKeys.notchMusicBarsEnabled) private var notchMusicBarsEnabled = false
@@ -134,7 +133,7 @@ struct SettingsView: View {
         "mute", "Meeting Countdown", "meeting", "zoom", "join",
         "Volume & Brightness in the Notch", "volume", "brightness", "HUD", "keys",
         "Hide from Screenshots & Sharing", "screenshot", "screen sharing", "privacy",
-        "Rain Soon", "rain", "Unread Counts", "unread", "badge", "Shortcuts", "shortcut", "Downloads", "download",
+        "Rain Soon", "rain", "Unread Counts", "unread", "badge", "Downloads", "download",
         "Focus", "do not disturb", "Per-App Volume", "mixer", "app volume", "Mirror",
         "camera", "webcam", "keep awake", "caffeinate", "Clipboard History", "clipboard", "Lyrics", "lyrics",
         "Show in Full Screen", "full screen", "fullscreen", "Follow the Display in Use", "external display",
@@ -786,12 +785,6 @@ struct SettingsView: View {
                                 InfoTip(
                                     "A notice when Mail, Messages or another app's unread badge in the Dock goes up, read from the Dock once a minute."
                                 )
-                            }
-                        }
-                        Toggle(isOn: $notchShortcutsEnabled) {
-                            HStack(spacing: 2) {
-                                Text("Shortcuts")
-                                InfoTip("On the Sound page: your Shortcuts, each run with a click.")
                             }
                         }
                         Toggle(isOn: $notchRainEnabled) {

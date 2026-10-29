@@ -75,8 +75,6 @@ Decisions, and what they rest on (measured on macOS 26 unless noted):
   half hour, only once location access was granted from the Weather page. Unread counts are the
   Dock's badges (`AXStatusLabel` in its accessibility tree), read once a minute with slack and
   not while the displays sleep; only a count that goes up is said.
-- **Shortcuts.** The Sound page lists the user's Shortcuts through macOS's `shortcuts` command
-  when its section opens, and runs one on a click; nothing is read in the background.
 - **Material.** Liquid Glass (`glassEffect`) by default, with the notch row kept black so the top
   still reads as the hardware notch; solid black is the alternative. The cards of Claude Code use
   the same surface.

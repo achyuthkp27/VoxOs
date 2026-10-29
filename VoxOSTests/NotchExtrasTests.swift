@@ -224,8 +224,4 @@ struct NotchExtrasTests {
         #expect(NotchUnread.risen(from: [:], to: ["Messages": 1])?.1 == 1)
         #expect(NotchUnread.risen(from: ["Mail": 1, "Messages": 1], to: ["Mail": 2, "Messages": 5])?.0 == "Messages")
     }
-
-    @Test func shortcutsAreListedOnePerLine() {
-        #expect(NotchShortcuts.names(from: "Focus Mode\n  Send ETA \n\n") == ["Focus Mode", "Send ETA"])
-    }
 }

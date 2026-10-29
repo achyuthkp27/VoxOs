@@ -96,8 +96,6 @@ enum DefaultsKeys {
     static let notchRainEnabled = "NotchRainEnabled"
     /// A notice when an app's unread count in the Dock goes up.
     static let notchUnreadEnabled = "NotchUnreadEnabled"
-    /// On the Sound page: the user's Shortcuts, to run with a click.
-    static let notchShortcutsEnabled = "NotchShortcutsEnabled"
     /// A band with a mute switch while another app uses the microphone or a camera.
     static let notchPrivacyEnabled = "NotchPrivacyEnabled"
     /// A countdown band for the next meeting, with Join when it has a call link.
