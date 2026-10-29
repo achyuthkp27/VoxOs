@@ -59,11 +59,24 @@ struct NotchTimer: Codable, Equatable {
 final class NotchTimers: ObservableObject {
     static let shared = NotchTimers()
 
-    struct PomodoroDurations: Equatable {
+    struct PomodoroDurations: Equatable, Codable {
         var focus: TimeInterval = 25 * 60
         var shortBreak: TimeInterval = 5 * 60
         var longBreak: TimeInterval = 15 * 60
         var focusesBeforeLongBreak = 4
+
+        /// What each can be set to on the Pomodoro page, in minutes (sessions for the last).
+        static let focusMinutes = 5...120
+        static let shortBreakMinutes = 1...30
+        static let longBreakMinutes = 5...60
+        static let sessions = 2...8
+    }
+
+    /// How a pomodoro tells you a session ended, and whether the next one waits for you.
+    struct PomodoroOptions: Equatable, Codable {
+        var sound = true
+        /// Off: the next session is ready, paused at its full length, until you press Start.
+        var startsNextOnItsOwn = true
     }
 
     /// The finished timer, shown in the notch for a moment.
@@ -78,7 +91,15 @@ final class NotchTimers: ObservableObject {
 
     @Published private(set) var running: NotchTimer?
     @Published private(set) var finished: Finished?
-    var durations = PomodoroDurations()
+    /// Set on the Pomodoro page and kept; a change applies from the next session on.
+    @Published var durations = PomodoroDurations() {
+        didSet { store(durations, as: Self.durationsKey) }
+    }
+    @Published var options = PomodoroOptions() {
+        didSet { store(options, as: Self.optionsKey) }
+    }
+    private static let durationsKey = "NotchPomodoroDurations"
+    private static let optionsKey = "NotchPomodoroOptions"
 
     private var tick: Timer?
     private let defaults: UserDefaults
@@ -87,6 +108,8 @@ final class NotchTimers: ObservableObject {
     init(defaults: UserDefaults = .standard, chime: @escaping () -> Void = { NSSound(named: "Glass")?.play() }) {
         self.defaults = defaults
         self.chime = chime
+        if let saved: PomodoroDurations = Self.load(Self.durationsKey, from: defaults) { durations = saved }
+        if let saved: PomodoroOptions = Self.load(Self.optionsKey, from: defaults) { options = saved }
         if let data = defaults.data(forKey: Self.storageKey),
             let saved = try? JSONDecoder().decode(NotchTimer.self, from: data)
         {
@@ -152,12 +175,21 @@ final class NotchTimers: ObservableObject {
     func advance(now: Date = Date()) {
         if let finished, now.timeIntervalSince(finished.at) >= Self.finishedLinger { self.finished = nil }
         guard let running, !running.isPaused, running.remaining(at: now) <= 0 else { return }
-        let next = running.next(after: now, durations: durations)
+        var next = running.next(after: now, durations: durations)
+        if !options.startsNextOnItsOwn, let length = next?.duration { next?.pausedRemaining = length }
         finished = Finished(label: label(for: running), next: next, at: now)
         self.running = next
-        chime()
+        if options.sound { chime() }
         save()
         schedule()
+    }
+
+    private func store<Value: Encodable>(_ value: Value, as key: String) {
+        if let data = try? JSONEncoder().encode(value) { defaults.set(data, forKey: key) }
+    }
+
+    private static func load<Value: Decodable>(_ key: String, from defaults: UserDefaults) -> Value? {
+        defaults.data(forKey: key).flatMap { try? JSONDecoder().decode(Value.self, from: $0) }
     }
 
     private func label(for timer: NotchTimer) -> String {
