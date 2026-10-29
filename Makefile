@@ -22,6 +22,10 @@ TEST_DERIVED_DATA := $(CURDIR)/.local-build-tests
 # Xcode registers every app it builds with Launch Services, and Spotlight lists registered apps:
 # a build product left registered shows as a second "VoxOS" beside the installed one.
 LSREGISTER := /System/Library/Frameworks/CoreServices.framework/Frameworks/LaunchServices.framework/Support/lsregister
+# Unregisters the test run's build products. Run when a test run ends, and again when one starts,
+# for a run that was interrupted before it could (its host stayed listed as a second "VoxOS").
+UNREGISTER_TEST_APPS = for app in $(TEST_DERIVED_DATA)/Build/Products/*/*.app; do \
+	[ -d "$$app" ] && "$(LSREGISTER)" -u "$$app" >/dev/null 2>&1; done; true
 # The test host is the app itself. Sharing the app's bundle identifier let macOS resolve
 # the login item to whichever copy ran last, so a test run re-pointed it at this throwaway
 # build and the next login tried to start a bundle that cannot load whisper.framework.
@@ -204,13 +208,15 @@ help:
 # build errors and test failures, and the run is scored from the .xcresult bundle
 # (the console stream omits most swift-testing cases).
 test: check
+	@$(UNREGISTER_TEST_APPS)
 	@mkdir -p $(TEST_DERIVED_DATA) && touch $(TEST_DERIVED_DATA)/.metadata_never_index
 	@# Removed so a build failure cannot be scored against the previous green run.
 	@# Only this explicit bundle is cleared — deleting Xcode's own Logs/Test store
 	@# breaks the log importer and produces an unreadable result bundle.
 	@rm -rf $(TEST_RESULT_BUNDLE)
 	@mkdir -p $(dir $(TEST_RESULT_BUNDLE))
-	@SIGNING_IDENTITY=$$(security find-identity -v -p codesigning 2>/dev/null | awk '/"Apple Development: / { print $$2; exit }'); \
+	@trap '$(UNREGISTER_TEST_APPS); exit 130' INT TERM; \
+	SIGNING_IDENTITY=$$(security find-identity -v -p codesigning 2>/dev/null | awk '/"Apple Development: / { print $$2; exit }'); \
 	xcodebuild test -project VoxOS.xcodeproj -scheme VoxOS -destination 'platform=macOS' \
 		-derivedDataPath $(TEST_DERIVED_DATA) -xcconfig LocalBuild.xcconfig \
 		-resultBundlePath $(TEST_RESULT_BUNDLE) \
@@ -234,9 +240,7 @@ test: check
 	@./scripts/test-summary.sh $(TEST_RESULT_BUNDLE); \
 	STATUS=$$?; \
 	tccutil reset All com.achyuthkp.VoxOS$(TEST_BUNDLE_ID_SUFFIX) >/dev/null 2>&1 || true; \
-	for app in $(TEST_DERIVED_DATA)/Build/Products/*/*.app; do \
-		[ -d "$$app" ] && "$(LSREGISTER)" -u "$$app" >/dev/null 2>&1; \
-	done; \
+	$(UNREGISTER_TEST_APPS); \
 	exit $$STATUS
 
 # Formatting, configured by .swift-format. swift-format ships inside the Xcode
