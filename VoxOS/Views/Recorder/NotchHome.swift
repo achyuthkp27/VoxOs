@@ -1208,6 +1208,13 @@ final class NotchHomeManager {
     private var resizeTask: Task<Void, Never>?
     private var pointerWatch: Timer?
     private var artworkCache: (key: String, image: NSImage?, tint: Color)?
+    /// The tint of each player's cover, so a refresh does not draw the cover again to find it.
+    private var tintCache: [String: Color] = [:]
+    /// Whether the front app fills the screen, until the front app, the Space or the screen
+    /// changes (a full-screen window has a Space of its own), so a refresh does not read the
+    /// window list each time.
+    private var fullScreenCache: (pid: pid_t?, screen: CGRect, value: Bool, at: Date)?
+    private var refreshScheduled = false
     /// Files dragged in another app, seen through a global mouse monitor (see `globalMouse`).
     private var dragMonitor: Any?
     private var dragChangeCount = 0
@@ -1220,53 +1227,58 @@ final class NotchHomeManager {
 
     init(uiManager: RecorderUIManager) {
         self.uiManager = uiManager
-        PlaybackController.shared.$nowPlaying.receive(on: RunLoop.main).sink { [weak self] _ in self?.refresh() }
+        PlaybackController.shared.$nowPlaying.receive(on: RunLoop.main).sink { [weak self] _ in self?.setNeedsRefresh()
+        }
+        .store(in: &cancellables)
+        uiManager.$isRecorderPanelVisible.receive(on: RunLoop.main).sink { [weak self] _ in self?.setNeedsRefresh() }
             .store(in: &cancellables)
-        uiManager.$isRecorderPanelVisible.receive(on: RunLoop.main).sink { [weak self] _ in self?.refresh() }
+        uiManager.$isClaudeCodeCardVisible.receive(on: RunLoop.main).sink { [weak self] _ in self?.setNeedsRefresh() }
             .store(in: &cancellables)
-        uiManager.$isClaudeCodeCardVisible.receive(on: RunLoop.main).sink { [weak self] _ in self?.refresh() }
+        NotchTimers.shared.$running.receive(on: RunLoop.main).sink { [weak self] _ in self?.setNeedsRefresh() }
             .store(in: &cancellables)
-        NotchTimers.shared.$running.receive(on: RunLoop.main).sink { [weak self] _ in self?.refresh() }
+        NotchTimers.shared.$finished.receive(on: RunLoop.main).sink { [weak self] _ in self?.setNeedsRefresh() }
             .store(in: &cancellables)
-        NotchTimers.shared.$finished.receive(on: RunLoop.main).sink { [weak self] _ in self?.refresh() }
+        NotchDeviceAlerts.shared.$notice.receive(on: RunLoop.main).sink { [weak self] _ in self?.setNeedsRefresh() }
             .store(in: &cancellables)
-        NotchDeviceAlerts.shared.$notice.receive(on: RunLoop.main).sink { [weak self] _ in self?.refresh() }
+        NotchPlayers.shared.$entries.receive(on: RunLoop.main).sink { [weak self] _ in self?.setNeedsRefresh() }
             .store(in: &cancellables)
-        NotchPlayers.shared.$entries.receive(on: RunLoop.main).sink { [weak self] _ in self?.refresh() }
+        NotchPrivacy.shared.$state.receive(on: RunLoop.main).sink { [weak self] _ in self?.setNeedsRefresh() }
             .store(in: &cancellables)
-        NotchPrivacy.shared.$state.receive(on: RunLoop.main).sink { [weak self] _ in self?.refresh() }
+        NotchHUD.shared.$level.receive(on: RunLoop.main).sink { [weak self] _ in self?.setNeedsRefresh() }
             .store(in: &cancellables)
-        NotchHUD.shared.$level.receive(on: RunLoop.main).sink { [weak self] _ in self?.refresh() }
+        NotchDownloads.shared.$active.receive(on: RunLoop.main).sink { [weak self] _ in self?.setNeedsRefresh() }
             .store(in: &cancellables)
-        NotchDownloads.shared.$active.receive(on: RunLoop.main).sink { [weak self] _ in self?.refresh() }
+        NotchDownloads.shared.$finished.receive(on: RunLoop.main).sink { [weak self] _ in self?.setNeedsRefresh() }
             .store(in: &cancellables)
-        NotchDownloads.shared.$finished.receive(on: RunLoop.main).sink { [weak self] _ in self?.refresh() }
+        NotchFocus.shared.$notice.receive(on: RunLoop.main).sink { [weak self] _ in self?.setNeedsRefresh() }
             .store(in: &cancellables)
-        NotchFocus.shared.$notice.receive(on: RunLoop.main).sink { [weak self] _ in self?.refresh() }
+        ClaudeCodeUsage.shared.$notice.receive(on: RunLoop.main).sink { [weak self] _ in self?.setNeedsRefresh() }
             .store(in: &cancellables)
-        ClaudeCodeUsage.shared.$notice.receive(on: RunLoop.main).sink { [weak self] _ in self?.refresh() }
+        CodexActivity.shared.$notice.receive(on: RunLoop.main).sink { [weak self] _ in self?.setNeedsRefresh() }
             .store(in: &cancellables)
-        CodexActivity.shared.$notice.receive(on: RunLoop.main).sink { [weak self] _ in self?.refresh() }
+        GeminiActivity.shared.$notice.receive(on: RunLoop.main).sink { [weak self] _ in self?.setNeedsRefresh() }
             .store(in: &cancellables)
-        GeminiActivity.shared.$notice.receive(on: RunLoop.main).sink { [weak self] _ in self?.refresh() }
+        ClaudeCodeCIWatch.shared.$notice.receive(on: RunLoop.main).sink { [weak self] _ in self?.setNeedsRefresh() }
             .store(in: &cancellables)
-        ClaudeCodeCIWatch.shared.$notice.receive(on: RunLoop.main).sink { [weak self] _ in self?.refresh() }
+        NotchRainWatch.shared.$notice.receive(on: RunLoop.main).sink { [weak self] _ in self?.setNeedsRefresh() }
             .store(in: &cancellables)
-        NotchRainWatch.shared.$notice.receive(on: RunLoop.main).sink { [weak self] _ in self?.refresh() }
-            .store(in: &cancellables)
-        NotchUnread.shared.$notice.receive(on: RunLoop.main).sink { [weak self] _ in self?.refresh() }
+        NotchUnread.shared.$notice.receive(on: RunLoop.main).sink { [weak self] _ in self?.setNeedsRefresh() }
             .store(in: &cancellables)
         // Entering or leaving a full-screen app is a Space change.
         NSWorkspace.shared.notificationCenter.publisher(for: NSWorkspace.activeSpaceDidChangeNotification)
             .receive(on: RunLoop.main)
-            .sink { [weak self] _ in self?.refresh() }
+            .sink { [weak self] _ in
+                self?.fullScreenCache = nil
+                self?.setNeedsRefresh()
+            }
             .store(in: &cancellables)
         // Another app in front brings other menus, which may reach further toward the notch.
         NSWorkspace.shared.notificationCenter.publisher(for: NSWorkspace.didActivateApplicationNotification)
             .receive(on: RunLoop.main)
             .sink { [weak self] _ in
                 self?.clearanceMeasured = nil
-                self?.refresh()
+                self?.fullScreenCache = nil
+                self?.setNeedsRefresh()
             }
             .store(in: &cancellables)
         let distributed = DistributedNotificationCenter.default()
@@ -1283,10 +1295,10 @@ final class NotchHomeManager {
             return event
         }
         NotificationCenter.default.publisher(for: UserDefaults.didChangeNotification).receive(on: RunLoop.main)
-            .sink { [weak self] _ in self?.refresh() }
+            .sink { [weak self] _ in self?.setNeedsRefresh() }
             .store(in: &cancellables)
         // Battery, Low Power Mode, displays asleep or the screen locked.
-        PowerState.shared.objectWillChange.receive(on: RunLoop.main).sink { [weak self] _ in self?.refresh() }
+        PowerState.shared.objectWillChange.receive(on: RunLoop.main).sink { [weak self] _ in self?.setNeedsRefresh() }
             .store(in: &cancellables)
         LifecycleObserver.shared.publisher(for: [.screenConfigurationChanged, .systemDidWake])
             .receive(on: RunLoop.main)
@@ -1296,6 +1308,20 @@ final class NotchHomeManager {
             }
             .store(in: &cancellables)
         refresh()
+    }
+
+    /// Many sources change together (a new track touches MediaRemote and the player at once, a
+    /// download reports twice a second), so their sinks ask for one refresh on the next turn of
+    /// the run loop instead of one each.
+    private func setNeedsRefresh() {
+        guard !refreshScheduled else { return }
+        refreshScheduled = true
+        RunLoop.main.perform { [weak self] in
+            MainActor.assumeIsolated {
+                self?.refreshScheduled = false
+                self?.refresh()
+            }
+        }
     }
 
     private func refresh() {
@@ -1328,7 +1354,7 @@ final class NotchHomeManager {
         if let current = self.screen, target != nil, !NotchScreens.same(current, target) { destroyPanel() }
         let screen = self.screen ?? target
         let hiddenForFullScreen =
-            !NotchHome.showsInFullScreen && screen.map(Self.frontAppIsFullScreen(on:)) == true
+            !NotchHome.showsInFullScreen && screen.map(frontAppFillsScreen(on:)) == true
         let track = Self.shown(tracks, selected: selectedPlayer)
         let timers = NotchTimers.shared
         var content = NotchHome.content(
@@ -1393,7 +1419,7 @@ final class NotchHomeManager {
             meetingsWatched = wanted
             if wanted, meetingWatch == nil {
                 meetingWatch = NotchToday.shared.$meeting.dropFirst().receive(on: RunLoop.main)
-                    .sink { [weak self] _ in self?.refresh() }
+                    .sink { [weak self] _ in self?.setNeedsRefresh() }
             }
             NotchToday.shared.watchMeetings(wanted)
         }
@@ -1442,6 +1468,20 @@ final class NotchHomeManager {
         let size = NotchHome.size(for: .expanded, notchWidth: model.notchWidth, notchHeight: model.notchHeight)
         return NotchHome.frame(for: size, screenFrame: screen.frame)
             .insetBy(dx: -NotchHome.dragMargin, dy: -NotchHome.dragMargin)
+    }
+
+    /// `frontAppIsFullScreen`, read again only when the front app or the screen changed, a Space
+    /// changed, or a few seconds passed.
+    private func frontAppFillsScreen(on screen: NSScreen) -> Bool {
+        let pid = NSWorkspace.shared.frontmostApplication?.processIdentifier
+        if let cache = fullScreenCache, cache.pid == pid, cache.screen == screen.frame,
+            Date().timeIntervalSince(cache.at) < 5
+        {
+            return cache.value
+        }
+        let value = Self.frontAppIsFullScreen(on: screen)
+        fullScreenCache = (pid, screen.frame, value, Date())
+        return value
     }
 
     /// The front app fills the notched screen: a full-screen video, game or app, where the menu
@@ -1539,10 +1579,20 @@ final class NotchHomeManager {
                 NotchTrack(
                     id: entry.trackKey, title: entry.title, artist: entry.artist, isPlaying: entry.isPlaying,
                     duration: entry.duration, elapsed: entry.position, stamp: entry.stamp,
-                    rate: entry.isPlaying ? 1 : 0, artwork: entry.artwork, tint: Self.tint(of: entry.artwork),
+                    rate: entry.isPlaying ? 1 : 0, artwork: entry.artwork, tint: tint(of: entry),
                     bundleID: entry.bundleID))
         }
         return tracks.sorted { ($0.bundleID ?? "") < ($1.bundleID ?? "") }
+    }
+
+    /// Drawn once per cover: a player's entry keeps its image until the track changes.
+    private func tint(of entry: NotchPlayers.Entry) -> Color {
+        let key = entry.trackKey + "|" + (entry.artworkKey ?? entry.artwork.map { "\(ObjectIdentifier($0))" } ?? "")
+        if let tint = tintCache[key] { return tint }
+        let tint = Self.tint(of: entry.artwork)
+        if tintCache.count >= 8 { tintCache.removeAll() }
+        tintCache[key] = tint
+        return tint
     }
 
     /// The player picked with the dots while it still has a track; otherwise one that is
@@ -1895,6 +1945,8 @@ final class NotchHomeManager {
             let watch = Timer(timeInterval: 0.1, repeats: true) { [weak self] _ in
                 Task { @MainActor in self?.checkPointer() }
             }
+            // Slack lets macOS fold these checks into other wake-ups.
+            watch.tolerance = 0.03
             RunLoop.main.add(watch, forMode: .common)
             pointerWatch = watch
         } else {

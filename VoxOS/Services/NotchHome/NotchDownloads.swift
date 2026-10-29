@@ -17,8 +17,9 @@ final class NotchDownloads: ObservableObject {
         var fraction: Double
     }
 
-    /// How often a download's progress is passed on.
-    static let updateInterval: TimeInterval = 0.5
+    /// How often a download's progress is passed on: the band shows whole percents, and each
+    /// update redraws it.
+    static let updateInterval: TimeInterval = 1
     static let finishedLifetime: TimeInterval = 3.5
 
     @Published private(set) var active: [Item] = []

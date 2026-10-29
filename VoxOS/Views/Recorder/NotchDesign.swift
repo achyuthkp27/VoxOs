@@ -148,3 +148,33 @@ struct NotchGlassSurface<S: Shape>: View {
         }
     }
 }
+
+/// A clock for views that move with time, ticking only while something moves: paused music or a
+/// timer that is not running is drawn once and wakes nothing.
+struct NotchTicking<Content: View>: View {
+    typealias Tick = NotchTick
+
+    let interval: TimeInterval
+    let running: Bool
+    let content: (NotchTick) -> Content
+
+    init(every interval: TimeInterval, while running: Bool, @ViewBuilder content: @escaping (NotchTick) -> Content) {
+        self.interval = interval
+        self.running = running
+        self.content = content
+    }
+
+    var body: some View {
+        if running {
+            TimelineView(.periodic(from: .now, by: interval)) { context in content(Tick(date: context.date)) }
+        } else {
+            content(Tick(date: Date()))
+        }
+    }
+}
+
+/// One tick of `NotchTicking`. Outside the generic type: nested, its type would depend on the
+/// content's, and a closure reading `context.date` could not have its view type inferred.
+struct NotchTick {
+    let date: Date
+}
