@@ -2,295 +2,380 @@ import SwiftUI
 
 // MARK: - Weather page
 
-/// The weather as a small moving scene beside the numbers: a sun (or a moon) for clear skies,
-/// clouds drifting over it, rain or snow falling, lightning in a storm.
+/// The weather as a page of numbers, read top to bottom: where and as of when; the temperature with
+/// the conditions and today's range; four readings in fixed places (rain, humidity, feels like,
+/// wind); and the next days, each with its chance of rain and its range as a bar on the week's.
 ///
-/// The scene is drawn in one Canvas at 30 frames a second, and only while the page is on screen:
-/// leaving the page removes the view, and with it the animation. Reduce Motion draws it still.
+/// Nothing on it moves or polls: it changes when `NotchToday` fetches a new reading (at most every
+/// half hour, and on opening the page once the last one is older than that).
 struct NotchWeatherPage: View {
     @ObservedObject var today: NotchToday
 
+    /// What "Today" is judged against; passed in so a preview or test can pick any day.
+    var now = Date()
+
     var body: some View {
-        HStack(alignment: .center, spacing: 18) {
+        VStack(alignment: .leading, spacing: 0) {
             if let weather = today.weather {
-                NotchWeatherScene(kind: weather.kind, isDay: weather.isDay ?? Self.isDaytime(Date()))
-                    .frame(width: 150, height: NotchHome.Card.coverSize)
-                    .accessibilityLabel(Text(verbatim: weather.conditions))
-                details(weather)
+                header(weather)
+                    .padding(.bottom, Layout.headerSpacing)
+                current(weather)
+                    .padding(.bottom, Layout.sectionSpacing)
+                readings(weather)
+                    .padding(.bottom, Layout.sectionSpacing)
+                forecast(weather)
             } else {
-                NotchWeatherScene(kind: .partlyCloudy, isDay: Self.isDaytime(Date()))
-                    .frame(width: 150, height: NotchHome.Card.coverSize)
-                    .opacity(0.5)
                 Text("Weather shows once it has been fetched")
                     .font(.app(size: 12))
-                    .foregroundStyle(.white.opacity(0.45))
+                    .foregroundStyle(.white.opacity(0.55))
             }
             Spacer(minLength: 0)
         }
-        .padding(.top, NotchHome.Card.top)
-        .padding(.horizontal, AgentComposer.panelInset)
+        .frame(maxWidth: .infinity, alignment: .topLeading)
+        .padding(.top, NotchHome.Card.top + 4)
+        .padding(.horizontal, AgentComposer.panelInset + 6)
         .padding(.bottom, NotchHome.Card.bottom)
+        .foregroundStyle(.white)
         .onAppear { today.refresh() }
     }
 
-    private func details(_ weather: NotchToday.Weather) -> some View {
-        VStack(alignment: .leading, spacing: 4) {
-            Text(verbatim: "\(weather.temperature)°")
-                .font(.app(size: 36, weight: .semibold))
-                .foregroundStyle(.white)
-            Text(verbatim: weather.conditions.prefix(1).uppercased() + weather.conditions.dropFirst())
-                .font(.app(size: 13, weight: .medium))
-                .foregroundStyle(.white.opacity(0.85))
+    /// The card's height on this page: everything above, at its fixed size, whatever came back.
+    static var cardHeight: CGFloat {
+        let insets: CGFloat = NotchHome.Card.top + 4 + NotchHome.Card.bottom + 6
+        let top: CGFloat = Layout.headerHeight + Layout.headerSpacing + Layout.currentHeight
+        let middle: CGFloat = Layout.sectionSpacing + Layout.readingsHeight + Layout.sectionSpacing
+        return insets + top + middle + Layout.forecastHeight
+    }
+
+    enum Layout {
+        static let headerHeight: CGFloat = 18
+        static let headerSpacing: CGFloat = 8
+        static let currentHeight: CGFloat = 46
+        static let sectionSpacing: CGFloat = 10
+        static let readingsHeight: CGFloat = 32
+        static let rowHeight: CGFloat = 22
+        static let rowSpacing: CGFloat = 2
+        static var forecastHeight: CGFloat {
+            CGFloat(NotchToday.forecastDays) * rowHeight + CGFloat(NotchToday.forecastDays - 1) * rowSpacing
+        }
+        static let dayWidth: CGFloat = 54
+        static let symbolWidth: CGFloat = 24
+        static let chanceWidth: CGFloat = 40
+        static let temperatureWidth: CGFloat = 34
+        static let barHeight: CGFloat = 4
+        static let barSpacing: CGFloat = 8
+    }
+
+    // MARK: Header
+
+    private func header(_ weather: NotchToday.Weather) -> some View {
+        HStack(alignment: .firstTextBaseline, spacing: 8) {
+            Text(verbatim: weather.place ?? String(localized: "Weather"))
+                .font(.app(size: 13, weight: .semibold))
+                .foregroundStyle(.white.opacity(0.92))
                 .lineLimit(1)
-            if let high = weather.high, let low = weather.low {
-                Text(verbatim: "H \(high)°  ·  L \(low)°")
-                    .font(.app(size: 11))
-                    .foregroundStyle(.white.opacity(0.5))
-            }
-            if let place = weather.place {
-                Text(verbatim: place)
-                    .font(.app(size: 11))
-                    .foregroundStyle(.white.opacity(0.35))
+            if let readAt = weather.readAt {
+                // "as of", never "now": a reading can be half an hour old.
+                Text("as of \(readAt.formatted(date: .omitted, time: .shortened))")
+                    .font(.app(size: 10))
+                    .monospacedDigit()
+                    .foregroundStyle(.white.opacity(0.45))
                     .lineLimit(1)
             }
+            Spacer(minLength: 0)
         }
+        .frame(height: Layout.headerHeight)
     }
 
-    /// When the service does not say, the local clock decides between sun and moon.
-    nonisolated static func isDaytime(_ date: Date, calendar: Calendar = .current) -> Bool {
-        (6..<19).contains(calendar.component(.hour, from: date))
+    // MARK: Now
+
+    private func current(_ weather: NotchToday.Weather) -> some View {
+        let celsius = weather.temperatureC ?? Double(weather.temperature)
+        return HStack(alignment: .center, spacing: 12) {
+            Image(systemName: weather.symbol)
+                .font(.app(size: 28, weight: .medium))
+                .symbolRenderingMode(.multicolor)
+                .frame(width: 38)
+            Text(verbatim: NotchWeatherFormat.temperature(celsius))
+                .font(.app(size: 38, weight: .medium, design: .rounded))
+                .monospacedDigit()
+                .lineLimit(1)
+            VStack(alignment: .leading, spacing: 1) {
+                Text(verbatim: weather.conditions.prefix(1).uppercased() + weather.conditions.dropFirst())
+                    .font(.app(size: 13, weight: .medium))
+                    .foregroundStyle(.white.opacity(0.85))
+                    .lineLimit(1)
+                if let high = weather.days.first?.highC ?? weather.high.map(Double.init),
+                    let low = weather.days.first?.lowC ?? weather.low.map(Double.init)
+                {
+                    Text(verbatim: NotchWeatherFormat.range(high: high, low: low))
+                        .font(.app(size: 11))
+                        .monospacedDigit()
+                        .foregroundStyle(.white.opacity(0.55))
+                        .lineLimit(1)
+                }
+            }
+            Spacer(minLength: 0)
+        }
+        .frame(height: Layout.currentHeight)
+        .accessibilityElement(children: .ignore)
+        .accessibilityLabel(Text(verbatim: "\(weather.conditions), \(NotchWeatherFormat.temperature(celsius))"))
     }
-}
 
-// MARK: - Scene
+    // MARK: Readings
 
-struct NotchWeatherScene: View {
-    let kind: NotchToday.Weather.Kind
-    let isDay: Bool
-    @Environment(\.accessibilityReduceMotion) private var reduceMotion
+    /// Four readings in fixed places; one the service did not give is a dash, so the row reads the
+    /// same way every time.
+    private func readings(_ weather: NotchToday.Weather) -> some View {
+        HStack(spacing: 0) {
+            reading(String(localized: "Rain"), weather.rainChance.map { NotchWeatherFormat.percent($0) })
+            reading(String(localized: "Humidity"), weather.humidity.map { NotchWeatherFormat.percent($0) })
+            reading(String(localized: "Feels like"), weather.feelsLikeC.map { NotchWeatherFormat.temperature($0) })
+            reading(String(localized: "Wind"), weather.windKPH.map { NotchWeatherFormat.wind($0) })
+        }
+        .frame(height: Layout.readingsHeight)
+    }
 
-    /// A still frame when motion is reduced, from a fixed moment so it looks the same each time.
-    private static let stillTime: TimeInterval = 12.3
+    private func reading(_ title: String, _ value: String?) -> some View {
+        VStack(alignment: .leading, spacing: 1) {
+            Text(verbatim: title)
+                .font(.app(size: 10, weight: .medium))
+                .foregroundStyle(.white.opacity(0.45))
+                .lineLimit(1)
+                .minimumScaleFactor(0.7)
+            Text(verbatim: value ?? "—")
+                .font(.app(size: 14, weight: .medium, design: .rounded))
+                .monospacedDigit()
+                .foregroundStyle(.white.opacity(0.9))
+                .lineLimit(1)
+                .minimumScaleFactor(0.8)
+        }
+        .frame(maxWidth: .infinity, alignment: .leading)
+        .accessibilityElement(children: .combine)
+    }
 
-    var body: some View {
-        TimelineView(.animation(minimumInterval: 1.0 / 30, paused: reduceMotion)) { context in
-            Canvas { canvas, size in
-                let time = reduceMotion ? Self.stillTime : context.date.timeIntervalSinceReferenceDate
-                NotchWeatherPainter(kind: kind, isDay: isDay, time: time, size: size).paint(&canvas)
+    // MARK: Days
+
+    /// Always the same number of rows, empty ones when fewer days came back, so the card keeps the
+    /// height it opened at.
+    private func forecast(_ weather: NotchToday.Weather) -> some View {
+        let days = Array(weather.days.prefix(NotchToday.forecastDays))
+        let bounds = NotchWeatherRange.bounds(of: days)
+        return VStack(spacing: Layout.rowSpacing) {
+            ForEach(0..<NotchToday.forecastDays, id: \.self) { index in
+                if index < days.count, let bounds {
+                    dayRow(days[index], bounds: bounds, current: weather.temperatureC)
+                } else {
+                    Color.clear.frame(height: Layout.rowHeight)
+                }
             }
         }
-        .background(LinearGradient(colors: sky, startPoint: .top, endPoint: .bottom))
-        .clipShape(RoundedRectangle(cornerRadius: 14, style: .continuous))
-        .overlay(
-            RoundedRectangle(cornerRadius: 14, style: .continuous).strokeBorder(.white.opacity(0.08), lineWidth: 0.5))
+        .frame(height: Layout.forecastHeight, alignment: .top)
     }
 
-    private var sky: [Color] {
-        func rgb(_ hex: UInt32) -> Color {
-            Color(
-                red: Double((hex >> 16) & 0xFF) / 255, green: Double((hex >> 8) & 0xFF) / 255,
-                blue: Double(hex & 0xFF) / 255)
+    private func dayRow(_ day: NotchToday.Weather.Day, bounds: ClosedRange<Double>, current: Double?) -> some View {
+        let isToday = Calendar.current.isDate(day.date, inSameDayAs: now)
+        let segment = NotchWeatherRange.segment(low: day.lowC, high: day.highC, in: bounds)
+        // Only today's bar has the current temperature on it: on any other day it has not happened.
+        let mark = isToday ? current.map { NotchWeatherRange.position($0, within: segment, in: bounds) } : nil
+        return HStack(spacing: 0) {
+            Text(verbatim: isToday ? String(localized: "Today") : day.date.formatted(.dateTime.weekday(.abbreviated)))
+                .font(.app(size: 12, weight: .medium))
+                .foregroundStyle(.white.opacity(0.85))
+                .lineLimit(1)
+                .frame(width: Layout.dayWidth, alignment: .leading)
+            Image(systemName: day.symbol)
+                .font(.app(size: 12, weight: .medium))
+                .symbolRenderingMode(.multicolor)
+                .frame(width: Layout.symbolWidth)
+            // Printed only where it is worth reading: a column of "0%" down dry days says nothing.
+            Text(verbatim: day.rainChance.flatMap { $0 >= 10 ? NotchWeatherFormat.percent($0) : nil } ?? "")
+                .font(.app(size: 11, weight: .semibold, design: .rounded))
+                .monospacedDigit()
+                .foregroundStyle(NotchWeatherScale.rainBlue)
+                .frame(width: Layout.chanceWidth, alignment: .trailing)
+            Text(verbatim: NotchWeatherFormat.temperature(day.lowC))
+                .font(.app(size: 12))
+                .monospacedDigit()
+                .foregroundStyle(.white.opacity(0.55))
+                .frame(width: Layout.temperatureWidth, alignment: .trailing)
+            NotchWeatherBar(low: day.lowC, high: day.highC, segment: segment, mark: mark)
+                .frame(height: Layout.barHeight)
+                .padding(.horizontal, Layout.barSpacing)
+            Text(verbatim: NotchWeatherFormat.temperature(day.highC))
+                .font(.app(size: 12, weight: .medium))
+                .monospacedDigit()
+                .frame(width: Layout.temperatureWidth, alignment: .leading)
         }
-        switch (kind, isDay) {
-        case (.clear, true): return [rgb(0x2F7BEA), rgb(0x8EC5FF)]
-        case (.partlyCloudy, true): return [rgb(0x3C82D8), rgb(0xA4C6EA)]
-        case (.clear, false), (.partlyCloudy, false): return [rgb(0x0A1633), rgb(0x24335E)]
-        case (.cloudy, _): return [rgb(0x4E5866), rgb(0x8992A0)]
-        case (.fog, _): return [rgb(0x6E7782), rgb(0xB0B7C1)]
-        case (.rain, _): return [rgb(0x26303E), rgb(0x4C5869)]
-        case (.snow, _): return [rgb(0x5D6E84), rgb(0xB4C2D3)]
-        case (.thunder, _): return [rgb(0x15172A), rgb(0x343A52)]
+        .frame(height: Layout.rowHeight)
+        .accessibilityElement(children: .ignore)
+        .accessibilityLabel(Text(verbatim: spoken(day, isToday: isToday)))
+    }
+
+    private func spoken(_ day: NotchToday.Weather.Day, isToday: Bool) -> String {
+        var parts = [
+            isToday ? String(localized: "Today") : day.date.formatted(.dateTime.weekday(.wide)), day.conditions,
+        ]
+        if let chance = day.rainChance, chance >= 10 {
+            parts.append(String(localized: "\(NotchWeatherFormat.percent(chance)) chance of rain"))
         }
+        parts.append(NotchWeatherFormat.range(high: day.highC, low: day.lowC))
+        return parts.joined(separator: ", ")
     }
 }
 
-/// Draws one frame. Every position comes from the time and a fixed per-item seed, so nothing is
-/// stored between frames.
-private struct NotchWeatherPainter {
-    let kind: NotchToday.Weather.Kind
-    let isDay: Bool
-    let time: TimeInterval
-    let size: CGSize
+// MARK: - Range bar
 
-    private var width: CGFloat { size.width }
-    private var height: CGFloat { size.height }
-    private var unit: CGFloat { min(width, height) }
+/// One day's range on the week's track, in the colours of the temperatures it covers, with a white
+/// dot for the temperature now on today's.
+private struct NotchWeatherBar: View {
+    let low: Double
+    let high: Double
+    let segment: (start: Double, length: Double)
+    let mark: Double?
 
-    /// 0..<1, the same for the same seed.
-    private func random(_ seed: Int, _ salt: Double = 0) -> CGFloat {
-        let value = sin(Double(seed) * 12.9898 + salt * 78.233) * 43758.5453
-        return CGFloat(value - value.rounded(.down))
-    }
-
-    func paint(_ canvas: inout GraphicsContext) {
-        switch kind {
-        case .clear:
-            isDay ? sun(&canvas, at: CGPoint(x: width * 0.5, y: height * 0.46)) : night(&canvas)
-        case .partlyCloudy:
-            if isDay { sun(&canvas, at: CGPoint(x: width * 0.62, y: height * 0.38)) } else { night(&canvas) }
-            clouds(&canvas, count: 2, shade: 1, alpha: 0.95, lane: 0.55)
-        case .cloudy:
-            clouds(&canvas, count: 3, shade: 0.9, alpha: 0.9, lane: 0.45)
-        case .fog:
-            fog(&canvas)
-        case .rain:
-            clouds(&canvas, count: 3, shade: 0.7, alpha: 0.95, lane: 0.3)
-            rain(&canvas, drops: 30)
-        case .snow:
-            clouds(&canvas, count: 3, shade: 0.92, alpha: 0.9, lane: 0.3)
-            snow(&canvas)
-        case .thunder:
-            clouds(&canvas, count: 3, shade: 0.45, alpha: 0.98, lane: 0.3)
-            rain(&canvas, drops: 36)
-            lightning(&canvas)
+    var body: some View {
+        GeometryReader { proxy in
+            let width = proxy.size.width
+            let height = proxy.size.height
+            ZStack(alignment: .leading) {
+                Capsule().fill(.white.opacity(0.15))
+                LinearGradient(
+                    stops: NotchWeatherScale.gradient(from: low, to: high).map {
+                        Gradient.Stop(color: $0.color, location: $0.location)
+                    }, startPoint: .leading, endPoint: .trailing
+                )
+                .frame(width: max(height, width * segment.length))
+                .clipShape(Capsule())
+                .offset(x: width * segment.start)
+                if let mark {
+                    // White on a black ring, so it shows on the pale end of the scale too.
+                    Circle()
+                        .fill(.white)
+                        .frame(width: 6, height: 6)
+                        .background(Circle().fill(.black).frame(width: 9, height: 9))
+                        .offset(x: min(max(width * mark - 3, 0), width - 6))
+                }
+            }
+            .frame(width: width, height: height)
         }
+        .accessibilityHidden(true)
+    }
+}
+
+// MARK: - Arithmetic
+
+/// Where a day's range sits on the week's, as fractions of the bar, so the view multiplies by
+/// whatever width it has. Pure, for the tests.
+enum NotchWeatherRange {
+    /// The coldest low to the warmest high of the days shown; nil for none.
+    static func bounds(of days: [NotchToday.Weather.Day]) -> ClosedRange<Double>? {
+        guard let coldest = days.map(\.lowC).min(), let warmest = days.map(\.highC).max(), coldest <= warmest
+        else { return nil }
+        return coldest...warmest
     }
 
-    // MARK: Sun, moon, stars
+    /// Start and length, each 0…1. A week with no spread draws every day full; a day whose low is
+    /// its high still gets a sliver rather than vanishing.
+    static func segment(low: Double, high: Double, in bounds: ClosedRange<Double>) -> (start: Double, length: Double) {
+        let span = bounds.upperBound - bounds.lowerBound
+        guard span > 0 else { return (0, 1) }
+        let start = min(max((min(low, high) - bounds.lowerBound) / span, 0), 1)
+        let end = min(max((max(low, high) - bounds.lowerBound) / span, 0), 1)
+        return (start, min(max(end - start, 0.04), 1 - start))
+    }
 
-    private func sun(_ canvas: inout GraphicsContext, at center: CGPoint) {
-        let radius = unit * 0.17
-        let pulse = 0.32 + 0.08 * sin(time * 1.4)
-        let glow = Path(
-            ellipseIn: CGRect(
-                x: center.x - radius * 2.3, y: center.y - radius * 2.3, width: radius * 4.6, height: radius * 4.6))
-        canvas.fill(
-            glow,
-            with: .radialGradient(
-                Gradient(colors: [Color(red: 1, green: 0.86, blue: 0.4).opacity(pulse), .clear]), center: center,
-                startRadius: radius * 0.8, endRadius: radius * 2.3))
-        // Rays, turning slowly.
-        let rays = 10
-        for index in 0..<rays {
-            let angle = Double(index) / Double(rays) * 2 * .pi + time * 0.25
-            var ray = Path()
-            ray.move(to: CGPoint(x: center.x + cos(angle) * radius * 1.35, y: center.y + sin(angle) * radius * 1.35))
-            ray.addLine(to: CGPoint(x: center.x + cos(angle) * radius * 1.8, y: center.y + sin(angle) * radius * 1.8))
-            canvas.stroke(
-                ray, with: .color(Color(red: 1, green: 0.85, blue: 0.35).opacity(0.85)),
-                style: StrokeStyle(lineWidth: 2.2, lineCap: .round))
+    /// The temperature now on the bar, 0…1, kept on today's own segment: the current reading and the
+    /// day's forecast are separate answers and can disagree by a degree.
+    static func position(
+        _ value: Double, within segment: (start: Double, length: Double), in bounds: ClosedRange<Double>
+    )
+        -> Double
+    {
+        let span = bounds.upperBound - bounds.lowerBound
+        let raw = span > 0 ? (value - bounds.lowerBound) / span : 0.5
+        return min(max(raw, segment.start), segment.start + segment.length)
+    }
+}
+
+/// The colour of a temperature: a fixed scale of degrees, not the week's own spread, so a cold week
+/// reads blue and a hot one orange.
+enum NotchWeatherScale {
+    struct Stop {
+        let celsius: Double
+        let red: Double
+        let green: Double
+        let blue: Double
+    }
+
+    static let stops: [Stop] = [
+        Stop(celsius: -12, red: 0.58, green: 0.48, blue: 1.00),
+        Stop(celsius: 0, red: 0.32, green: 0.60, blue: 1.00),
+        Stop(celsius: 10, red: 0.30, green: 0.80, blue: 0.84),
+        Stop(celsius: 17, red: 0.58, green: 0.84, blue: 0.36),
+        Stop(celsius: 23, red: 1.00, green: 0.80, blue: 0.24),
+        Stop(celsius: 30, red: 0.98, green: 0.55, blue: 0.18),
+        Stop(celsius: 38, red: 0.94, green: 0.30, blue: 0.22),
+    ]
+
+    /// The blue a chance of rain is printed in, the blue of the drops beside it.
+    static let rainBlue = Color(.sRGB, red: 0.40, green: 0.76, blue: 1.0)
+
+    static func components(atCelsius celsius: Double) -> (red: Double, green: Double, blue: Double) {
+        guard let first = stops.first, let last = stops.last else { return (1, 1, 1) }
+        if !celsius.isFinite || celsius <= first.celsius { return (first.red, first.green, first.blue) }
+        if celsius >= last.celsius { return (last.red, last.green, last.blue) }
+        for (lower, upper) in zip(stops, stops.dropFirst()) where celsius <= upper.celsius {
+            let t = (celsius - lower.celsius) / (upper.celsius - lower.celsius)
+            return (
+                lower.red + (upper.red - lower.red) * t, lower.green + (upper.green - lower.green) * t,
+                lower.blue + (upper.blue - lower.blue) * t
+            )
         }
-        canvas.fill(
-            Path(ellipseIn: CGRect(x: center.x - radius, y: center.y - radius, width: radius * 2, height: radius * 2)),
-            with: .linearGradient(
-                Gradient(colors: [Color(red: 1, green: 0.93, blue: 0.55), Color(red: 1, green: 0.74, blue: 0.2)]),
-                startPoint: CGPoint(x: center.x, y: center.y - radius),
-                endPoint: CGPoint(x: center.x, y: center.y + radius)))
+        return (last.red, last.green, last.blue)
     }
 
-    private func night(_ canvas: inout GraphicsContext) {
-        for index in 0..<14 {
-            let point = CGPoint(x: random(index) * width, y: random(index, 1) * height * 0.75)
-            let twinkle = 0.35 + 0.45 * (0.5 + 0.5 * sin(time * (1.2 + Double(random(index, 2)) * 2) + Double(index)))
-            let dot = 0.8 + random(index, 3) * 1.1
-            canvas.fill(
-                Path(ellipseIn: CGRect(x: point.x, y: point.y, width: dot, height: dot)),
-                with: .color(.white.opacity(twinkle)))
+    /// The gradient across one bar from `low` to `high` °C, bending at every scale stop in between.
+    static func gradient(from low: Double, to high: Double) -> [(location: Double, color: Color)] {
+        func color(_ celsius: Double) -> Color {
+            let value = components(atCelsius: celsius)
+            return Color(.sRGB, red: value.red, green: value.green, blue: value.blue)
         }
-        // A crescent: the moon with a circle up and to its right cut away.
-        let radius = unit * 0.16
-        let center = CGPoint(x: width * 0.62, y: height * 0.38)
-        var moon = canvas
-        moon.clip(
-            to: Path(
-                ellipseIn: CGRect(
-                    x: center.x + radius * 0.5 - radius * 0.95, y: center.y - radius * 0.3 - radius * 0.95,
-                    width: radius * 1.9, height: radius * 1.9)),
-            options: .inverse)
-        moon.fill(
-            Path(ellipseIn: CGRect(x: center.x - radius, y: center.y - radius, width: radius * 2, height: radius * 2)),
-            with: .color(Color(red: 0.98, green: 0.95, blue: 0.82)))
-    }
-
-    // MARK: Clouds, fog
-
-    private func cloud(_ canvas: inout GraphicsContext, center: CGPoint, scale: CGFloat, color: Color) {
-        let base = unit * 0.2 * scale
-        var shape = Path(
-            roundedRect: CGRect(
-                x: center.x - base * 1.6, y: center.y - base * 0.2, width: base * 3.2, height: base * 0.9),
-            cornerRadius: base * 0.45)
-        shape.addEllipse(
-            in: CGRect(x: center.x - base * 1.25, y: center.y - base * 0.75, width: base * 1.3, height: base * 1.3))
-        shape.addEllipse(
-            in: CGRect(x: center.x - base * 0.45, y: center.y - base * 1.15, width: base * 1.6, height: base * 1.6))
-        shape.addEllipse(
-            in: CGRect(x: center.x + base * 0.45, y: center.y - base * 0.65, width: base * 1.15, height: base * 1.15))
-        canvas.fill(shape, with: .color(color))
-    }
-
-    /// Clouds drifting left to right at their own pace, coming round again past the edge.
-    private func clouds(_ canvas: inout GraphicsContext, count: Int, shade: Double, alpha: Double, lane: CGFloat) {
-        for index in 0..<count {
-            let scale = 0.85 + random(index, 4) * 0.5
-            let span = width + unit * 0.9 * scale
-            let speed = 6 + Double(random(index, 5)) * 6
-            let x =
-                (random(index, 6) * span + CGFloat(time * speed)).truncatingRemainder(dividingBy: span) - unit * 0.45
-                * scale
-            let y = height * (lane - 0.1 + random(index, 7) * 0.22)
-            let tone = shade - Double(index) * 0.06
-            cloud(&canvas, center: CGPoint(x: x, y: y), scale: scale, color: Color(white: tone).opacity(alpha))
+        let from = min(low, high)
+        let to = max(low, high)
+        guard to > from else { return [(0, color(from)), (1, color(from))] }
+        let inner = stops.filter { $0.celsius > from && $0.celsius < to }.map {
+            (location: ($0.celsius - from) / (to - from), color: color($0.celsius))
         }
+        return [(0, color(from))] + inner + [(1, color(to))]
+    }
+}
+
+/// Temperatures, percentages and wind as the reader's region writes them: °F and mph in the US,
+/// °C and km/h elsewhere (mph in the UK too).
+enum NotchWeatherFormat {
+    static func usesFahrenheit(_ locale: Locale = .current) -> Bool { locale.measurementSystem == .us }
+
+    /// "19°", rounded half away from zero.
+    static func temperature(_ celsius: Double, locale: Locale = .current) -> String {
+        let value = usesFahrenheit(locale) ? celsius * 9 / 5 + 32 : celsius
+        return "\(Int(value.rounded()))°"
     }
 
-    private func fog(_ canvas: inout GraphicsContext) {
-        for index in 0..<4 {
-            let y = height * (0.25 + CGFloat(index) * 0.18)
-            let drift = sin(time * 0.4 + Double(index) * 1.3) * Double(width) * 0.12
-            let band = Path(
-                roundedRect: CGRect(x: CGFloat(drift) - width * 0.1, y: y, width: width * 1.2, height: unit * 0.1),
-                cornerRadius: unit * 0.05)
-            canvas.fill(band, with: .color(.white.opacity(0.22 + Double(random(index, 8)) * 0.15)))
-        }
+    /// "H:29°  L:19°".
+    static func range(high: Double, low: Double, locale: Locale = .current) -> String {
+        "H:\(temperature(high, locale: locale))  L:\(temperature(low, locale: locale))"
     }
 
-    // MARK: Rain, snow, lightning
+    /// "89%", from 0…100, clamped.
+    static func percent(_ value: Double) -> String { "\(Int(min(max(value, 0), 100).rounded()))%" }
 
-    private func rain(_ canvas: inout GraphicsContext, drops: Int) {
-        let top = height * 0.38
-        let fall = height - top + 10
-        for index in 0..<drops {
-            let speed = 70 + Double(random(index, 9)) * 50
-            let y = top + (random(index, 10) * fall + CGFloat(time * speed)).truncatingRemainder(dividingBy: fall) - 6
-            let x = random(index, 11) * width
-            var drop = Path()
-            drop.move(to: CGPoint(x: x, y: y))
-            drop.addLine(to: CGPoint(x: x - 1.6, y: y + 7))
-            canvas.stroke(
-                drop, with: .color(Color(red: 0.7, green: 0.82, blue: 1).opacity(0.75)),
-                style: StrokeStyle(lineWidth: 1.4, lineCap: .round))
-        }
-    }
-
-    private func snow(_ canvas: inout GraphicsContext) {
-        let top = height * 0.35
-        let fall = height - top + 6
-        for index in 0..<24 {
-            let speed = 12 + Double(random(index, 12)) * 12
-            let y = top + (random(index, 13) * fall + CGFloat(time * speed)).truncatingRemainder(dividingBy: fall) - 3
-            let sway = sin(time * 1.3 + Double(index)) * 3
-            let x = random(index, 14) * width + CGFloat(sway)
-            let dot = 1.6 + random(index, 15) * 1.6
-            canvas.fill(Path(ellipseIn: CGRect(x: x, y: y, width: dot, height: dot)), with: .color(.white.opacity(0.9)))
-        }
-    }
-
-    /// A strike every few seconds: two quick flashes of the sky and a bolt.
-    private func lightning(_ canvas: inout GraphicsContext) {
-        let period = 3.4
-        let phase = time.truncatingRemainder(dividingBy: period) / period
-        let flash = phase < 0.03 || (phase > 0.06 && phase < 0.1)
-        guard flash else { return }
-        canvas.fill(Path(CGRect(origin: .zero, size: size)), with: .color(.white.opacity(0.28)))
-        let start = CGPoint(x: width * (0.35 + random(Int(time / period), 16) * 0.3), y: height * 0.35)
-        var bolt = Path()
-        bolt.move(to: start)
-        bolt.addLine(to: CGPoint(x: start.x - unit * 0.08, y: start.y + unit * 0.22))
-        bolt.addLine(to: CGPoint(x: start.x + unit * 0.02, y: start.y + unit * 0.22))
-        bolt.addLine(to: CGPoint(x: start.x - unit * 0.07, y: start.y + unit * 0.48))
-        canvas.stroke(
-            bolt, with: .color(Color(red: 1, green: 0.97, blue: 0.75)),
-            style: StrokeStyle(lineWidth: 2.4, lineCap: .round, lineJoin: .round))
+    /// "12 km/h", or "7 mph" where the region drives in miles.
+    static func wind(_ kilometresPerHour: Double, locale: Locale = .current) -> String {
+        let miles = locale.measurementSystem == .us || locale.measurementSystem == .uk
+        let speed = Measurement(value: kilometresPerHour, unit: UnitSpeed.kilometersPerHour)
+        let converted = miles ? speed.converted(to: .milesPerHour) : speed
+        return Measurement(value: converted.value.rounded(), unit: converted.unit)
+            .formatted(.measurement(width: .abbreviated, usage: .asProvided).locale(locale))
     }
 }

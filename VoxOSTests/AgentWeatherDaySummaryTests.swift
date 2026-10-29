@@ -48,7 +48,7 @@ struct AgentWeatherDaySummaryTests {
         let url = try #require(AgentWeather.url(latitude: 12.9716, longitude: 77.5946))
         let query = url.query ?? ""
         #expect(query.contains("latitude=12.9716") && query.contains("longitude=77.5946"))
-        #expect(query.contains("timezone=auto") && query.contains("forecast_days=2"))
+        #expect(query.contains("timezone=auto") && query.contains("forecast_days=5"))
     }
 
     // MARK: Day summary

@@ -65,9 +65,11 @@ Decisions, and what they rest on (measured on macOS 26 unless noted):
   the format is private, so anything unexpected reads as no Focus.
 - **Mirror, keep awake.** The camera runs only from a click until its page goes away; keeping
   awake is a display-sleep assertion let go at 10% on battery.
-- **Weather.** Open-Meteo through the Agent's own lookup (no key, no account), with `is_day` for
-  sun or moon. The scene is one Canvas at 30 frames a second that exists only while the Weather
-  page is on screen; Reduce Motion draws it still.
+- **Weather.** Open-Meteo through the Agent's own lookup (no key, no account): current conditions
+  and five days in one request, with `is_day` for sun or moon. The page is numbers only — place and
+  "as of", temperature and range, rain/humidity/feels like/wind, and five rows with each day's range
+  on the week's — and draws nothing per frame: the animated Canvas scene it replaced cost 12–15% CPU
+  while open. °F and mph follow the region.
 - **Rain soon, unread counts.** Rain comes from Open-Meteo's 15-minute precipitation, read every
   half hour, only once location access was granted from the Weather page. Unread counts are the
   Dock's badges (`AXStatusLabel` in its accessibility tree), read once a minute with slack and

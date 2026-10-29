@@ -36,6 +36,32 @@ final class NotchToday: ObservableObject {
         /// Daylight where the weather is; nil when the service did not say.
         var isDay: Bool? = nil
 
+        // What the Weather page reads beside the chip's numbers, in the units they were measured
+        // in (°C, km/h, percent); `NotchWeatherFormat` converts them for the reader's region.
+        var temperatureC: Double? = nil
+        var feelsLikeC: Double? = nil
+        var humidity: Double? = nil
+        var windKPH: Double? = nil
+        /// Today's chance of rain, 0…100.
+        var rainChance: Double? = nil
+        /// Up to five days, today first.
+        var days: [Day] = []
+        /// When it was fetched, so the page can say "as of" rather than imply it is live.
+        var readAt: Date? = nil
+
+        struct Day: Equatable, Identifiable {
+            /// The start of the day, on this Mac's calendar.
+            let date: Date
+            let highC: Double
+            let lowC: Double
+            /// 0…100; nil when the service did not say.
+            let rainChance: Double?
+            let conditions: String
+
+            var id: Date { date }
+            var symbol: String { NotchToday.symbol(for: conditions) }
+        }
+
         /// What the Weather page draws.
         enum Kind: Equatable {
             case clear
@@ -301,14 +327,45 @@ final class NotchToday: ObservableObject {
         }
     }
 
-    nonisolated static func weather(from summary: [String: Any]) -> Weather? {
+    nonisolated static func weather(
+        from summary: [String: Any], now: Date = Date(), calendar: Calendar = .current
+    ) -> Weather? {
         guard let temperature = summary["temperature_c"] as? Double else { return nil }
         let conditions = summary["conditions"] as? String ?? ""
         let today = (summary["outlook"] as? [[String: Any]])?.first
-        return Weather(
+        let isDay = summary["is_day"] as? Bool
+        var weather = Weather(
             temperature: Int(temperature.rounded()), high: (today?["high_c"] as? Double).map { Int($0.rounded()) },
-            low: (today?["low_c"] as? Double).map { Int($0.rounded()) }, symbol: symbol(for: conditions),
-            conditions: conditions, place: summary["place"] as? String, isDay: summary["is_day"] as? Bool)
+            low: (today?["low_c"] as? Double).map { Int($0.rounded()) },
+            symbol: symbol(for: conditions, isDay: isDay ?? true), conditions: conditions,
+            place: summary["place"] as? String, isDay: isDay)
+        weather.temperatureC = temperature
+        weather.feelsLikeC = summary["feels_like_c"] as? Double
+        weather.humidity = summary["humidity_pct"] as? Double
+        weather.windKPH = summary["wind_kmh"] as? Double
+        weather.rainChance = today?["rain_chance_pct"] as? Double
+        weather.days = (summary["forecast"] as? [[String: Any]] ?? []).prefix(forecastDays).compactMap {
+            day(from: $0, calendar: calendar)
+        }
+        weather.readAt = now
+        return weather
+    }
+
+    /// How many days the Weather page lists, today included.
+    nonisolated static let forecastDays = 5
+
+    /// One forecast day from the summary; its "2026-10-29" read as that day on this Mac's calendar.
+    nonisolated static func day(from entry: [String: Any], calendar: Calendar = .current) -> Weather.Day? {
+        guard let text = entry["date"] as? String, let high = entry["high_c"] as? Double,
+            let low = entry["low_c"] as? Double
+        else { return nil }
+        let parts = text.split(separator: "-").compactMap { Int($0) }
+        guard parts.count == 3,
+            let date = calendar.date(from: DateComponents(year: parts[0], month: parts[1], day: parts[2]))
+        else { return nil }
+        return Weather.Day(
+            date: date, highC: high, lowC: low, rainChance: entry["rain_chance_pct"] as? Double,
+            conditions: entry["conditions"] as? String ?? "")
     }
 
     /// From Open-Meteo's weather-code text ("clear sky", "partly cloudy", "slight rain showers",
@@ -324,15 +381,16 @@ final class NotchToday: ObservableObject {
         return .clear
     }
 
-    nonisolated static func symbol(for conditions: String) -> String {
+    /// The SF Symbol for the conditions; at night a moon where the day has a sun.
+    nonisolated static func symbol(for conditions: String, isDay: Bool = true) -> String {
         let text = conditions.lowercased()
         if text.contains("thunder") { return "cloud.bolt.rain.fill" }
         if text.contains("snow") { return "cloud.snow.fill" }
         if text.contains("rain") || text.contains("drizzle") || text.contains("shower") { return "cloud.rain.fill" }
         if text.contains("fog") { return "cloud.fog.fill" }
         if text.contains("overcast") { return "cloud.fill" }
-        if text.contains("partly") || text.contains("mainly") { return "cloud.sun.fill" }
-        if text.contains("clear") { return "sun.max.fill" }
+        if text.contains("partly") || text.contains("mainly") { return isDay ? "cloud.sun.fill" : "cloud.moon.fill" }
+        if text.contains("clear") { return isDay ? "sun.max.fill" : "moon.stars.fill" }
         return "cloud.fill"
     }
 }

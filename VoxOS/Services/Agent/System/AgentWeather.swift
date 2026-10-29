@@ -35,7 +35,8 @@ enum AgentWeather {
             .init(name: "minutely_15", value: "precipitation"),
             .init(name: "forecast_minutely_15", value: "8"),
             .init(name: "timezone", value: "auto"),
-            .init(name: "forecast_days", value: "2"),
+            // Five for the notch's Weather page; a spoken answer uses the first two.
+            .init(name: "forecast_days", value: "5"),
         ]
         return components?.url
     }
@@ -71,6 +72,17 @@ enum AgentWeather {
                 days.append(day)
             }
             out["outlook"] = days
+            // The notch's Weather page: every day that came back, dated as the service dates them
+            // ("2026-10-29", in the place's own time zone).
+            if let dates = daily["time"] as? [String] {
+                out["forecast"] = dates.indices.compactMap { index -> [String: Any]? in
+                    guard index < highs.count, index < lows.count else { return nil }
+                    var day: [String: Any] = ["date": dates[index], "high_c": highs[index], "low_c": lows[index]]
+                    if index < rain.count { day["rain_chance_pct"] = rain[index] }
+                    if index < codes.count { day["conditions"] = describe(code: codes[index]) }
+                    return day
+                }
+            }
         }
         return out
     }
