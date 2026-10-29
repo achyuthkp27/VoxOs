@@ -31,6 +31,8 @@ enum NotchHome {
     /// A volume or brightness icon, and its meter.
     static var levelWing: CGFloat { wing(holding: levelMeterWidth) }
     static let levelMeterWidth: CGFloat = 64
+    /// A thin line, as macOS draws its own.
+    static let levelMeterHeight: CGFloat = 3
     /// How far round the open card a dragged file opens the shelf.
     static let dragMargin: CGFloat = 24
 
@@ -623,7 +625,7 @@ struct NotchHomeView: View {
             }
         case .level(let level):
             NotchLevelMeter(value: level.muted ? 0 : level.value)
-                .frame(width: NotchHome.levelMeterWidth, height: 5)
+                .frame(width: NotchHome.levelMeterWidth, height: NotchHome.levelMeterHeight)
                 .accessibilityLabel(Text(level.kind == .volume ? "Volume" : "Brightness"))
                 .accessibilityValue(Text("\(Int((level.muted ? 0 : level.value) * 100)) percent"))
         case .privacy(let privacy):
@@ -744,7 +746,7 @@ private struct NotchLevelReadout: View {
                 .foregroundStyle(.white)
                 .frame(width: 18, alignment: .leading)
             NotchLevelMeter(value: level.muted ? 0 : level.value)
-                .frame(width: NotchHome.levelMeterWidth, height: 4)
+                .frame(width: NotchHome.levelMeterWidth, height: NotchHome.levelMeterHeight)
         }
     }
 }
