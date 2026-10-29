@@ -70,7 +70,7 @@ struct NotchWeatherPage: View {
 
     private func header(_ weather: NotchToday.Weather) -> some View {
         HStack(alignment: .firstTextBaseline, spacing: 8) {
-            Text(verbatim: weather.place ?? String(localized: "Weather"))
+            Text(verbatim: weather.place.flatMap(Self.city) ?? String(localized: "Weather"))
                 .font(.app(size: 13, weight: .semibold))
                 .foregroundStyle(.white.opacity(0.92))
                 .lineLimit(1)
@@ -85,6 +85,13 @@ struct NotchWeatherPage: View {
             Spacer(minLength: 0)
         }
         .frame(height: Layout.headerHeight)
+    }
+
+    /// The place's first part, "Bengaluru" from "Bengaluru, Karnataka, India": the region and the
+    /// country take the line and say nothing a person checking the weather needs.
+    nonisolated static func city(_ place: String) -> String? {
+        let first = place.split(separator: ",").first.map { $0.trimmingCharacters(in: .whitespaces) }
+        return first?.isEmpty == false ? first : nil
     }
 
     // MARK: Now

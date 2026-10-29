@@ -91,6 +91,12 @@ struct NotchWeatherPageTests {
         #expect(NotchWeatherScale.gradient(from: 20, to: 20).count == 2)
     }
 
+    @Test func theHeaderNamesTheCity() {
+        #expect(NotchWeatherPage.city("Bengaluru, Karnataka, India") == "Bengaluru")
+        #expect(NotchWeatherPage.city("Paris") == "Paris")
+        #expect(NotchWeatherPage.city(" , France") == nil)
+    }
+
     @Test func numbersAreWrittenForTheRegion() {
         let india = Locale(identifier: "en_IN")
         let us = Locale(identifier: "en_US")
