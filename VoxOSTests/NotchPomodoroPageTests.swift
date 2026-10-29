@@ -64,7 +64,6 @@ struct NotchPomodoroPageTests {
         #expect(NotchTimerPage.range(of: .sessions) == 2...8)
     }
 
-
     @Test func pagesTakeTheHeightTheyNeed() {
         #expect(NotchHome.Card.height(for: .reminders) == NotchHome.Card.height)
         #expect(NotchHome.Card.height(for: .music, outputOpen: true) > NotchHome.Card.height(for: .music))
