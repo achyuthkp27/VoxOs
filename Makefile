@@ -115,11 +115,15 @@ local: check setup
 		CODE_SIGN_ENTITLEMENTS="$(CURDIR)/VoxOS/VoxOS.local.entitlements" \
 		SWIFT_ACTIVE_COMPILATION_CONDITIONS='$$(inherited) LOCAL_BUILD' \
 		build
+	@# The build product leaves Launch Services before anything asks for VoxOS, and the running
+	@# app is quit by its installed path: a request by name could resolve to the build product,
+	@# which then counts as used and shows in Spotlight as a second VoxOS.
 	@APP_PATH="$(LOCAL_DERIVED_DATA)/Build/Products/$(LOCAL_CONFIG)/VoxOS.app" && \
 	if [ -d "$$APP_PATH" ]; then \
+		"$(LSREGISTER)" -u "$$APP_PATH" >/dev/null 2>&1 || true; \
 		if pgrep -x VoxOS >/dev/null; then \
 			echo "Quitting running VoxOS..."; \
-			osascript -e 'quit app "VoxOS"' >/dev/null 2>&1 || true; \
+			osascript -e 'tell application "$(INSTALL_PATH)" to quit' >/dev/null 2>&1 || true; \
 			for i in $$(seq 1 20); do \
 				pgrep -x VoxOS >/dev/null || break; \
 				sleep 0.5; \
