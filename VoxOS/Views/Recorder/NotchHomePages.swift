@@ -252,27 +252,26 @@ struct NotchTimerPage: View {
         }
     }
 
-    /// The caption under the time while nothing runs, as a menu of what START begins.
+    /// The caption under the time while nothing runs: a click moves what START begins on to the
+    /// next session (Focus, Short Break, Long Break), drawn as the caption itself.
     private var kindMenu: some View {
-        Menu {
-            ForEach(Self.startable, id: \.self) { kind in
-                Toggle(
-                    Self.name(of: kind),
-                    isOn: Binding(get: { startKind == kind }, set: { if $0 { startKind = kind } }))
-            }
+        Button {
+            let index = Self.startable.firstIndex(of: startKind) ?? 0
+            startKind = Self.startable[(index + 1) % Self.startable.count]
         } label: {
             HStack(spacing: 3) {
                 Text(verbatim: Self.name(of: startKind).uppercased())
-                Image(systemName: "chevron.down").font(.system(size: 7, weight: .bold))
+                Image(systemName: "chevron.up.chevron.down").font(.system(size: 6, weight: .bold))
             }
             .font(.app(size: 9, weight: .medium))
             .tracking(1.2)
-            .foregroundStyle(.white.opacity(0.6))
+            .foregroundStyle(.white.opacity(0.5))
+            .lineLimit(1)
+            .contentShape(Rectangle())
         }
-        .menuStyle(.borderlessButton)
-        .menuIndicator(.hidden)
-        .fixedSize()
+        .buttonStyle(.plain)
         .help(Text("Choose what Start begins"))
+        .accessibilityLabel(Text("Start begins \(Self.name(of: startKind)); click for the next"))
     }
 
     private func caption(_ running: NotchTimer?) -> String {
