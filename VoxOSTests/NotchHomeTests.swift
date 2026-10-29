@@ -217,6 +217,10 @@ struct NotchHomeTests {
             ["A", "B", "paused", "180000", "3"].joined(separator: sep), bundleID: NotchPlayers.spotify, now: Date())
         #expect(spotify?.duration == 180, "Spotify reports milliseconds")
         #expect(NotchPlayers.parseState("stopped", bundleID: NotchPlayers.music, now: Date()) == nil)
+        let album = NotchPlayers.parseState(
+            ["Song", "Band", "paused", "200", "1", "The Record"].joined(separator: sep), bundleID: NotchPlayers.music,
+            now: Date())
+        #expect(album?.album == "The Record", "the album comes sixth")
     }
 
     private func track(_ bundle: String, playing: Bool) -> NotchTrack {

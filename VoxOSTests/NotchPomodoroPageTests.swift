@@ -95,6 +95,15 @@ struct NotchPomodoroPageTests {
         #expect(NotchTimerPage.figure(5, for: .shortBreak) == "05")
     }
 
+    @Test func upNextListsOnlyTheShownPlayersQueue() {
+        let track = NotchTrack(
+            id: "t", title: "Blue & You", artist: "Band", isPlaying: false, duration: 200, elapsed: 10, stamp: Date(),
+            rate: 0, artwork: nil, tint: .white, bundleID: "com.apple.Music")
+        #expect(NotchHome.queue(startingWith: "blue & you", isFor: track))
+        #expect(!NotchHome.queue(startingWith: "A video in a browser", isFor: track), "another player's queue")
+        #expect(!NotchHome.queue(startingWith: nil, isFor: track))
+    }
+
     @Test func pagesTakeTheHeightTheyNeed() {
         #expect(NotchHome.Card.height(for: .reminders) == NotchHome.Card.height)
         #expect(NotchHome.Card.height(for: .music, panelOpen: true) > NotchHome.Card.height(for: .music))

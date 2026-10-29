@@ -202,18 +202,19 @@ final class NotchPlayers: ObservableObject {
             stamp: now, album: info["Album"] as? String)
     }
 
-    /// "title␟artist␟playing␟duration␟position"; durations are seconds for Music, milliseconds
-    /// for Spotify. A player that has stopped answers "stopped".
+    /// "title␟artist␟playing␟duration␟position␟album" (the album may be missing); durations are
+    /// seconds for Music, milliseconds for Spotify. A player that has stopped answers "stopped".
     nonisolated static func parseState(_ output: String, bundleID: String, now: Date) -> Entry? {
         let fields = output.trimmingCharacters(in: .whitespacesAndNewlines).components(separatedBy: separator)
-        guard fields.count == 5, !fields[0].isEmpty else { return nil }
+        guard fields.count == 5 || fields.count == 6, !fields[0].isEmpty else { return nil }
         let state = fields[2].lowercased()
         guard state == "playing" || state == "paused" else { return nil }
         var duration = Double(fields[3].replacingOccurrences(of: ",", with: "."))
         if bundleID == spotify { duration = duration.map { $0 / 1000 } }
         return Entry(
             bundleID: bundleID, title: fields[0], artist: fields[1], isPlaying: state == "playing", duration: duration,
-            position: Double(fields[4].replacingOccurrences(of: ",", with: ".")), stamp: now)
+            position: Double(fields[4].replacingOccurrences(of: ",", with: ".")), stamp: now,
+            album: fields.count == 6 && !fields[5].isEmpty ? fields[5] : nil)
     }
 
     nonisolated static func stateScript(for bundleID: String) -> String? {
@@ -222,7 +223,7 @@ final class NotchPlayers: ObservableObject {
             tell application id "\(bundleID)"
                 if player state is stopped then return "stopped"
                 set sep to ASCII character 31
-                return (name of current track) & sep & (artist of current track) & sep & (player state as string) & sep & (duration of current track) & sep & (player position)
+                return (name of current track) & sep & (artist of current track) & sep & (player state as string) & sep & (duration of current track) & sep & (player position) & sep & (album of current track)
             end tell
             """
     }

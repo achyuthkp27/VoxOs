@@ -16,6 +16,17 @@ public enum NowPlayingQueue {
         /// Seconds.
         public let duration: Double?
         public let format: AudioFormat?
+
+        public init(
+            id: String?, title: String, artist: String?, album: String?, duration: Double?, format: AudioFormat?
+        ) {
+            self.id = id
+            self.title = title
+            self.artist = artist
+            self.album = album
+            self.duration = duration
+            self.format = format
+        }
     }
 
     /// The format a track plays in, as the player reports it.

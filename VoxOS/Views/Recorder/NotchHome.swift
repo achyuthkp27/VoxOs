@@ -187,6 +187,13 @@ enum NotchHome {
     /// How much of the queue Up Next lists.
     static let queueLength = 25
 
+    /// Whether MediaRemote's queue belongs to `track`: its first item is the playing one, and
+    /// MediaRemote answers for the player macOS calls current, which need not be the one shown.
+    static func queue(startingWith first: String?, isFor track: NotchTrack) -> Bool {
+        guard let first else { return false }
+        return first.caseInsensitiveCompare(track.title) == .orderedSame
+    }
+
     static func clock(_ seconds: Double) -> String {
         let total = max(0, Int(seconds.rounded(.down)))
         return String(format: "%d:%02d", total / 60, total % 60)
@@ -2228,7 +2235,9 @@ final class NotchHomeManager {
         guard track != nil else { return }
         Task { @MainActor [weak model] in
             let items = await NowPlayingQueue.read(length: 2)
-            guard model?.track?.id == track?.id, let items else { return }
+            guard model?.track?.id == track?.id, let track, let items,
+                NotchHome.queue(startingWith: items.first?.title, isFor: track)
+            else { return }
             model?.audioFormat = items.first?.format
             model?.nextUp = items.count > 1 ? items[1] : nil
         }
@@ -2238,11 +2247,17 @@ final class NotchHomeManager {
     private func readQueue() {
         guard let model else { return }
         model.queue = nil
-        let id = model.track?.id
+        let track = model.track
         Task { @MainActor [weak model] in
             let items = await NowPlayingQueue.read(length: NotchHome.queueLength)
-            guard model?.track?.id == id else { return }
-            model?.queue = items ?? []
+            guard model?.track?.id == track?.id else { return }
+            // MediaRemote's queue is the player macOS calls current; another player shown here has
+            // none to list.
+            if let track, let items, NotchHome.queue(startingWith: items.first?.title, isFor: track) {
+                model?.queue = items
+            } else {
+                model?.queue = []
+            }
         }
     }
 
