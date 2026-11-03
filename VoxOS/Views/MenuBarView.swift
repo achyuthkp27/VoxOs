@@ -1,3 +1,4 @@
+import AppKit
 import SwiftUI
 
 struct MenuBarView: View {
@@ -138,6 +139,17 @@ struct MenuBarView: View {
                 LastTranscriptionService.copyLastTranscription(from: engine.modelContext)
             }
             .keyboardShortcut("c", modifiers: [.command, .shift])
+
+            // A paste-ready snapshot for an issue: build, permissions, settings and the recent
+            // log, with no key, transcript or clipboard content in it.
+            Button("Copy Diagnostics") {
+                Task {
+                    let report = await DiagnosticsReport.report()
+                    let pasteboard = NSPasteboard.general
+                    pasteboard.clearContents()
+                    pasteboard.setString(report, forType: .string)
+                }
+            }
 
             Button("History") {
                 menuBarManager.openHistoryWindow()
