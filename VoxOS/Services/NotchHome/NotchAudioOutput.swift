@@ -158,7 +158,11 @@ final class NotchAudioOutput: @unchecked Sendable {
         var device = id
         let size = UInt32(MemoryLayout<AudioObjectID>.size)
         AudioObjectSetPropertyData(AudioObjectID(kAudioObjectSystemObject), &address, 0, nil, size, &device)
-        return defaultOutput() == id
+        let success = defaultOutput() == id
+        if success {
+            NotificationCenter.default.post(name: NSNotification.Name("AudioDeviceChanged"), object: nil)
+        }
+        return success
     }
 
     /// The Output list's glyph: the laptop for its own speakers, as a picker names places.

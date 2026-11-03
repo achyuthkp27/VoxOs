@@ -1,4 +1,5 @@
 import AppKit
+import CoreAudio
 import SwiftUI
 import UniformTypeIdentifiers
 
@@ -1421,6 +1422,8 @@ struct NotchRoundButton: View {
 struct NotchSoundPage: View {
     enum Section: String, CaseIterable, Identifiable {
         case apps
+        case output
+        case input
         case clipboard
         case mirror
 
@@ -1429,6 +1432,8 @@ struct NotchSoundPage: View {
         var symbol: String {
             switch self {
             case .apps: return "square.grid.2x2"
+            case .output: return "speaker.wave.2"
+            case .input: return "mic"
             case .clipboard: return "doc.on.clipboard"
             case .mirror: return "person.crop.square"
             }
@@ -1437,6 +1442,8 @@ struct NotchSoundPage: View {
         var label: LocalizedStringKey {
             switch self {
             case .apps: return "App volumes"
+            case .output: return "Sound output"
+            case .input: return "Microphone"
             case .clipboard: return "Clipboard"
             case .mirror: return "Mirror"
             }
@@ -1447,33 +1454,43 @@ struct NotchSoundPage: View {
     @ObservedObject var clipboard: NotchClipboard
     @ObservedObject var mirror: NotchMirror
     @ObservedObject var keepAwake: NotchKeepAwake
+    @ObservedObject private var audioDeviceManager = AudioDeviceManager.shared
     let pinned: Bool
     let onPin: () -> Void
     /// Whether the mirror is the part shown, for the card's height.
     var onMirrorShown: (Bool) -> Void = { _ in }
-    @State private var section: Section?
     @AppStorage(DefaultsKeys.notchMixerEnabled) private var appsOn = true
+    @AppStorage(DefaultsKeys.notchSoundOutputEnabled) private var outputOn = true
+    @AppStorage(DefaultsKeys.notchSoundInputEnabled) private var inputOn = true
     @AppStorage(DefaultsKeys.notchClipboardEnabled) private var clipboardOn = false
     @AppStorage(DefaultsKeys.notchMirrorEnabled) private var mirrorOn = true
+    @AppStorage(DefaultsKeys.notchSoundSection) private var selectedSectionRaw = Section.apps.rawValue
 
     private var sections: [Section] {
         Section.allCases.filter { section in
             switch section {
             case .apps: return appsOn
+            case .output: return outputOn
+            case .input: return inputOn
             case .clipboard: return clipboardOn
             case .mirror: return mirrorOn
             }
         }
     }
 
-    private var shown: Section? { section.flatMap { sections.contains($0) ? $0 : nil } ?? sections.first }
+    private var shown: Section? {
+        if let current = Section(rawValue: selectedSectionRaw), sections.contains(current) {
+            return current
+        }
+        return sections.first
+    }
 
     var body: some View {
         VStack(alignment: .leading, spacing: 8) {
             HStack(spacing: 6) {
                 ForEach(sections) { item in
                     NotchSegmentButton(symbol: item.symbol, label: item.label, selected: item == shown) {
-                        section = item
+                        selectedSectionRaw = item.rawValue
                     }
                 }
                 Spacer(minLength: 6)
@@ -1491,10 +1508,12 @@ struct NotchSoundPage: View {
             Group {
                 switch shown {
                 case .apps: apps
+                case .output: outputList
+                case .input: inputList
                 case .clipboard: clipboardList
                 case .mirror: mirrorView
                 case nil:
-                    Text("Switch on app volumes, the clipboard or the mirror in Settings → Notch Home")
+                    Text("Switch on sound features in Settings → Notch Home")
                         .font(.app(size: 11))
                         .foregroundStyle(.white.opacity(0.45))
                         .frame(maxWidth: .infinity, maxHeight: .infinity)
@@ -1527,7 +1546,7 @@ struct NotchSoundPage: View {
     @ViewBuilder
     private var apps: some View {
         if mixer.apps.isEmpty {
-            NotchPageHint(symbol: "speaker.wave.2", text: "Apps that are playing show here, each with its own volume")
+            NotchPageHint(symbol: "square.grid.2x2", text: "Apps that are playing show here, each with its own volume")
         } else {
             ScrollView(.vertical) {
                 VStack(spacing: 8) {
@@ -1538,6 +1557,20 @@ struct NotchSoundPage: View {
             }
             .scrollIndicators(.automatic)
         }
+    }
+
+    // MARK: Output
+
+    @ViewBuilder
+    private var outputList: some View {
+        NotchSoundOutputList()
+    }
+
+    // MARK: Microphone Input
+
+    @ViewBuilder
+    private var inputList: some View {
+        NotchSoundInputList(audioDeviceManager: audioDeviceManager)
     }
 
     // MARK: Clipboard
@@ -1713,5 +1746,141 @@ private struct NotchAppVolumeRow: View {
         }
         .accessibilityElement(children: .combine)
         .accessibilityLabel(Text("\(app.name) volume"))
+    }
+}
+
+/// Lists every available audio output device and ticks the current default output;
+/// clicking one switches the Mac's sound output to that device.
+private struct NotchSoundOutputList: View {
+    @State private var devices: [NotchAudioOutput.Device] = []
+    @State private var current = AudioObjectID(kAudioObjectUnknown)
+
+    var body: some View {
+        Group {
+            if devices.isEmpty {
+                NotchPageHint(symbol: "speaker.slash", text: "No output devices found")
+            } else {
+                ScrollView(.vertical) {
+                    VStack(spacing: 4) {
+                        ForEach(devices, id: \.id) { device in
+                            row(device)
+                        }
+                    }
+                }
+                .scrollIndicators(.automatic)
+            }
+        }
+        .onAppear(perform: reload)
+        .onReceive(NotificationCenter.default.publisher(for: NSNotification.Name("AudioDeviceChanged"))) { _ in
+            reload()
+        }
+    }
+
+    private func row(_ device: NotchAudioOutput.Device) -> some View {
+        let selected = device.id == current
+        return NotchAudioDeviceRow(
+            symbol: NotchAudioOutput.pickerSymbol(for: device),
+            name: device.name,
+            selected: selected
+        ) {
+            current = device.id
+            NotchHome.tap()
+            Task.detached(priority: .userInitiated) {
+                NotchAudioOutput.makeDefaultOutput(device.id)
+                await MainActor.run { reload() }
+            }
+        }
+    }
+
+    private func reload() {
+        devices = NotchAudioOutput.outputDevices()
+        current = NotchAudioOutput.defaultOutput()
+    }
+}
+
+/// Lists every available microphone device and ticks the active microphone;
+/// clicking one switches VoxOS's active recording device and the Mac's default input.
+private struct NotchSoundInputList: View {
+    @ObservedObject var audioDeviceManager: AudioDeviceManager
+    @State private var selectedID: AudioDeviceID?
+
+    var body: some View {
+        let devices = audioDeviceManager.availableDevices
+        Group {
+            if devices.isEmpty {
+                NotchPageHint(symbol: "mic.slash", text: "No microphones found")
+            } else {
+                let currentActiveID = selectedID ?? audioDeviceManager.getCurrentDevice()
+                ScrollView(.vertical) {
+                    VStack(spacing: 4) {
+                        ForEach(devices, id: \.id) { device in
+                            let selected = device.id == currentActiveID
+                            NotchAudioDeviceRow(
+                                symbol: audioDeviceManager.symbol(for: device.id, name: device.name),
+                                name: device.name,
+                                selected: selected
+                            ) {
+                                selectedID = device.id
+                                NotchHome.tap()
+                                audioDeviceManager.selectDeviceAndSwitchToCustomMode(id: device.id)
+                                audioDeviceManager.makeDefaultInput(id: device.id)
+                            }
+                        }
+                    }
+                }
+                .scrollIndicators(.automatic)
+            }
+        }
+        .onAppear {
+            selectedID = audioDeviceManager.getCurrentDevice()
+            audioDeviceManager.loadAvailableDevices()
+        }
+        .onChange(of: audioDeviceManager.selectedDeviceID) { newID in
+            if let newID { selectedID = newID }
+        }
+    }
+}
+
+/// A row for an audio output or input device with icon, name, and checkmark if selected.
+private struct NotchAudioDeviceRow: View {
+    let symbol: String
+    let name: String
+    let selected: Bool
+    let action: () -> Void
+    @State private var hovered = false
+
+    var body: some View {
+        Button(action: action) {
+            HStack(spacing: 10) {
+                Image(systemName: symbol)
+                    .font(.system(size: 11, weight: .medium))
+                    .foregroundStyle(selected ? AppTheme.Accent.primary : .white.opacity(hovered ? 0.95 : 0.7))
+                    .frame(width: 18)
+                Text(verbatim: name)
+                    .font(.app(size: 12, weight: selected ? .semibold : .regular))
+                    .foregroundStyle(.white.opacity(selected ? 1 : hovered ? 0.95 : 0.85))
+                    .lineLimit(1)
+                    .truncationMode(.tail)
+                Spacer(minLength: 6)
+                if selected {
+                    Image(systemName: "checkmark")
+                        .font(.system(size: 10, weight: .bold))
+                        .foregroundStyle(AppTheme.Accent.primary)
+                }
+            }
+            .padding(.horizontal, 10)
+            .frame(height: 26)
+            .background(
+                RoundedRectangle(cornerRadius: 8, style: .continuous)
+                    .fill(.white.opacity(selected ? 0.12 : hovered ? 0.08 : 0.03))
+            )
+            .contentShape(Rectangle())
+        }
+        .buttonStyle(.plain)
+        .onHover { hovered = $0 }
+        .help(name)
+        .accessibilityElement(children: .combine)
+        .accessibilityLabel(Text(name))
+        .accessibilityAddTraits(selected ? [.isButton, .isSelected] : .isButton)
     }
 }

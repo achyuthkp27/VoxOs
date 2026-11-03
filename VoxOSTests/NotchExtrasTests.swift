@@ -224,4 +224,24 @@ struct NotchExtrasTests {
         #expect(NotchUnread.risen(from: [:], to: ["Messages": 1])?.1 == 1)
         #expect(NotchUnread.risen(from: ["Mail": 1, "Messages": 1], to: ["Mail": 2, "Messages": 5])?.0 == "Messages")
     }
+
+    // MARK: Sound page sections & devices
+
+    @Test func soundPageSectionsHaveDistinctSymbolsAndLabels() {
+        let sections = NotchSoundPage.Section.allCases
+        #expect(sections == [.apps, .output, .input, .clipboard, .mirror])
+        #expect(NotchSoundPage.Section.output.symbol == "speaker.wave.2")
+        #expect(NotchSoundPage.Section.input.symbol == "mic")
+        #expect(NotchSoundPage.Section.apps.symbol == "square.grid.2x2")
+    }
+
+    @Test func microphoneSymbolsMatchDeviceTypes() {
+        let manager = AudioDeviceManager.shared
+        #expect(manager.symbol(for: 0, name: "AirPods Pro") == "airpodspro")
+        #expect(manager.symbol(for: 0, name: "AirPods Max") == "airpodsmax")
+        #expect(manager.symbol(for: 0, name: "Achyuth's AirPods") == "airpods")
+        #expect(manager.symbol(for: 0, name: "iPhone Microphone") == "iphone")
+        #expect(manager.symbol(for: 0, name: "MacBook Pro Microphone") == "laptopcomputer")
+        #expect(manager.symbol(for: 0, name: "Yeti Stereo Microphone") == "mic")
+    }
 }

@@ -77,6 +77,9 @@ enum AppDefaults {
             DefaultsKeys.notchDownloadsEnabled: true,
             DefaultsKeys.notchFocusEnabled: true,
             DefaultsKeys.notchMixerEnabled: true,
+            DefaultsKeys.notchSoundOutputEnabled: true,
+            DefaultsKeys.notchSoundInputEnabled: true,
+            DefaultsKeys.notchSoundSection: "apps",
             DefaultsKeys.notchMirrorEnabled: true,
             // Off: watching the clipboard is a wake-up a second, and what is copied is private.
             DefaultsKeys.notchClipboardEnabled: false,

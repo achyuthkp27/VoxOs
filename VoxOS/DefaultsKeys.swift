@@ -98,6 +98,12 @@ enum DefaultsKeys {
     static let notchFocusEnabled = "NotchFocusEnabled"
     /// On the Sound page: each playing app with its own volume.
     static let notchMixerEnabled = "NotchMixerEnabled"
+    /// On the Sound page: sound output device selection.
+    static let notchSoundOutputEnabled = "NotchSoundOutputEnabled"
+    /// On the Sound page: microphone input device selection.
+    static let notchSoundInputEnabled = "NotchSoundInputEnabled"
+    /// On the Sound page: the selected section tab.
+    static let notchSoundSection = "NotchSoundSection"
     /// On the Sound page: the camera as a mirror, only on request.
     static let notchMirrorEnabled = "NotchMirrorEnabled"
     /// On the Sound page: text copied lately, kept in memory only.

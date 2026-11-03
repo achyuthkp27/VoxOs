@@ -62,6 +62,8 @@ struct SettingsView: View {
     @AppStorage(DefaultsKeys.notchDownloadsEnabled) private var notchDownloadsEnabled = true
     @AppStorage(DefaultsKeys.notchFocusEnabled) private var notchFocusEnabled = true
     @AppStorage(DefaultsKeys.notchMixerEnabled) private var notchMixerEnabled = true
+    @AppStorage(DefaultsKeys.notchSoundOutputEnabled) private var notchSoundOutputEnabled = true
+    @AppStorage(DefaultsKeys.notchSoundInputEnabled) private var notchSoundInputEnabled = true
     @AppStorage(DefaultsKeys.notchMirrorEnabled) private var notchMirrorEnabled = true
     @AppStorage(DefaultsKeys.notchClipboardEnabled) private var notchClipboardEnabled = false
     @AppStorage(DefaultsKeys.notchLyricsEnabled) private var notchLyricsEnabled = false
@@ -781,6 +783,22 @@ struct SettingsView: View {
                                 Text("Per-App Volume")
                                 InfoTip(
                                     "On the Sound page: each playing app with its own volume. An app turned down is played on through a system audio tap, which needs System Audio Recording and shows macOS's purple dot until every app is back at full."
+                                )
+                            }
+                        }
+                        Toggle(isOn: $notchSoundOutputEnabled) {
+                            HStack(spacing: 2) {
+                                Text("Sound Output")
+                                InfoTip(
+                                    "On the Sound page: switch the Mac's sound output between speakers, headphones and other devices."
+                                )
+                            }
+                        }
+                        Toggle(isOn: $notchSoundInputEnabled) {
+                            HStack(spacing: 2) {
+                                Text("Microphone Input")
+                                InfoTip(
+                                    "On the Sound page: switch the active microphone between built-in, AirPods and external microphones."
                                 )
                             }
                         }

@@ -94,6 +94,43 @@ class AudioDeviceManager: ObservableObject {
         return getDeviceName(deviceID: deviceID)
     }
 
+    @discardableResult
+    func makeDefaultInput(id: AudioDeviceID) -> Bool {
+        var address = AudioObjectPropertyAddress(
+            mSelector: kAudioHardwarePropertyDefaultInputDevice,
+            mScope: kAudioObjectPropertyScopeGlobal,
+            mElement: kAudioObjectPropertyElementMain
+        )
+        var device = id
+        let size = UInt32(MemoryLayout<AudioDeviceID>.size)
+        let status = AudioObjectSetPropertyData(
+            AudioObjectID(kAudioObjectSystemObject),
+            &address,
+            0,
+            nil,
+            size,
+            &device
+        )
+        let success = status == noErr && getSystemDefaultDevice() == id
+        if success {
+            notifyDeviceChange()
+        }
+        return success
+    }
+
+    func symbol(for deviceID: AudioDeviceID, name: String) -> String {
+        let isInternal = isInternalMicrophone(deviceID)
+        let lower = name.lowercased()
+        if lower.contains("airpods max") { return "airpodsmax" }
+        if lower.contains("airpods pro") { return "airpodspro" }
+        if lower.contains("airpods") { return "airpods" }
+        if lower.contains("iphone") { return "iphone" }
+        if isInternal || lower.contains("macbook") || lower.contains("built-in") || lower.contains("internal") {
+            return "laptopcomputer"
+        }
+        return "mic"
+    }
+
     private func initializeSelectedDevice() {
         switch inputMode {
         case .systemDefault:
@@ -405,6 +442,24 @@ class AudioDeviceManager: ObservableObject {
         if status != noErr {
             logger.error("Failed to add device change listener: \(status, privacy: .public)")
         }
+
+        var defaultInputAddress = AudioObjectPropertyAddress(
+            mSelector: kAudioHardwarePropertyDefaultInputDevice,
+            mScope: kAudioObjectPropertyScopeGlobal,
+            mElement: kAudioObjectPropertyElementMain
+        )
+        _ = AudioObjectAddPropertyListener(
+            systemObjectID,
+            &defaultInputAddress,
+            { (_, _, _, userData) -> OSStatus in
+                let manager = Unmanaged<AudioDeviceManager>.fromOpaque(userData!).takeUnretainedValue()
+                DispatchQueue.main.async {
+                    manager.notifyDeviceChange()
+                }
+                return noErr
+            },
+            UnsafeMutableRawPointer(Unmanaged.passUnretained(self).toOpaque())
+        )
     }
 
     private func handleDeviceListChange() {
