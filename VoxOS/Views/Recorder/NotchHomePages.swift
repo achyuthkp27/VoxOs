@@ -1245,7 +1245,7 @@ private struct NotchShelfTile: View {
         .contentShape(Rectangle())
         .onHover { hovered = $0 }
         .onTapGesture(perform: onSelect)
-        .onDrag { NSItemProvider(contentsOf: item.url) ?? NSItemProvider() }
+        .onDrag { NotchShelf.itemProvider(for: item) }
         .help(item.name)
         .accessibilityAddTraits(.isButton)
     }
@@ -1264,6 +1264,7 @@ private struct NotchShelfDetail: View {
             Image(nsImage: NotchShelf.icon(for: item))
                 .resizable()
                 .frame(width: 52, height: 52)
+                .onDrag { NotchShelf.itemProvider(for: item) }
             VStack(alignment: .leading, spacing: 3) {
                 Text(verbatim: item.name)
                     .font(.app(size: 13, weight: .semibold))

@@ -196,6 +196,18 @@ struct NotchTodayShelfTests {
         #expect(details.summary.contains("·"))
     }
 
+    @Test func itemProviderUsesTheFileURLAndName() async {
+        let url = URL(fileURLWithPath: "/tmp/IRF 1.0.pdf")
+        let item = NotchShelf.Item(id: UUID(), path: url.path, added: Date())
+        let provider = NotchShelf.itemProvider(for: item)
+        #expect(provider.suggestedName == "IRF 1.0.pdf")
+        #expect(provider.registeredTypeIdentifiers.contains("public.file-url"))
+        let loaded = await withCheckedContinuation { continuation in
+            _ = provider.loadObject(ofClass: URL.self) { url, _ in continuation.resume(returning: url) }
+        }
+        #expect(loaded == url)
+    }
+
     @Test func pagesWalkInTheAskedOrder() {
         // The order asked for, then the pages added later, each behind its own switch.
         #expect(NotchHomePage.allCases == [.music, .today, .weather, .timer, .shelf, .sound])

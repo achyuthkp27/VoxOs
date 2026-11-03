@@ -153,6 +153,13 @@ final class NotchShelf: ObservableObject {
     static func icon(for item: Item) -> NSImage {
         NSWorkspace.shared.icon(forFile: item.path)
     }
+
+    /// An item provider for dragging the file to another app or Finder.
+    nonisolated static func itemProvider(for item: Item) -> NSItemProvider {
+        let provider = NSItemProvider(object: item.url as NSURL)
+        provider.suggestedName = item.name
+        return provider
+    }
 }
 
 /// Says when AirDrop has sent, failed, or was cancelled (a cancel arrives as a failure).
