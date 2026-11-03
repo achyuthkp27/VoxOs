@@ -59,12 +59,25 @@ struct NotchTodayShelfTests {
         #expect(busy == [calendar.date(byAdding: .day, value: 2, to: calendar.startOfDay(for: noon))!])
     }
 
-    @Test func timeRangeIsAllDayOrStartAndEnd() {
+    @Test func progressAndDetailReadLikeAGlance() {
         let now = noon
-        #expect(NotchToday.timeRange(event("A", start: 0, allDay: true, from: now), on: now) == ["All day"])
-        let range = NotchToday.timeRange(event("B", start: 0, length: 3_600, from: now), on: now)
-        #expect(range.count == 2)
-        #expect(range[0].hasSuffix(" -"))
+        var on = event("Review", start: -1_800, length: 3_600, from: now)
+        on.location = "Room 4"
+        #expect(NotchToday.progress(on, now: now) == 0.5)
+        #expect(NotchToday.detail(on, now: now) == "Room 4 · ends in 30 min")
+        var soon = event("Lunch", start: 25 * 60, from: now)
+        soon.calendarName = "Home"
+        #expect(NotchToday.progress(soon, now: now) == nil)
+        #expect(NotchToday.detail(soon, now: now) == "Home · in 25 min")
+        #expect(NotchToday.detail(event("Later", start: 3 * 3_600, from: now), now: now) == "")
+        #expect(NotchToday.progress(event("Holiday", start: -60, allDay: true, from: now), now: now) == nil)
+    }
+
+    @Test func aLinkIsNotAPlace() {
+        #expect(NotchToday.place("Toit, Indiranagar\nBengaluru") == "Toit, Indiranagar")
+        #expect(NotchToday.place("https://zoom.us/j/123") == nil)
+        #expect(NotchToday.place("  ") == nil)
+        #expect(NotchToday.place(nil) == nil)
     }
 
     @Test func weatherComesFromTheAgentsSummary() {

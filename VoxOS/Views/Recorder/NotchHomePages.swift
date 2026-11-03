@@ -626,34 +626,49 @@ struct NotchTimerRing: View {
 
 // MARK: - Today
 
-/// The Calendar page: the month and a strip of days with the picked one in the middle, and under
-/// it that day's events and reminders, each with its time to the right of a rule.
+/// The Calendar page: the month beside a row of days, the picked one in the middle; under them
+/// that day as an agenda — all-day events as chips, timed ones on a time column with their
+/// calendar's bar, and the reminders on the same grid.
 struct NotchTodayPage: View {
     @ObservedObject var today: NotchToday
     @ObservedObject var reminders: NotchReminders
+    /// Told how tall the list is, so the card can fit it.
+    var onListHeight: (CGFloat) -> Void = { _ in }
 
-    /// Rows in view at once; the list scrolls to the rest.
-    static let visibleRows = 3
-    static let stripHeight: CGFloat = 50
-    static let rowHeight: CGFloat = 36
-    static let rowSpacing: CGFloat = 10
+    static let stripHeight: CGFloat = 52
+    /// The rule under the strip, with its space above and below.
+    static let ruleSpace: CGFloat = 19
+    /// The width of the time column, where events start and reminders are due.
+    static let timeWidth: CGFloat = 52
+    /// The width of the column holding each event's bar and each reminder's ring.
+    static let markWidth: CGFloat = 15
 
-    /// The card's height on this page: the strip, and three rows under it.
-    static var cardHeight: CGFloat {
-        let list = CGFloat(visibleRows) * rowHeight + CGFloat(visibleRows - 1) * rowSpacing
-        return NotchHome.Card.top + 4 + stripHeight + 8 + list + NotchHome.Card.bottom + 6
+    /// The list at its shortest, a single line…
+    static var minimumListHeight: CGFloat { 30 }
+    /// …and at its tallest; past that it scrolls.
+    static var maximumListHeight: CGFloat { 196 }
+
+    /// The card's height on this page: the strip, and the list under it, fitted to what it holds.
+    static func cardHeight(list: CGFloat) -> CGFloat {
+        let fitted = min(max(list, minimumListHeight), maximumListHeight)
+        return NotchHome.Card.top + 4 + stripHeight + ruleSpace + fitted + NotchHome.Card.bottom + 6
     }
 
     var body: some View {
         TimelineView(.periodic(from: .now, by: 30)) { context in
-            VStack(alignment: .leading, spacing: 8) {
+            VStack(alignment: .leading, spacing: 0) {
                 header(now: context.date)
                     .frame(height: Self.stripHeight)
-                // However many there are: the list scrolls, the card keeps its height.
+                Rectangle().fill(.white.opacity(0.08)).frame(height: 1)
+                    .padding(.top, 9).padding(.bottom, Self.ruleSpace - 10)
                 ScrollView(.vertical) {
-                    list(now: context.date)
-                        .padding(.vertical, 4)
+                    agenda(now: context.date)
                         .frame(maxWidth: .infinity, alignment: .leading)
+                        .onGeometryChange(for: CGFloat.self) {
+                            $0.size.height.rounded(.up)
+                        } action: { height in
+                            onListHeight(height)
+                        }
                 }
                 .scrollIndicators(.automatic)
                 .frame(maxHeight: .infinity, alignment: .top)
@@ -671,15 +686,22 @@ struct NotchTodayPage: View {
     // MARK: Strip
 
     private func header(now: Date) -> some View {
-        HStack(alignment: .center, spacing: 6) {
+        HStack(alignment: .center, spacing: 10) {
             Button {
                 today.select(now)
             } label: {
-                Text(verbatim: today.selectedDay.formatted(.dateTime.month(.abbreviated)))
-                    .font(.app(size: 26, weight: .bold))
-                    .foregroundStyle(.white)
-                    .fixedSize()
-                    .contentShape(Rectangle())
+                VStack(alignment: .leading, spacing: 0) {
+                    Text(verbatim: today.selectedDay.formatted(.dateTime.month(.abbreviated)))
+                        .font(.app(size: 26, weight: .bold))
+                        .foregroundStyle(.white)
+                    Text(verbatim: today.selectedDay.formatted(.dateTime.year()))
+                        .font(.app(size: 11, weight: .semibold))
+                        .foregroundStyle(.white.opacity(0.4))
+                }
+                .lineLimit(1)
+                .minimumScaleFactor(0.7)
+                .frame(width: 58, alignment: .leading)
+                .contentShape(Rectangle())
             }
             .buttonStyle(.plain)
             .help(Text("Today"))
@@ -695,30 +717,55 @@ struct NotchTodayPage: View {
         return today.busyDays.union(NotchReminders.dueDays(reminders.items, in: days))
     }
 
-    // MARK: List
+    // MARK: Agenda
 
     @ViewBuilder
-    private func list(now: Date) -> some View {
+    private func agenda(now: Date) -> some View {
         let day = today.selectedDay
         let events = today.calendarAccess == .granted ? today.dayEvents : []
+        let allDay = events.filter(\.isAllDay)
+        let timed = events.filter { !$0.isAllDay }
         let items = reminders.access == .granted ? NotchReminders.items(reminders.items, on: day, now: now) : []
-        VStack(alignment: .leading, spacing: Self.rowSpacing) {
+        VStack(alignment: .leading, spacing: 0) {
             calendarAccessPrompt
-            ForEach(events) { event in
-                NotchEventRow(
-                    event: event, day: day, now: now, canJoin: NotchToday.canJoin(event, now: now),
-                    onJoin: { today.join(event) })
+            if !allDay.isEmpty {
+                NotchAllDayRow(events: allDay)
+                    .padding(.bottom, timed.isEmpty ? 0 : 10)
             }
-            ForEach(items) { item in
-                NotchReminderRow(item: item, now: now) { reminders.complete(item.id) }
+            VStack(alignment: .leading, spacing: 8) {
+                ForEach(timed) { event in
+                    NotchAgendaEvent(
+                        event: event, day: day, now: now, canJoin: NotchToday.canJoin(event, now: now),
+                        onJoin: { today.join(event) })
+                }
+            }
+            if !items.isEmpty {
+                NotchAgendaSection(title: String(localized: "Reminders"), count: items.count)
+                    .padding(.top, events.isEmpty ? 0 : 12)
+                    .padding(.bottom, 8)
+                VStack(alignment: .leading, spacing: 7) {
+                    ForEach(items) { item in
+                        NotchAgendaReminder(item: item, now: now) { reminders.complete(item.id) }
+                    }
+                }
             }
             remindersAccessPrompt
+                .padding(.top, events.isEmpty ? 0 : 12)
             if events.isEmpty, items.isEmpty, today.calendarAccess == .granted, reminders.access == .granted {
-                (Calendar.current.isDate(day, inSameDayAs: now) ? Text("Nothing today") : Text("Nothing on this day"))
-                    .font(.app(size: 13, weight: .medium))
-                    .foregroundStyle(.white.opacity(0.5))
+                HStack(spacing: 8) {
+                    Image(systemName: "sparkles")
+                        .font(.system(size: 12, weight: .medium))
+                        .foregroundStyle(NotchDayCell.accent)
+                    (Calendar.current.isDate(day, inSameDayAs: now)
+                        ? Text("Nothing planned today") : Text("Nothing planned"))
+                        .font(.app(size: 13, weight: .medium))
+                        .foregroundStyle(.white.opacity(0.55))
+                }
+                .padding(.leading, Self.timeWidth + 10)
+                .frame(height: Self.minimumListHeight, alignment: .center)
             }
         }
+        .padding(.bottom, 2)
     }
 
     @ViewBuilder
@@ -760,20 +807,19 @@ struct NotchTodayPage: View {
     }
 }
 
-/// The row of days: as many as fit, the selected one in the middle. A click picks a day and the
-/// row centres on it; it never scrolls, so a sideways swipe still turns the page.
+/// The row of days: as many as fit, the selected one in the middle on a filled tile. A click
+/// picks a day and the row centres on it; it never scrolls, so a sideways swipe still turns the page.
 private struct NotchWeekStrip: View {
     let selected: Date
     let busy: Set<Date>
     let now: Date
     let onSelect: (Date) -> Void
 
-    static let minimumCellWidth: CGFloat = 34
+    static let minimumCellWidth: CGFloat = 46
 
     var body: some View {
         GeometryReader { proxy in
             let count = Self.cellCount(for: proxy.size.width)
-            let width = proxy.size.width / CGFloat(count)
             HStack(spacing: 0) {
                 ForEach(days(count: count), id: \.self) { day in
                     NotchDayCell(
@@ -781,18 +827,12 @@ private struct NotchWeekStrip: View {
                         isToday: Calendar.current.isDate(day, inSameDayAs: now),
                         isBusy: busy.contains(day)
                     ) { onSelect(day) }
-                    .frame(width: width)
+                    .frame(maxWidth: .infinity)
                 }
             }
             .frame(width: proxy.size.width, height: proxy.size.height)
             .animation(.snappy(duration: 0.28), value: selected)
         }
-        .mask(
-            LinearGradient(
-                stops: [
-                    .init(color: .clear, location: 0), .init(color: .black, location: 0.16),
-                    .init(color: .black, location: 0.84), .init(color: .clear, location: 1),
-                ], startPoint: .leading, endPoint: .trailing))
     }
 
     /// An odd number, so one day sits in the middle.
@@ -806,7 +846,8 @@ private struct NotchWeekStrip: View {
     }
 }
 
-/// A day in the strip: its weekday's letter over its date, and a dot when something is on.
+/// A day in the row: its weekday over its date, and a dot when something is on. The selected day
+/// sits on a filled tile; today, when another day is picked, keeps its date in the accent.
 private struct NotchDayCell: View {
     let day: Date
     let isSelected: Bool
@@ -819,21 +860,24 @@ private struct NotchDayCell: View {
 
     var body: some View {
         Button(action: action) {
-            VStack(spacing: 2) {
+            VStack(spacing: 3) {
                 Text(verbatim: weekday)
-                    .font(.app(size: 10, weight: isSelected ? .bold : .semibold))
-                    .foregroundStyle(.white.opacity(isSelected ? 0.95 : 0.35))
+                    .font(.app(size: 9.5, weight: .semibold))
+                    .tracking(0.6)
+                    .foregroundStyle(.white.opacity(isSelected ? 1 : 0.4))
                 Text(verbatim: day.formatted(.dateTime.day()))
-                    .font(.app(size: isSelected ? 21 : 17, weight: isSelected ? .bold : .medium))
+                    .font(.app(size: 17, weight: isSelected ? .bold : .medium, design: .rounded))
                     .foregroundStyle(numberColor)
-                    .frame(height: 24)
                 Circle()
-                    .fill(isSelected ? Self.accent : Self.accent.opacity(0.7))
-                    .frame(width: isSelected ? 6 : 3.5, height: isSelected ? 6 : 3.5)
-                    .opacity(isSelected || isBusy ? 1 : 0)
-                    .frame(height: 6)
+                    .fill(isSelected ? .white : Self.accent)
+                    .frame(width: 4, height: 4)
+                    .opacity(isBusy ? 1 : 0)
             }
-            .frame(maxWidth: .infinity)
+            .frame(width: 38, height: 52)
+            .background(
+                RoundedRectangle(cornerRadius: 12, style: .continuous)
+                    .fill(isSelected ? Self.accent : .white.opacity(hovered ? 0.07 : 0))
+            )
             .contentShape(Rectangle())
         }
         .buttonStyle(.plain)
@@ -850,15 +894,54 @@ private struct NotchDayCell: View {
     }
 
     private var numberColor: Color {
-        if isSelected || isToday { return Self.accent }
-        let base: Color =
-            Calendar.current.isDateInWeekend(day) ? Color(red: 1, green: 0.55, blue: 0.55) : .white
-        return base.opacity(hovered ? 0.85 : 0.55)
+        if isSelected { return .white }
+        if isToday { return Self.accent }
+        if Calendar.current.isDateInWeekend(day) { return Color(red: 1, green: 0.5, blue: 0.5).opacity(0.8) }
+        return .white.opacity(0.75)
     }
 }
 
-/// An event: its title, a rule, and its calendar's dot beside when it runs.
-private struct NotchEventRow: View {
+/// All-day events as chips in their calendar's colour, beside the time column's "All day".
+private struct NotchAllDayRow: View {
+    let events: [NotchToday.Event]
+    static let shown = 3
+
+    var body: some View {
+        HStack(spacing: 6) {
+            Text("All day")
+                .textCase(.uppercase)
+                .font(.app(size: 9.5, weight: .semibold))
+                .tracking(0.8)
+                .foregroundStyle(.white.opacity(0.4))
+                .lineLimit(1)
+                .minimumScaleFactor(0.7)
+                .frame(width: NotchTodayPage.timeWidth, alignment: .trailing)
+                .padding(.trailing, 4)
+            ForEach(events.prefix(Self.shown)) { event in
+                HStack(spacing: 5) {
+                    Circle().fill(event.color).frame(width: 6, height: 6)
+                    Text(verbatim: event.title)
+                        .font(.app(size: 11.5, weight: .semibold))
+                        .foregroundStyle(.white.opacity(0.92))
+                        .lineLimit(1)
+                }
+                .padding(.horizontal, 8)
+                .frame(height: 22)
+                .background(Capsule().fill(event.color.opacity(0.2)))
+                .help(Text(verbatim: event.title))
+            }
+            if events.count > Self.shown {
+                Text(verbatim: "+\(events.count - Self.shown)")
+                    .font(.app(size: 11, weight: .semibold))
+                    .foregroundStyle(.white.opacity(0.5))
+            }
+        }
+    }
+}
+
+/// A timed event: when it starts and ends, its calendar's bar — filling as it runs — and its title
+/// over where it is and how soon.
+private struct NotchAgendaEvent: View {
     let event: NotchToday.Event
     let day: Date
     let now: Date
@@ -866,81 +949,122 @@ private struct NotchEventRow: View {
     let onJoin: () -> Void
 
     var body: some View {
-        NotchDayRow(color: event.color, time: NotchToday.timeRange(event, on: day), timeColor: nil) {
-            VStack(alignment: .leading, spacing: 4) {
-                Text(verbatim: event.title)
-                    .font(.app(size: 14, weight: .semibold))
+        let progress = NotchToday.progress(event, now: now)
+        let detail = NotchToday.detail(event, now: now)
+        HStack(alignment: .top, spacing: 10) {
+            VStack(alignment: .trailing, spacing: 1) {
+                Text(verbatim: NotchToday.shortTime(event.start, on: day))
+                    .font(.app(size: 12.5, weight: .semibold, design: .rounded))
                     .foregroundStyle(.white)
-                    .lineLimit(2)
-                if canJoin { NotchJoinButton(action: onJoin) }
+                Text(verbatim: NotchToday.shortTime(event.end, on: day))
+                    .font(.app(size: 11, weight: .medium, design: .rounded))
+                    .foregroundStyle(.white.opacity(0.4))
             }
+            .monospacedDigit()
+            .lineLimit(1)
+            .minimumScaleFactor(0.75)
+            .frame(width: NotchTodayPage.timeWidth, alignment: .trailing)
+            ZStack(alignment: .top) {
+                Capsule().fill(event.color.opacity(progress == nil ? 1 : 0.3))
+                if let progress {
+                    GeometryReader { proxy in
+                        Capsule().fill(event.color).frame(height: max(3, proxy.size.height * progress))
+                    }
+                }
+            }
+            .frame(width: 3)
+            .frame(width: NotchTodayPage.markWidth)
+            VStack(alignment: .leading, spacing: 2) {
+                HStack(spacing: 6) {
+                    Text(verbatim: event.title)
+                        .font(.app(size: 13, weight: .semibold))
+                        .foregroundStyle(.white)
+                        .lineLimit(1)
+                    if progress != nil {
+                        Text("Now")
+                            .textCase(.uppercase)
+                            .font(.app(size: 9, weight: .bold))
+                            .tracking(0.5)
+                            .foregroundStyle(.white)
+                            .padding(.horizontal, 5)
+                            .frame(height: 15)
+                            .background(Capsule().fill(event.color))
+                            .fixedSize()
+                    }
+                }
+                if !detail.isEmpty {
+                    Text(verbatim: detail)
+                        .font(.app(size: 11))
+                        .foregroundStyle(.white.opacity(0.45))
+                        .lineLimit(1)
+                }
+            }
+            Spacer(minLength: 6)
+            if canJoin { NotchJoinButton(action: onJoin).padding(.top, 2) }
         }
-        .opacity(event.end <= now ? 0.45 : 1)
+        .fixedSize(horizontal: false, vertical: true)
+        .opacity(event.end <= now ? 0.4 : 1)
     }
 }
 
-/// A reminder: a ring to tick, its title, a rule, and when it is due.
-private struct NotchReminderRow: View {
+/// A small header in the agenda: its title, a count, and a rule to the edge.
+private struct NotchAgendaSection: View {
+    let title: String
+    let count: Int
+
+    var body: some View {
+        HStack(spacing: 6) {
+            Text(verbatim: title.uppercased())
+                .font(.app(size: 9.5, weight: .semibold))
+                .tracking(0.8)
+                .foregroundStyle(.white.opacity(0.4))
+            Text(verbatim: "\(count)")
+                .font(.app(size: 9.5, weight: .bold))
+                .foregroundStyle(.white.opacity(0.6))
+            Rectangle().fill(.white.opacity(0.08)).frame(height: 1)
+        }
+    }
+}
+
+/// A reminder on the agenda's grid: when it is due in the time column, a ring to tick where the
+/// events have their bar, and its title.
+private struct NotchAgendaReminder: View {
     let item: NotchReminders.Item
     let now: Date
     let onComplete: () -> Void
     @State private var hovered = false
 
     var body: some View {
-        NotchDayRow(
-            color: item.color, time: [NotchReminders.dueLabel(item, now: now)],
-            timeColor: NotchReminders.isOverdue(item, now: now) ? Color(red: 1, green: 0.45, blue: 0.4) : nil
-        ) {
-            HStack(alignment: .firstTextBaseline, spacing: 8) {
-                Button(action: onComplete) {
-                    Image(systemName: hovered ? "checkmark.circle" : "circle")
-                        .font(.system(size: 14, weight: .regular))
-                        .foregroundStyle(item.color)
-                }
-                .buttonStyle(.plain)
-                .onHover { hovered = $0 }
-                .accessibilityLabel(Text("Complete \(item.title)"))
-                Text(verbatim: item.title)
-                    .font(.app(size: 14, weight: .semibold))
-                    .foregroundStyle(.white)
-                    .lineLimit(2)
-            }
-        }
-    }
-}
-
-/// The two columns every row on the Calendar page shares: what, a rule, then a dot and when.
-private struct NotchDayRow<Title: View>: View {
-    let color: Color
-    let time: [String]
-    let timeColor: Color?
-    @ViewBuilder let title: () -> Title
-
-    static var timeWidth: CGFloat { 108 }
-
-    var body: some View {
-        HStack(alignment: .top, spacing: 10) {
-            title()
-                .frame(maxWidth: .infinity, alignment: .leading)
-            Rectangle()
-                .fill(.white.opacity(0.18))
-                .frame(width: 1)
-                .frame(maxHeight: .infinity)
-            HStack(alignment: .firstTextBaseline, spacing: 6) {
-                Circle().fill(color).frame(width: 7, height: 7)
-                VStack(alignment: .leading, spacing: 1) {
-                    ForEach(time, id: \.self) { line in
-                        Text(verbatim: line)
-                            .font(.app(size: 12, weight: .medium))
-                            .foregroundStyle(timeColor ?? .white.opacity(0.85))
-                            .lineLimit(1)
+        let overdue = NotchReminders.isOverdue(item, now: now)
+        HStack(spacing: 10) {
+            Text(verbatim: NotchReminders.dueLabel(item, now: now))
+                .font(.app(size: 11, weight: .semibold, design: .rounded))
+                .foregroundStyle(overdue ? Color(red: 1, green: 0.45, blue: 0.4) : .white.opacity(0.4))
+                .lineLimit(1)
+                .minimumScaleFactor(0.75)
+                .frame(width: NotchTodayPage.timeWidth, alignment: .trailing)
+            Button(action: onComplete) {
+                ZStack {
+                    Circle().strokeBorder(item.color, lineWidth: 1.5)
+                    if hovered {
+                        Image(systemName: "checkmark")
+                            .font(.system(size: 7, weight: .heavy))
+                            .foregroundStyle(item.color)
                     }
                 }
+                .frame(width: NotchTodayPage.markWidth, height: NotchTodayPage.markWidth)
+                .contentShape(Circle())
             }
-            .frame(width: Self.timeWidth, alignment: .leading)
+            .buttonStyle(.plain)
+            .onHover { hovered = $0 }
+            .accessibilityLabel(Text("Complete \(item.title)"))
+            Text(verbatim: item.title)
+                .font(.app(size: 13, weight: .medium))
+                .foregroundStyle(.white.opacity(0.92))
+                .lineLimit(1)
+                .help(Text(verbatim: item.title))
+            Spacer(minLength: 0)
         }
-        .fixedSize(horizontal: false, vertical: true)
-        .frame(minHeight: NotchTodayPage.rowHeight - 14, alignment: .top)
     }
 }
 
@@ -961,6 +1085,7 @@ private struct NotchAccessPrompt<Action: View>: View {
                 .foregroundStyle(.white)
             action
         }
+        .padding(.leading, NotchTodayPage.timeWidth + 10)
     }
 }
 

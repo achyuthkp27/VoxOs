@@ -129,7 +129,10 @@ struct NotchPomodoroPageTests {
 
     @Test func pagesTakeTheHeightTheyNeed() {
         #expect(NotchHome.Card.height(for: .shelf) == NotchHome.Card.height)
-        #expect(NotchHome.Card.height(for: .today) > NotchHome.Card.height, "events and reminders")
+        let oneLine = NotchHome.Card.height(for: .today, todayList: NotchTodayPage.minimumListHeight)
+        let full = NotchHome.Card.height(for: .today, todayList: NotchTodayPage.maximumListHeight)
+        #expect(full > oneLine, "the Calendar page fits its events and reminders")
+        #expect(NotchHome.Card.height(for: .today, todayList: 10_000) == full, "and scrolls past a few")
         #expect(NotchHome.Card.height(for: .sound, mirrorShown: true) == NotchHome.Card.height(for: .weather))
         #expect(NotchHome.Card.height(for: .music, panelOpen: true) > NotchHome.Card.height(for: .music))
         #expect(NotchHome.Card.height(for: .music) == NotchHome.Card.height, "the player keeps its compact card")

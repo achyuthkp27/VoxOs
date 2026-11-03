@@ -52,12 +52,15 @@ enum NotchHome {
 
         /// The open card's height on a page: compact, except where a page has more to show. Fixed
         /// per page, never per reading, so a refresh cannot move the card's edge under the pointer.
-        static func height(for page: NotchHomePage, panelOpen: Bool = false, mirrorShown: Bool = false) -> CGFloat {
+        static func height(
+            for page: NotchHomePage, panelOpen: Bool = false, mirrorShown: Bool = false,
+            todayList: CGFloat = NotchTodayPage.minimumListHeight
+        ) -> CGFloat {
             switch page {
             case .music: return panelOpen ? NotchMusicPanel.Layout.cardHeight : height
             case .weather: return NotchWeatherPage.cardHeight
             case .timer: return NotchTimerPage.cardHeight
-            case .today: return NotchTodayPage.cardHeight
+            case .today: return NotchTodayPage.cardHeight(list: todayList)
             // The camera needs room to be seen: as tall as Weather while the mirror shows.
             case .sound: return mirrorShown ? NotchWeatherPage.cardHeight : height
             default: return height
@@ -260,6 +263,8 @@ final class NotchHomeModel: ObservableObject {
     @Published var audioFormat: NowPlayingQueue.AudioFormat?
     /// The Sound page shows the camera mirror, which takes a taller card.
     @Published var mirrorShown = false
+    /// How tall the Calendar page's list is; the card fits it, up to a few rows.
+    @Published var todayListHeight = NotchTodayPage.minimumListHeight
     /// While pages move: how far the current page is from its place, in points…
     @Published var pageOffset: CGFloat = 0
     /// …and the page shown beside it: the one coming in under the fingers, or the one sliding
@@ -466,7 +471,7 @@ struct NotchHomeView: View {
         case .timer:
             NotchTimerPage(timers: .shared)
         case .today:
-            NotchTodayPage(today: .shared, reminders: .shared)
+            NotchTodayPage(today: .shared, reminders: .shared, onListHeight: { model.todayListHeight = $0 })
         case .weather:
             NotchWeatherPage(today: .shared)
         case .shelf:
@@ -2131,7 +2136,7 @@ final class NotchHomeManager {
         if content == .expanded {
             model.musicPanel = nil
             model.mirrorShown = false
-            model.cardHeight = NotchHome.Card.height(for: model.page)
+            model.cardHeight = NotchHome.Card.height(for: model.page, todayList: model.todayListHeight)
         }
         let target = NotchHome.size(
             for: content, notchWidth: model.notchWidth, notchHeight: model.notchHeight, cardHeight: model.cardHeight)
@@ -2227,6 +2232,10 @@ final class NotchHomeManager {
         model.$mirrorShown.dropFirst().removeDuplicates().receive(on: RunLoop.main)
             .sink { [weak self] _ in self?.fitCard() }
             .store(in: &cancellables)
+        // The Calendar page's list growing or shrinking changes its height.
+        model.$todayListHeight.dropFirst().removeDuplicates().receive(on: RunLoop.main)
+            .sink { [weak self] _ in self?.fitCard() }
+            .store(in: &cancellables)
         // Opening or closing the Music page's list changes its height; Up Next reads the queue.
         model.$musicPanel.dropFirst().removeDuplicates().receive(on: RunLoop.main)
             .sink { [weak self] tab in
@@ -2276,7 +2285,8 @@ final class NotchHomeManager {
     private func fitCard() {
         guard let model, let panel, let screen else { return }
         let height = NotchHome.Card.height(
-            for: model.page, panelOpen: model.musicPanel != nil, mirrorShown: model.mirrorShown)
+            for: model.page, panelOpen: model.musicPanel != nil, mirrorShown: model.mirrorShown,
+            todayList: model.todayListHeight)
         guard height != model.cardHeight else { return }
         guard model.content == .expanded, panel.isVisible else {
             model.cardHeight = height

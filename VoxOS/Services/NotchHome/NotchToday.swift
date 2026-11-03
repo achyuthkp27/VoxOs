@@ -24,6 +24,10 @@ final class NotchToday: ObservableObject {
         let color: Color
         /// A video call's link, from the event's URL, location or notes.
         var joinURL: URL? = nil
+        /// Where it is, when that is a place rather than a link.
+        var location: String? = nil
+        /// The calendar it is on, said when there is no place.
+        var calendarName: String? = nil
     }
 
     struct Weather: Equatable {
@@ -199,7 +203,8 @@ final class NotchToday: ObservableObject {
             id: event.eventIdentifier ?? UUID().uuidString, title: event.title ?? String(localized: "Untitled"),
             start: event.startDate, end: event.endDate, isAllDay: event.isAllDay,
             color: event.calendar.map { Color(cgColor: $0.cgColor) } ?? .white,
-            joinURL: joinURL(in: [event.url?.absoluteString, event.location, event.notes]))
+            joinURL: joinURL(in: [event.url?.absoluteString, event.location, event.notes]),
+            location: place(event.location), calendarName: event.calendar?.title)
     }
 
     /// The first link to a known video-call host, in the order given.
@@ -344,16 +349,44 @@ final class NotchToday: ObservableObject {
             }
     }
 
-    /// "All day", or the start and the end on two lines: "14:00 -" and "15:30". A start or end on
-    /// another day reads as that day's date.
-    nonisolated static func timeRange(_ event: Event, on day: Date, calendar: Calendar = .current) -> [String] {
-        if event.isAllDay { return [String(localized: "All day")] }
-        func text(_ date: Date) -> String {
-            calendar.isDate(date, inSameDayAs: day)
-                ? date.formatted(date: .omitted, time: .shortened)
-                : date.formatted(.dateTime.day().month(.abbreviated))
+    /// A location as a place: its first line, and nothing when it is only a link.
+    nonisolated static func place(_ location: String?) -> String? {
+        guard let line = location?.split(whereSeparator: \.isNewline).first else { return nil }
+        let text = line.trimmingCharacters(in: .whitespaces)
+        guard !text.isEmpty, !text.contains("://") else { return nil }
+        return text
+    }
+
+    /// How far through it is, 0…1, while it is on; nil before and after, and for all-day events.
+    nonisolated static func progress(_ event: Event, now: Date) -> Double? {
+        guard !event.isAllDay, now >= event.start, now < event.end else { return nil }
+        let length = event.end.timeIntervalSince(event.start)
+        return length > 0 ? now.timeIntervalSince(event.start) / length : nil
+    }
+
+    /// The line under a title: where, then how soon — "Toit · in 25 min", "Zoom · ends in 20 min".
+    nonisolated static func detail(_ event: Event, now: Date) -> String {
+        var parts: [String] = []
+        if let place = event.location ?? event.calendarName { parts.append(place) }
+        if !event.isAllDay {
+            if progress(event, now: now) != nil {
+                let minutes = Int((event.end.timeIntervalSince(now) / 60).rounded(.up))
+                parts.append(String(localized: "ends in \(minutes) min"))
+            } else if event.start > now, event.start.timeIntervalSince(now) < 60 * 60 {
+                let minutes = Int((event.start.timeIntervalSince(now) / 60).rounded(.up))
+                parts.append(String(localized: "in \(minutes) min"))
+            }
         }
-        return [text(event.start) + " -", text(event.end)]
+        return parts.joined(separator: " · ")
+    }
+
+    /// A time short enough for the Calendar page's column: "10:30", or "10:30a" where the clock is
+    /// twelve-hour; a time on another day reads as that day's date.
+    nonisolated static func shortTime(_ date: Date, on day: Date, calendar: Calendar = .current) -> String {
+        guard calendar.isDate(date, inSameDayAs: day) else {
+            return date.formatted(.dateTime.day().month(.abbreviated))
+        }
+        return date.formatted(.dateTime.hour(.defaultDigits(amPM: .narrow)).minute())
     }
 
     // MARK: Weather
