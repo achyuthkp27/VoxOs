@@ -7,6 +7,7 @@ import UniformTypeIdentifiers
 struct AppSwitcherSection: View {
     @AppStorage(DefaultsKeys.appSwitcherEnabled) private var enabled = false
     @AppStorage(DefaultsKeys.appSwitcherTrigger) private var triggerRaw = AppSwitcher.Trigger.rightCommand.rawValue
+    @AppStorage(DefaultsKeys.windowSwitcherEnabled) private var windowSwitcher = true
     @ObservedObject private var switcher = AppSwitcher.shared
 
     private var trigger: AppSwitcher.Trigger { AppSwitcher.Trigger(rawValue: triggerRaw) ?? .rightCommand }
@@ -22,6 +23,15 @@ struct AppSwitcherSection: View {
                     }
                 }
                 .onChange(of: triggerRaw) { _, _ in switcher.refresh() }
+                Toggle("Show windows with \(trigger.short) Tab", isOn: $windowSwitcher)
+                    .onChange(of: windowSwitcher) { _, _ in switcher.refresh() }
+                if windowSwitcher, !CGPreflightScreenCaptureAccess() {
+                    Text(
+                        "Allow Screen Recording to see window titles and thumbnails; without it each window shows its app."
+                    )
+                    .font(.app(.caption))
+                    .foregroundStyle(.secondary)
+                }
                 if !switcher.isTapInstalled {
                     Label("Needs Accessibility to see the keys", systemImage: "exclamationmark.triangle.fill")
                         .font(.app(.caption))
@@ -29,7 +39,7 @@ struct AppSwitcherSection: View {
                 }
             }
             Text(
-                "Hold \(trigger.short) and press the first letter of an app's name to bring it forward. Press the same letter again to hide it, or to move on to the next app with that letter. \(trigger.short) \(trigger.assignKey) and a letter gives the app in front that letter. An app with a letter is launched when it is not running."
+                "Hold \(trigger.short) and press the first letter of an app's name to bring it forward. Press the same letter again to hide it, or to move on to the next app with that letter. \(trigger.short) \(trigger.assignKey) and a letter gives the app in front that letter. An app with a letter is launched when it is not running. \(trigger.short) Tab shows this Space's windows: Tab and the arrows move, letting go switches; W closes, M minimizes, H hides, Q quits and / searches."
             )
             .font(.app(.caption))
             .foregroundStyle(.secondary)

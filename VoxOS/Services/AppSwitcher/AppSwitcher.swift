@@ -77,6 +77,9 @@ final class AppSwitcher: ObservableObject {
     /// What the notch says after a letter is given, or when a letter has no app.
     @Published private(set) var notice: NotchHome.Notice?
     @Published private(set) var isTapInstalled = false
+    /// What each key types in the current layout with no modifier, by key code: the window
+    /// switcher's search and its W, M, H and Q.
+    private(set) var typedKeys: [Int64: String] = [:]
 
     private let tap = LetterKeyTap()
     /// Bundle identifiers, the most recently active first.
@@ -96,15 +99,30 @@ final class AppSwitcher: ObservableObject {
         let wanted = Self.isEnabled && !ProcessIdentity.isTestHost
         if wanted { startWatching() }
         if wanted, !tap.isInstalled {
-            tap.install { [weak self] letter, assign in
-                Task { @MainActor in self?.press(letter, assign: assign) }
-            }
+            tap.install(
+                onLetter: { [weak self] letter, assign in
+                    Task { @MainActor in self?.press(letter, assign: assign) }
+                },
+                onSwitcher: { event in
+                    Task { @MainActor in WindowSwitcher.shared.handle(event) }
+                })
             if tap.isInstalled { logger.notice("App switcher tap installed") }
         }
-        tap.setLetters(Self.letterKeys())
+        readLayout()
         tap.setKeys(Self.trigger.keys)
         tap.setEnabled(wanted)
+        tap.setSwitcherEnabled(wanted && WindowSwitcher.isEnabled)
         isTapInstalled = tap.isInstalled
+    }
+
+    /// The window switcher closed: keys go back to the apps.
+    func closeWindowSwitcher() {
+        tap.closeSwitcher()
+    }
+
+    private func readLayout() {
+        typedKeys = Self.typedKeys()
+        tap.setLetters(typedKeys.compactMapValues { Self.letter(of: $0) })
     }
 
     func removeAssignment(_ letter: String) {
@@ -265,13 +283,14 @@ final class AppSwitcher: ObservableObject {
                 forName: NSNotification.Name(kTISNotifySelectedKeyboardInputSourceChanged as String), object: nil,
                 queue: .main
             ) { [weak self] _ in
-                Task { @MainActor in self?.tap.setLetters(Self.letterKeys()) }
+                Task { @MainActor in self?.readLayout() }
             })
     }
 
-    /// The letter each key types in the current layout with no modifier, by key code. Read here,
-    /// on the main thread, since the layout calls are not safe on the tap's thread.
-    static func letterKeys() -> [Int64: String] {
+    /// The character each key types in the current layout with no modifier, by key code,
+    /// lowercased. Read here, on the main thread, since the layout calls are not safe on the
+    /// tap's thread.
+    static func typedKeys() -> [Int64: String] {
         guard let source = TISCopyCurrentKeyboardLayoutInputSource()?.takeRetainedValue(),
             let pointer = TISGetInputSourceProperty(source, kTISPropertyUnicodeKeyLayoutData)
         else { return [:] }
@@ -287,8 +306,11 @@ final class AppSwitcher: ObservableObject {
                     layout, UInt16(code), UInt16(kUCKeyActionDown), 0, UInt32(LMGetKbdType()),
                     OptionBits(kUCKeyTranslateNoDeadKeysBit), &deadKeys, characters.count, &length, &characters)
                 guard status == noErr, length == 1 else { continue }
-                let text = String(utf16CodeUnits: characters, count: length)
-                if let letter = letter(of: text) { letters[Int64(code)] = letter }
+                let text = String(utf16CodeUnits: characters, count: length).lowercased()
+                guard let scalar = text.unicodeScalars.first, !CharacterSet.controlCharacters.contains(scalar),
+                    !text.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty
+                else { continue }
+                letters[Int64(code)] = text
             }
         }
         return letters
@@ -321,23 +343,33 @@ final class LetterKeyTap: @unchecked Sendable {
     /// Key codes whose press was taken, so their release is taken too.
     private var taken = Set<Int64>()
     private var onLetter: ((String, Bool) -> Void)?
+    private var switcherEnabled = false
+    /// The window switcher is showing: every key goes to it until the trigger is let go.
+    private var switcherOpen = false
+    private var onSwitcher: ((WindowSwitcher.Event) -> Void)?
 
     var isInstalled: Bool { lock.withLock { port != nil } }
 
     func setEnabled(_ on: Bool) { lock.withLock { enabled = on } }
     func setLetters(_ map: [Int64: String]) { lock.withLock { letters = map } }
     func setKeys(_ keys: Keys) { lock.withLock { self.keys = keys } }
+    func setSwitcherEnabled(_ on: Bool) { lock.withLock { switcherEnabled = on } }
+    func closeSwitcher() { lock.withLock { switcherOpen = false } }
 
     /// `onLetter` gets the letter and whether the assign key was held (giving the letter), once
     /// per press; repeats are taken but not passed on.
-    func install(onLetter: @escaping (String, Bool) -> Void) {
+    /// `onSwitcher` gets the window switcher's opening (trigger and Tab), every key while it
+    /// shows, and the trigger let go.
+    func install(onLetter: @escaping (String, Bool) -> Void, onSwitcher: @escaping (WindowSwitcher.Event) -> Void) {
         guard !isInstalled else { return }
         let callback: CGEventTapCallBack = { _, type, event, userInfo in
             guard let userInfo else { return Unmanaged.passUnretained(event) }
             let tap = Unmanaged<LetterKeyTap>.fromOpaque(userInfo).takeUnretainedValue()
             return tap.handle(type, event) ? nil : Unmanaged.passUnretained(event)
         }
-        let mask = CGEventMask(1 << CGEventType.keyDown.rawValue) | CGEventMask(1 << CGEventType.keyUp.rawValue)
+        let mask =
+            CGEventMask(1 << CGEventType.keyDown.rawValue) | CGEventMask(1 << CGEventType.keyUp.rawValue)
+            | CGEventMask(1 << CGEventType.flagsChanged.rawValue)
         guard
             let port = CGEvent.tapCreate(
                 tap: .cgSessionEventTap, place: .headInsertEventTap, options: .defaultTap,
@@ -353,6 +385,7 @@ final class LetterKeyTap: @unchecked Sendable {
         lock.withLock {
             self.port = port
             self.onLetter = onLetter
+            self.onSwitcher = onSwitcher
         }
         let thread = Thread {
             CFRunLoopAddSource(CFRunLoopGetCurrent(), source, .commonModes)
@@ -373,12 +406,39 @@ final class LetterKeyTap: @unchecked Sendable {
             if let port = lock.withLock({ port }) { CGEvent.tapEnable(tap: port, enable: true) }
             return false
         }
+        let flags = event.flags
+        if type == .flagsChanged {
+            // Letting go of the trigger picks the window; the modifier itself goes on as usual.
+            let released = lock.withLock {
+                guard switcherOpen, flags.rawValue & keys.trigger == 0 else { return false }
+                switcherOpen = false
+                return true
+            }
+            if released { lock.withLock({ onSwitcher })?(.release) }
+            return false
+        }
         let code = event.getIntegerValueField(.keyboardEventKeycode)
         if type == .keyUp {
             return lock.withLock { taken.remove(code) != nil }
         }
         guard type == .keyDown else { return false }
-        let flags = event.flags
+        // The switcher takes every key while it shows, or opens on the trigger and Tab.
+        let switcher: WindowSwitcher.Event? = lock.withLock {
+            if switcherOpen {
+                taken.insert(code)
+                return .key(code: code, flags: flags.rawValue)
+            }
+            guard enabled, switcherEnabled,
+                Self.opensSwitcher(code: code, flags: flags.rawValue, control: flags.contains(.maskControl), keys: keys)
+            else { return nil }
+            switcherOpen = true
+            taken.insert(code)
+            return .open(backwards: flags.contains(.maskShift))
+        }
+        if let switcher {
+            lock.withLock({ onSwitcher })?(switcher)
+            return true
+        }
         let (letters, keys) = lock.withLock { (enabled ? self.letters : [:], self.keys) }
         guard
             let letter = Self.letter(
@@ -393,6 +453,11 @@ final class LetterKeyTap: @unchecked Sendable {
         }
         if !repeating { onLetter?(letter, flags.rawValue & keys.assign != 0) }
         return true
+    }
+
+    /// Tab with the trigger held, its left-hand twin not, and no Control (Shift goes backwards).
+    static func opensSwitcher(code: Int64, flags: UInt64, control: Bool, keys: Keys) -> Bool {
+        code == Int64(kVK_Tab) && flags & keys.trigger != 0 && flags & keys.blocked == 0 && !control
     }
 
     /// The letter to act on: a letter key with the trigger held, its left-hand twin not, and no

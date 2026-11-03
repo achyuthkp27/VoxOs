@@ -69,6 +69,8 @@ enum DefaultsKeys {
     static let appSwitcherEnabled = "AppSwitcherEnabled"
     /// Letters given to apps for the app switcher: lowercased letter to bundle identifier.
     static let appSwitcherLetters = "AppSwitcherLetters"
+    /// The app switcher's key and Tab shows the window switcher. On unless switched off.
+    static let windowSwitcherEnabled = "WindowSwitcherEnabled"
     /// The key held with a letter: `AppSwitcher.Trigger.rawValue`.
     static let appSwitcherTrigger = "AppSwitcherTrigger"
     /// The order Notch Home's pages are walked in, as `NotchHomePage.rawValue`s.
