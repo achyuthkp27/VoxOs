@@ -7,7 +7,7 @@ SHELL := /bin/bash
 # Define a directory for dependencies in the user's home folder
 DEPS_DIR := $(HOME)/VoxOS-Dependencies
 WHISPER_CPP_DIR := $(DEPS_DIR)/whisper.cpp
-# Pinned so every machine and CI build the same whisper.xcframework. Previously this
+# Pinned so every machine builds the same whisper.xcframework. Previously this
 # tracked master, so a fresh clone got whatever upstream happened to be that day.
 # This is the commit local builds were already on; bump it deliberately.
 WHISPER_CPP_REF ?= c4ac0012a8f5a2082dfca6aad4ddfd8b2c02b337
@@ -38,7 +38,7 @@ LOCAL_CODESIGN_IDENTITY ?=
 # lying around in ~/Downloads for Spotlight to index.
 INSTALL_PATH ?= /Applications/VoxOS.app
 
-.PHONY: parakeet-redux all clean whisper setup build local check healthcheck help dev run release release-setup test lint format print-whisper-ref
+.PHONY: parakeet-redux all clean whisper setup build local check healthcheck help dev run release release-setup test lint format
 
 # Default target
 all: check build
@@ -55,10 +55,6 @@ check:
 	@echo "Prerequisites OK"
 
 healthcheck: check
-
-# Used by CI to key the whisper.xcframework cache on the pinned ref.
-print-whisper-ref:
-	@echo $(WHISPER_CPP_REF)
 
 # Build process
 whisper:

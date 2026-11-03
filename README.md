@@ -3,7 +3,6 @@
   <h1>VoxOS</h1>
   <p>A native macOS voice dictation + voice-to-action agent, for personal use</p>
 
-  [![CI](https://github.com/achyuthkp27/VoxOs/actions/workflows/ci.yml/badge.svg)](https://github.com/achyuthkp27/VoxOs/actions/workflows/ci.yml)
   [![License](https://img.shields.io/badge/License-GPL%20v3-blue.svg)](https://www.gnu.org/licenses/gpl-3.0)
   ![Platform](https://img.shields.io/badge/platform-macOS%2014.4%2B-brightgreen)
 </div>
@@ -159,15 +158,10 @@ that commit out of `git blame`. Enable it locally with:
 git config blame.ignoreRevsFile .git-blame-ignore-revs
 ```
 
-### Continuous integration
-
-[`.github/workflows/ci.yml`](.github/workflows/ci.yml) runs `make test` and `make lint` on a
-clean macOS runner for every push and pull request. The whisper.xcframework is cached against
-the pinned `WHISPER_CPP_REF` in the [Makefile](Makefile), so only the first run pays for
-building it.
+### Pinned dependencies
 
 Dependencies are pinned by revision rather than tracking branches, and `Package.resolved` is
-committed, so every machine and CI build the same tree.
+committed, so every machine builds the same tree.
 
 ## Requirements
 
