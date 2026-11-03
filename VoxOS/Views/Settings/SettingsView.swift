@@ -151,6 +151,9 @@ struct SettingsView: View {
         "General", "Hide Dock Icon", "Launch at Login", "Automatically Check for Updates",
         "Check for Updates", "Reset Onboarding",
     ]
+    private static let appSwitcherTerms = [
+        "App Switcher", "Switch apps", "Right Command", "rcmd", "letter", "hide app", "launch",
+    ]
     private static let backupTerms = ["Export Settings", "Export", "Import Settings", "Import", "Backup"]
     private static let diagnosticsTerms = ["Diagnostics", "Export Logs", "Show in Finder"]
 
@@ -163,7 +166,7 @@ struct SettingsView: View {
                 transcriptionTerms,
             ]
         case .notch: return [notchTerms, notchPageTerms, claudeCodeTerms]
-        case .general: return [interfaceTerms, generalTerms, backupTerms, diagnosticsTerms]
+        case .general: return [interfaceTerms, generalTerms, appSwitcherTerms, backupTerms, diagnosticsTerms]
         }
     }
 
@@ -182,6 +185,7 @@ struct SettingsView: View {
         notchTerms,
         notchPageTerms,
         generalTerms,
+        appSwitcherTerms,
         backupTerms,
         diagnosticsTerms,
     ]
@@ -929,6 +933,10 @@ struct SettingsView: View {
                         }
                     }
                 }
+            }
+
+            if shows(.general), search.matches(Self.appSwitcherTerms) {
+                AppSwitcherSection()
             }
 
             if shows(.general), search.matches(Self.backupTerms) {

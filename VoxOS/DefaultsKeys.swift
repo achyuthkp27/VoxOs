@@ -65,6 +65,12 @@ enum DefaultsKeys {
     static let claudeCodeCIEnabled = "ClaudeCodeCIEnabled"
     /// The notch opens on hover into Music, Timer, Today and Shelf.
     static let notchHomeEnabled = "NotchHomeEnabled"
+    /// Right Command and a letter brings an app forward (see `AppSwitcher`). Off by default.
+    static let appSwitcherEnabled = "AppSwitcherEnabled"
+    /// Letters given to apps for the app switcher: lowercased letter to bundle identifier.
+    static let appSwitcherLetters = "AppSwitcherLetters"
+    /// The key held with a letter: `AppSwitcher.Trigger.rawValue`.
+    static let appSwitcherTrigger = "AppSwitcherTrigger"
     /// The order Notch Home's pages are walked in, as `NotchHomePage.rawValue`s.
     static let notchPageOrder = "NotchPageOrder"
     /// The Notch Home pages switched off in Settings, as `NotchHomePage.rawValue`s.

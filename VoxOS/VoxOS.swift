@@ -185,6 +185,8 @@ struct VoxOSApp: App {
 
         // Evidence for stalls: see MainThreadWatchdog. The test host does not need it.
         if !ProcessIdentity.isTestHost {
+            // Right Command and a letter switches apps, when switched on in Settings.
+            AppSwitcher.shared.refresh()
             MainThreadWatchdog.shared.start()
             MainThreadWatchdog.shared.pause(while: PowerState.shared.$isAway.eraseToAnyPublisher())
         }

@@ -1434,6 +1434,8 @@ final class NotchHomeManager {
             .store(in: &cancellables)
         NotchFocus.shared.$notice.receive(on: RunLoop.main).sink { [weak self] _ in self?.setNeedsRefresh() }
             .store(in: &cancellables)
+        AppSwitcher.shared.$notice.receive(on: RunLoop.main).sink { [weak self] _ in self?.setNeedsRefresh() }
+            .store(in: &cancellables)
         ClaudeCodeUsage.shared.$notice.receive(on: RunLoop.main).sink { [weak self] _ in self?.setNeedsRefresh() }
             .store(in: &cancellables)
         CodexActivity.shared.$notice.receive(on: RunLoop.main).sink { [weak self] _ in self?.setNeedsRefresh() }
@@ -1543,7 +1545,8 @@ final class NotchHomeManager {
             enabled: enabled && !hiddenForFullScreen, hasNotch: screen != nil,
             blocked: uiManager.isRecorderPanelVisible || uiManager.isClaudeCodeCardVisible, hovered: hovered,
             dropping: dropping,
-            notice: Self.notice(device: NotchDeviceAlerts.shared.notice, finished: timers.finished)
+            notice: AppSwitcher.shared.notice
+                ?? Self.notice(device: NotchDeviceAlerts.shared.notice, finished: timers.finished)
                 ?? NotchFocus.shared.notice ?? ClaudeCodeUsage.shared.notice ?? GeminiActivity.shared.notice
                 ?? CodexActivity.shared.notice
                 ?? ClaudeCodeCIWatch.shared.notice ?? NotchRainWatch.shared.notice ?? NotchUnread.shared.notice
