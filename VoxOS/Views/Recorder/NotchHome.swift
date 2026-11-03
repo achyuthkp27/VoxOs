@@ -2186,9 +2186,10 @@ final class NotchHomeManager {
                 meeting: meetingsWatched && NotchToday.shared.meeting != nil)
             readModes(of: track)
         }
-        // A page that went away (no track, or switched off in Settings) gives way to the day.
+        // A page that went away (no track, or switched off in Settings) gives way to the first
+        // one that is on, in the user's order, rather than always to the day.
         let available = NotchHomePage.available(hasTrack: track != nil)
-        if !available.contains(model.page) { model.page = .today }
+        if !available.contains(model.page) { model.page = available.first ?? .today }
         if panel.isVisible, model.content == content { return }
         resizeTask?.cancel()
 

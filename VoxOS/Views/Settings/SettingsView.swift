@@ -71,6 +71,10 @@ struct SettingsView: View {
     @AppStorage(DefaultsKeys.notchMusicEnabled) private var notchMusicEnabled = true
     @AppStorage(DefaultsKeys.notchMusicBarsEnabled) private var notchMusicBarsEnabled = false
     @AppStorage(DefaultsKeys.notchMusicBarsOnBattery) private var notchMusicBarsOnBattery = true
+    /// Notch Home's page order and the pages that are off. Written straight to defaults, so the
+    /// next hover walks the new order.
+    @State private var notchPageOrder = NotchPageLayout.ordered()
+    @State private var notchDisabledPages = NotchPageLayout.disabled()
     @AppStorage(DictationSend.stopWhenQuietKey) private var dictationStopWhenQuiet = false
     @AppStorage(DictationSend.pressReturnKey) private var dictationPressReturn = false
     @AppStorage(AgentAutoSend.pauseKey) private var agentAutoSendPause = AgentAutoSend.Pause.normal.rawValue
@@ -139,6 +143,10 @@ struct SettingsView: View {
         "Show in Full Screen", "full screen", "fullscreen", "Follow the Display in Use", "external display",
         "monitor", "display",
     ]
+    private static let notchPageTerms = [
+        "Notch Pages", "Pages", "Page Order", "Reorder", "order", "enable", "disable", "show page",
+        "hide page", "drag",
+    ]
     private static let generalTerms = [
         "General", "Hide Dock Icon", "Launch at Login", "Automatically Check for Updates",
         "Check for Updates", "Reset Onboarding",
@@ -154,7 +162,7 @@ struct SettingsView: View {
                 shortcutsTerms, additionalShortcutsTerms, systemAudioTerms, agentTerms, mcpTerms, pastingTerms,
                 transcriptionTerms,
             ]
-        case .notch: return [notchTerms, claudeCodeTerms]
+        case .notch: return [notchTerms, notchPageTerms, claudeCodeTerms]
         case .general: return [interfaceTerms, generalTerms, backupTerms, diagnosticsTerms]
         }
     }
@@ -172,6 +180,7 @@ struct SettingsView: View {
         transcriptionTerms,
         interfaceTerms,
         notchTerms,
+        notchPageTerms,
         generalTerms,
         backupTerms,
         diagnosticsTerms,
@@ -868,6 +877,23 @@ struct SettingsView: View {
                 }
             }
 
+            if shows(.notch), notchHomeEnabled, search.matches(Self.notchPageTerms) {
+                Section("Notch Pages") {
+                    ForEach(notchPageOrder) { page in
+                        notchPageRow(page)
+                    }
+                    HStack(alignment: .firstTextBaseline) {
+                        Text(
+                            "Drag a page, or use the arrows, to reorder. At least one page stays on; Music only shows while a track is playing."
+                        )
+                        .font(.app(.caption))
+                        .foregroundStyle(.secondary)
+                        Spacer(minLength: 8)
+                        Button("Reset") { resetNotchPages() }
+                    }
+                }
+            }
+
             if shows(.notch), search.matches(Self.claudeCodeTerms) {
                 ClaudeCodeSection()
             }
@@ -978,6 +1004,89 @@ struct SettingsView: View {
     private func refreshAgentPermissions() {
         agentHasAccessibility = ProcessIdentity.isTestHost ? false : AXIsProcessTrusted()
         agentHasScreenRecording = CGPreflightScreenCaptureAccess()
+    }
+
+    // MARK: - Notch pages
+
+    /// One page in the list: a drag handle, the switch, and arrows for a trackpad or a keyboard.
+    private func notchPageRow(_ page: NotchHomePage) -> some View {
+        HStack(spacing: 10) {
+            Image(systemName: "line.3.horizontal")
+                .foregroundStyle(.secondary)
+                .help("Drag to reorder")
+                .draggable(page.rawValue)
+            Toggle(isOn: notchPageEnabled(page)) {
+                Label {
+                    Text(page.title)
+                } icon: {
+                    Image(systemName: page.symbol)
+                }
+            }
+            .disabled(isOnlyEnabledNotchPage(page))
+            Spacer(minLength: 8)
+            Button {
+                moveNotchPage(page, by: -1)
+            } label: {
+                Image(systemName: "chevron.up")
+            }
+            .buttonStyle(.borderless)
+            .disabled(notchPageOrder.first == page)
+            .help("Move up")
+            Button {
+                moveNotchPage(page, by: 1)
+            } label: {
+                Image(systemName: "chevron.down")
+            }
+            .buttonStyle(.borderless)
+            .disabled(notchPageOrder.last == page)
+            .help("Move down")
+        }
+        .dropDestination(for: String.self) { values, _ in
+            guard let rawValue = values.first, let dragged = NotchHomePage(rawValue: rawValue) else { return false }
+            moveNotchPage(dragged, onto: page)
+            return true
+        }
+    }
+
+    private func notchPageEnabled(_ page: NotchHomePage) -> Binding<Bool> {
+        Binding(
+            get: { !notchDisabledPages.contains(page) },
+            set: { enabled in
+                if enabled {
+                    notchDisabledPages.remove(page)
+                } else {
+                    // The notch needs one page to open on, so the last one on cannot go off.
+                    guard !isOnlyEnabledNotchPage(page) else { return }
+                    notchDisabledPages.insert(page)
+                }
+                NotchPageLayout.save(order: notchPageOrder, disabled: notchDisabledPages)
+            }
+        )
+    }
+
+    private func isOnlyEnabledNotchPage(_ page: NotchHomePage) -> Bool {
+        !notchDisabledPages.contains(page)
+            && notchPageOrder.allSatisfy { $0 == page || notchDisabledPages.contains($0) }
+    }
+
+    private func moveNotchPage(_ page: NotchHomePage, by offset: Int) {
+        setNotchPageOrder(NotchPageLayout.moving(page, by: offset, in: notchPageOrder))
+    }
+
+    private func moveNotchPage(_ dragged: NotchHomePage, onto target: NotchHomePage) {
+        setNotchPageOrder(NotchPageLayout.moving(dragged, onto: target, in: notchPageOrder))
+    }
+
+    private func setNotchPageOrder(_ order: [NotchHomePage]) {
+        guard order != notchPageOrder else { return }
+        notchPageOrder = order
+        NotchPageLayout.save(order: order, disabled: notchDisabledPages)
+    }
+
+    private func resetNotchPages() {
+        NotchPageLayout.reset()
+        notchPageOrder = NotchPageLayout.ordered()
+        notchDisabledPages = NotchPageLayout.disabled()
     }
 
     private static let defaultCancelRecordingShortcut = Shortcut.key(

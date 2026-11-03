@@ -65,6 +65,10 @@ enum DefaultsKeys {
     static let claudeCodeCIEnabled = "ClaudeCodeCIEnabled"
     /// The notch opens on hover into Music, Timer, Today and Shelf.
     static let notchHomeEnabled = "NotchHomeEnabled"
+    /// The order Notch Home's pages are walked in, as `NotchHomePage.rawValue`s.
+    static let notchPageOrder = "NotchPageOrder"
+    /// The Notch Home pages switched off in Settings, as `NotchHomePage.rawValue`s.
+    static let notchDisabledPages = "NotchDisabledPages"
     /// A short notice in the notch when a Bluetooth device or Wi-Fi connects or drops, the sound
     /// moves to another output, or the adapter goes in or out or the battery runs low.
     static let notchDeviceAlertsEnabled = "NotchDeviceAlertsEnabled"
