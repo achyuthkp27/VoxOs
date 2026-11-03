@@ -21,24 +21,50 @@ struct NotchTodayShelfTests {
             end: now.addingTimeInterval(start + length), isAllDay: allDay, color: .white)
     }
 
-    @Test func upcomingIsWhatIsLeftTimedFirst() {
-        let now = Date()
-        let events = [
-            event("Holiday", start: -3_600, length: 86_400, allDay: true, from: now),
-            event("Later", start: 7_200, from: now),
-            event("Over", start: -7_200, from: now),
-            event("Soon", start: 600, from: now),
-            event("Going on", start: -600, from: now),
-        ]
-        let titles = NotchToday.upcoming(events, now: now, limit: 3).map(\.title)
-        #expect(titles == ["Going on", "Soon", "Later"], "finished ones gone, all-day after timed")
+    /// A fixed noon, so the tests read the same whatever the hour they run.
+    private var noon: Date {
+        Calendar.current.date(from: DateComponents(year: 2026, month: 11, day: 3, hour: 12))!
     }
 
-    @Test func whenReadsLikeAGlance() {
-        let now = Date()
-        #expect(NotchToday.when(event("A", start: -60, from: now), now: now) == "Now")
-        #expect(NotchToday.when(event("B", start: 25 * 60, from: now), now: now) == "in 25 min")
-        #expect(NotchToday.when(event("C", start: 0, allDay: true, from: now), now: now) == "All day")
+    @Test func aDaysEventsAreAllDayFirstThenByStart() {
+        let now = noon
+        let events = [
+            event("Later", start: 7_200, from: now),
+            event("Tomorrow", start: 86_400, from: now),
+            event("Holiday", start: -12 * 3_600, length: 86_400, allDay: true, from: now),
+            event("Morning", start: -3 * 3_600, from: now),
+            event("Overnight", start: -86_400 + 3_600, length: 86_400, from: now),
+        ]
+        let titles = NotchToday.events(events, on: now).map(\.title)
+        #expect(titles == ["Holiday", "Overnight", "Morning", "Later"], "the day's own, past ones kept")
+    }
+
+    @Test func anEventEndingAtMidnightIsNotOnTheNextDay() {
+        let calendar = Calendar.current
+        let today = calendar.startOfDay(for: noon)
+        let tomorrow = calendar.date(byAdding: .day, value: 1, to: today)!
+        let late = NotchToday.Event(
+            id: "late", title: "late", start: tomorrow.addingTimeInterval(-3_600), end: tomorrow, isAllDay: false,
+            color: .white)
+        #expect(NotchToday.event(late, isOn: today))
+        #expect(!NotchToday.event(late, isOn: tomorrow))
+    }
+
+    @Test func busyDaysAreTheStripsDaysWithAnEvent() {
+        let calendar = Calendar.current
+        let days = NotchToday.stripDays(around: noon)
+        #expect(days.count == 2 * NotchToday.stripReach + 1)
+        #expect(days[NotchToday.stripReach] == calendar.startOfDay(for: noon), "the day itself in the middle")
+        let busy = NotchToday.busyDays([event("A", start: 2 * 86_400, from: noon)], in: days)
+        #expect(busy == [calendar.date(byAdding: .day, value: 2, to: calendar.startOfDay(for: noon))!])
+    }
+
+    @Test func timeRangeIsAllDayOrStartAndEnd() {
+        let now = noon
+        #expect(NotchToday.timeRange(event("A", start: 0, allDay: true, from: now), on: now) == ["All day"])
+        let range = NotchToday.timeRange(event("B", start: 0, length: 3_600, from: now), on: now)
+        #expect(range.count == 2)
+        #expect(range[0].hasSuffix(" -"))
     }
 
     @Test func weatherComesFromTheAgentsSummary() {
@@ -124,8 +150,25 @@ struct NotchTodayShelfTests {
             [item("Someday", due: nil), item("Later", due: 7_200), item("Late", due: -90_000), item("", due: 60)],
             limit: 4)
         #expect(ordered.map(\.title) == ["Late", "Later", "Someday"], "overdue first, untitled dropped")
-        #expect(NotchReminders.when(item("Late", due: -90_000), now: now) == "Overdue")
-        #expect(NotchReminders.when(item("Someday", due: nil), now: now) == nil)
+    }
+
+    @Test func aDaysRemindersAndWhatTheySay() {
+        let now = noon
+        func item(_ title: String, due: TimeInterval?) -> NotchReminders.Item {
+            NotchReminders.Item(id: title, title: title, due: due.map { now.addingTimeInterval($0) }, color: .white)
+        }
+        let all = [
+            item("Late", due: -2 * 86_400), item("Soon", due: 3_600), item("Someday", due: nil),
+            item("Friday", due: 3 * 86_400),
+        ]
+        #expect(NotchReminders.items(all, on: now, now: now).map(\.title) == ["Late", "Soon", "Someday"])
+        let friday = now.addingTimeInterval(3 * 86_400)
+        #expect(NotchReminders.items(all, on: friday, now: now).map(\.title) == ["Friday"])
+        #expect(NotchReminders.dueLabel(all[0], now: now) == "Overdue")
+        #expect(NotchReminders.dueLabel(all[2], now: now) == "Anytime")
+        #expect(NotchReminders.isOverdue(all[0], now: now))
+        #expect(!NotchReminders.isOverdue(all[1], now: now))
+        #expect(NotchReminders.isOverdue(item("Earlier", due: -3_600), now: now), "a time today gone by")
     }
 
     // MARK: Shelf details

@@ -96,7 +96,12 @@ final class NotchToday: ObservableObject {
         "bluejeans.com", "around.co", "app.slack.com",
     ]
 
-    @Published private(set) var events: [Event] = []
+    /// The day the Calendar page shows, at its start: today, unless another was picked in the strip.
+    @Published private(set) var selectedDay: Date = Calendar.current.startOfDay(for: Date())
+    /// Everything on the selected day, all-day events first.
+    @Published private(set) var dayEvents: [Event] = []
+    /// The strip's days that have an event, each at its start.
+    @Published private(set) var busyDays: Set<Date> = []
     @Published private(set) var weather: Weather?
     @Published private(set) var calendarAccess: CalendarAccess = NotchToday.currentAccess()
     /// The meeting about to start, or just started.
@@ -111,6 +116,8 @@ final class NotchToday: ObservableObject {
     private var meetingTimer: Timer?
     /// A meeting joined or swiped away from the band; it does not come back.
     private var dismissedMeeting: String?
+    /// Every event in the days around the selected one.
+    private var stripEvents: [Event] = []
 
     private init() {
         // The store posts every change twice, about two seconds apart: coalesced into one reload.
@@ -121,11 +128,12 @@ final class NotchToday: ObservableObject {
         }
     }
 
-    /// Called when the Today page opens.
+    /// Called when the Today page opens; it opens on today.
     func refresh(now: Date = Date()) {
+        selectedDay = Calendar.current.startOfDay(for: now)
         // The status read can lag a grant made in this run, so a grant seen here is kept.
         if calendarAccess != .granted { calendarAccess = Self.currentAccess() }
-        if calendarAccess == .granted { reloadEvents(now: now) }
+        if calendarAccess == .granted { reloadEvents() }
         if weatherFetched.map({ now.timeIntervalSince($0) > Self.weatherLifetime }) ?? true { fetchWeather() }
     }
 
@@ -139,7 +147,7 @@ final class NotchToday: ObservableObject {
             guard calendarAccess == .granted else { return }
             Self.grantedThisRun = true
             store.reset()
-            reloadEvents(now: Date())
+            reloadEvents()
         }
     }
 
@@ -162,17 +170,28 @@ final class NotchToday: ObservableObject {
         reloadTask = Task { @MainActor [weak self] in
             try? await Task.sleep(for: .seconds(2.5))
             guard !Task.isCancelled else { return }
-            self?.reloadEvents(now: Date())
+            self?.reloadEvents()
             self?.checkMeetings()
         }
     }
 
-    private func reloadEvents(now: Date) {
+    /// Shows a day picked in the strip, which centres on it.
+    func select(_ day: Date) {
+        selectedDay = Calendar.current.startOfDay(for: day)
+        if calendarAccess == .granted { reloadEvents() }
+    }
+
+    /// The selected day's events, and which of the days around it have any.
+    private func reloadEvents() {
         let calendar = Calendar.current
-        guard let end = calendar.date(byAdding: .day, value: 2, to: calendar.startOfDay(for: now)) else { return }
-        let predicate = store.predicateForEvents(withStart: now, end: end, calendars: nil)
-        let found = store.events(matching: predicate).map(Self.event(from:))
-        events = Self.upcoming(found, now: now)
+        let days = Self.stripDays(around: selectedDay, calendar: calendar)
+        guard let first = days.first, let last = days.last,
+            let end = calendar.date(byAdding: .day, value: 1, to: last)
+        else { return }
+        let predicate = store.predicateForEvents(withStart: first, end: end, calendars: nil)
+        stripEvents = store.events(matching: predicate).map(Self.event(from:))
+        busyDays = Self.busyDays(stripEvents, in: days, calendar: calendar)
+        dayEvents = Self.events(stripEvents, on: selectedDay, calendar: calendar)
     }
 
     private static func event(from event: EKEvent) -> Event {
@@ -292,26 +311,49 @@ final class NotchToday: ObservableObject {
         return String(localized: "\(Int((seconds / 60).rounded(.up)))m")
     }
 
-    /// What is left of today, then tomorrow; timed events before all-day ones, earliest first.
-    nonisolated static func upcoming(_ events: [Event], now: Date, limit: Int = eventLimit) -> [Event] {
-        events
-            .filter { $0.end > now }
-            .sorted { lhs, rhs in
-                if lhs.isAllDay != rhs.isAllDay { return !lhs.isAllDay }
-                return lhs.start < rhs.start
-            }
-            .prefix(limit)
-            .map { $0 }
+    /// How many days either side of the selected one the strip can show.
+    nonisolated static let stripReach = 7
+
+    /// The selected day and a week either side, each at its start.
+    nonisolated static func stripDays(around day: Date, reach: Int = stripReach, calendar: Calendar = .current)
+        -> [Date]
+    {
+        let start = calendar.startOfDay(for: day)
+        return (-reach...reach).compactMap { calendar.date(byAdding: .day, value: $0, to: start) }
     }
 
-    /// "Now", "in 25 min", "14:30", "Tomorrow 09:00", "All day".
-    nonisolated static func when(_ event: Event, now: Date, calendar: Calendar = .current) -> String {
-        if event.isAllDay { return String(localized: "All day") }
-        if event.start <= now { return String(localized: "Now") }
-        let minutes = Int(event.start.timeIntervalSince(now) / 60)
-        if minutes < 60 { return String(localized: "in \(minutes) min") }
-        let time = event.start.formatted(date: .omitted, time: .shortened)
-        return calendar.isDate(event.start, inSameDayAs: now) ? time : String(localized: "Tomorrow \(time)")
+    /// Whether the event covers any of the day; one ending at the day's midnight does not.
+    nonisolated static func event(_ event: Event, isOn day: Date, calendar: Calendar = .current) -> Bool {
+        let start = calendar.startOfDay(for: day)
+        guard let end = calendar.date(byAdding: .day, value: 1, to: start) else { return false }
+        return event.start < end && (event.end > start || (event.end == event.start && event.start >= start))
+    }
+
+    /// The days that have an event, out of those given.
+    nonisolated static func busyDays(_ events: [Event], in days: [Date], calendar: Calendar = .current) -> Set<Date> {
+        Set(days.filter { day in events.contains { event($0, isOn: day, calendar: calendar) } })
+    }
+
+    /// A day's events: all-day ones first, then by when they start.
+    nonisolated static func events(_ events: [Event], on day: Date, calendar: Calendar = .current) -> [Event] {
+        events
+            .filter { event($0, isOn: day, calendar: calendar) }
+            .sorted { lhs, rhs in
+                if lhs.isAllDay != rhs.isAllDay { return lhs.isAllDay }
+                return lhs.start < rhs.start
+            }
+    }
+
+    /// "All day", or the start and the end on two lines: "14:00 -" and "15:30". A start or end on
+    /// another day reads as that day's date.
+    nonisolated static func timeRange(_ event: Event, on day: Date, calendar: Calendar = .current) -> [String] {
+        if event.isAllDay { return [String(localized: "All day")] }
+        func text(_ date: Date) -> String {
+            calendar.isDate(date, inSameDayAs: day)
+                ? date.formatted(date: .omitted, time: .shortened)
+                : date.formatted(.dateTime.day().month(.abbreviated))
+        }
+        return [text(event.start) + " -", text(event.end)]
     }
 
     // MARK: Weather

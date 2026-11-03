@@ -99,20 +99,39 @@ final class NotchReminders: ObservableObject {
         return Array((dated + undated).prefix(limit))
     }
 
-    /// "Overdue", "Today 17:00", "Tomorrow", "Fri", or nothing for an undated reminder.
-    nonisolated static func when(_ item: Item, now: Date, calendar: Calendar = .current) -> String? {
-        guard let due = item.due else { return nil }
-        if due < now, !calendar.isDate(due, inSameDayAs: now) { return String(localized: "Overdue") }
-        if calendar.isDate(due, inSameDayAs: now) {
-            let hasTime = calendar.component(.hour, from: due) != 0 || calendar.component(.minute, from: due) != 0
-            return hasTime
-                ? String(localized: "Today \(due.formatted(date: .omitted, time: .shortened))")
-                : String(localized: "Today")
+    /// The reminders for a day on the Calendar page: what is due that day; and on today, also what
+    /// is overdue and what has no date.
+    nonisolated static func items(
+        _ items: [Item], on day: Date, now: Date, calendar: Calendar = .current
+    ) -> [Item] {
+        let isToday = calendar.isDate(day, inSameDayAs: now)
+        let today = calendar.startOfDay(for: now)
+        return items.filter { item in
+            guard let due = item.due else { return isToday }
+            if calendar.isDate(due, inSameDayAs: day) { return true }
+            return isToday && due < today
         }
-        if let tomorrow = calendar.date(byAdding: .day, value: 1, to: now), calendar.isDate(due, inSameDayAs: tomorrow)
-        {
-            return String(localized: "Tomorrow")
-        }
-        return due.formatted(.dateTime.weekday(.abbreviated).day())
+    }
+
+    /// The days, out of those given, that have a reminder due.
+    nonisolated static func dueDays(_ items: [Item], in days: [Date], calendar: Calendar = .current) -> Set<Date> {
+        Set(days.filter { day in items.contains { $0.due.map { calendar.isDate($0, inSameDayAs: day) } ?? false } })
+    }
+
+    /// Beside a reminder: "Overdue", its time, "All day" when due on a day with no time, and
+    /// "Anytime" when it has no date.
+    nonisolated static func dueLabel(_ item: Item, now: Date, calendar: Calendar = .current) -> String {
+        guard let due = item.due else { return String(localized: "Anytime") }
+        if due < calendar.startOfDay(for: now) { return String(localized: "Overdue") }
+        let hasTime = calendar.component(.hour, from: due) != 0 || calendar.component(.minute, from: due) != 0
+        return hasTime ? due.formatted(date: .omitted, time: .shortened) : String(localized: "All day")
+    }
+
+    /// Whether the reminder is past due: an earlier day, or today at a time gone by.
+    nonisolated static func isOverdue(_ item: Item, now: Date, calendar: Calendar = .current) -> Bool {
+        guard let due = item.due else { return false }
+        if due < calendar.startOfDay(for: now) { return true }
+        let hasTime = calendar.component(.hour, from: due) != 0 || calendar.component(.minute, from: due) != 0
+        return hasTime && due < now
     }
 }

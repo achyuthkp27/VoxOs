@@ -626,42 +626,39 @@ struct NotchTimerRing: View {
 
 // MARK: - Today
 
+/// The Calendar page: the month and a strip of days with the picked one in the middle, and under
+/// it that day's events and reminders, each with its time to the right of a rule.
 struct NotchTodayPage: View {
     @ObservedObject var today: NotchToday
     @ObservedObject var reminders: NotchReminders
 
-    /// Events and reminders in view at once; the column scrolls to the rest.
-    static let visibleEvents = 3
-    static let visibleReminders = 3
+    /// Rows in view at once; the list scrolls to the rest.
+    static let visibleRows = 3
+    static let stripHeight: CGFloat = 50
+    static let rowHeight: CGFloat = 36
+    static let rowSpacing: CGFloat = 10
 
-    /// The card's height on this page: three events, and three reminders under them.
+    /// The card's height on this page: the strip, and three rows under it.
     static var cardHeight: CGFloat {
-        let events: CGFloat = CGFloat(visibleEvents) * 26 + CGFloat(visibleEvents - 1) * 9
-        let list: CGFloat = CGFloat(visibleReminders) * 22 + CGFloat(visibleReminders - 1) * 7
-        return NotchHome.Card.top + 6 + events + 21 + list + NotchHome.Card.bottom + 10
+        let list = CGFloat(visibleRows) * rowHeight + CGFloat(visibleRows - 1) * rowSpacing
+        return NotchHome.Card.top + 4 + stripHeight + 8 + list + NotchHome.Card.bottom + 6
     }
 
     var body: some View {
         TimelineView(.periodic(from: .now, by: 30)) { context in
-            HStack(alignment: .center, spacing: 22) {
-                dateAndWeather(now: context.date)
-                    .frame(width: 128, alignment: .leading)
-                Rectangle().fill(.white.opacity(0.08)).frame(width: 1).frame(maxHeight: .infinity)
-                    .padding(.vertical, 10)
-                // However many there are: the column scrolls, the card keeps its height.
+            VStack(alignment: .leading, spacing: 8) {
+                header(now: context.date)
+                    .frame(height: Self.stripHeight)
+                // However many there are: the list scrolls, the card keeps its height.
                 ScrollView(.vertical) {
-                    VStack(alignment: .leading, spacing: 10) {
-                        events(now: context.date)
-                        Rectangle().fill(.white.opacity(0.08)).frame(height: 1)
-                        NotchRemindersList(reminders: reminders, now: context.date)
-                    }
-                    .padding(.vertical, 10)
-                    .frame(maxWidth: .infinity, alignment: .leading)
+                    list(now: context.date)
+                        .padding(.vertical, 4)
+                        .frame(maxWidth: .infinity, alignment: .leading)
                 }
                 .scrollIndicators(.automatic)
-                .frame(maxWidth: .infinity, alignment: .leading)
+                .frame(maxHeight: .infinity, alignment: .top)
             }
-            .frame(maxHeight: .infinity)
+            .padding(.top, 4)
         }
         .padding(.horizontal, AgentComposer.panelInset)
         .padding(.bottom, NotchHome.Card.bottom)
@@ -671,144 +668,218 @@ struct NotchTodayPage: View {
         }
     }
 
-    private func dateAndWeather(now: Date) -> some View {
-        VStack(alignment: .leading, spacing: 2) {
-            Text(verbatim: now.formatted(.dateTime.weekday(.wide)))
-                .font(.app(size: 12, weight: .medium))
-                .foregroundStyle(.white.opacity(0.5))
-            Text(verbatim: now.formatted(.dateTime.day()))
-                .font(.app(size: 34, weight: .semibold))
-                .foregroundStyle(.white)
-            if let weather = today.weather {
-                HStack(spacing: 5) {
-                    Image(systemName: weather.symbol)
-                        .symbolRenderingMode(.multicolor)
-                        .font(.system(size: 12))
-                    Text(verbatim: "\(weather.temperature)°")
-                        .font(.app(size: 13, weight: .semibold))
-                        .foregroundStyle(.white)
-                    if let high = weather.high, let low = weather.low {
-                        Text(verbatim: "\(high)° / \(low)°")
-                            .font(.app(size: 11))
-                            .foregroundStyle(.white.opacity(0.45))
-                    }
-                }
-                .help(weather.place.map { "\(weather.conditions) · \($0)" } ?? weather.conditions)
+    // MARK: Strip
+
+    private func header(now: Date) -> some View {
+        HStack(alignment: .center, spacing: 6) {
+            Button {
+                today.select(now)
+            } label: {
+                Text(verbatim: today.selectedDay.formatted(.dateTime.month(.abbreviated)))
+                    .font(.app(size: 26, weight: .bold))
+                    .foregroundStyle(.white)
+                    .fixedSize()
+                    .contentShape(Rectangle())
+            }
+            .buttonStyle(.plain)
+            .help(Text("Today"))
+            .accessibilityLabel(Text("Go to today"))
+            NotchWeekStrip(
+                selected: today.selectedDay, busy: busyDays, now: now, onSelect: { today.select($0) })
+        }
+    }
+
+    /// Days with an event or a reminder due.
+    private var busyDays: Set<Date> {
+        let days = NotchToday.stripDays(around: today.selectedDay)
+        return today.busyDays.union(NotchReminders.dueDays(reminders.items, in: days))
+    }
+
+    // MARK: List
+
+    @ViewBuilder
+    private func list(now: Date) -> some View {
+        let day = today.selectedDay
+        let events = today.calendarAccess == .granted ? today.dayEvents : []
+        let items = reminders.access == .granted ? NotchReminders.items(reminders.items, on: day, now: now) : []
+        VStack(alignment: .leading, spacing: Self.rowSpacing) {
+            calendarAccessPrompt
+            ForEach(events) { event in
+                NotchEventRow(
+                    event: event, day: day, now: now, canJoin: NotchToday.canJoin(event, now: now),
+                    onJoin: { today.join(event) })
+            }
+            ForEach(items) { item in
+                NotchReminderRow(item: item, now: now) { reminders.complete(item.id) }
+            }
+            remindersAccessPrompt
+            if events.isEmpty, items.isEmpty, today.calendarAccess == .granted, reminders.access == .granted {
+                (Calendar.current.isDate(day, inSameDayAs: now) ? Text("Nothing today") : Text("Nothing on this day"))
+                    .font(.app(size: 13, weight: .medium))
+                    .foregroundStyle(.white.opacity(0.5))
             }
         }
     }
 
     @ViewBuilder
-    private func events(now: Date) -> some View {
+    private var calendarAccessPrompt: some View {
         switch today.calendarAccess {
         case .notDetermined:
-            VStack(alignment: .leading, spacing: 8) {
-                Text("See what's next")
-                    .font(.app(size: 13, weight: .semibold))
-                    .foregroundStyle(.white)
+            NotchAccessPrompt(title: String(localized: "See what's on")) {
                 NotchChip(title: String(localized: "Allow Calendar"), prominent: true) {
                     today.requestCalendarAccess()
                 }
             }
         case .denied:
-            VStack(alignment: .leading, spacing: 8) {
-                Text("Calendar access is off")
-                    .font(.app(size: 13, weight: .semibold))
-                    .foregroundStyle(.white)
+            NotchAccessPrompt(title: String(localized: "Calendar access is off")) {
                 NotchChip(title: String(localized: "Open Settings")) {
-                    if let url = URL(
-                        string: "x-apple.systempreferences:com.apple.preference.security?Privacy_Calendars")
-                    {
-                        NSWorkspace.shared.open(url)
-                    }
+                    openPrivacySettings("Privacy_Calendars")
                 }
             }
         case .granted:
-            if today.events.isEmpty {
-                Text("Nothing else today")
-                    .font(.app(size: 13, weight: .medium))
-                    .foregroundStyle(.white.opacity(0.5))
-            } else {
-                VStack(alignment: .leading, spacing: 9) {
-                    ForEach(today.events) { event in
-                        HStack(spacing: 9) {
-                            RoundedRectangle(cornerRadius: 1.5).fill(event.color).frame(width: 3, height: 26)
-                            VStack(alignment: .leading, spacing: 1) {
-                                Text(verbatim: event.title)
-                                    .font(.app(size: 13, weight: .semibold))
-                                    .foregroundStyle(.white)
-                                    .lineLimit(1)
-                                Text(verbatim: NotchToday.when(event, now: now))
-                                    .font(.app(size: 11))
-                                    .foregroundStyle(.white.opacity(0.5))
-                            }
-                            if NotchToday.canJoin(event, now: now) {
-                                Spacer(minLength: 6)
-                                NotchJoinButton { today.join(event) }
-                            }
-                        }
-                    }
-                }
-            }
+            EmptyView()
         }
-    }
-}
-
-// MARK: - Reminders
-
-/// The reminders on the Calendar page, under the events: a ring to tick each one.
-private struct NotchRemindersList: View {
-    @ObservedObject var reminders: NotchReminders
-    let now: Date
-
-    var body: some View {
-        content(now: now)
     }
 
     @ViewBuilder
-    private func content(now: Date) -> some View {
+    private var remindersAccessPrompt: some View {
         switch reminders.access {
         case .notDetermined:
-            VStack(alignment: .leading, spacing: 8) {
-                Text("See what's left to do")
-                    .font(.app(size: 13, weight: .semibold))
-                    .foregroundStyle(.white)
+            NotchAccessPrompt(title: String(localized: "See what's left to do")) {
                 NotchChip(title: String(localized: "Allow Reminders"), prominent: true) { reminders.requestAccess() }
             }
         case .denied:
-            VStack(alignment: .leading, spacing: 8) {
-                Text("Reminders access is off")
-                    .font(.app(size: 13, weight: .semibold))
-                    .foregroundStyle(.white)
+            NotchAccessPrompt(title: String(localized: "Reminders access is off")) {
                 NotchChip(title: String(localized: "Open Settings")) {
-                    if let url = URL(
-                        string: "x-apple.systempreferences:com.apple.preference.security?Privacy_Reminders")
-                    {
-                        NSWorkspace.shared.open(url)
-                    }
+                    openPrivacySettings("Privacy_Reminders")
                 }
             }
         case .granted:
-            if reminders.items.isEmpty {
-                HStack(spacing: 8) {
-                    Image(systemName: "checkmark.circle.fill")
-                        .foregroundStyle(Color(red: 0.42, green: 0.86, blue: 0.56))
-                    Text("All done")
-                        .font(.app(size: 13, weight: .medium))
-                        .foregroundStyle(.white.opacity(0.7))
-                }
-            } else {
-                VStack(alignment: .leading, spacing: 7) {
-                    ForEach(reminders.items) { item in
-                        NotchReminderRow(item: item, now: now) { reminders.complete(item.id) }
-                    }
-                }
-            }
+            EmptyView()
         }
     }
 }
 
-/// A reminder: a ring to tick, its title, and when it is due.
+/// The row of days: as many as fit, the selected one in the middle. A click picks a day and the
+/// row centres on it; it never scrolls, so a sideways swipe still turns the page.
+private struct NotchWeekStrip: View {
+    let selected: Date
+    let busy: Set<Date>
+    let now: Date
+    let onSelect: (Date) -> Void
+
+    static let minimumCellWidth: CGFloat = 34
+
+    var body: some View {
+        GeometryReader { proxy in
+            let count = Self.cellCount(for: proxy.size.width)
+            let width = proxy.size.width / CGFloat(count)
+            HStack(spacing: 0) {
+                ForEach(days(count: count), id: \.self) { day in
+                    NotchDayCell(
+                        day: day, isSelected: day == selected,
+                        isToday: Calendar.current.isDate(day, inSameDayAs: now),
+                        isBusy: busy.contains(day)
+                    ) { onSelect(day) }
+                    .frame(width: width)
+                }
+            }
+            .frame(width: proxy.size.width, height: proxy.size.height)
+            .animation(.snappy(duration: 0.28), value: selected)
+        }
+        .mask(
+            LinearGradient(
+                stops: [
+                    .init(color: .clear, location: 0), .init(color: .black, location: 0.16),
+                    .init(color: .black, location: 0.84), .init(color: .clear, location: 1),
+                ], startPoint: .leading, endPoint: .trailing))
+    }
+
+    /// An odd number, so one day sits in the middle.
+    static func cellCount(for width: CGFloat) -> Int {
+        let fit = max(5, Int(width / minimumCellWidth))
+        return fit.isMultiple(of: 2) ? fit - 1 : fit
+    }
+
+    private func days(count: Int) -> [Date] {
+        NotchToday.stripDays(around: selected, reach: min(count / 2, NotchToday.stripReach))
+    }
+}
+
+/// A day in the strip: its weekday's letter over its date, and a dot when something is on.
+private struct NotchDayCell: View {
+    let day: Date
+    let isSelected: Bool
+    let isToday: Bool
+    let isBusy: Bool
+    let action: () -> Void
+    @State private var hovered = false
+
+    static let accent = Color(nsColor: .systemBlue)
+
+    var body: some View {
+        Button(action: action) {
+            VStack(spacing: 2) {
+                Text(verbatim: weekday)
+                    .font(.app(size: 10, weight: isSelected ? .bold : .semibold))
+                    .foregroundStyle(.white.opacity(isSelected ? 0.95 : 0.35))
+                Text(verbatim: day.formatted(.dateTime.day()))
+                    .font(.app(size: isSelected ? 21 : 17, weight: isSelected ? .bold : .medium))
+                    .foregroundStyle(numberColor)
+                    .frame(height: 24)
+                Circle()
+                    .fill(isSelected ? Self.accent : Self.accent.opacity(0.7))
+                    .frame(width: isSelected ? 6 : 3.5, height: isSelected ? 6 : 3.5)
+                    .opacity(isSelected || isBusy ? 1 : 0)
+                    .frame(height: 6)
+            }
+            .frame(maxWidth: .infinity)
+            .contentShape(Rectangle())
+        }
+        .buttonStyle(.plain)
+        .onHover { hovered = $0 }
+        .accessibilityLabel(Text(verbatim: day.formatted(date: .complete, time: .omitted)))
+        .accessibilityAddTraits(isSelected ? .isSelected : [])
+    }
+
+    /// The selected day spells out its weekday; the others give a letter.
+    private var weekday: String {
+        isSelected
+            ? day.formatted(.dateTime.weekday(.abbreviated)).uppercased()
+            : day.formatted(.dateTime.weekday(.narrow))
+    }
+
+    private var numberColor: Color {
+        if isSelected || isToday { return Self.accent }
+        let base: Color =
+            Calendar.current.isDateInWeekend(day) ? Color(red: 1, green: 0.55, blue: 0.55) : .white
+        return base.opacity(hovered ? 0.85 : 0.55)
+    }
+}
+
+/// An event: its title, a rule, and its calendar's dot beside when it runs.
+private struct NotchEventRow: View {
+    let event: NotchToday.Event
+    let day: Date
+    let now: Date
+    let canJoin: Bool
+    let onJoin: () -> Void
+
+    var body: some View {
+        NotchDayRow(color: event.color, time: NotchToday.timeRange(event, on: day), timeColor: nil) {
+            VStack(alignment: .leading, spacing: 4) {
+                Text(verbatim: event.title)
+                    .font(.app(size: 14, weight: .semibold))
+                    .foregroundStyle(.white)
+                    .lineLimit(2)
+                if canJoin { NotchJoinButton(action: onJoin) }
+            }
+        }
+        .opacity(event.end <= now ? 0.45 : 1)
+    }
+}
+
+/// A reminder: a ring to tick, its title, a rule, and when it is due.
 private struct NotchReminderRow: View {
     let item: NotchReminders.Item
     let now: Date
@@ -816,29 +887,88 @@ private struct NotchReminderRow: View {
     @State private var hovered = false
 
     var body: some View {
-        HStack(spacing: 10) {
-            Button(action: onComplete) {
-                Image(systemName: hovered ? "checkmark.circle" : "circle")
-                    .font(.system(size: 15, weight: .regular))
-                    .foregroundStyle(item.color)
-            }
-            .buttonStyle(.plain)
-            .onHover { hovered = $0 }
-            .accessibilityLabel(Text("Complete \(item.title)"))
-            Text(verbatim: item.title)
-                .font(.app(size: 13, weight: .medium))
-                .foregroundStyle(.white)
-                .lineLimit(1)
-            Spacer(minLength: 8)
-            if let when = NotchReminders.when(item, now: now) {
-                Text(verbatim: when)
-                    .font(.app(size: 11))
-                    .foregroundStyle(
-                        item.due.map { $0 < now } == true ? Color(red: 1, green: 0.45, blue: 0.4) : .white.opacity(0.45)
-                    )
+        NotchDayRow(
+            color: item.color, time: [NotchReminders.dueLabel(item, now: now)],
+            timeColor: NotchReminders.isOverdue(item, now: now) ? Color(red: 1, green: 0.45, blue: 0.4) : nil
+        ) {
+            HStack(alignment: .firstTextBaseline, spacing: 8) {
+                Button(action: onComplete) {
+                    Image(systemName: hovered ? "checkmark.circle" : "circle")
+                        .font(.system(size: 14, weight: .regular))
+                        .foregroundStyle(item.color)
+                }
+                .buttonStyle(.plain)
+                .onHover { hovered = $0 }
+                .accessibilityLabel(Text("Complete \(item.title)"))
+                Text(verbatim: item.title)
+                    .font(.app(size: 14, weight: .semibold))
+                    .foregroundStyle(.white)
+                    .lineLimit(2)
             }
         }
-        .frame(height: 22)
+    }
+}
+
+/// The two columns every row on the Calendar page shares: what, a rule, then a dot and when.
+private struct NotchDayRow<Title: View>: View {
+    let color: Color
+    let time: [String]
+    let timeColor: Color?
+    @ViewBuilder let title: () -> Title
+
+    static var timeWidth: CGFloat { 108 }
+
+    var body: some View {
+        HStack(alignment: .top, spacing: 10) {
+            title()
+                .frame(maxWidth: .infinity, alignment: .leading)
+            Rectangle()
+                .fill(.white.opacity(0.18))
+                .frame(width: 1)
+                .frame(maxHeight: .infinity)
+            HStack(alignment: .firstTextBaseline, spacing: 6) {
+                Circle().fill(color).frame(width: 7, height: 7)
+                VStack(alignment: .leading, spacing: 1) {
+                    ForEach(time, id: \.self) { line in
+                        Text(verbatim: line)
+                            .font(.app(size: 12, weight: .medium))
+                            .foregroundStyle(timeColor ?? .white.opacity(0.85))
+                            .lineLimit(1)
+                    }
+                }
+            }
+            .frame(width: Self.timeWidth, alignment: .leading)
+        }
+        .fixedSize(horizontal: false, vertical: true)
+        .frame(minHeight: NotchTodayPage.rowHeight - 14, alignment: .top)
+    }
+}
+
+/// Asking for Calendar or Reminders access, from the page itself.
+private struct NotchAccessPrompt<Action: View>: View {
+    let title: String
+    let action: Action
+
+    init(title: String, @ViewBuilder action: () -> Action) {
+        self.title = title
+        self.action = action()
+    }
+
+    var body: some View {
+        VStack(alignment: .leading, spacing: 8) {
+            Text(verbatim: title)
+                .font(.app(size: 13, weight: .semibold))
+                .foregroundStyle(.white)
+            action
+        }
+    }
+}
+
+/// Opens a pane of System Settings → Privacy & Security, such as "Privacy_Calendars".
+@MainActor
+private func openPrivacySettings(_ pane: String) {
+    if let url = URL(string: "x-apple.systempreferences:com.apple.preference.security?\(pane)") {
+        NSWorkspace.shared.open(url)
     }
 }
 
