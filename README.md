@@ -91,7 +91,8 @@ swipe between. The rest of the time it stays the size of the notch and shows one
 - 🖥️ **Notch-docked recorder UI** — a compact panel that molds around the camera notch, with a left-edge
   hover history sidebar for past interactions
 - 🎵 **Notch Home** — between dictations the notch opens into a small card: the playing track with its
-  controls, Calendar, Weather, Reminders, a Pomodoro timer, a file shelf, and per-app volume; collapsed, it
+  controls, Calendar, Weather, Reminders, a Pomodoro timer, a file shelf, and per-app volume; reorder the
+  pages or switch one off in Settings → Notch. Collapsed, it
   shows one thing at a time (a track, a timer, a meeting countdown, a download, volume and brightness)
 - 🧩 **Claude Code in the notch** — allow or deny a session's requests, answer its questions and approve its
   plans from the notch, through local hooks; it also says when a push's CI run ends, and when a Codex or
@@ -132,7 +133,7 @@ xcodebuild -project VoxOS.xcodeproj -scheme VoxOS -configuration Debug \
 | --- | --- |
 | `make local` | Build, sign, install to `/Applications` |
 | `make dev` | `make local` then launch |
-| `make test` | Run the test suite (72 tests) |
+| `make test` | Run the test suite (563 tests) |
 | `make lint` | Check formatting with swift-format |
 | `make format` | Reformat sources in place |
 
@@ -140,7 +141,7 @@ xcodebuild -project VoxOS.xcodeproj -scheme VoxOS -configuration Debug \
 so it reports every test and fails the build when any of them fail:
 
 ```
-Passed: 71 passed, 0 failed, 1 skipped (72 total)
+Passed: 562 passed, 0 failed, 1 skipped (563 total)
 ```
 
 The skipped test is a live MCP check; enable it with `TEST_RUNNER_VOXOS_LIVE_MCP=1 make test`.
@@ -157,6 +158,13 @@ that commit out of `git blame`. Enable it locally with:
 ```shell
 git config blame.ignoreRevsFile .git-blame-ignore-revs
 ```
+
+### Localization
+
+UI text lives in [`VoxOS/Localizable.xcstrings`](VoxOS/Localizable.xcstrings). A SwiftUI
+`Text("…")` is a `LocalizedStringKey` and is extracted at build time; call sites outside
+SwiftUI use `String(localized:)`. Add German and Simplified Chinese alongside a new English
+string — the catalog is the source of truth.
 
 ### Pinned dependencies
 

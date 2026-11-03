@@ -2,7 +2,8 @@
 
 VoxOS is a personal macOS voice app: local dictation plus a voice Agent that acts on the Mac.
 It is a fork of VoiceInk (GPL v3) with the cursor-voice tool layer (MIT) ported in
-(`THIRD_PARTY_LICENSES.md`). SwiftUI, macOS 26, built with `make local`.
+(`THIRD_PARTY_LICENSES.md`). SwiftUI; targets macOS 14.4 and is built against the macOS 26
+SDK with `make local`.
 
 ## Vocabulary
 
@@ -46,8 +47,9 @@ It is a fork of VoiceInk (GPL v3) with the cursor-voice tool layer (MIT) ported 
 - **Notch Home** — `NotchHomeManager`'s panel on the notch between dictations (ADR 0007). Collapsed
   it is a **band** (a notice, the next meeting, a mic or camera in use, a timer or the track) or a
   bare notch-sized target; the top strip of the notch, or a file dragged toward it, opens the
-  **card** with its **pages**: Music, Calendar, Weather, Reminders, Pomodoro, Shelf, Sound.
-  Holding the notch row asks the Agent.
+  **card** with its **pages**: Music, Calendar, Weather, Reminders, Pomodoro, Shelf, Sound. The
+  order is the one set in Settings → Notch, which can also switch a page off (at least one stays
+  on). Holding the notch row asks the Agent.
 - **Live music bars** — bars driven by the real output through `SystemAudioLevels` (a Core Audio
   tap), in the band and on the Music page, only when the setting is on (a click on the player's
   bars switches it) and `PowerState` allows: never in Low Power Mode, on battery only if allowed.

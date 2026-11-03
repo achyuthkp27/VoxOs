@@ -1,23 +1,27 @@
-# Building VoiceInk
+# Building VoxOS
 
 ## Requirements
 
-- macOS 14.4 or later
-- Xcode with Command Line Tools
+- macOS 14.4 or later (the app's deployment target; it builds against the macOS 26 SDK)
+- Xcode 26 with the Command Line Tools
 - Git
+- The Metal toolchain, once: `xcodebuild -downloadComponent MetalToolchain`
 
-## Local Build
+## Local build
 
 ```bash
-git clone https://github.com/Beingpax/VoiceInk.git
-cd VoiceInk
+git clone https://github.com/achyuthkp27/VoxOs.git
+cd VoxOs
 make local
-open ~/Downloads/VoiceInk.app
 ```
 
-`make local` prepares `whisper.xcframework` in `~/VoiceInk-Dependencies`, builds in `.local-build`, and copies `VoiceInk.app` to `~/Downloads`.
+`make local` prepares `whisper.xcframework` in `~/VoxOS-Dependencies`, builds in `.local-build`
+(SwiftPM checkouts are kept in `.local-packages` so they are not re-cloned on every build), and
+installs `VoxOS.app` to `/Applications`. Nothing is left in `~/Downloads`.
 
-It uses `LocalBuild.xcconfig`, `VoiceInk.local.entitlements`, and the `LOCAL_BUILD` Swift flag. Without an override, it uses the only available Apple Development identity or falls back to ad-hoc signing when none or multiple are found.
+It uses `LocalBuild.xcconfig`, `VoxOS/VoxOS.local.entitlements` and the `LOCAL_BUILD` Swift flag.
+Without an override it uses the only available Apple Development identity, or falls back to
+ad-hoc signing when none or several are found.
 
 Choose an identity explicitly:
 
@@ -31,32 +35,42 @@ Force ad-hoc signing:
 make local LOCAL_CODESIGN_IDENTITY=-
 ```
 
-Local builds do not include iCloud dictionary sync or automatic updates. Ad-hoc builds may require macOS permissions again after rebuilding. Normal project Debug and Release settings are unchanged.
+For an optimised app (slower to build, faster to run):
 
-## Other Commands
+```bash
+make local LOCAL_CONFIG=Release
+```
 
-- `make check` — verify required tools
+Local builds do not include iCloud dictionary sync or automatic updates. Ad-hoc builds may ask
+for macOS permissions again after a rebuild.
+
+## Other commands
+
+- `make check` — verify the required tools
 - `make whisper` — prepare `whisper.xcframework`
 - `make build` — build the standard Debug configuration
-- `make dev` — build and launch the app
-- `make run` — launch `~/Downloads/VoiceInk.app`, or the first app found in DerivedData
-- `make release` — create the signed release package
-- `make release-setup` — configure release notarization credentials
-- `make clean` — remove `~/VoiceInk-Dependencies`
-- `make help` — list all commands
+- `make dev` — build, install and launch the app
+- `make run` — launch the installed app
+- `make test` — run the test suite (see "Development" in the README)
+- `make lint` / `make format` — check or apply swift-format
+- `make release` — build the signed DMG and Sparkle appcast from `release-notes/<version>.html`
+- `make release-setup` — store notarization credentials in Keychain
+- `make clean` — remove build artifacts
+- `make help` — list every target
 
 ## Build with Xcode
 
 ```bash
 make setup
-open VoiceInk.xcodeproj
+open VoxOS.xcodeproj
 ```
 
-Select the `VoiceInk` scheme and use the Debug configuration. Xcode uses the project’s normal signing settings; `LOCAL_BUILD` applies only through `make local`.
+Select the `VoxOS` scheme and the Debug configuration. Xcode uses the project's normal signing
+settings; `LOCAL_BUILD` applies only through `make local`.
 
 ## Troubleshooting
 
 - Run `make check` to verify the required tools.
 - Run `make whisper` if the framework is missing.
 - If several Apple Development identities exist, set `LOCAL_CODESIGN_IDENTITY` explicitly.
-- For additional help, open a [GitHub issue](https://github.com/Beingpax/VoiceInk/issues).
+- For additional help, open a [GitHub issue](https://github.com/achyuthkp27/VoxOs/issues).
