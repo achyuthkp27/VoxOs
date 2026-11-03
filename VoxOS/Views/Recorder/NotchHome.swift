@@ -3,6 +3,7 @@ import Combine
 import MediaRemoteAdapter
 import QuartzCore
 import SwiftUI
+import UniformTypeIdentifiers
 import VoxOSNowPlaying
 import os
 
@@ -41,6 +42,9 @@ enum NotchHome {
     }
 
     /// The open card: the same height on every page, so switching pages never moves the notch.
+    /// The open card's coordinate space, in which drops and the AirDrop zone are measured.
+    static let cardSpace = "NotchHome.card"
+
     enum Card {
         static let height: CGFloat = 132
         static let top: CGFloat = 8
@@ -372,13 +376,8 @@ struct NotchHomeView: View {
                 .onChanged { value in onDragChanged(value.translation) }
                 .onEnded { value in onDrag(value.startLocation.x, value.translation, value.predictedEndTranslation) }
         )
-        .dropDestination(for: URL.self) { urls, _ in
-            NotchShelf.shared.add(urls)
-            if !urls.isEmpty { NotchHome.tap() }
-            return !urls.isEmpty
-        } isTargeted: { targeted in
-            onDropTargeted(targeted)
-        }
+        .coordinateSpace(name: NotchHome.cardSpace)
+        .onDrop(of: [.fileURL], delegate: NotchCardDropDelegate(onTargeted: onDropTargeted))
         .animation(
             reduceMotion ? nil : (content == .expanded ? NotchDesign.openAnimation : NotchDesign.closeAnimation),
             value: content
@@ -757,6 +756,67 @@ private struct NotchLevelReadout: View {
 }
 
 /// "Join", on the meeting band and beside a meeting on the Calendar page.
+/// Files dragged onto the open card: onto the Shelf page's AirDrop zone they go by AirDrop;
+/// anywhere else they are kept on the shelf.
+@MainActor
+struct NotchCardDropDelegate: DropDelegate {
+    let onTargeted: (Bool) -> Void
+
+    func validateDrop(info: DropInfo) -> Bool { info.hasItemsConforming(to: [.fileURL]) }
+
+    func dropEntered(info: DropInfo) {
+        onTargeted(true)
+        track(info)
+    }
+
+    func dropUpdated(info: DropInfo) -> DropProposal? {
+        track(info)
+        return DropProposal(operation: .copy)
+    }
+
+    func dropExited(info: DropInfo) {
+        NotchShelf.shared.airDropTargeted = false
+        onTargeted(false)
+    }
+
+    func performDrop(info: DropInfo) -> Bool {
+        let shelf = NotchShelf.shared
+        let toAirDrop = Self.isOverAirDrop(info.location, zone: shelf.airDropZone)
+        shelf.airDropTargeted = false
+        let providers = info.itemProviders(for: [.fileURL])
+        guard !providers.isEmpty else {
+            onTargeted(false)
+            return false
+        }
+        Task { @MainActor in
+            var urls: [URL] = []
+            for provider in providers {
+                if let url = await Self.url(from: provider) { urls.append(url) }
+            }
+            // AirDrop first: its picker keeps the card open once the drag has left it.
+            if toAirDrop { shelf.airDrop(urls) } else { shelf.add(urls) }
+            if !urls.isEmpty { NotchHome.tap() }
+            onTargeted(false)
+        }
+        return true
+    }
+
+    private func track(_ info: DropInfo) {
+        let over = Self.isOverAirDrop(info.location, zone: NotchShelf.shared.airDropZone)
+        if NotchShelf.shared.airDropTargeted != over { NotchShelf.shared.airDropTargeted = over }
+    }
+
+    nonisolated static func isOverAirDrop(_ point: CGPoint, zone: CGRect?) -> Bool {
+        zone?.contains(point) ?? false
+    }
+
+    nonisolated static func url(from provider: NSItemProvider) async -> URL? {
+        await withCheckedContinuation { continuation in
+            _ = provider.loadObject(ofClass: URL.self) { url, _ in continuation.resume(returning: url) }
+        }
+    }
+}
+
 struct NotchJoinButton: View {
     let action: () -> Void
     @State private var hovered = false

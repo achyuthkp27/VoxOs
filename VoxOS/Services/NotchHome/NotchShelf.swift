@@ -23,6 +23,10 @@ final class NotchShelf: ObservableObject {
     @Published private(set) var items: [Item] = []
     /// An AirDrop picker from the shelf is up: the card stays open under it until it is done.
     @Published private(set) var isSharing = false
+    /// Files being dragged are over the Shelf page's AirDrop zone.
+    @Published var airDropTargeted = false
+    /// Where the Shelf page's AirDrop zone is, in the card's coordinates; nil while it is not shown.
+    var airDropZone: CGRect?
     private var shareDelegate: ShareDelegate?
     private let storeURL: URL
     private let fileExists: (String) -> Bool
@@ -53,8 +57,8 @@ final class NotchShelf: ObservableObject {
         save()
     }
 
-    func airDrop(_ url: URL) {
-        guard let service = NSSharingService(named: .sendViaAirDrop) else { return }
+    func airDrop(_ urls: [URL]) {
+        guard !urls.isEmpty, let service = NSSharingService(named: .sendViaAirDrop) else { return }
         let delegate = ShareDelegate { [weak self] in
             self?.isSharing = false
             self?.shareDelegate = nil
@@ -62,7 +66,7 @@ final class NotchShelf: ObservableObject {
         service.delegate = delegate
         shareDelegate = delegate
         isSharing = true
-        service.perform(withItems: [url])
+        service.perform(withItems: urls)
     }
 
     /// The file itself on the clipboard, to paste into a mail or a chat.

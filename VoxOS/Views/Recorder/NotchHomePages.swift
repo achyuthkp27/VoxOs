@@ -1110,7 +1110,13 @@ struct NotchShelfPage: View {
     var body: some View {
         Group {
             if shelf.items.isEmpty || dropping {
-                dropArea
+                // Two places to drop: the shelf keeps the files, AirDrop sends them on at once.
+                HStack(spacing: 8) {
+                    dropArea
+                    NotchAirDropZone(shelf: shelf, dropping: dropping)
+                        .frame(width: 128)
+                }
+                .padding(.top, 4)
             } else if let item = shelf.items.first(where: { $0.id == selected }) {
                 NotchShelfDetail(item: item, shelf: shelf) { selected = nil }
                     .frame(maxHeight: .infinity)
@@ -1127,6 +1133,11 @@ struct NotchShelfPage: View {
                             .frame(width: 34)
                     }
                     Spacer(minLength: 0)
+                    NotchServiceButton(
+                        service: NSSharingService(named: .sendViaAirDrop), label: "AirDrop everything on the shelf"
+                    ) {
+                        shelf.airDrop(shelf.items.map(\.url))
+                    }
                     NotchRoundButton(symbol: "trash", label: "Clear the shelf") { shelf.clear() }
                 }
                 .frame(maxHeight: .infinity)
@@ -1137,24 +1148,68 @@ struct NotchShelfPage: View {
         .onAppear { shelf.prune() }
     }
 
+    /// The shelf's half looks idle while files are held over the AirDrop zone.
+    private var keeping: Bool { dropping && !shelf.airDropTargeted }
+
     private var dropArea: some View {
         RoundedRectangle(cornerRadius: 14, style: .continuous)
             .strokeBorder(
-                .white.opacity(dropping ? 0.6 : 0.2), style: StrokeStyle(lineWidth: 1.2, dash: [5, 4])
+                .white.opacity(keeping ? 0.6 : 0.2), style: StrokeStyle(lineWidth: 1.2, dash: [5, 4])
             )
             .background(
-                RoundedRectangle(cornerRadius: 14, style: .continuous).fill(.white.opacity(dropping ? 0.08 : 0.02))
+                RoundedRectangle(cornerRadius: 14, style: .continuous).fill(.white.opacity(keeping ? 0.08 : 0.02))
             )
             .overlay {
                 VStack(spacing: 6) {
-                    Image(systemName: dropping ? "tray.and.arrow.down.fill" : "tray")
+                    Image(systemName: keeping ? "tray.and.arrow.down.fill" : "tray")
                         .font(.system(size: 20, weight: .medium))
-                    Text(dropping ? "Drop to keep it here" : "Drop files on the notch to keep them here")
+                    Text(keeping ? "Drop to keep it here" : "Drop files here to keep them")
                         .font(.app(size: 12))
                 }
-                .foregroundStyle(.white.opacity(dropping ? 0.9 : 0.45))
+                .foregroundStyle(.white.opacity(keeping ? 0.9 : 0.45))
             }
-            .padding(.top, 4)
+    }
+}
+
+/// Files dropped here go straight to AirDrop. The zone tells the shelf where it is, so the card
+/// can send a drop here rather than onto the shelf.
+private struct NotchAirDropZone: View {
+    @ObservedObject var shelf: NotchShelf
+    let dropping: Bool
+
+    private static let service = NSSharingService(named: .sendViaAirDrop)
+
+    var body: some View {
+        let hot = shelf.airDropTargeted
+        RoundedRectangle(cornerRadius: 14, style: .continuous)
+            .strokeBorder(
+                hot ? Color(nsColor: .systemBlue) : .white.opacity(0.2),
+                style: StrokeStyle(lineWidth: 1.2, dash: hot ? [] : [5, 4])
+            )
+            .background(
+                RoundedRectangle(cornerRadius: 14, style: .continuous)
+                    .fill(hot ? Color(nsColor: .systemBlue).opacity(0.18) : .white.opacity(0.02))
+            )
+            .overlay {
+                VStack(spacing: 6) {
+                    if let image = Self.service?.image {
+                        Image(nsImage: image).resizable().frame(width: 26, height: 26)
+                    } else {
+                        Image(systemName: "dot.radiowaves.left.and.right").font(.system(size: 20, weight: .medium))
+                    }
+                    Text(hot ? "Drop to AirDrop" : "AirDrop")
+                        .font(.app(size: 12, weight: hot ? .semibold : .regular))
+                }
+                .foregroundStyle(.white.opacity(hot ? 0.95 : 0.45))
+            }
+            .onGeometryChange(for: CGRect.self) {
+                $0.frame(in: .named(NotchHome.cardSpace))
+            } action: { frame in
+                shelf.airDropZone = frame
+            }
+            .onDisappear { shelf.airDropZone = nil }
+            .accessibilityElement(children: .combine)
+            .accessibilityLabel(Text("Drop files here to AirDrop them"))
     }
 }
 
@@ -1219,7 +1274,7 @@ private struct NotchShelfDetail: View {
             Spacer(minLength: 6)
             HStack(spacing: 6) {
                 NotchServiceButton(service: NSSharingService(named: .sendViaAirDrop), label: "AirDrop") {
-                    shelf.airDrop(item.url)
+                    shelf.airDrop([item.url])
                 }
                 NotchRoundButton(symbol: "arrow.up.forward.app", label: "Open") { NSWorkspace.shared.open(item.url) }
                 NotchRoundButton(symbol: "doc.on.doc", label: "Copy the file") { shelf.copy(item) }
