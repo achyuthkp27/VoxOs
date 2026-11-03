@@ -245,6 +245,9 @@ class ScreenCaptureService: ObservableObject {
         await mcpRace(seconds: seconds, operation) ?? nil
     }
 
+    /// The casts from `CFTypeRef` to a Core Foundation type below are force casts because Swift
+    /// has no conditional cast for CF types (`as?` is a compile error). Each one is preceded by
+    /// the `CFGetTypeID` check that makes it sound — do not remove the check.
     private func copyAXElementAttribute(_ attribute: String, from element: AXUIElement) -> AXUIElement? {
         var value: CFTypeRef?
         guard AXUIElementCopyAttributeValue(element, attribute as CFString, &value) == .success,

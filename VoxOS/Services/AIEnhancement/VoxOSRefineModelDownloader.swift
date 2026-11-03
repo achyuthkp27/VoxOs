@@ -35,6 +35,8 @@ enum VoxOSRefineDownloadError: LocalizedError {
     }
 }
 
+/// Sendable because every stored property is immutable and the only mutable state — the byte
+/// and progress counters — lives in `ProgressTracker` behind its own lock.
 final class VoxOSRefineModelDownloader: @unchecked Sendable {
     struct ModelFile: Sendable {
         let path: String

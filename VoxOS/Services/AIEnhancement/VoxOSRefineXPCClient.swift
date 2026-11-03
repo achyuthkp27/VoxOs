@@ -19,6 +19,9 @@ private final class VoxOSRefineXPCReply<Value>: @unchecked Sendable {
     }
 }
 
+/// Immutable handle on the connection created for one operation. `NSXPCConnection` is
+/// documented as thread-safe and `invalidate()` may be called more than once, so nothing needs
+/// a lock here.
 private final class VoxOSRefineXPCCancellationHandle: @unchecked Sendable {
     private let connection: NSXPCConnection
 

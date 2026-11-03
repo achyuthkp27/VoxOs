@@ -1,6 +1,9 @@
 import Foundation
 
 /// Routes catalog-backed models through the shared transcribe.cpp runtime.
+///
+/// Sendable because it has no mutable state of its own: the offline service it forwards to
+/// keeps its loaded model and counters behind a lock (see `OfflineTranscribeCppService`).
 final class TranscribeCppTranscriptionService: TranscriptionService, @unchecked Sendable {
     private let offlineService = OfflineTranscribeCppService()
 
