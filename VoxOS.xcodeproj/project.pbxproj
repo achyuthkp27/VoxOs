@@ -40,13 +40,6 @@
 			remoteGlobalIDString = E11473AF2CBE0F0A00318EE4;
 			remoteInfo = VoxOS;
 		};
-		E11473CE2CBE0F0B00318EE4 /* PBXContainerItemProxy */ = {
-			isa = PBXContainerItemProxy;
-			containerPortal = E11473A82CBE0F0A00318EE4 /* Project object */;
-			proxyType = 1;
-			remoteGlobalIDString = E11473AF2CBE0F0A00318EE4;
-			remoteInfo = VoxOS;
-		};
 		E1FA00122FA7000000000001 /* PBXContainerItemProxy */ = {
 			isa = PBXContainerItemProxy;
 			containerPortal = E11473A82CBE0F0A00318EE4 /* Project object */;
@@ -86,7 +79,6 @@
 /* Begin PBXFileReference section */
 		E11473B02CBE0F0A00318EE4 /* VoxOS.app */ = {isa = PBXFileReference; explicitFileType = wrapper.application; includeInIndex = 0; path = VoxOS.app; sourceTree = BUILT_PRODUCTS_DIR; };
 		E11473C32CBE0F0B00318EE4 /* VoxOSTests.xctest */ = {isa = PBXFileReference; explicitFileType = wrapper.cfbundle; includeInIndex = 0; path = VoxOSTests.xctest; sourceTree = BUILT_PRODUCTS_DIR; };
-		E11473CD2CBE0F0B00318EE4 /* VoxOSUITests.xctest */ = {isa = PBXFileReference; explicitFileType = wrapper.cfbundle; includeInIndex = 0; path = VoxOSUITests.xctest; sourceTree = BUILT_PRODUCTS_DIR; };
 		E161D4A02F41ECB90086F83D /* CloudKit.framework */ = {isa = PBXFileReference; lastKnownFileType = wrapper.framework; name = CloudKit.framework; path = System/Library/Frameworks/CloudKit.framework; sourceTree = SDKROOT; };
 		E1A0BD052EB1E7B800266859 /* whisper.xcframework */ = {isa = PBXFileReference; lastKnownFileType = wrapper.xcframework; name = whisper.xcframework; path = "$(HOME)/VoxOS-Dependencies/whisper.cpp/build-apple/whisper.xcframework"; sourceTree = "<group>"; };
 		E1B2DCAA2E3DE70A008DFD68 /* whisper.xcframework */ = {isa = PBXFileReference; lastKnownFileType = wrapper.xcframework; name = whisper.xcframework; path = "../whisper.cpp/build-apple/whisper.xcframework"; sourceTree = "<group>"; };
@@ -126,11 +118,6 @@
 			path = VoxOSTests;
 			sourceTree = "<group>";
 		};
-		E11473D02CBE0F0B00318EE4 /* VoxOSUITests */ = {
-			isa = PBXFileSystemSynchronizedRootGroup;
-			path = VoxOSUITests;
-			sourceTree = "<group>";
-		};
 		E1FA00022FA7000000000001 /* VoxOSRefineXPC */ = {
 			isa = PBXFileSystemSynchronizedRootGroup;
 			exceptions = (
@@ -168,13 +155,6 @@
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
-		E11473CA2CBE0F0B00318EE4 /* Frameworks */ = {
-			isa = PBXFrameworksBuildPhase;
-			buildActionMask = 2147483647;
-			files = (
-			);
-			runOnlyForDeploymentPostprocessing = 0;
-		};
 		E1FA000A2FA7000000000001 /* Frameworks */ = {
 			isa = PBXFrameworksBuildPhase;
 			buildActionMask = 2147483647;
@@ -197,7 +177,6 @@
 				E1FA00022FA7000000000001 /* VoxOSRefineXPC */,
 				E1FA00042FA7000000000001 /* Shared */,
 				E11473C62CBE0F0B00318EE4 /* VoxOSTests */,
-				E11473D02CBE0F0B00318EE4 /* VoxOSUITests */,
 				E114741C2CBE1DE200318EE4 /* Frameworks */,
 				E11473B12CBE0F0A00318EE4 /* Products */,
 			);
@@ -208,7 +187,6 @@
 			children = (
 				E11473B02CBE0F0A00318EE4 /* VoxOS.app */,
 				E11473C32CBE0F0B00318EE4 /* VoxOSTests.xctest */,
-				E11473CD2CBE0F0B00318EE4 /* VoxOSUITests.xctest */,
 				E1FA00012FA7000000000001 /* VoxOSRefineXPC.xpc */,
 			);
 			name = Products;
@@ -294,29 +272,6 @@
 			productReference = E11473C32CBE0F0B00318EE4 /* VoxOSTests.xctest */;
 			productType = "com.apple.product-type.bundle.unit-test";
 		};
-		E11473CC2CBE0F0B00318EE4 /* VoxOSUITests */ = {
-			isa = PBXNativeTarget;
-			buildConfigurationList = E11473DD2CBE0F0B00318EE4 /* Build configuration list for PBXNativeTarget "VoxOSUITests" */;
-			buildPhases = (
-				E11473C92CBE0F0B00318EE4 /* Sources */,
-				E11473CA2CBE0F0B00318EE4 /* Frameworks */,
-				E11473CB2CBE0F0B00318EE4 /* Resources */,
-			);
-			buildRules = (
-			);
-			dependencies = (
-				E11473CF2CBE0F0B00318EE4 /* PBXTargetDependency */,
-			);
-			fileSystemSynchronizedGroups = (
-				E11473D02CBE0F0B00318EE4 /* VoxOSUITests */,
-			);
-			name = VoxOSUITests;
-			packageProductDependencies = (
-			);
-			productName = VoxOSUITests;
-			productReference = E11473CD2CBE0F0B00318EE4 /* VoxOSUITests.xctest */;
-			productType = "com.apple.product-type.bundle.ui-testing";
-		};
 		E1FA000D2FA7000000000001 /* VoxOSRefineXPC */ = {
 			isa = PBXNativeTarget;
 			buildConfigurationList = E1FA00102FA7000000000001 /* Build configuration list for PBXNativeTarget "VoxOSRefineXPC" */;
@@ -361,10 +316,6 @@
 						CreatedOnToolsVersion = 16.0;
 						TestTargetID = E11473AF2CBE0F0A00318EE4;
 					};
-					E11473CC2CBE0F0B00318EE4 = {
-						CreatedOnToolsVersion = 16.0;
-						TestTargetID = E11473AF2CBE0F0A00318EE4;
-					};
 					E1FA000D2FA7000000000001 = {
 						CreatedOnToolsVersion = 26.0;
 					};
@@ -403,7 +354,6 @@
 			targets = (
 				E11473AF2CBE0F0A00318EE4 /* VoxOS */,
 				E11473C22CBE0F0B00318EE4 /* VoxOSTests */,
-				E11473CC2CBE0F0B00318EE4 /* VoxOSUITests */,
 				E1FA000D2FA7000000000001 /* VoxOSRefineXPC */,
 			);
 		};
@@ -418,13 +368,6 @@
 			runOnlyForDeploymentPostprocessing = 0;
 		};
 		E11473C12CBE0F0B00318EE4 /* Resources */ = {
-			isa = PBXResourcesBuildPhase;
-			buildActionMask = 2147483647;
-			files = (
-			);
-			runOnlyForDeploymentPostprocessing = 0;
-		};
-		E11473CB2CBE0F0B00318EE4 /* Resources */ = {
 			isa = PBXResourcesBuildPhase;
 			buildActionMask = 2147483647;
 			files = (
@@ -456,13 +399,6 @@
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
-		E11473C92CBE0F0B00318EE4 /* Sources */ = {
-			isa = PBXSourcesBuildPhase;
-			buildActionMask = 2147483647;
-			files = (
-			);
-			runOnlyForDeploymentPostprocessing = 0;
-		};
 		E1FA00092FA7000000000001 /* Sources */ = {
 			isa = PBXSourcesBuildPhase;
 			buildActionMask = 2147483647;
@@ -478,11 +414,6 @@
 			isa = PBXTargetDependency;
 			target = E11473AF2CBE0F0A00318EE4 /* VoxOS */;
 			targetProxy = E11473C42CBE0F0B00318EE4 /* PBXContainerItemProxy */;
-		};
-		E11473CF2CBE0F0B00318EE4 /* PBXTargetDependency */ = {
-			isa = PBXTargetDependency;
-			target = E11473AF2CBE0F0A00318EE4 /* VoxOS */;
-			targetProxy = E11473CE2CBE0F0B00318EE4 /* PBXContainerItemProxy */;
 		};
 		E1FA00112FA7000000000001 /* PBXTargetDependency */ = {
 			isa = PBXTargetDependency;
@@ -729,38 +660,6 @@
 			};
 			name = Release;
 		};
-		E11473DE2CBE0F0B00318EE4 /* Debug */ = {
-			isa = XCBuildConfiguration;
-			buildSettings = {
-				CODE_SIGN_STYLE = Automatic;
-				CURRENT_PROJECT_VERSION = 1;
-				DEAD_CODE_STRIPPING = YES;
-				GENERATE_INFOPLIST_FILE = YES;
-				MARKETING_VERSION = 1.0;
-				PRODUCT_BUNDLE_IDENTIFIER = com.achyuthkp.VoxOSUITests;
-				PRODUCT_NAME = "$(TARGET_NAME)";
-				SWIFT_EMIT_LOC_STRINGS = NO;
-				SWIFT_VERSION = 5.0;
-				TEST_TARGET_NAME = VoxOS;
-			};
-			name = Debug;
-		};
-		E11473DF2CBE0F0B00318EE4 /* Release */ = {
-			isa = XCBuildConfiguration;
-			buildSettings = {
-				CODE_SIGN_STYLE = Automatic;
-				CURRENT_PROJECT_VERSION = 1;
-				DEAD_CODE_STRIPPING = YES;
-				GENERATE_INFOPLIST_FILE = YES;
-				MARKETING_VERSION = 1.0;
-				PRODUCT_BUNDLE_IDENTIFIER = com.achyuthkp.VoxOSUITests;
-				PRODUCT_NAME = "$(TARGET_NAME)";
-				SWIFT_EMIT_LOC_STRINGS = NO;
-				SWIFT_VERSION = 5.0;
-				TEST_TARGET_NAME = VoxOS;
-			};
-			name = Release;
-		};
 		E1FA000E2FA7000000000001 /* Debug */ = {
 			isa = XCBuildConfiguration;
 			buildSettings = {
@@ -842,15 +741,6 @@
 			buildConfigurations = (
 				E11473DB2CBE0F0B00318EE4 /* Debug */,
 				E11473DC2CBE0F0B00318EE4 /* Release */,
-			);
-			defaultConfigurationIsVisible = 0;
-			defaultConfigurationName = Release;
-		};
-		E11473DD2CBE0F0B00318EE4 /* Build configuration list for PBXNativeTarget "VoxOSUITests" */ = {
-			isa = XCConfigurationList;
-			buildConfigurations = (
-				E11473DE2CBE0F0B00318EE4 /* Debug */,
-				E11473DF2CBE0F0B00318EE4 /* Release */,
 			);
 			defaultConfigurationIsVisible = 0;
 			defaultConfigurationName = Release;

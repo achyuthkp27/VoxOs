@@ -41,17 +41,6 @@
                ReferencedContainer = "container:VoxOS.xcodeproj">
             </BuildableReference>
          </TestableReference>
-         <TestableReference
-            skipped = "NO"
-            parallelizable = "YES">
-            <BuildableReference
-               BuildableIdentifier = "primary"
-               BlueprintIdentifier = "E11473CC2CBE0F0B00318EE4"
-               BuildableName = "VoxOSUITests.xctest"
-               BlueprintName = "VoxOSUITests"
-               ReferencedContainer = "container:VoxOS.xcodeproj">
-            </BuildableReference>
-         </TestableReference>
       </Testables>
    </TestAction>
    <LaunchAction
