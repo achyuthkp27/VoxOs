@@ -474,7 +474,8 @@ struct NotchHomeView: View {
         case .weather:
             NotchWeatherPage(today: .shared)
         case .shelf:
-            NotchShelfPage(shelf: .shared, dropping: model.dropping)
+            NotchShelfPage(
+                shelf: .shared, dropping: model.dropping, pinned: model.pinned, onPin: onPin)
         case .sound:
             NotchSoundPage(
                 mixer: .shared, clipboard: .shared, mirror: .shared, keepAwake: .shared, pinned: model.pinned,

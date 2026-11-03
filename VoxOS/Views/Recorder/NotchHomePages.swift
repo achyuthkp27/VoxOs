@@ -1111,8 +1111,10 @@ private func openPrivacySettings(_ pane: String) {
 struct NotchShelfPage: View {
     @ObservedObject var shelf: NotchShelf
     let dropping: Bool
+    let pinned: Bool
+    let onPin: () -> Void
     /// Tiles that fit beside the clear button; the rest are counted.
-    static let visible = 5
+    static let visible = 4
     /// The file whose details are open; nothing is read about a file until it is clicked.
     @State private var selected: NotchShelf.Item.ID?
 
@@ -1124,10 +1126,17 @@ struct NotchShelfPage: View {
                     dropArea
                     NotchAirDropZone(shelf: shelf, dropping: dropping)
                         .frame(width: 128)
+                    NotchRoundButton(
+                        symbol: pinned ? "pin.fill" : "pin",
+                        label: pinned ? "Unpin: close when the pointer leaves" : "Pin: keep the card open",
+                        on: pinned,
+                        tint: AppTheme.Accent.primary,
+                        action: onPin
+                    )
                 }
                 .padding(.top, 4)
             } else if let item = shelf.items.first(where: { $0.id == selected }) {
-                NotchShelfDetail(item: item, shelf: shelf) { selected = nil }
+                NotchShelfDetail(item: item, shelf: shelf, pinned: pinned, onPin: onPin) { selected = nil }
                     .frame(maxHeight: .infinity)
             } else {
                 // No sideways scrolling: a sideways swipe turns the page.
@@ -1142,6 +1151,13 @@ struct NotchShelfPage: View {
                             .frame(width: 34)
                     }
                     Spacer(minLength: 0)
+                    NotchRoundButton(
+                        symbol: pinned ? "pin.fill" : "pin",
+                        label: pinned ? "Unpin: close when the pointer leaves" : "Pin: keep the card open",
+                        on: pinned,
+                        tint: AppTheme.Accent.primary,
+                        action: onPin
+                    )
                     NotchServiceButton(
                         service: NSSharingService(named: .sendViaAirDrop), label: "AirDrop everything on the shelf"
                     ) {
@@ -1256,6 +1272,8 @@ private struct NotchShelfTile: View {
 private struct NotchShelfDetail: View {
     let item: NotchShelf.Item
     let shelf: NotchShelf
+    let pinned: Bool
+    let onPin: () -> Void
     let onClose: () -> Void
     @State private var details: NotchShelf.Details?
 
@@ -1283,6 +1301,13 @@ private struct NotchShelfDetail: View {
             }
             Spacer(minLength: 6)
             HStack(spacing: 6) {
+                NotchRoundButton(
+                    symbol: pinned ? "pin.fill" : "pin",
+                    label: pinned ? "Unpin: close when the pointer leaves" : "Pin: keep the card open",
+                    on: pinned,
+                    tint: AppTheme.Accent.primary,
+                    action: onPin
+                )
                 NotchServiceButton(service: NSSharingService(named: .sendViaAirDrop), label: "AirDrop") {
                     shelf.airDrop([item.url])
                 }
@@ -1360,6 +1385,8 @@ struct NotchChip: View {
 struct NotchRoundButton: View {
     let symbol: String
     let label: LocalizedStringKey
+    var on: Bool = false
+    var tint: Color? = nil
     let action: () -> Void
     @State private var hovered = false
 
@@ -1367,14 +1394,22 @@ struct NotchRoundButton: View {
         Button(action: action) {
             Image(systemName: symbol)
                 .font(.system(size: 12, weight: .semibold))
-                .foregroundStyle(.white.opacity(hovered ? 1 : 0.75))
+                .foregroundStyle(on ? (tint ?? AppTheme.Accent.primary) : .white.opacity(hovered ? 1 : 0.75))
                 .frame(width: 32, height: 32)
-                .background(Circle().fill(.white.opacity(hovered ? 0.16 : 0.09)))
+                .background(
+                    Circle().fill(
+                        on
+                            ? (tint ?? AppTheme.Accent.primary).opacity(hovered ? 0.3 : 0.18)
+                            : .white.opacity(hovered ? 0.16 : 0.09)
+                    )
+                )
                 .contentShape(Circle())
         }
         .buttonStyle(.plain)
         .onHover { hovered = $0 }
+        .help(label)
         .accessibilityLabel(Text(label))
+        .accessibilityAddTraits(on ? .isSelected : [])
     }
 }
 
