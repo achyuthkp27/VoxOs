@@ -98,6 +98,50 @@ struct GeneralBackup: Codable {
     let isExperimentalFeaturesEnabled: Bool?
     let restoreClipboardAfterPaste: Bool?
     let clipboardRestoreDelay: Double?
+    /// Absent from backups made before the app switcher was backed up.
+    let appSwitcher: AppSwitcherBackup?
+}
+
+/// The app switcher's settings: its switches, its key, the letters given to apps and the apps it
+/// leaves alone.
+struct AppSwitcherBackup: Codable, Equatable {
+    let isEnabled: Bool?
+    let trigger: String?
+    let letters: [String: String]?
+    let isWindowSwitcherEnabled: Bool?
+    let ignoredApps: [String]?
+    let sameLetterHides: Bool?
+    let showsLetters: Bool?
+
+    /// What is set now.
+    static func current(_ defaults: UserDefaults = .standard) -> AppSwitcherBackup {
+        AppSwitcherBackup(
+            isEnabled: defaults.bool(forKey: DefaultsKeys.appSwitcherEnabled),
+            trigger: defaults.string(forKey: DefaultsKeys.appSwitcherTrigger),
+            letters: defaults.dictionary(forKey: DefaultsKeys.appSwitcherLetters) as? [String: String],
+            isWindowSwitcherEnabled: defaults.object(forKey: DefaultsKeys.windowSwitcherEnabled) as? Bool,
+            ignoredApps: defaults.stringArray(forKey: DefaultsKeys.appSwitcherIgnoredApps),
+            sameLetterHides: defaults.object(forKey: DefaultsKeys.appSwitcherSameLetterHides) as? Bool,
+            showsLetters: defaults.object(forKey: DefaultsKeys.appSwitcherShowsLetters) as? Bool)
+    }
+
+    /// Sets what the backup holds; anything it does not hold stays as it is.
+    func apply(to defaults: UserDefaults = .standard) {
+        if let isEnabled { defaults.set(isEnabled, forKey: DefaultsKeys.appSwitcherEnabled) }
+        if let trigger, AppSwitcher.Trigger(rawValue: trigger) != nil {
+            defaults.set(trigger, forKey: DefaultsKeys.appSwitcherTrigger)
+        }
+        if let letters {
+            defaults.set(
+                letters.filter { AppSwitcher.alphabet.contains($0.key) }, forKey: DefaultsKeys.appSwitcherLetters)
+        }
+        if let isWindowSwitcherEnabled {
+            defaults.set(isWindowSwitcherEnabled, forKey: DefaultsKeys.windowSwitcherEnabled)
+        }
+        if let ignoredApps { defaults.set(ignoredApps, forKey: DefaultsKeys.appSwitcherIgnoredApps) }
+        if let sameLetterHides { defaults.set(sameLetterHides, forKey: DefaultsKeys.appSwitcherSameLetterHides) }
+        if let showsLetters { defaults.set(showsLetters, forKey: DefaultsKeys.appSwitcherShowsLetters) }
+    }
 }
 
 struct WordBackup: Codable {

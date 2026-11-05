@@ -231,6 +231,10 @@ enum BackupImporter {
         if let clipboardDelay = general.clipboardRestoreDelay {
             UserDefaults.standard.set(clipboardDelay, forKey: DefaultsKeys.clipboardRestoreDelay)
         }
+        if let appSwitcher = general.appSwitcher {
+            appSwitcher.apply()
+            AppSwitcher.shared.reload()
+        }
 
         logger.info("Successfully imported general settings.")
     }
