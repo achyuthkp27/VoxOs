@@ -2,12 +2,15 @@ import AppKit
 import SwiftUI
 import UniformTypeIdentifiers
 
-/// Settings for the app switcher: the switch, the key held with a letter, and the letters given
-/// to apps — added, changed and removed here as well as from the keyboard.
+/// Settings for the app switcher: the switch, the key held with a letter, what the same letter
+/// does again, the letters given to apps — added, changed and removed here as well as from the
+/// keyboard — and the apps it leaves alone.
 struct AppSwitcherSection: View {
     @AppStorage(DefaultsKeys.appSwitcherEnabled) private var enabled = false
     @AppStorage(DefaultsKeys.appSwitcherTrigger) private var triggerRaw = AppSwitcher.Trigger.rightCommand.rawValue
     @AppStorage(DefaultsKeys.windowSwitcherEnabled) private var windowSwitcher = true
+    @AppStorage(DefaultsKeys.appSwitcherSameLetterHides) private var sameLetterHides = true
+    @AppStorage(DefaultsKeys.appSwitcherShowsLetters) private var showsLetters = true
     @ObservedObject private var switcher = AppSwitcher.shared
 
     private var trigger: AppSwitcher.Trigger { AppSwitcher.Trigger(rawValue: triggerRaw) ?? .rightCommand }
@@ -23,6 +26,11 @@ struct AppSwitcherSection: View {
                     }
                 }
                 .onChange(of: triggerRaw) { _, _ in switcher.refresh() }
+                Picker("Same letter again", selection: $sameLetterHides) {
+                    Text("Hides the app").tag(true)
+                    Text("Does nothing").tag(false)
+                }
+                Toggle("Show the letters while holding \(trigger.short)", isOn: $showsLetters)
                 Toggle("Show windows with \(trigger.short) Tab", isOn: $windowSwitcher)
                     .onChange(of: windowSwitcher) { _, _ in switcher.refresh() }
                 if windowSwitcher, !CGPreflightScreenCaptureAccess() {
@@ -33,13 +41,18 @@ struct AppSwitcherSection: View {
                     .foregroundStyle(.secondary)
                 }
                 if !switcher.isTapInstalled {
-                    Label("Needs Accessibility to see the keys", systemImage: "exclamationmark.triangle.fill")
-                        .font(.app(.caption))
-                        .foregroundStyle(.orange)
+                    HStack {
+                        Label("Needs Accessibility to see the keys", systemImage: "exclamationmark.triangle.fill")
+                            .font(.app(.caption))
+                            .foregroundStyle(.orange)
+                        Spacer()
+                        Button("Open Accessibility Settings", action: openAccessibility)
+                            .controlSize(.small)
+                    }
                 }
             }
             Text(
-                "Hold \(trigger.short) and press the first letter of an app's name to bring it forward. Press the same letter again to hide it, or to move on to the next app with that letter. \(trigger.short) \(trigger.assignKey) and a letter gives the app in front that letter. An app with a letter is launched when it is not running. \(trigger.short) Tab shows this Space's windows: Tab and the arrows move, letting go switches; W closes, M minimizes, H hides, Q quits and / searches."
+                "Hold \(trigger.short) and press the first letter of an app's name to bring it forward. Press the same letter again to hide it, or to move on to the next app with that letter. \(trigger.short) \(trigger.assignKey) and a letter gives the app in front that letter. An app with a letter is launched when it is not running. Hold \(trigger.short) alone for a moment to see every letter. \(trigger.short) Tab shows this Space's windows, then minimized and hidden ones: Tab and the arrows move, letting go switches; W closes, M minimizes, H hides, Q twice quits and / searches."
             )
             .font(.app(.caption))
             .foregroundStyle(.secondary)
@@ -55,20 +68,74 @@ struct AppSwitcherSection: View {
                     .disabled(switcher.assignments.count >= AppSwitcher.alphabet.count)
                 Spacer()
             }
+
+            Text(
+                "Apps left alone: while one of these is in front, \(trigger.short) and a letter go to it, for games, virtual machines and remote desktops."
+            )
+            .font(.app(.caption))
+            .foregroundStyle(.secondary)
+            ForEach(switcher.ignoredApps, id: \.self) { bundleID in
+                AppSwitcherIgnoredRow(bundleID: bundleID, onRemove: { switcher.stopIgnoring(bundleID) })
+            }
+            HStack {
+                Button("Leave an App Alone…", action: chooseIgnoredApp)
+                Spacer()
+            }
         }
         .onAppear { switcher.refresh() }
     }
 
     private func chooseApp() {
+        for url in Self.chooseApps(prompt: String(localized: "Add")) { switcher.add(appAt: url) }
+    }
+
+    private func chooseIgnoredApp() {
+        for url in Self.chooseApps(prompt: String(localized: "Leave Alone")) { switcher.ignore(appAt: url) }
+    }
+
+    private static func chooseApps(prompt: String) -> [URL] {
         let panel = NSOpenPanel()
         panel.title = String(localized: "Choose Apps")
-        panel.prompt = String(localized: "Add")
+        panel.prompt = prompt
         panel.allowedContentTypes = [.application]
         panel.allowsMultipleSelection = true
         panel.canChooseDirectories = false
         panel.directoryURL = FileManager.default.urls(for: .applicationDirectory, in: .localDomainMask).first
-        guard panel.runModal() == .OK else { return }
-        for url in panel.urls { switcher.add(appAt: url) }
+        guard panel.runModal() == .OK else { return [] }
+        return panel.urls
+    }
+
+    private func openAccessibility() {
+        if let url = URL(string: "x-apple.systempreferences:com.apple.preference.security?Privacy_Accessibility") {
+            NSWorkspace.shared.open(url)
+        }
+    }
+}
+
+/// An app the switcher leaves alone: its icon and name, and a way to stop.
+private struct AppSwitcherIgnoredRow: View {
+    let bundleID: String
+    let onRemove: () -> Void
+
+    var body: some View {
+        let url = NSWorkspace.shared.urlForApplication(withBundleIdentifier: bundleID)
+        HStack(spacing: 10) {
+            if let url {
+                Image(nsImage: NSWorkspace.shared.icon(forFile: url.path))
+                    .resizable()
+                    .frame(width: 18, height: 18)
+            }
+            Text(verbatim: url.map { FileManager.default.displayName(atPath: $0.path) } ?? bundleID)
+                .lineLimit(1)
+            Spacer(minLength: 8)
+            Button(action: onRemove) {
+                Image(systemName: "xmark.circle.fill")
+            }
+            .buttonStyle(.borderless)
+            .foregroundStyle(.secondary)
+            .help("Stop leaving this app alone")
+            .accessibilityLabel(Text("Stop leaving this app alone"))
+        }
     }
 }
 
@@ -91,6 +158,11 @@ private struct AppSwitcherLetterRow: View {
             }
             Text(verbatim: url.map { FileManager.default.displayName(atPath: $0.path) } ?? bundleID)
                 .lineLimit(1)
+            if url == nil {
+                Text("Not installed")
+                    .font(.app(.caption))
+                    .foregroundStyle(.orange)
+            }
             Spacer(minLength: 8)
             Picker(
                 "Letter",

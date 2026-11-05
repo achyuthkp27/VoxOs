@@ -85,6 +85,23 @@ struct WindowSwitcherTests {
         #expect(!LetterKeyTap.opensSwitcher(code: 0, flags: LetterKeyTap.rightCommand, control: false, keys: keys))
     }
 
+    @Test func onlyMinimizedAndHiddenWindowsOutOfSightAreListed() {
+        let frame = CGRect(x: 0, y: 0, width: 800, height: 600)
+        let helper = CGRect(x: 0, y: 0, width: 500, height: 500)
+        func window(_ id: CGWindowID, _ pid: pid_t, _ frame: CGRect) -> WindowSwitcher.Window {
+            WindowSwitcher.Window(id: id, pid: pid, appName: "App", bundleID: nil, title: "", frame: frame)
+        }
+        let candidates = [window(1, 10, frame), window(2, 10, helper), window(3, 11, frame), window(4, 12, frame)]
+        let ax: [pid_t: [WindowSwitcher.AXWindowInfo]] = [
+            10: [WindowSwitcher.AXWindowInfo(frame: frame, title: "Doc", minimized: true)],
+            11: [WindowSwitcher.AXWindowInfo(frame: frame, title: "Notes", minimized: false)],
+            12: [WindowSwitcher.AXWindowInfo(frame: frame, title: "Other Space", minimized: false)],
+        ]
+        let listed = WindowSwitcher.outOfSight(candidates, hidden: [11], ax: ax)
+        #expect(listed.map(\.id) == [1, 3], "a helper window and one neither minimized nor hidden are left out")
+        #expect(listed.map(\.place) == [.minimized, .hidden])
+    }
+
     @Test func aThumbnailKeepsItsShape() {
         let fit = WindowSwitcher.fitted(CGSize(width: 1600, height: 1000), in: CGSize(width: 400, height: 248))
         #expect(fit == CGSize(width: 397, height: 248))

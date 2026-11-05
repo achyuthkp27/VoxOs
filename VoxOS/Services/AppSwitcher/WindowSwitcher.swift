@@ -7,10 +7,11 @@ import SwiftUI
 import os
 
 /// The window switcher: Right Command (or the key chosen for the app switcher) and Tab shows the
-/// windows on this Space as a grid, the most recent first, with the previous one picked. Tab,
-/// Shift-Tab and the arrows move; letting go of the key, Return or a click switches to the
-/// window; Escape leaves. On the picked window W closes it, M minimizes it, H hides its app and
-/// Q quits it; / starts a search through apps and window titles.
+/// windows on this Space as a grid, the most recent first, with the previous one picked, then the
+/// minimized windows and those of hidden apps. Tab, Shift-Tab and the arrows move; letting go of
+/// the key, Return or a click switches to the window; Escape leaves. On the picked window W closes
+/// it, M minimizes it, H hides its app and Q twice quits it; / starts a search through apps and
+/// window titles. A grid taller than the screen scrolls.
 ///
 /// Titles and thumbnails need Screen Recording; without it each window shows its app's icon and
 /// name. Raising a window needs Accessibility, which the app switcher's keys already need.
@@ -25,9 +26,25 @@ final class WindowSwitcher: ObservableObject {
         let bundleID: String?
         let title: String
         let frame: CGRect
+        var place: Place = .onScreen
 
         /// The title, or the app's name when the window has none (or it cannot be read).
         var label: String { title.isEmpty ? appName : title }
+    }
+
+    /// Where a window is: on this Space, or out of sight and listed after those that are.
+    enum Place: Equatable {
+        case onScreen
+        case minimized
+        case hidden
+    }
+
+    /// A window as Accessibility sees it, to tell a minimized or hidden one from the off-screen
+    /// helper windows apps keep.
+    struct AXWindowInfo: Equatable {
+        let frame: CGRect
+        let title: String
+        let minimized: Bool
     }
 
     enum Event {
@@ -49,6 +66,12 @@ final class WindowSwitcher: ObservableObject {
     @Published private(set) var query = ""
     @Published private(set) var searching = false
     @Published private(set) var thumbnails: [CGWindowID: NSImage] = [:]
+    /// The app Q was pressed on once: pressing it again quits that app.
+    @Published private(set) var quitArmed: pid_t?
+    /// The tallest the grid gets before it scrolls, from the screen it shows on.
+    @Published private(set) var maxGridHeight: CGFloat = 600
+
+    var isOpen: Bool { panel != nil }
 
     /// The windows the search leaves, in order.
     var shown: [Window] { Self.filter(windows, query: query) }
@@ -75,6 +98,8 @@ final class WindowSwitcher: ObservableObject {
 
     private func key(_ code: Int64, shift: Bool) {
         guard panel != nil else { return }
+        let armed = quitArmed
+        quitArmed = nil
         switch Int(code) {
         case kVK_Tab: move(by: shift ? -1 : 1)
         case kVK_LeftArrow: move(by: -1)
@@ -91,14 +116,18 @@ final class WindowSwitcher: ObservableObject {
                 searching = false
             }
         default:
-            guard let typed = AppSwitcher.shared.typedKeys[code] else { return }
+            // The search reads the layout selected; the commands read the ASCII-capable one, so W,
+            // M, H and Q stay put under a Cyrillic or Greek layout.
+            let typed = AppSwitcher.shared.typedKeys[code]
+            let latin = AppSwitcher.shared.latinKeys[code]
             if searching {
-                query += typed
+                guard let text = typed ?? latin else { return }
+                query += text
                 selected = 0
-            } else if typed == "/" {
+            } else if typed == "/" || latin == "/" {
                 searching = true
-            } else {
-                act(on: typed)
+            } else if let latin {
+                act(on: latin, quitArmed: armed)
             }
         }
     }
@@ -115,6 +144,7 @@ final class WindowSwitcher: ObservableObject {
         query = ""
         searching = false
         thumbnails = [:]
+        quitArmed = nil
         selected = Self.firstSelection(count: found.count, backwards: backwards)
         showPanel()
         loadThumbnails(for: found)
@@ -152,7 +182,7 @@ final class WindowSwitcher: ObservableObject {
 
     // MARK: Actions
 
-    private func act(on letter: String) {
+    private func act(on letter: String, quitArmed armed: pid_t?) {
         let list = shown
         guard list.indices.contains(selected) else { return }
         let window = list[selected]
@@ -175,6 +205,11 @@ final class WindowSwitcher: ObservableObject {
             app?.hide()
             remove { $0.pid == window.pid }
         case "q":
+            // One stray Q while tabbing should not lose an app's work: the first only asks.
+            guard armed == window.pid else {
+                quitArmed = window.pid
+                return
+            }
             app?.terminate()
             remove { $0.pid == window.pid }
         default:
@@ -195,6 +230,11 @@ final class WindowSwitcher: ObservableObject {
     // MARK: Panel
 
     private func showPanel() {
+        // The panel's padding, footer and search line take about this much besides the grid.
+        let chrome: CGFloat = 120
+        if let visible = NSScreen.underPointer?.visibleFrame {
+            maxGridHeight = max(200, visible.height * 0.9 - chrome)
+        }
         let panel = NSPanel(
             contentRect: .zero, styleMask: [.borderless, .nonactivatingPanel], backing: .buffered, defer: false)
         panel.level = .popUpMenu
@@ -212,8 +252,7 @@ final class WindowSwitcher: ObservableObject {
     private func resizePanel() {
         guard let panel, let view = panel.contentView else { return }
         let size = view.fittingSize
-        let screen = NSScreen.screens.first { $0.frame.contains(NSEvent.mouseLocation) } ?? NSScreen.main
-        guard let visible = screen?.visibleFrame else { return }
+        guard let visible = NSScreen.underPointer?.visibleFrame else { return }
         let origin = CGPoint(x: visible.midX - size.width / 2, y: visible.midY - size.height / 2)
         panel.setFrame(CGRect(origin: origin, size: size), display: true)
     }
@@ -224,12 +263,14 @@ final class WindowSwitcher: ObservableObject {
         thumbnailTask?.cancel()
         guard CGPreflightScreenCaptureAccess() else { return }
         let ids = Set(windows.map(\.id))
-        let scale = NSScreen.main?.backingScaleFactor ?? 2
+        // Sized for the screen the panel shows on, so a Retina and a plain display both get sharp
+        // thumbnails at the right size.
+        let scale = NSScreen.underPointer?.backingScaleFactor ?? 2
         let maxPixels = CGSize(width: Self.thumbnailSize.width * scale, height: Self.thumbnailSize.height * scale)
         thumbnailTask = Task { @MainActor [weak self] in
             guard
                 let content = try? await SCShareableContent.excludingDesktopWindows(
-                    true, onScreenWindowsOnly: true)
+                    true, onScreenWindowsOnly: false)
             else { return }
             let targets = content.windows.filter { ids.contains($0.windowID) }
             await withTaskGroup(of: (CGWindowID, CGImage?).self) { group in
@@ -258,16 +299,65 @@ final class WindowSwitcher: ObservableObject {
     // MARK: Windows
 
     /// The windows on this Space, front to back: regular apps' windows at the normal level, big
-    /// enough to be a window and not see-through, leaving out VoxOS's own.
+    /// enough to be a window and not see-through, leaving out VoxOS's own. Then the minimized
+    /// windows and those of hidden apps, each checked against Accessibility, since apps also keep
+    /// off-screen windows that are not windows to the person using them.
     static func currentWindows() -> [Window] {
         let info =
-            CGWindowListCopyWindowInfo([.optionOnScreenOnly, .excludeDesktopElements], kCGNullWindowID)
+            CGWindowListCopyWindowInfo([.optionAll, .excludeDesktopElements], kCGNullWindowID)
             as? [[String: Any]] ?? []
         var apps: [pid_t: (name: String, bundleID: String?)] = [:]
+        var hidden = Set<pid_t>()
         for app in NSWorkspace.shared.runningApplications where app.activationPolicy == .regular {
             apps[app.processIdentifier] = (app.localizedName ?? "", app.bundleIdentifier)
+            if app.isHidden { hidden.insert(app.processIdentifier) }
         }
-        return windows(from: info, apps: apps, ownPID: ProcessInfo.processInfo.processIdentifier)
+        let ownPID = ProcessInfo.processInfo.processIdentifier
+        let onScreen = info.filter { ($0[kCGWindowIsOnscreen as String] as? Bool) == true }
+        let offScreen = info.filter { ($0[kCGWindowIsOnscreen as String] as? Bool) != true }
+        let shown = windows(from: onScreen, apps: apps, ownPID: ownPID)
+        let unseen = windows(from: offScreen, apps: apps, ownPID: ownPID)
+        var ax: [pid_t: [AXWindowInfo]] = [:]
+        for pid in Set(unseen.map(\.pid)) { ax[pid] = axWindows(of: pid) }
+        return shown + outOfSight(unseen, hidden: hidden, ax: ax)
+    }
+
+    /// The off-screen windows worth listing: those Accessibility knows, of a hidden app or
+    /// minimized, marked so. The rest are an app's helper windows, which are left out.
+    nonisolated static func outOfSight(_ candidates: [Window], hidden: Set<pid_t>, ax: [pid_t: [AXWindowInfo]])
+        -> [Window]
+    {
+        candidates.compactMap { window in
+            guard let known = ax[window.pid], !known.isEmpty,
+                let index = bestMatch(
+                    frame: window.frame, title: window.title, among: known.map { ($0.frame, $0.title) })
+            else { return nil }
+            var listed = window
+            if known[index].minimized {
+                listed.place = .minimized
+            } else if hidden.contains(window.pid) {
+                listed.place = .hidden
+            } else {
+                return nil
+            }
+            return listed
+        }
+    }
+
+    /// An app's windows as Accessibility sees them, waiting at most a moment for an app that
+    /// does not answer.
+    private static func axWindows(of pid: pid_t) -> [AXWindowInfo] {
+        let app = AXUIElementCreateApplication(pid)
+        AXUIElementSetMessagingTimeout(app, 0.25)
+        var value: AnyObject?
+        guard AXUIElementCopyAttributeValue(app, kAXWindowsAttribute as CFString, &value) == .success,
+            let elements = value as? [AXUIElement]
+        else { return [] }
+        return elements.map { element in
+            AXWindowInfo(
+                frame: axFrame(element) ?? .null, title: axString(element, kAXTitleAttribute) ?? "",
+                minimized: axBool(element, kAXMinimizedAttribute) == true)
+        }
     }
 
     nonisolated static func windows(
@@ -406,5 +496,12 @@ final class WindowSwitcher: ObservableObject {
         var value: AnyObject?
         guard AXUIElementCopyAttributeValue(element, attribute as CFString, &value) == .success else { return nil }
         return (value as? NSNumber)?.boolValue
+    }
+}
+
+extension NSScreen {
+    /// The screen the pointer is on, where the switcher's panels show.
+    @MainActor static var underPointer: NSScreen? {
+        screens.first { $0.frame.contains(NSEvent.mouseLocation) } ?? main
     }
 }

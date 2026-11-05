@@ -73,6 +73,12 @@ enum DefaultsKeys {
     static let windowSwitcherEnabled = "WindowSwitcherEnabled"
     /// The key held with a letter: `AppSwitcher.Trigger.rawValue`.
     static let appSwitcherTrigger = "AppSwitcherTrigger"
+    /// Bundle identifiers of apps the app switcher leaves alone while they are in front.
+    static let appSwitcherIgnoredApps = "AppSwitcherIgnoredApps"
+    /// The same letter again, with only one app on it, hides that app. On unless switched off.
+    static let appSwitcherSameLetterHides = "AppSwitcherSameLetterHides"
+    /// Holding the app switcher's key alone shows the letters and their apps. On unless switched off.
+    static let appSwitcherShowsLetters = "AppSwitcherShowsLetters"
     /// The order Notch Home's pages are walked in, as `NotchHomePage.rawValue`s.
     static let notchPageOrder = "NotchPageOrder"
     /// The Notch Home pages switched off in Settings, as `NotchHomePage.rawValue`s.

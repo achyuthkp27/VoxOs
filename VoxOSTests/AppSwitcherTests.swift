@@ -98,6 +98,51 @@ struct AppSwitcherTests {
         #expect(AppSwitcher.freeLetter(preferring: "c", in: full) == nil)
     }
 
+    @Test func holdingTheKeyWalksEveryAppWithTheLetter() {
+        let maps = AppSwitcher.App(id: "com.apple.Maps", name: "Maps")
+        let running = [mail, music, maps]
+        let recent = [mail.id, music.id, maps.id]
+        // The order fixed when the key went down: the app used last first.
+        let cycle = AppSwitcher.ordered(
+            AppSwitcher.candidates(for: "m", running: running, assignments: [:]), letter: "m", assignments: [:],
+            recent: recent)
+        #expect(cycle == [mail.id, music.id, maps.id])
+        // Music came forward, so it is now the one used last; the fixed order still moves on to Maps
+        // rather than back to Mail.
+        #expect(
+            AppSwitcher.action(
+                for: "m", frontmost: music.id, running: running, assignments: [:], recent: [music.id, mail.id],
+                cycle: cycle) == .activate(maps.id))
+        #expect(
+            AppSwitcher.action(
+                for: "m", frontmost: maps.id, running: running, assignments: [:], recent: [], cycle: cycle)
+                == .activate(mail.id), "and wraps around")
+    }
+
+    @Test func theGivenAppLeadsThenTheMostRecent() {
+        let ordered = AppSwitcher.ordered(
+            [calculator, mail.id, music.id], letter: "m", assignments: ["m": calculator], recent: [music.id])
+        #expect(ordered == [calculator, music.id, mail.id])
+    }
+
+    @Test func theSameLetterCanLeaveTheOnlyAppInFront() {
+        let action = AppSwitcher.action(
+            for: "t", frontmost: terminal.id, running: [mail, terminal], assignments: [:], recent: [],
+            sameLetterHides: false)
+        #expect(action == .stay)
+    }
+
+    @Test func theLettersShownAreEachLettersFirstApp() {
+        let reaches = AppSwitcher.reaches(
+            running: [mail, music, terminal], assignments: ["c": calculator], recent: [music.id])
+        #expect(
+            reaches == [
+                AppSwitcher.Reach(letter: "c", id: calculator, assigned: true),
+                AppSwitcher.Reach(letter: "m", id: music.id, assigned: false),
+                AppSwitcher.Reach(letter: "t", id: terminal.id, assigned: false),
+            ])
+    }
+
     @Test func rightOptionCanBeTheKeyInstead() {
         let keys = AppSwitcher.Trigger.rightOption.keys
         let letters: [Int64: String] = [0: "a"]
