@@ -79,6 +79,10 @@ final class WindowSwitcher: ObservableObject {
 
     private var panel: NSPanel?
     private var thumbnailTask: Task<Void, Never>?
+    /// Where the pointer was when the keys last moved the pick (or the grid opened). A tile that
+    /// comes under a pointer that has not moved since — the grid scrolling to the pick, or opening
+    /// under it — does not take the pick; only moving the mouse does.
+    private var pointerAtKeys: CGPoint?
     private let logger = Logger(subsystem: "com.achyuthkp.voxos", category: "WindowSwitcher")
 
     private init() {}
@@ -88,7 +92,12 @@ final class WindowSwitcher: ObservableObject {
     func handle(_ event: Event) {
         switch event {
         case .open(let backwards):
-            if panel == nil { open(backwards: backwards) } else { move(by: backwards ? -1 : 1) }
+            if panel == nil {
+                open(backwards: backwards)
+            } else {
+                pointerAtKeys = NSEvent.mouseLocation
+                move(by: backwards ? -1 : 1)
+            }
         case .key(let code, let flags):
             key(code, shift: flags & UInt64(CGEventFlags.maskShift.rawValue) != 0)
         case .release:
@@ -98,6 +107,7 @@ final class WindowSwitcher: ObservableObject {
 
     private func key(_ code: Int64, shift: Bool) {
         guard panel != nil else { return }
+        pointerAtKeys = NSEvent.mouseLocation
         let armed = quitArmed
         quitArmed = nil
         switch Int(code) {
@@ -145,6 +155,7 @@ final class WindowSwitcher: ObservableObject {
         searching = false
         thumbnails = [:]
         quitArmed = nil
+        pointerAtKeys = NSEvent.mouseLocation
         selected = Self.firstSelection(count: found.count, backwards: backwards)
         showPanel()
         loadThumbnails(for: found)
@@ -166,14 +177,21 @@ final class WindowSwitcher: ObservableObject {
         AppSwitcher.shared.closeWindowSwitcher()
     }
 
-    /// From the grid: a window under the pointer is picked; a click switches to it.
+    /// From the grid: a window under the pointer is picked once the mouse moves; a click switches
+    /// to it.
     func pick(_ id: CGWindowID) {
-        if let index = shown.firstIndex(where: { $0.id == id }) { selected = index }
+        if let still = pointerAtKeys, still == NSEvent.mouseLocation { return }
+        pointerAtKeys = nil
+        select(id)
     }
 
     func choose(_ id: CGWindowID) {
-        pick(id)
+        select(id)
         commit()
+    }
+
+    private func select(_ id: CGWindowID) {
+        if let index = shown.firstIndex(where: { $0.id == id }) { selected = index }
     }
 
     private func move(by step: Int) {
