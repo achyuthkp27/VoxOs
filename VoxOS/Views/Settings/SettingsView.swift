@@ -2,11 +2,12 @@ import Carbon.HIToolbox
 import Cocoa
 import SwiftUI
 
-/// Which page of settings: the voice assistant's, the notch's, or the rest. One view, so search
-/// and every section stay in one place; each sidebar page shows its own part.
+/// Which page of settings: the voice assistant's, the notch's, the app switcher's, or the rest. One
+/// view, so search and every section stay in one place; each sidebar page shows its own part.
 enum SettingsScope: Equatable {
     case voice
     case notch
+    case appSwitcher
     case general
 }
 
@@ -125,28 +126,38 @@ struct SettingsView: View {
         "Transcription", "Identify Speakers", "speakers", "diarization", "meeting", "conversation",
         "who spoke", "speaker labels",
     ]
-    private static let interfaceTerms = [
-        "Interface", "Appearance", "Language", "Recorder Position", "Live Text Display",
-        "Shows live text while recording with realtime models.",
-        "Edge History", "Left-Edge History", "battery", "hover", "power",
+    private static let recorderTerms = [
+        "Recorder", "Recorder Position", "Live Text Display",
+        "Shows live text while recording with realtime models.", "Left-Edge History", "Edge History", "battery",
+        "hover", "power",
     ]
-    private static let notchTerms = [
-        "Notch Material", "Liquid Glass", "Solid Black", "Always-Visible Notch Tab", "notch", "tab",
-        "Music in the Notch", "Live Music Bars", "Live Bars on Battery", "music", "now playing", "visualizer",
-        "Notch Home",
-        "Device Alerts", "bluetooth", "airpods", "wifi", "output", "speakers", "headphones", "charging",
-        "low battery", "timer", "pomodoro", "shelf", "calendar", "Mic & Camera in Use", "microphone", "camera",
-        "mute", "Meeting Countdown", "meeting", "zoom", "join",
-        "Volume & Brightness in the Notch", "volume", "brightness", "HUD", "keys",
-        "Hide from Screenshots & Sharing", "screenshot", "screen sharing", "privacy",
-        "Rain Soon", "rain", "Unread Counts", "unread", "badge", "Downloads", "download",
-        "Focus", "do not disturb", "Per-App Volume", "mixer", "app volume", "Mirror",
-        "camera", "webcam", "keep awake", "caffeinate", "Clipboard History", "clipboard", "Lyrics", "lyrics",
-        "Show in Full Screen", "full screen", "fullscreen", "Follow the Display in Use", "external display",
-        "monitor", "display",
+    private static let appearanceTerms = ["Appearance", "Language", "Interface", "dark", "light", "theme"]
+    private static let notchLookTerms = [
+        "Look", "Notch Material", "Liquid Glass", "Solid Black", "Always-Visible Notch Tab", "notch", "tab",
+    ]
+    private static let notchHomeTerms = [
+        "Notch Home", "Show in Full Screen", "full screen", "fullscreen", "Follow the Display in Use",
+        "external display", "monitor", "display", "Hide from Screenshots & Sharing", "screenshot",
+        "screen sharing", "privacy",
+    ]
+    private static let notchMusicTerms = [
+        "Music", "Music in the Notch", "Lyrics", "Live Music Bars", "Live Bars on Battery", "now playing",
+        "visualizer",
+    ]
+    private static let notchSoundTerms = [
+        "Sound Page", "Per-App Volume", "mixer", "app volume", "Sound Output", "speakers", "headphones", "output",
+        "Microphone Input", "microphone", "Clipboard History", "clipboard", "Mirror", "camera", "webcam",
+        "keep awake", "caffeinate",
+    ]
+    private static let notchNoticesTerms = [
+        "Notices", "Volume & Brightness in the Notch", "volume", "brightness", "HUD", "keys", "Mic & Camera in Use",
+        "mute", "Meeting Countdown", "meeting", "zoom", "join", "Device Alerts", "bluetooth", "airpods", "wifi",
+        "charging", "low battery", "Downloads", "download", "Focus", "do not disturb", "Unread Counts", "unread",
+        "badge", "Rain Soon", "rain",
     ]
     private static let notchPageTerms = [
-        "Notch Pages", "Pages", "Page Order", "Reorder", "order", "enable", "disable", "show page",
+        "Notch Pages", "Pages", "Page Order", "timer", "pomodoro", "shelf", "calendar", "Reorder", "order", "enable",
+        "disable", "show page",
         "hide page", "drag",
     ]
     private static let generalTerms = [
@@ -154,7 +165,10 @@ struct SettingsView: View {
         "Check for Updates", "Reset Onboarding",
     ]
     private static let appSwitcherTerms = [
-        "App Switcher", "Switch apps", "Right Command", "rcmd", "letter", "hide app", "launch",
+        "App Switcher", "Switch Apps with a Key and a Letter", "Key to Hold", "Right Command", "rcmd",
+        "Accessibility", "Letters", "letter", "Same Letter Again", "Hides the App", "Show Letters While Holding",
+        "Add App", "hide app", "launch", "Window Switcher", "Show Windows with", "Tab", "windows", "thumbnails",
+        "Screen Recording", "Apps Left Alone", "Leave an App Alone", "games", "virtual machines", "remote desktop",
     ]
     private static let backupTerms = ["Export Settings", "Export", "Import Settings", "Import", "Backup"]
     private static let diagnosticsTerms = ["Diagnostics", "Export Logs", "Show in Finder"]
@@ -164,33 +178,20 @@ struct SettingsView: View {
         switch scope {
         case .voice:
             return [
-                shortcutsTerms, additionalShortcutsTerms, systemAudioTerms, agentTerms, mcpTerms, pastingTerms,
-                transcriptionTerms,
+                shortcutsTerms, additionalShortcutsTerms, recorderTerms, pastingTerms, transcriptionTerms, agentTerms,
+                mcpTerms, systemAudioTerms,
             ]
-        case .notch: return [notchTerms, notchPageTerms, claudeCodeTerms]
-        case .general: return [interfaceTerms, generalTerms, appSwitcherTerms, backupTerms, diagnosticsTerms]
+        case .notch:
+            return [
+                notchLookTerms, notchHomeTerms, notchPageTerms, notchMusicTerms, notchSoundTerms, notchNoticesTerms,
+                claudeCodeTerms,
+            ]
+        case .appSwitcher: return [appSwitcherTerms]
+        case .general: return [generalTerms, appearanceTerms, backupTerms, diagnosticsTerms]
         }
     }
 
     private func shows(_ page: SettingsScope) -> Bool { scope == page }
-
-    private static let allTerms = [
-        shortcutsTerms,
-        additionalShortcutsTerms,
-        systemAudioTerms,
-        agentTerms,
-        mcpTerms,
-        claudeCodeTerms,
-        pastingTerms,
-        transcriptionTerms,
-        interfaceTerms,
-        notchTerms,
-        notchPageTerms,
-        generalTerms,
-        appSwitcherTerms,
-        backupTerms,
-        diagnosticsTerms,
-    ]
 
     @AppStorage(DefaultsKeys.identifySpeakers) private var identifySpeakers = false
     @AppStorage(DefaultsKeys.voiceAssistantEnabled) private var voiceMaster = true
@@ -427,65 +428,95 @@ struct SettingsView: View {
                 }
             }
 
-            if shows(.voice), search.matches(Self.systemAudioTerms) {
+            if shows(.voice), search.matches(Self.recorderTerms) {
                 Section {
-                    LabeledContent {
-                        ShortcutRecorder(action: .captureSystemAudio) {
-                            recordingShortcutManager.updateShortcutStatus()
+                    Picker("Recorder Position", selection: $recorderUIManager.recorderPanelStyle) {
+                        ForEach(RecorderPanelStyle.allCases) { style in
+                            Text(style.displayName).tag(style)
                         }
-                        .controlSize(.small)
-                    } label: {
+                    }
+                    .pickerStyle(.menu)
+                    Toggle(isOn: $showLiveTranscript) {
+                        HStack(spacing: 4) {
+                            Text("Live Text Display")
+                            InfoTip("Shows live text while recording with realtime models.")
+                        }
+                    }
+                    Toggle(isOn: $edgeHistoryEnabled) {
                         HStack(spacing: 2) {
-                            Text("Capture System Audio")
+                            Text("Left-Edge History")
                             InfoTip(
-                                "Press once to start capturing what your Mac is playing, press again to stop. The transcript is copied to the clipboard and pasted at the cursor. Your microphone is never recorded."
+                                "Reveals recent transcriptions when the pointer reaches the left edge of the screen. Watching for that means tracking every mouse movement, so turning it off measurably reduces battery use. Takes effect after a restart."
                             )
                         }
                     }
-                    // On one row rather than the Section: a Section applies its modifiers to every
-                    // row, so the buffer would be re-synced once per row for a single change.
-                    .onChange(of: systemAudioBufferEnabled) { _, _ in
-                        Task { await systemAudioController.syncBufferingWithPreference() }
-                    }
-                    .onChange(of: systemAudioBufferSeconds) { _, _ in
-                        Task { await systemAudioController.syncBufferingWithPreference() }
+                } header: {
+                    Text("Recorder")
+                }
+            }
+
+            if shows(.voice), search.matches(Self.pastingTerms) {
+                Section("Pasting") {
+                    Toggle(isOn: $matchWritingStyleToApp) {
+                        HStack(spacing: 2) {
+                            Text("Match Writing Style to the App")
+                            InfoTip(
+                                "Dictation adapts to where it is pasted: full sentences in Mail, short and casual in Slack or Messages, lists in Notes, code-form names in editors. Modes with a custom prompt still take priority."
+                            )
+                        }
                     }
 
                     ExpandableSettingsRow(
-                        isExpanded: $isSystemAudioBufferExpanded,
-                        isEnabled: $systemAudioBufferEnabled,
-                        label: "Keep Recent System Audio",
+                        isExpanded: $isRestoreClipboardExpanded,
+                        isEnabled: $restoreClipboardAfterPaste,
+                        label: "Keep Clipboard Content",
                         infoMessage:
-                            "Continuously keeps the last few seconds of system audio in memory (never on disk) so a shortcut can transcribe what was just said. Nothing is captured while this is off."
+                            "VoxOS temporarily uses the clipboard to paste transcription. When enabled, it restores your previous clipboard content after the selected delay. When disabled, the pasted transcription stays on your clipboard."
                     ) {
-                        Picker("Remember", selection: $systemAudioBufferSeconds) {
-                            Text("15 seconds").tag(15.0)
-                            Text("30 seconds").tag(30.0)
-                            Text("60 seconds").tag(60.0)
-                            Text("2 minutes").tag(120.0)
-                        }
-                        .pickerStyle(.menu)
-
-                        LabeledContent("Transcribe Recent Audio") {
-                            ShortcutRecorder(action: .recallSystemAudio) {
-                                recordingShortcutManager.updateShortcutStatus()
-                            }
-                            .controlSize(.small)
+                        Picker("Restore Delay", selection: $clipboardRestoreDelay) {
+                            Text("250ms").tag(0.25)
+                            Text("500ms").tag(0.5)
+                            Text("1s").tag(1.0)
+                            Text("2s").tag(2.0)
+                            Text("3s").tag(3.0)
+                            Text("4s").tag(4.0)
+                            Text("5s").tag(5.0)
                         }
                     }
 
-                    Toggle("Paste at Cursor", isOn: $systemAudioPasteAtCursor)
-                    Toggle("Save to History", isOn: $systemAudioSaveToHistory)
-                } header: {
-                    Text("System Audio")
-                } footer: {
-                    Text(
-                        systemAudioController.isCapturing
-                            ? "Capturing system audio…"
-                            : "Requires Screen Recording permission. Captures only what your Mac plays — never your microphone."
-                    )
-                    .font(.app(.caption))
-                    .foregroundStyle(.secondary)
+                    Picker(selection: $pasteMethodRawValue) {
+                        ForEach(PasteMethod.allCases) { method in
+                            Text(method.displayName).tag(method.rawValue)
+                        }
+                    } label: {
+                        HStack(spacing: 4) {
+                            Text("Paste Method")
+                            InfoTip(
+                                "Default uses simulated Cmd+V key events. AppleScript can help when custom keyboard layouts do not paste correctly."
+                            )
+                        }
+                    }
+                    .pickerStyle(.menu)
+                    .onChange(of: pasteMethodRawValue) { _, newValue in
+                        guard let method = PasteMethod(rawValue: newValue) else {
+                            pasteMethodRawValue = PasteMethod.standard.rawValue
+                            return
+                        }
+                        PasteMethod.setCurrent(method)
+                    }
+                }
+            }
+
+            if shows(.voice), search.matches(Self.transcriptionTerms) {
+                Section("Transcription") {
+                    Toggle(isOn: $identifySpeakers) {
+                        HStack(spacing: 2) {
+                            Text("Identify Speakers")
+                            InfoTip(
+                                "Labels each turn in an imported recording with who spoke. Needs a Parakeet model — it is the only one that reports word timings, which speaker labels are built from. Downloads a speaker model the first time it runs."
+                            )
+                        }
+                    }
                 }
             }
 
@@ -587,125 +618,70 @@ struct SettingsView: View {
                 MCPServersSection()
             }
 
-            if shows(.voice), search.matches(Self.pastingTerms) {
-                Section("Pasting") {
-                    Toggle(isOn: $matchWritingStyleToApp) {
+            if shows(.voice), search.matches(Self.systemAudioTerms) {
+                Section {
+                    LabeledContent {
+                        ShortcutRecorder(action: .captureSystemAudio) {
+                            recordingShortcutManager.updateShortcutStatus()
+                        }
+                        .controlSize(.small)
+                    } label: {
                         HStack(spacing: 2) {
-                            Text("Match Writing Style to the App")
+                            Text("Capture System Audio")
                             InfoTip(
-                                "Dictation adapts to where it is pasted: full sentences in Mail, short and casual in Slack or Messages, lists in Notes, code-form names in editors. Modes with a custom prompt still take priority."
+                                "Press once to start capturing what your Mac is playing, press again to stop. The transcript is copied to the clipboard and pasted at the cursor. Your microphone is never recorded."
                             )
                         }
+                    }
+                    // On one row rather than the Section: a Section applies its modifiers to every
+                    // row, so the buffer would be re-synced once per row for a single change.
+                    .onChange(of: systemAudioBufferEnabled) { _, _ in
+                        Task { await systemAudioController.syncBufferingWithPreference() }
+                    }
+                    .onChange(of: systemAudioBufferSeconds) { _, _ in
+                        Task { await systemAudioController.syncBufferingWithPreference() }
                     }
 
                     ExpandableSettingsRow(
-                        isExpanded: $isRestoreClipboardExpanded,
-                        isEnabled: $restoreClipboardAfterPaste,
-                        label: "Keep Clipboard Content",
+                        isExpanded: $isSystemAudioBufferExpanded,
+                        isEnabled: $systemAudioBufferEnabled,
+                        label: "Keep Recent System Audio",
                         infoMessage:
-                            "VoxOS temporarily uses the clipboard to paste transcription. When enabled, it restores your previous clipboard content after the selected delay. When disabled, the pasted transcription stays on your clipboard."
+                            "Continuously keeps the last few seconds of system audio in memory (never on disk) so a shortcut can transcribe what was just said. Nothing is captured while this is off."
                     ) {
-                        Picker("Restore Delay", selection: $clipboardRestoreDelay) {
-                            Text("250ms").tag(0.25)
-                            Text("500ms").tag(0.5)
-                            Text("1s").tag(1.0)
-                            Text("2s").tag(2.0)
-                            Text("3s").tag(3.0)
-                            Text("4s").tag(4.0)
-                            Text("5s").tag(5.0)
+                        Picker("Remember", selection: $systemAudioBufferSeconds) {
+                            Text("15 seconds").tag(15.0)
+                            Text("30 seconds").tag(30.0)
+                            Text("60 seconds").tag(60.0)
+                            Text("2 minutes").tag(120.0)
+                        }
+                        .pickerStyle(.menu)
+
+                        LabeledContent("Transcribe Recent Audio") {
+                            ShortcutRecorder(action: .recallSystemAudio) {
+                                recordingShortcutManager.updateShortcutStatus()
+                            }
+                            .controlSize(.small)
                         }
                     }
 
-                    Picker(selection: $pasteMethodRawValue) {
-                        ForEach(PasteMethod.allCases) { method in
-                            Text(method.displayName).tag(method.rawValue)
-                        }
-                    } label: {
-                        HStack(spacing: 4) {
-                            Text("Paste Method")
-                            InfoTip(
-                                "Default uses simulated Cmd+V key events. AppleScript can help when custom keyboard layouts do not paste correctly."
-                            )
-                        }
-                    }
-                    .pickerStyle(.menu)
-                    .onChange(of: pasteMethodRawValue) { _, newValue in
-                        guard let method = PasteMethod(rawValue: newValue) else {
-                            pasteMethodRawValue = PasteMethod.standard.rawValue
-                            return
-                        }
-                        PasteMethod.setCurrent(method)
-                    }
-                }
-            }
-
-            if shows(.voice), search.matches(Self.transcriptionTerms) {
-                Section("Transcription") {
-                    Toggle("Identify Speakers", isOn: $identifySpeakers)
-
+                    Toggle("Paste at Cursor", isOn: $systemAudioPasteAtCursor)
+                    Toggle("Save to History", isOn: $systemAudioSaveToHistory)
+                } header: {
+                    Text("System Audio")
+                } footer: {
                     Text(
-                        "Labels each turn in an imported recording with who spoke. Needs a Parakeet model — it is the only one that reports word timings, which speaker labels are built from. Downloads a speaker model the first time it runs."
+                        systemAudioController.isCapturing
+                            ? "Capturing system audio…"
+                            : "Requires Screen Recording permission. Captures only what your Mac plays — never your microphone."
                     )
                     .font(.app(.caption))
                     .foregroundStyle(.secondary)
                 }
             }
 
-            if shows(.general), search.matches(Self.interfaceTerms) {
-                Section("Interface") {
-                    Picker("Appearance", selection: $appAppearancePreference) {
-                        ForEach(AppAppearancePreference.allCases) { preference in
-                            Text(preference.displayName).tag(preference)
-                        }
-                    }
-                    .pickerStyle(.menu)
-                    .onChange(of: appAppearancePreference) { _, newValue in
-                        newValue.apply()
-                    }
-
-                    Picker("Language", selection: $appLanguagePreference) {
-                        ForEach(AppLanguagePreference.availableOptions) { option in
-                            Text(option.displayName).tag(option.id)
-                        }
-                    }
-                    .pickerStyle(.menu)
-                    .onChange(of: appLanguagePreference) { oldValue, newValue in
-                        guard oldValue != newValue else { return }
-                        let normalizedValue = AppLanguagePreference.normalizedRawValue(newValue)
-                        if normalizedValue != newValue {
-                            appLanguagePreference = normalizedValue
-                            return
-                        }
-                        AppLanguagePreference.apply(rawValue: normalizedValue)
-                        showLanguageRestartAlert = true
-                    }
-
-                    Toggle("Left-Edge History", isOn: $edgeHistoryEnabled)
-
-                    Text(
-                        "Reveals recent transcriptions when the pointer reaches the left edge of the screen. Watching for that means tracking every mouse movement, so turning it off measurably reduces battery use. Takes effect after a restart."
-                    )
-                    .font(.app(.caption))
-                    .foregroundStyle(.secondary)
-
-                    Picker("Recorder Position", selection: $recorderUIManager.recorderPanelStyle) {
-                        ForEach(RecorderPanelStyle.allCases) { style in
-                            Text(style.displayName).tag(style)
-                        }
-                    }
-                    .pickerStyle(.menu)
-
-                    Toggle(isOn: $showLiveTranscript) {
-                        HStack(spacing: 4) {
-                            Text("Live Text Display")
-                            InfoTip("Shows live text while recording with realtime models.")
-                        }
-                    }
-                }
-            }
-
-            if shows(.notch), search.matches(Self.notchTerms) {
-                Section("Notch Home") {
+            if shows(.notch), search.matches(Self.notchLookTerms) {
+                Section {
                     Picker(selection: $notchMaterialRaw) {
                         ForEach(NotchDesign.Material.allCases) { material in
                             Text(material.displayName).tag(material.rawValue)
@@ -719,7 +695,6 @@ struct SettingsView: View {
                         }
                     }
                     .pickerStyle(.menu)
-
                     Toggle(isOn: $notchIdleTabEnabled) {
                         HStack(spacing: 2) {
                             Text("Always-Visible Notch Tab")
@@ -728,7 +703,13 @@ struct SettingsView: View {
                             )
                         }
                     }
+                } header: {
+                    Text("Look")
+                }
+            }
 
+            if shows(.notch), search.matches(Self.notchHomeTerms) {
+                Section {
                     Toggle(isOn: $notchHomeEnabled) {
                         HStack(spacing: 2) {
                             Text("Notch Home")
@@ -737,7 +718,6 @@ struct SettingsView: View {
                             )
                         }
                     }
-
                     if notchHomeEnabled {
                         Toggle(isOn: $notchHomeInFullScreen) {
                             HStack(spacing: 2) {
@@ -755,93 +735,6 @@ struct SettingsView: View {
                                 )
                             }
                         }
-                        Toggle("Music in the Notch", isOn: $notchMusicEnabled)
-                        Toggle(isOn: $notchDeviceAlertsEnabled) {
-                            HStack(spacing: 2) {
-                                Text("Device Alerts")
-                                InfoTip(
-                                    "A short notice when AirPods or another Bluetooth device connects (with its battery), when the sound moves to another output, when Wi-Fi joins or drops, and when the power adapter goes in or out or the battery runs low."
-                                )
-                            }
-                        }
-                        Toggle(isOn: $notchDownloadsEnabled) {
-                            HStack(spacing: 2) {
-                                Text("Downloads")
-                                InfoTip(
-                                    "A band with how far a download in the Downloads folder has got, and a notice when it is done."
-                                )
-                            }
-                        }
-                        Toggle(isOn: $notchFocusEnabled) {
-                            HStack(spacing: 2) {
-                                Text("Focus")
-                                InfoTip("A notice with the Focus's own name and symbol when one turns on or off.")
-                            }
-                        }
-                        Toggle(isOn: $notchMixerEnabled) {
-                            HStack(spacing: 2) {
-                                Text("Per-App Volume")
-                                InfoTip(
-                                    "On the Sound page: each playing app with its own volume. An app turned down is played on through a system audio tap, which needs System Audio Recording and shows macOS's purple dot until every app is back at full."
-                                )
-                            }
-                        }
-                        Toggle(isOn: $notchSoundOutputEnabled) {
-                            HStack(spacing: 2) {
-                                Text("Sound Output")
-                                InfoTip(
-                                    "On the Sound page: switch the Mac's sound output between speakers, headphones and other devices."
-                                )
-                            }
-                        }
-                        Toggle(isOn: $notchSoundInputEnabled) {
-                            HStack(spacing: 2) {
-                                Text("Microphone Input")
-                                InfoTip(
-                                    "On the Sound page: switch the active microphone between built-in, AirPods and external microphones."
-                                )
-                            }
-                        }
-                        Toggle(isOn: $notchClipboardEnabled) {
-                            HStack(spacing: 2) {
-                                Text("Clipboard History")
-                                InfoTip(
-                                    "On the Sound page: the last few pieces of text you copied; a click copies one again. Kept in memory only, never what a password manager marks as secret. Off by default: it checks the clipboard once a second."
-                                )
-                            }
-                        }
-                        Toggle(isOn: $notchUnreadEnabled) {
-                            HStack(spacing: 2) {
-                                Text("Unread Counts")
-                                InfoTip(
-                                    "A notice when Mail, Messages or another app's unread badge in the Dock goes up, read from the Dock once a minute."
-                                )
-                            }
-                        }
-                        Toggle(isOn: $notchRainEnabled) {
-                            HStack(spacing: 2) {
-                                Text("Rain Soon")
-                                InfoTip(
-                                    "A notice when rain is about to start where you are, from the weather checked every half hour. Only once location access has been given on the Weather page."
-                                )
-                            }
-                        }
-                        Toggle(isOn: $notchLyricsEnabled) {
-                            HStack(spacing: 2) {
-                                Text("Lyrics")
-                                InfoTip(
-                                    "The line being sung, under the artist on the Music page, from lrclib.net. Looking a song up sends its title and artist there, once per song, only while the Music page is open."
-                                )
-                            }
-                        }
-                        Toggle(isOn: $notchMirrorEnabled) {
-                            HStack(spacing: 2) {
-                                Text("Mirror")
-                                InfoTip(
-                                    "On the Sound page: your camera as a mirror, only after a click and only while it is open."
-                                )
-                            }
-                        }
                         Toggle(isOn: $notchHiddenFromCapture) {
                             HStack(spacing: 2) {
                                 Text("Hide from Screenshots & Sharing")
@@ -850,33 +743,41 @@ struct SettingsView: View {
                                 )
                             }
                         }
-                        Toggle(isOn: $notchHUDEnabled) {
-                            HStack(spacing: 2) {
-                                Text("Volume & Brightness in the Notch")
-                                InfoTip(
-                                    "The volume and brightness keys show their level in the notch instead of macOS's pop-up, in the same steps (Option-Shift for finer ones). Needs Accessibility, which VoxOS already uses for its shortcuts. An external display's brightness, an output without a volume, and keys pressed while the notch is hidden stay with macOS."
-                                )
-                            }
-                        }
-                        Toggle(isOn: $notchPrivacyEnabled) {
-                            HStack(spacing: 2) {
-                                Text("Mic & Camera in Use")
-                                InfoTip(
-                                    "While another app uses the microphone or a camera, the notch shows it, with the app's icon. A click on the microphone mutes it; the mute is undone when the call ends."
-                                )
-                            }
-                        }
-                        Toggle(isOn: $notchMeetingsEnabled) {
-                            HStack(spacing: 2) {
-                                Text("Meeting Countdown")
-                                InfoTip(
-                                    "Five minutes before a meeting in your calendar, the notch counts down to it, with Join when the event has a video-call link. Needs Calendar access, which the Calendar page asks for."
-                                )
-                            }
-                        }
                     }
+                } header: {
+                    Text("Notch Home")
+                }
+            }
 
-                    if notchHomeEnabled, notchMusicEnabled {
+            if shows(.notch), notchHomeEnabled, search.matches(Self.notchPageTerms) {
+                Section("Pages") {
+                    ForEach(notchPageOrder) { page in
+                        notchPageRow(page)
+                    }
+                    HStack(alignment: .firstTextBaseline) {
+                        Text(
+                            "Drag a page, or use the arrows, to reorder. At least one page stays on; Music only shows while a track is playing."
+                        )
+                        .font(.app(.caption))
+                        .foregroundStyle(.secondary)
+                        Spacer(minLength: 8)
+                        Button("Reset") { resetNotchPages() }
+                    }
+                }
+            }
+
+            if shows(.notch), notchHomeEnabled, search.matches(Self.notchMusicTerms) {
+                Section {
+                    Toggle("Music in the Notch", isOn: $notchMusicEnabled)
+                    if notchMusicEnabled {
+                        Toggle(isOn: $notchLyricsEnabled) {
+                            HStack(spacing: 2) {
+                                Text("Lyrics")
+                                InfoTip(
+                                    "The line being sung, under the artist on the Music page, from lrclib.net. Looking a song up sends its title and artist there, once per song, only while the Music page is open."
+                                )
+                            }
+                        }
                         Toggle(isOn: $notchMusicBarsEnabled) {
                             HStack(spacing: 2) {
                                 Text("Live Music Bars")
@@ -896,28 +797,145 @@ struct SettingsView: View {
                             }
                         }
                     }
+                } header: {
+                    Text("Music")
                 }
             }
 
-            if shows(.notch), notchHomeEnabled, search.matches(Self.notchPageTerms) {
-                Section("Notch Pages") {
-                    ForEach(notchPageOrder) { page in
-                        notchPageRow(page)
+            if shows(.notch), notchHomeEnabled, search.matches(Self.notchSoundTerms) {
+                Section {
+                    Toggle(isOn: $notchMixerEnabled) {
+                        HStack(spacing: 2) {
+                            Text("Per-App Volume")
+                            InfoTip(
+                                "On the Sound page: each playing app with its own volume. An app turned down is played on through a system audio tap, which needs System Audio Recording and shows macOS's purple dot until every app is back at full."
+                            )
+                        }
                     }
-                    HStack(alignment: .firstTextBaseline) {
-                        Text(
-                            "Drag a page, or use the arrows, to reorder. At least one page stays on; Music only shows while a track is playing."
-                        )
-                        .font(.app(.caption))
-                        .foregroundStyle(.secondary)
-                        Spacer(minLength: 8)
-                        Button("Reset") { resetNotchPages() }
+                    Toggle(isOn: $notchSoundOutputEnabled) {
+                        HStack(spacing: 2) {
+                            Text("Sound Output")
+                            InfoTip(
+                                "On the Sound page: switch the Mac's sound output between speakers, headphones and other devices."
+                            )
+                        }
                     }
+                    Toggle(isOn: $notchSoundInputEnabled) {
+                        HStack(spacing: 2) {
+                            Text("Microphone Input")
+                            InfoTip(
+                                "On the Sound page: switch the active microphone between built-in, AirPods and external microphones."
+                            )
+                        }
+                    }
+                    Toggle(isOn: $notchClipboardEnabled) {
+                        HStack(spacing: 2) {
+                            Text("Clipboard History")
+                            InfoTip(
+                                "On the Sound page: the last few pieces of text you copied; a click copies one again. Kept in memory only, never what a password manager marks as secret. Off by default: it checks the clipboard once a second."
+                            )
+                        }
+                    }
+                    Toggle(isOn: $notchMirrorEnabled) {
+                        HStack(spacing: 2) {
+                            Text("Mirror")
+                            InfoTip(
+                                "On the Sound page: your camera as a mirror, only after a click and only while it is open."
+                            )
+                        }
+                    }
+                } header: {
+                    Text("Sound Page")
+                } footer: {
+                    Text(
+                        "What the notch’s Sound page shows."
+                    )
+                    .font(.app(.caption))
+                    .foregroundStyle(.secondary)
+                }
+            }
+
+            if shows(.notch), notchHomeEnabled, search.matches(Self.notchNoticesTerms) {
+                Section {
+                    Toggle(isOn: $notchHUDEnabled) {
+                        HStack(spacing: 2) {
+                            Text("Volume & Brightness in the Notch")
+                            InfoTip(
+                                "The volume and brightness keys show their level in the notch instead of macOS's pop-up, in the same steps (Option-Shift for finer ones). Needs Accessibility, which VoxOS already uses for its shortcuts. An external display's brightness, an output without a volume, and keys pressed while the notch is hidden stay with macOS."
+                            )
+                        }
+                    }
+                    Toggle(isOn: $notchPrivacyEnabled) {
+                        HStack(spacing: 2) {
+                            Text("Mic & Camera in Use")
+                            InfoTip(
+                                "While another app uses the microphone or a camera, the notch shows it, with the app's icon. A click on the microphone mutes it; the mute is undone when the call ends."
+                            )
+                        }
+                    }
+                    Toggle(isOn: $notchMeetingsEnabled) {
+                        HStack(spacing: 2) {
+                            Text("Meeting Countdown")
+                            InfoTip(
+                                "Five minutes before a meeting in your calendar, the notch counts down to it, with Join when the event has a video-call link. Needs Calendar access, which the Calendar page asks for."
+                            )
+                        }
+                    }
+                    Toggle(isOn: $notchDeviceAlertsEnabled) {
+                        HStack(spacing: 2) {
+                            Text("Device Alerts")
+                            InfoTip(
+                                "A short notice when AirPods or another Bluetooth device connects (with its battery), when the sound moves to another output, when Wi-Fi joins or drops, and when the power adapter goes in or out or the battery runs low."
+                            )
+                        }
+                    }
+                    Toggle(isOn: $notchDownloadsEnabled) {
+                        HStack(spacing: 2) {
+                            Text("Downloads")
+                            InfoTip(
+                                "A band with how far a download in the Downloads folder has got, and a notice when it is done."
+                            )
+                        }
+                    }
+                    Toggle(isOn: $notchFocusEnabled) {
+                        HStack(spacing: 2) {
+                            Text("Focus")
+                            InfoTip("A notice with the Focus's own name and symbol when one turns on or off.")
+                        }
+                    }
+                    Toggle(isOn: $notchUnreadEnabled) {
+                        HStack(spacing: 2) {
+                            Text("Unread Counts")
+                            InfoTip(
+                                "A notice when Mail, Messages or another app's unread badge in the Dock goes up, read from the Dock once a minute."
+                            )
+                        }
+                    }
+                    Toggle(isOn: $notchRainEnabled) {
+                        HStack(spacing: 2) {
+                            Text("Rain Soon")
+                            InfoTip(
+                                "A notice when rain is about to start where you are, from the weather checked every half hour. Only once location access has been given on the Weather page."
+                            )
+                        }
+                    }
+                } header: {
+                    Text("Notices")
+                } footer: {
+                    Text(
+                        "Short notices the notch shows between hovers."
+                    )
+                    .font(.app(.caption))
+                    .foregroundStyle(.secondary)
                 }
             }
 
             if shows(.notch), search.matches(Self.claudeCodeTerms) {
                 ClaudeCodeSection()
+            }
+
+            if shows(.appSwitcher), search.matches(Self.appSwitcherTerms) {
+                AppSwitcherSection()
             }
 
             if shows(.general), search.matches(Self.generalTerms) {
@@ -953,8 +971,37 @@ struct SettingsView: View {
                 }
             }
 
-            if shows(.general), search.matches(Self.appSwitcherTerms) {
-                AppSwitcherSection()
+            if shows(.general), search.matches(Self.appearanceTerms) {
+                Section {
+                    Picker("Appearance", selection: $appAppearancePreference) {
+                        ForEach(AppAppearancePreference.allCases) { preference in
+                            Text(preference.displayName).tag(preference)
+                        }
+                    }
+                    .pickerStyle(.menu)
+                    .onChange(of: appAppearancePreference) { _, newValue in
+                        newValue.apply()
+                    }
+
+                    Picker("Language", selection: $appLanguagePreference) {
+                        ForEach(AppLanguagePreference.availableOptions) { option in
+                            Text(option.displayName).tag(option.id)
+                        }
+                    }
+                    .pickerStyle(.menu)
+                    .onChange(of: appLanguagePreference) { oldValue, newValue in
+                        guard oldValue != newValue else { return }
+                        let normalizedValue = AppLanguagePreference.normalizedRawValue(newValue)
+                        if normalizedValue != newValue {
+                            appLanguagePreference = normalizedValue
+                            return
+                        }
+                        AppLanguagePreference.apply(rawValue: normalizedValue)
+                        showLanguageRestartAlert = true
+                    }
+                } header: {
+                    Text("Appearance")
+                }
             }
 
             if shows(.general), search.matches(Self.backupTerms) {

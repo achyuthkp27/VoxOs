@@ -184,7 +184,7 @@ enum NavigationSection: CaseIterable, Identifiable {
         switch self {
         case .main: return [.dashboard, .modes, .transcribeAudio, .history, .dictionary]
         case .aiTools: return [.models, .audio]
-        case .preferences: return [.voiceAssistant, .notch, .settings]
+        case .preferences: return [.voiceAssistant, .notch, .appSwitcher, .settings]
         }
     }
 }
@@ -214,6 +214,7 @@ extension ViewType {
         case .dictionary: return String(localized: "Dictionary")
         case .voiceAssistant: return String(localized: "Voice Assistant")
         case .notch: return String(localized: "Notch")
+        case .appSwitcher: return String(localized: "App Switcher")
         case .settings: return String(localized: "Settings")
         case .license: return String(localized: "VoxOS Pro")
         }
@@ -231,6 +232,7 @@ extension ViewType {
         case .dictionary: return ["word", "vocabulary", "replacement", "spelling"]
         case .voiceAssistant: return ["shortcut", "agent", "dictation", "mcp", "paste", "transcription"]
         case .notch: return ["notch home", "claude code", "music", "volume", "brightness", "shelf"]
+        case .appSwitcher: return ["rcmd", "right command", "letter", "window switcher", "windows", "switch apps"]
         case .settings: return ["preferences", "general", "appearance", "backup"]
         case .license: return ["pro", "license"]
         }
@@ -247,6 +249,7 @@ extension ViewType {
         case .dictionary: return "book.fill"
         case .voiceAssistant: return "waveform.circle.fill"
         case .notch: return "rectangle.topthird.inset.filled"
+        case .appSwitcher: return "command"
         case .settings: return "gearshape.fill"
         case .license: return "sparkles"
         }

@@ -2,9 +2,8 @@ import AppKit
 import SwiftUI
 import UniformTypeIdentifiers
 
-/// Settings for the app switcher: the switch, the key held with a letter, what the same letter
-/// does again, the letters given to apps — added, changed and removed here as well as from the
-/// keyboard — and the apps it leaves alone.
+/// The App Switcher page: the switch and the key it listens to, the letters given to apps, the
+/// window switcher, and the apps it leaves alone, each its own section.
 struct AppSwitcherSection: View {
     @AppStorage(DefaultsKeys.appSwitcherEnabled) private var enabled = false
     @AppStorage(DefaultsKeys.appSwitcherTrigger) private var triggerRaw = AppSwitcher.Trigger.rightCommand.rawValue
@@ -16,30 +15,28 @@ struct AppSwitcherSection: View {
     private var trigger: AppSwitcher.Trigger { AppSwitcher.Trigger(rawValue: triggerRaw) ?? .rightCommand }
 
     var body: some View {
-        Section("App Switcher") {
-            Toggle("Switch apps with a key and a letter", isOn: $enabled)
+        Group {
+            switchSection
+            if enabled {
+                lettersSection
+                windowsSection
+                leftAloneSection
+            }
+        }
+        .onAppear { switcher.refresh() }
+    }
+
+    private var switchSection: some View {
+        Section {
+            Toggle("Switch Apps with a Key and a Letter", isOn: $enabled)
                 .onChange(of: enabled) { _, _ in switcher.refresh() }
             if enabled {
-                Picker("Hold", selection: $triggerRaw) {
+                Picker("Key to Hold", selection: $triggerRaw) {
                     ForEach(AppSwitcher.Trigger.allCases) { trigger in
                         Text(verbatim: trigger.title).tag(trigger.rawValue)
                     }
                 }
                 .onChange(of: triggerRaw) { _, _ in switcher.refresh() }
-                Picker("Same letter again", selection: $sameLetterHides) {
-                    Text("Hides the app").tag(true)
-                    Text("Does nothing").tag(false)
-                }
-                Toggle("Show the letters while holding \(trigger.short)", isOn: $showsLetters)
-                Toggle("Show windows with \(trigger.short) Tab", isOn: $windowSwitcher)
-                    .onChange(of: windowSwitcher) { _, _ in switcher.refresh() }
-                if windowSwitcher, !CGPreflightScreenCaptureAccess() {
-                    Text(
-                        "Allow Screen Recording to see window titles and thumbnails; without it each window shows its app."
-                    )
-                    .font(.app(.caption))
-                    .foregroundStyle(.secondary)
-                }
                 if !switcher.isTapInstalled {
                     HStack {
                         Label("Needs Accessibility to see the keys", systemImage: "exclamationmark.triangle.fill")
@@ -51,12 +48,22 @@ struct AppSwitcherSection: View {
                     }
                 }
             }
-            Text(
-                "Hold \(trigger.short) and press the first letter of an app's name to bring it forward. Press the same letter again to hide it, or to move on to the next app with that letter. \(trigger.short) \(trigger.assignKey) and a letter gives the app in front that letter. An app with a letter is launched when it is not running. Hold \(trigger.short) alone for a moment to see every letter. \(trigger.short) Tab shows this Space's windows, then minimized and hidden ones: Tab and the arrows move, letting go switches; W closes, M minimizes, H hides, Q twice quits and / searches."
+        } header: {
+            Text("App Switcher")
+        } footer: {
+            caption(
+                "Hold \(trigger.short) and press the first letter of an app's name to bring it forward. An app that isn't running is opened."
             )
-            .font(.app(.caption))
-            .foregroundStyle(.secondary)
+        }
+    }
 
+    private var lettersSection: some View {
+        Section {
+            Picker("Same Letter Again", selection: $sameLetterHides) {
+                Text("Hides the App").tag(true)
+                Text("Does Nothing").tag(false)
+            }
+            Toggle("Show Letters While Holding \(trigger.short)", isOn: $showsLetters)
             ForEach(switcher.assignments.sorted { $0.key < $1.key }, id: \.key) { letter, bundleID in
                 AppSwitcherLetterRow(
                     letter: letter, bundleID: bundleID, taken: switcher.assignments,
@@ -68,12 +75,37 @@ struct AppSwitcherSection: View {
                     .disabled(switcher.assignments.count >= AppSwitcher.alphabet.count)
                 Spacer()
             }
-
-            Text(
-                "Apps left alone: while one of these is in front, \(trigger.short) and a letter go to it, for games, virtual machines and remote desktops."
+        } header: {
+            Text("Letters")
+        } footer: {
+            caption(
+                "An app listed here keeps its letter; every other app is reached by its first letter. When apps share a letter, pressing it again moves to the next one. \(trigger.short) \(trigger.assignKey) and a letter gives the app in front that letter."
             )
-            .font(.app(.caption))
-            .foregroundStyle(.secondary)
+        }
+    }
+
+    private var windowsSection: some View {
+        Section {
+            Toggle("Show Windows with \(trigger.short) Tab", isOn: $windowSwitcher)
+                .onChange(of: windowSwitcher) { _, _ in switcher.refresh() }
+            if windowSwitcher, !CGPreflightScreenCaptureAccess() {
+                Text(
+                    "Allow Screen Recording to see window titles and thumbnails; without it each window shows its app."
+                )
+                .font(.app(.caption))
+                .foregroundStyle(.secondary)
+            }
+        } header: {
+            Text("Window Switcher")
+        } footer: {
+            caption(
+                "Shows this Space's windows, then minimized and hidden ones. Tab and the arrows move, letting go switches. W closes, M minimizes, H hides, Q twice quits and / searches."
+            )
+        }
+    }
+
+    private var leftAloneSection: some View {
+        Section {
             ForEach(switcher.ignoredApps, id: \.self) { bundleID in
                 AppSwitcherIgnoredRow(bundleID: bundleID, onRemove: { switcher.stopIgnoring(bundleID) })
             }
@@ -81,8 +113,19 @@ struct AppSwitcherSection: View {
                 Button("Leave an App Alone…", action: chooseIgnoredApp)
                 Spacer()
             }
+        } header: {
+            Text("Apps Left Alone")
+        } footer: {
+            caption(
+                "While one of these is in front, \(trigger.short) and a letter go to it, for games, virtual machines and remote desktops."
+            )
         }
-        .onAppear { switcher.refresh() }
+    }
+
+    private func caption(_ text: LocalizedStringKey) -> some View {
+        Text(text)
+            .font(.app(.caption))
+            .foregroundStyle(.secondary)
     }
 
     private func chooseApp() {
