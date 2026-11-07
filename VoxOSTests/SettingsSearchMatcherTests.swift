@@ -58,4 +58,60 @@ struct SettingsSearchMatcherTests {
         // would make almost everything match almost everything.
         #expect(!SettingsSearchMatcher(query: "board").matches(pasting))
     }
+
+    // MARK: - The app's language
+
+    private let german: (String) -> String = { ["Pasting": "Einfügen", "Paste Method": "Einfügemethode"][$0] ?? $0 }
+
+    @Test func aSectionIsFoundByItsLabelsInTheAppsLanguage() {
+        #expect(SettingsSearchMatcher(query: "einfügemeth", localize: german).matches(.pasting))
+    }
+
+    @Test func aSectionIsStillFoundByItsEnglishLabels() {
+        #expect(SettingsSearchMatcher(query: "paste method", localize: german).matches(.pasting))
+    }
+
+    @Test func aTranslationOnlyFindsItsOwnSection() {
+        #expect(!SettingsSearchMatcher(query: "einfügen", localize: german).matches(.recorder))
+    }
+
+    @Test func chineseMatchesInsideATermWithoutSpaces() {
+        let chinese: (String) -> String = { $0 == "Paste Method" ? "粘贴方式" : $0 }
+        #expect(SettingsSearchMatcher(query: "方式", localize: chinese).matches(.pasting))
+    }
+}
+
+/// Sections shown only while a switch elsewhere on the page is on.
+@Suite
+struct SettingsPageLayoutTests {
+
+    private func layout(homeOn: Bool) -> SettingsPageLayout {
+        SettingsPageLayout(
+            sections: [.notchLook, .notchHome, .notchMusic], dependents: [.notchMusic], on: .notchHome,
+            isOn: homeOn)
+    }
+
+    @Test func withTheSwitchOnASectionShowsWhenItMatches() {
+        let search = SettingsSearchMatcher(query: "lyrics")
+        #expect(layout(homeOn: true).shows(.notchMusic, for: search))
+        #expect(!layout(homeOn: true).shows(.notchHome, for: search))
+    }
+
+    @Test func withTheSwitchOffTheSectionHoldingItShowsInstead() {
+        let search = SettingsSearchMatcher(query: "lyrics")
+        #expect(!layout(homeOn: false).shows(.notchMusic, for: search))
+        #expect(layout(homeOn: false).shows(.notchHome, for: search))
+        #expect(layout(homeOn: false).hasMatches(for: search))
+    }
+
+    @Test func aHiddenSectionNeverShowsEvenWithoutAQuery() {
+        let search = SettingsSearchMatcher(query: "")
+        #expect(!layout(homeOn: false).shows(.notchMusic, for: search))
+        #expect(layout(homeOn: false).shows(.notchLook, for: search))
+    }
+
+    @Test func aQueryNothingMatchesHasNoMatches() {
+        #expect(!layout(homeOn: false).hasMatches(for: SettingsSearchMatcher(query: "zzzz")))
+        #expect(!layout(homeOn: true).hasMatches(for: SettingsSearchMatcher(query: "zzzz")))
+    }
 }

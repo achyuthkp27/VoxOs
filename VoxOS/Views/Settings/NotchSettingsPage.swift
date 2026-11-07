@@ -35,12 +35,18 @@ struct NotchSettingsPage: View {
 
     private var search: SettingsSearchMatcher { SettingsSearchMatcher(query: settingsSearch) }
 
-    private static let sections: [SettingsSection] = [
-        .notchLook, .notchHome, .notchPages, .notchMusic, .notchSound, .notchNotices, .claudeCode,
-    ]
+    /// Pages, Music, the Sound page and Notices belong to Notch Home and show only while it is on.
+    private var layout: SettingsPageLayout {
+        SettingsPageLayout(
+            sections: [.notchLook, .notchHome, .notchPages, .notchMusic, .notchSound, .notchNotices, .claudeCode],
+            dependents: [.notchPages, .notchMusic, .notchSound, .notchNotices], on: .notchHome,
+            isOn: notchHomeEnabled)
+    }
+
+    private func shows(_ section: SettingsSection) -> Bool { layout.shows(section, for: search) }
 
     var body: some View {
-        SettingsForm(query: $settingsSearch, hasMatches: search.matchesAny(Self.sections)) {
+        SettingsForm(query: $settingsSearch, hasMatches: layout.hasMatches(for: search)) {
             if !search.isFiltering {
                 Section {
                     Toggle(
@@ -54,7 +60,7 @@ struct NotchSettingsPage: View {
                 }
             }
 
-            if search.matches(.notchLook) {
+            if shows(.notchLook) {
                 Section {
                     Picker(selection: $notchMaterialRaw) {
                         ForEach(NotchDesign.Material.allCases) { material in
@@ -82,7 +88,7 @@ struct NotchSettingsPage: View {
                 }
             }
 
-            if search.matches(.notchHome) {
+            if shows(.notchHome) {
                 Section {
                     Toggle(isOn: $notchHomeEnabled) {
                         HStack(spacing: 2) {
@@ -123,7 +129,7 @@ struct NotchSettingsPage: View {
                 }
             }
 
-            if notchHomeEnabled, search.matches(.notchPages) {
+            if shows(.notchPages) {
                 Section("Pages") {
                     ForEach(notchPageOrder) { page in
                         notchPageRow(page)
@@ -140,7 +146,7 @@ struct NotchSettingsPage: View {
                 }
             }
 
-            if notchHomeEnabled, search.matches(.notchMusic) {
+            if shows(.notchMusic) {
                 Section {
                     Toggle("Music in the Notch", isOn: $notchMusicEnabled)
                     if notchMusicEnabled {
@@ -176,7 +182,7 @@ struct NotchSettingsPage: View {
                 }
             }
 
-            if notchHomeEnabled, search.matches(.notchSound) {
+            if shows(.notchSound) {
                 Section {
                     Toggle(isOn: $notchMixerEnabled) {
                         HStack(spacing: 2) {
@@ -229,7 +235,7 @@ struct NotchSettingsPage: View {
                 }
             }
 
-            if notchHomeEnabled, search.matches(.notchNotices) {
+            if shows(.notchNotices) {
                 Section {
                     Toggle(isOn: $notchHUDEnabled) {
                         HStack(spacing: 2) {
@@ -304,7 +310,7 @@ struct NotchSettingsPage: View {
                 }
             }
 
-            if search.matches(.claudeCode) {
+            if shows(.claudeCode) {
                 ClaudeCodeSection()
             }
         }

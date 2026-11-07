@@ -1,20 +1,25 @@
 import Foundation
 
 /// A section of a settings page, and the words a search finds it by.
-enum SettingsSection: CaseIterable {
-    case shortcuts, additionalShortcuts, systemAudio, agent, mcp, claudeCode, pasting, transcription, recorder,
-        appearance, notchLook, notchHome, notchMusic, notchSound, notchNotices, notchPages, general, appSwitcher,
-        backup, diagnostics
+///
+/// `labels` are text the section shows, written exactly as in the view so a test can check each
+/// one is still on screen; a label with a value in it is written up to the value. `synonyms` are
+/// other words people search with. Labels are also matched in the app's language.
+enum SettingsSection: CaseIterable, Hashable {
+    case shortcuts, additionalShortcuts, recorder, pasting, transcription, agent, mcp, systemAudio
+    case notchLook, notchHome, notchPages, notchMusic, notchSound, notchNotices, claudeCode
+    case appSwitcher, appSwitcherLetters, windowSwitcher, appsLeftAlone
+    case general, appearance, backup, diagnostics
 
-    // Keywords come from the text each section actually shows, so a toggle is found by what
-    // is written next to it rather than by the heading it happens to live under.
-    var terms: [String] {
+    var terms: [String] { labels + synonyms }
+
+    var labels: [String] {
         switch self {
         case .shortcuts:
             return [
-                "Primary Shortcut", "Secondary Shortcut", "Add Second Shortcut", "Open Keyboard Settings",
+                "Shortcuts", "Primary Shortcut", "Secondary Shortcut", "Add Second Shortcut", "Open Keyboard Settings",
                 "Stop Dictation When You Stop Talking", "Press Return After Pasting",
-                "Use the fn key (hold to talk, double-tap for Agent)", "Shortcuts",
+                "Use the fn key (hold to talk, double-tap for Agent)",
             ]
         case .additionalShortcuts:
             return [
@@ -22,104 +27,130 @@ enum SettingsSection: CaseIterable {
                 "Retry Last Transcription", "Reset to default", "Cancel Recording", "Middle-Click Recording",
                 "Activation Delay",
             ]
-        case .systemAudio:
+        case .recorder:
             return [
-                "Capture System Audio", "Keep Recent System Audio", "Remember", "15 seconds", "30 seconds",
-                "60 seconds", "2 minutes", "Transcribe Recent Audio", "Paste at Cursor", "Save to History",
-                "System Audio", "Capturing system audio…",
-            ]
-        case .agent:
-            return [
-                "Control Mode", "Set a Mode for an App", "per-app", "Send When You Stop Talking",
-                "Pause Before Sending", "Allow Risky Shell Commands", "Plugins", "Open Plugins Folder", "Permissions",
-                "Accessibility", "Accessibility missing", "Screen Recording", "Screen Recording missing", "Agent",
-                "Close After Opening Something", "Fall Back To Other Providers", "fallback", "failover",
-            ]
-        case .mcp:
-            return [
-                "MCP Servers", "Model Context Protocol", "tools", "integrations", "Open Config",
-                "Import from Claude Desktop", "Reload",
-            ]
-        case .claudeCode:
-            return [
-                "Claude Code", "Show Claude Code in the Notch", "Allow or Deny Requests from the Notch",
-                "Show When a Session Is Working", "Quiet While Its Terminal Is in Front", "Install Hooks", "hooks",
-                "permission", "approve", "plan",
+                "Recorder", "Recorder Position", "Live Text Display",
+                "Shows live text while recording with realtime models.", "Left-Edge History",
             ]
         case .pasting:
             return [
                 "Pasting", "Match Writing Style to the App", "Keep Clipboard Content", "Restore Delay", "250ms",
-                "500ms", "Paste Method",
+                "500ms",
+                "Paste Method",
             ]
         case .transcription:
+            return ["Transcription", "Identify Speakers"]
+        case .agent:
             return [
-                "Transcription", "Identify Speakers", "speakers", "diarization", "meeting", "conversation", "who spoke",
-                "speaker labels",
+                "Agent", "Control Mode", "Set a Mode for an App…", "Send When You Stop Talking", "Pause Before Sending",
+                "Close After Opening Something", "Allow Risky Shell Commands",
+                "Main and fallback model are set in AI Models.",
+                "Plugins", "Open Plugins Folder", "Permissions", "Accessibility", "Accessibility missing",
+                "Screen Recording", "Screen Recording missing",
             ]
-        case .recorder:
+        case .mcp:
+            return ["MCP Servers", "Open Config", "Import from Claude Desktop", "Reload"]
+        case .systemAudio:
             return [
-                "Recorder", "Recorder Position", "Live Text Display",
-                "Shows live text while recording with realtime models.", "Left-Edge History", "Edge History", "battery",
-                "hover", "power",
-            ]
-        case .appearance:
-            return [
-                "Appearance", "Language", "Interface", "dark", "light", "theme",
+                "System Audio", "Capture System Audio", "Keep Recent System Audio", "Remember", "15 seconds",
+                "30 seconds", "60 seconds", "2 minutes", "Transcribe Recent Audio", "Paste at Cursor",
+                "Save to History",
+                "Capturing system audio…",
             ]
         case .notchLook:
-            return [
-                "Look", "Notch Material", "Liquid Glass", "Solid Black", "Always-Visible Notch Tab", "notch", "tab",
-            ]
+            return ["Look", "Notch Material", "Liquid Glass", "Solid Black", "Always-Visible Notch Tab"]
         case .notchHome:
             return [
-                "Notch Home", "Show in Full Screen", "full screen", "fullscreen", "Follow the Display in Use",
-                "external display", "monitor", "display", "Hide from Screenshots & Sharing", "screenshot",
-                "screen sharing", "privacy",
+                "Notch Home", "Show in Full Screen", "Follow the Display in Use", "Hide from Screenshots & Sharing",
             ]
+        case .notchPages:
+            return ["Pages", "Reset"]
         case .notchMusic:
-            return [
-                "Music", "Music in the Notch", "Lyrics", "Live Music Bars", "Live Bars on Battery", "now playing",
-                "visualizer",
-            ]
+            return ["Music", "Music in the Notch", "Lyrics", "Live Music Bars", "Live Bars on Battery"]
         case .notchSound:
             return [
-                "Sound Page", "Per-App Volume", "mixer", "app volume", "Sound Output", "speakers", "headphones",
-                "output", "Microphone Input", "microphone", "Clipboard History", "clipboard", "Mirror", "camera",
-                "webcam", "keep awake", "caffeinate",
+                "Sound Page", "Per-App Volume", "Sound Output", "Microphone Input", "Clipboard History", "Mirror",
             ]
         case .notchNotices:
             return [
-                "Notices", "Volume & Brightness in the Notch", "volume", "brightness", "HUD", "keys",
-                "Mic & Camera in Use", "mute", "Meeting Countdown", "meeting", "zoom", "join", "Device Alerts",
-                "bluetooth", "airpods", "wifi", "charging", "low battery", "Downloads", "download", "Focus",
-                "do not disturb", "Unread Counts", "unread", "badge", "Rain Soon", "rain",
+                "Notices", "Volume & Brightness in the Notch", "Mic & Camera in Use", "Meeting Countdown",
+                "Device Alerts", "Downloads", "Focus", "Unread Counts", "Rain Soon",
             ]
-        case .notchPages:
+        case .claudeCode:
             return [
-                "Notch Pages", "Pages", "Page Order", "timer", "pomodoro", "shelf", "calendar", "Reorder", "order",
-                "enable", "disable", "show page", "hide page", "drag",
+                "Claude Code", "Show Claude Code in the Notch", "Allow or Deny Requests from the Notch",
+                "Show When a Session Is Working", "Quiet While Its Terminal Is in Front", "Install Hooks",
             ]
+        case .appSwitcher:
+            return [
+                "App Switcher", "Switch Apps with a Key and a Letter", "Key to Hold", "Right ⌘ Command",
+                "Right ⌥ Option", "Needs Accessibility to see the keys", "Open Accessibility Settings",
+            ]
+        case .appSwitcherLetters:
+            return [
+                "Letters", "Same Letter Again", "Hides the App", "Does Nothing", "Show Letters While Holding",
+                "Add App…",
+            ]
+        case .windowSwitcher:
+            return ["Window Switcher", "Show Windows with"]
+        case .appsLeftAlone:
+            return ["Apps Left Alone", "Leave an App Alone…"]
         case .general:
             return [
                 "General", "Hide Dock Icon", "Launch at Login", "Automatically Check for Updates", "Check for Updates",
                 "Reset Onboarding",
             ]
-        case .appSwitcher:
-            return [
-                "App Switcher", "Switch Apps with a Key and a Letter", "Key to Hold", "Right Command", "rcmd",
-                "Accessibility", "Letters", "letter", "Same Letter Again", "Hides the App",
-                "Show Letters While Holding", "Add App", "hide app", "launch", "Window Switcher", "Show Windows with",
-                "Tab", "windows", "thumbnails", "Screen Recording", "Apps Left Alone", "Leave an App Alone", "games",
-                "virtual machines", "remote desktop",
-            ]
+        case .appearance:
+            return ["Appearance", "Language"]
         case .backup:
-            return [
-                "Export Settings", "Export", "Import Settings", "Import", "Backup",
-            ]
+            return ["Backup", "Export Settings", "Export", "Import Settings", "Import"]
         case .diagnostics:
+            return ["Diagnostics", "Export Logs", "Show in Finder"]
+        }
+    }
+
+    var synonyms: [String] {
+        switch self {
+        case .shortcuts: return ["hotkey", "fn", "dictation"]
+        case .additionalShortcuts: return ["hotkey", "escape"]
+        case .recorder: return ["edge history", "hover", "battery", "power"]
+        case .pasting: return ["clipboard"]
+        case .transcription:
+            return ["speakers", "diarization", "meeting", "conversation", "who spoke", "speaker labels"]
+        case .agent: return ["per-app", "fallback", "failover", "shell"]
+        case .mcp: return ["Model Context Protocol", "tools", "integrations"]
+        case .systemAudio: return ["buffer"]
+        case .notchLook: return ["notch", "tab", "glass"]
+        case .notchHome:
             return [
-                "Diagnostics", "Export Logs", "Show in Finder",
+                "full screen", "fullscreen", "external display", "monitor", "display", "screenshot", "screen sharing",
+                "privacy",
             ]
+        case .notchPages:
+            return [
+                "order", "reorder", "drag", "show page", "hide page", "enable", "disable", "timer", "pomodoro",
+                "shelf", "calendar",
+            ]
+        case .notchMusic: return ["now playing", "visualizer"]
+        case .notchSound:
+            return [
+                "mixer", "app volume", "speakers", "headphones", "output", "microphone", "clipboard", "camera",
+                "webcam",
+            ]
+        case .notchNotices:
+            return [
+                "volume", "brightness", "HUD", "keys", "mute", "meeting", "zoom", "join", "bluetooth", "airpods",
+                "wifi", "charging", "low battery", "download", "do not disturb", "unread", "badge", "rain",
+            ]
+        case .claudeCode: return ["hooks", "permission", "approve", "plan"]
+        case .appSwitcher: return ["rcmd", "right command", "accessibility", "switch apps"]
+        case .appSwitcherLetters: return ["letter", "assign", "hide app", "launch"]
+        case .windowSwitcher: return ["windows", "tab", "thumbnails", "minimized", "Screen Recording"]
+        case .appsLeftAlone: return ["ignore", "games", "virtual machines", "remote desktop"]
+        case .general: return ["dock", "login", "updates", "onboarding"]
+        case .appearance: return ["interface", "dark", "light", "theme"]
+        case .backup: return ["backup", "restore"]
+        case .diagnostics: return ["logs"]
         }
     }
 }

@@ -17,16 +17,21 @@ struct AppSwitcherSettingsPage: View {
 
     private var trigger: AppSwitcher.Trigger { AppSwitcher.Trigger(rawValue: triggerRaw) ?? .rightCommand }
 
+    /// Letters, the window switcher and the apps left alone show only while the switch is on.
+    private var layout: SettingsPageLayout {
+        SettingsPageLayout(
+            sections: [.appSwitcher, .appSwitcherLetters, .windowSwitcher, .appsLeftAlone],
+            dependents: [.appSwitcherLetters, .windowSwitcher, .appsLeftAlone], on: .appSwitcher, isOn: enabled)
+    }
+
+    private func shows(_ section: SettingsSection) -> Bool { layout.shows(section, for: search) }
+
     var body: some View {
-        SettingsForm(query: $settingsSearch, hasMatches: search.matchesAny([.appSwitcher])) {
-            if search.matches(.appSwitcher) {
-                switchSection
-                if enabled {
-                    lettersSection
-                    windowsSection
-                    leftAloneSection
-                }
-            }
+        SettingsForm(query: $settingsSearch, hasMatches: layout.hasMatches(for: search)) {
+            if shows(.appSwitcher) { switchSection }
+            if shows(.appSwitcherLetters) { lettersSection }
+            if shows(.windowSwitcher) { windowsSection }
+            if shows(.appsLeftAlone) { leftAloneSection }
         }
         .onAppear { switcher.refresh() }
     }
