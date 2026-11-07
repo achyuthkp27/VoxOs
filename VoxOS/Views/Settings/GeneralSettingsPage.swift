@@ -130,6 +130,7 @@ struct GeneralSettingsPage: View {
                     Text("Backup")
                 } footer: {
                     Text("Export all settings, or choose specific categories when importing a backup.")
+                        .settingsCaption()
                 }
             }
 

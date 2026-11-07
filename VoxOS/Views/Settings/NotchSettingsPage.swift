@@ -55,8 +55,7 @@ struct NotchSettingsPage: View {
                     Text(
                         "Off, nothing shows in the notch between dictations, and Claude Code's requests stay in the terminal."
                     )
-                    .font(.app(.caption))
-                    .foregroundStyle(.secondary)
+                    .settingsCaption()
                 }
             }
 
@@ -130,16 +129,18 @@ struct NotchSettingsPage: View {
             }
 
             if shows(.notchPages) {
-                Section("Pages") {
+                Section {
                     ForEach(notchPageOrder) { page in
                         notchPageRow(page)
                     }
+                } header: {
+                    Text("Pages")
+                } footer: {
                     HStack(alignment: .firstTextBaseline) {
                         Text(
                             "Drag a page, or use the arrows, to reorder. At least one page stays on; Music only shows while a track is playing."
                         )
-                        .font(.app(.caption))
-                        .foregroundStyle(.secondary)
+                        .settingsCaption()
                         Spacer(minLength: 8)
                         Button("Reset") { resetNotchPages() }
                     }
@@ -230,8 +231,7 @@ struct NotchSettingsPage: View {
                     Text(
                         "What the notch’s Sound page shows."
                     )
-                    .font(.app(.caption))
-                    .foregroundStyle(.secondary)
+                    .settingsCaption()
                 }
             }
 
@@ -305,8 +305,7 @@ struct NotchSettingsPage: View {
                     Text(
                         "Short notices the notch shows between hovers."
                     )
-                    .font(.app(.caption))
-                    .foregroundStyle(.secondary)
+                    .settingsCaption()
                 }
             }
 

@@ -51,8 +51,7 @@ struct VoiceSettingsPage: View {
                         isOn: Binding(get: { voiceMaster }, set: { MasterSwitches.setVoiceEnabled($0) }))
                 } footer: {
                     Text("Off, the shortcuts below start nothing: no dictation, no Agent. They are kept as they are.")
-                        .font(.app(.caption))
-                        .foregroundStyle(.secondary)
+                        .settingsCaption()
                 }
             }
 
@@ -331,8 +330,7 @@ struct VoiceSettingsPage: View {
                     .pickerStyle(.menu)
 
                     Text((AgentControlMode(rawValue: agentControlModeRaw) ?? .takeover).summary)
-                        .font(.app(.caption))
-                        .foregroundStyle(.secondary)
+                        .settingsCaption()
 
                     AgentAppModeOverridesRows()
 
@@ -374,8 +372,7 @@ struct VoiceSettingsPage: View {
 
                     HStack(spacing: 2) {
                         Text("Main and fallback model are set in AI Models.")
-                            .font(.app(.caption))
-                            .foregroundStyle(.secondary)
+                            .settingsCaption()
                         InfoTip(
                             "AI Models → Main & Fallback Model. The fallback is tried when the main model is rate-limited, down, unreachable or answers with nothing. Off by default: your text only goes to models you pick there."
                         )
@@ -410,8 +407,7 @@ struct VoiceSettingsPage: View {
                     Text(
                         "Clicking, typing and reading the screen need Accessibility and Screen Recording. Plugins are JSON files that become voice tools; the agent can also write them itself."
                     )
-                    .font(.app(.caption))
-                    .foregroundStyle(.secondary)
+                    .settingsCaption()
                 }
             }
 
@@ -476,8 +472,7 @@ struct VoiceSettingsPage: View {
                             ? "Capturing system audio…"
                             : "Requires Screen Recording permission. Captures only what your Mac plays — never your microphone."
                     )
-                    .font(.app(.caption))
-                    .foregroundStyle(.secondary)
+                    .settingsCaption()
                 }
             }
         }

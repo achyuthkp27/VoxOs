@@ -12,6 +12,9 @@ struct AppSwitcherSettingsPage: View {
     @AppStorage(DefaultsKeys.appSwitcherShowsLetters) private var showsLetters = true
     @ObservedObject private var switcher = AppSwitcher.shared
     @State private var settingsSearch = ""
+    /// Read on appear and whenever VoxOS comes back to the front, as Screen Recording is granted
+    /// in System Settings while this page stays open.
+    @State private var hasScreenRecording = CGPreflightScreenCaptureAccess()
 
     private var search: SettingsSearchMatcher { SettingsSearchMatcher(query: settingsSearch) }
 
@@ -33,7 +36,13 @@ struct AppSwitcherSettingsPage: View {
             if shows(.windowSwitcher) { windowsSection }
             if shows(.appsLeftAlone) { leftAloneSection }
         }
-        .onAppear { switcher.refresh() }
+        .onAppear {
+            switcher.refresh()
+            hasScreenRecording = CGPreflightScreenCaptureAccess()
+        }
+        .onReceive(NotificationCenter.default.publisher(for: NSApplication.didBecomeActiveNotification)) { _ in
+            hasScreenRecording = CGPreflightScreenCaptureAccess()
+        }
     }
 
     private var switchSection: some View {
@@ -61,9 +70,10 @@ struct AppSwitcherSettingsPage: View {
         } header: {
             Text("App Switcher")
         } footer: {
-            caption(
+            Text(
                 "Hold \(trigger.short) and press the first letter of an app's name to bring it forward. An app that isn't running is opened."
             )
+            .settingsCaption()
         }
     }
 
@@ -88,9 +98,10 @@ struct AppSwitcherSettingsPage: View {
         } header: {
             Text("Letters")
         } footer: {
-            caption(
+            Text(
                 "An app listed here keeps its letter; every other app is reached by its first letter. When apps share a letter, pressing it again moves to the next one. \(trigger.short) \(trigger.assignKey) and a letter gives the app in front that letter."
             )
+            .settingsCaption()
         }
     }
 
@@ -98,19 +109,19 @@ struct AppSwitcherSettingsPage: View {
         Section {
             Toggle("Show Windows with \(trigger.short) Tab", isOn: $windowSwitcher)
                 .onChange(of: windowSwitcher) { _, _ in switcher.refresh() }
-            if windowSwitcher, !CGPreflightScreenCaptureAccess() {
+            if windowSwitcher, !hasScreenRecording {
                 Text(
                     "Allow Screen Recording to see window titles and thumbnails; without it each window shows its app."
                 )
-                .font(.app(.caption))
-                .foregroundStyle(.secondary)
+                .settingsCaption()
             }
         } header: {
             Text("Window Switcher")
         } footer: {
-            caption(
+            Text(
                 "Shows this Space's windows, then minimized and hidden ones. Tab and the arrows move, letting go switches. W closes, M minimizes, H hides, Q twice quits and / searches."
             )
+            .settingsCaption()
         }
     }
 
@@ -126,16 +137,11 @@ struct AppSwitcherSettingsPage: View {
         } header: {
             Text("Apps Left Alone")
         } footer: {
-            caption(
+            Text(
                 "While one of these is in front, \(trigger.short) and a letter go to it, for games, virtual machines and remote desktops."
             )
+            .settingsCaption()
         }
-    }
-
-    private func caption(_ text: LocalizedStringKey) -> some View {
-        Text(text)
-            .font(.app(.caption))
-            .foregroundStyle(.secondary)
     }
 
     private func chooseApp() {

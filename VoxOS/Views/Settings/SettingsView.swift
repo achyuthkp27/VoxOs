@@ -66,10 +66,8 @@ struct SettingsForm<Content: View>: View {
 }
 
 extension Text {
-    func settingsDescription() -> some View {
-        self
-            .font(.app(size: 12, weight: .regular))
-            .foregroundColor(.secondary)
-            .fixedSize(horizontal: false, vertical: true)
+    /// A settings caption or footer: the app's caption font in the secondary color.
+    func settingsCaption() -> some View {
+        font(.app(.caption)).foregroundStyle(.secondary)
     }
 }
