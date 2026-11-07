@@ -42,4 +42,13 @@ struct SettingsSearchMatcher {
     func matches(_ terms: String...) -> Bool {
         matches(terms)
     }
+
+    func matches(_ section: SettingsSection) -> Bool {
+        matches(section.terms)
+    }
+
+    /// True when there is no query, or when at least one of `sections` matches it.
+    func matchesAny(_ sections: [SettingsSection]) -> Bool {
+        !isFiltering || sections.contains { matches($0) }
+    }
 }

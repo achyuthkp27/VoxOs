@@ -4,23 +4,28 @@ import UniformTypeIdentifiers
 
 /// The App Switcher page: the switch and the key it listens to, the letters given to apps, the
 /// window switcher, and the apps it leaves alone, each its own section.
-struct AppSwitcherSection: View {
+struct AppSwitcherSettingsPage: View {
     @AppStorage(DefaultsKeys.appSwitcherEnabled) private var enabled = false
     @AppStorage(DefaultsKeys.appSwitcherTrigger) private var triggerRaw = AppSwitcher.Trigger.rightCommand.rawValue
     @AppStorage(DefaultsKeys.windowSwitcherEnabled) private var windowSwitcher = true
     @AppStorage(DefaultsKeys.appSwitcherSameLetterHides) private var sameLetterHides = true
     @AppStorage(DefaultsKeys.appSwitcherShowsLetters) private var showsLetters = true
     @ObservedObject private var switcher = AppSwitcher.shared
+    @State private var settingsSearch = ""
+
+    private var search: SettingsSearchMatcher { SettingsSearchMatcher(query: settingsSearch) }
 
     private var trigger: AppSwitcher.Trigger { AppSwitcher.Trigger(rawValue: triggerRaw) ?? .rightCommand }
 
     var body: some View {
-        Group {
-            switchSection
-            if enabled {
-                lettersSection
-                windowsSection
-                leftAloneSection
+        SettingsForm(query: $settingsSearch, hasMatches: search.matchesAny([.appSwitcher])) {
+            if search.matches(.appSwitcher) {
+                switchSection
+                if enabled {
+                    lettersSection
+                    windowsSection
+                    leftAloneSection
+                }
             }
         }
         .onAppear { switcher.refresh() }
