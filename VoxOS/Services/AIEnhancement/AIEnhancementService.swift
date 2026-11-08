@@ -33,6 +33,15 @@ class AIEnhancementService: ObservableObject {
         Self.timeout(storedSeconds: UserDefaults.standard.integer(forKey: DefaultsKeys.enhancementTimeoutSeconds))
     }
 
+    /// How long one request may take. A dictation gets the user's timeout; the Agent's opening
+    /// turn at least 45 seconds; a long transcript (an imported recording, a meeting) about a
+    /// second per 50 words, up to three minutes, as a model needs far longer to read and write it.
+    static func requestTimeout(base: TimeInterval, isAgentConversation: Bool, wordCount: Int) -> TimeInterval {
+        if isAgentConversation { return max(base, 45) }
+        guard wordCount > 300 else { return base }
+        return max(base, min(180, Double(wordCount) / 50))
+    }
+
     /// The request timeout the user set, or 7 seconds when it was never set or is not positive.
     static func timeout(storedSeconds: Int) -> TimeInterval {
         storedSeconds > 0 ? TimeInterval(storedSeconds) : 7
@@ -352,9 +361,10 @@ class AIEnhancementService: ObservableObject {
         // The opening agent turn carries the whole tool catalogue and runs on slower models;
         // every later turn in the loop already gets 45s. 7s here just times out, retries
         // twice, and looks like "the agent does nothing".
-        let requestTimeout =
-            AgentToolExecutor.isAgentConversation(systemPrompt: prompt.finalPromptText)
-            ? max(baseTimeout, 45) : baseTimeout
+        let requestTimeout = Self.requestTimeout(
+            base: baseTimeout,
+            isAgentConversation: AgentToolExecutor.isAgentConversation(systemPrompt: prompt.finalPromptText),
+            wordCount: WordCounter.count(in: text))
         let formattedText = "\n<TRANSCRIPT>\n\(text)\n</TRANSCRIPT>"
         let systemMessage = await getSystemMessage(
             prompt: prompt,
