@@ -100,6 +100,8 @@ struct GeneralBackup: Codable {
     let clipboardRestoreDelay: Double?
     /// Absent from backups made before the app switcher was backed up.
     let appSwitcher: AppSwitcherBackup?
+    /// Every other setting, by key. Absent from backups made before it was added.
+    let preferences: PreferencesBackup?
 }
 
 /// The app switcher's settings: its switches, its key, the letters given to apps and the apps it

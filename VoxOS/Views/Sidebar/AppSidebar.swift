@@ -8,10 +8,10 @@ import SwiftUI
 struct AppSidebar: View {
     static let expandedWidth: CGFloat = 200
     static let collapsedWidth: CGFloat = 64
-    private static let collapsedKey = "AppSidebarCollapsed"
+    static let collapsedKey = "AppSidebarCollapsed"
 
     @Binding var selectedView: ViewType
-    @AppStorage(Self.collapsedKey) private var isCollapsed = false
+    @AppStorage(AppSidebar.collapsedKey) private var isCollapsed = false
     @Environment(\.accessibilityReduceMotion) private var reduceMotion
     @Environment(\.modelContext) private var modelContext
     @Namespace private var selection

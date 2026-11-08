@@ -235,6 +235,17 @@ enum BackupImporter {
             appSwitcher.apply()
             AppSwitcher.shared.reload()
         }
+        if let preferences = general.preferences {
+            let switches = preferences.apply()
+            if let voice = switches[DefaultsKeys.voiceAssistantEnabled] { MasterSwitches.setVoiceEnabled(voice) }
+            if let notch = switches[DefaultsKeys.notchMasterEnabled] { MasterSwitches.setNotchEnabled(notch) }
+            // The paste method also keeps an older key in step, which a plain write would miss.
+            if let method = UserDefaults.standard.string(forKey: PasteMethod.userDefaultsKey).flatMap({
+                PasteMethod(rawValue: $0)
+            }) {
+                PasteMethod.setCurrent(method)
+            }
+        }
 
         logger.info("Successfully imported general settings.")
     }
