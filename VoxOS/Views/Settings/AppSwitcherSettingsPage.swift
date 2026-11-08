@@ -119,7 +119,7 @@ struct AppSwitcherSettingsPage: View {
             Text("Window Switcher")
         } footer: {
             Text(
-                "Shows this Space's windows, then minimized and hidden ones. Tab and the arrows move, letting go switches. W closes, M minimizes, H hides, Q twice quits and / searches."
+                "Shows this Space's windows, then minimized and hidden ones. Tab and the arrows move, letting go switches. W closes, M minimizes, H hides, Q twice quits, L and R snap to a half, F fills the screen and / searches."
             )
             .settingsCaption()
         }

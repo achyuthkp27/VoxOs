@@ -145,7 +145,8 @@ enum SettingsSection: CaseIterable, Hashable {
         case .claudeCode: return ["hooks", "permission", "approve", "plan"]
         case .appSwitcher: return ["rcmd", "right command", "accessibility", "switch apps"]
         case .appSwitcherLetters: return ["letter", "assign", "hide app", "launch"]
-        case .windowSwitcher: return ["windows", "tab", "thumbnails", "minimized", "Screen Recording"]
+        case .windowSwitcher:
+            return ["windows", "tab", "thumbnails", "minimized", "Screen Recording", "snap", "half", "tile", "fill"]
         case .appsLeftAlone: return ["ignore", "games", "virtual machines", "remote desktop"]
         case .general: return ["dock", "login", "updates", "onboarding"]
         case .appearance: return ["interface", "dark", "light", "theme"]

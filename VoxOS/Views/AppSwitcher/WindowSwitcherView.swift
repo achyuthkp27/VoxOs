@@ -81,7 +81,9 @@ struct WindowSwitcherView: View {
             } else if switcher.searching {
                 Text("Type to search · ⌫ to go back · Return to switch")
             } else {
-                Text("Tab to move · release to switch · W close · M minimize · H hide · Q twice quit · / search")
+                Text(
+                    "Tab to move · release to switch · W close · M minimize · H hide · Q twice quit · L/R half · F fill · / search"
+                )
             }
         return
             text

@@ -10,8 +10,9 @@ import os
 /// windows on this Space as a grid, the most recent first, with the previous one picked, then the
 /// minimized windows and those of hidden apps. Tab, Shift-Tab and the arrows move; letting go of
 /// the key, Return or a click switches to the window; Escape leaves. On the picked window W closes
-/// it, M minimizes it, H hides its app and Q twice quits it; / starts a search through apps and
-/// window titles. A grid taller than the screen scrolls.
+/// it, M minimizes it, H hides its app and Q twice quits it; L and R snap it to the left or right
+/// half of its screen and F makes it fill the screen, then switch to it; / starts a search through
+/// apps and window titles. A grid taller than the screen scrolls.
 ///
 /// Titles and thumbnails need Screen Recording; without it each window shows its app's icon and
 /// name. Raising a window needs Accessibility, which the app switcher's keys already need.
@@ -230,9 +231,71 @@ final class WindowSwitcher: ObservableObject {
             }
             app?.terminate()
             remove { $0.pid == window.pid }
+        case "l", "r", "f":
+            let snap: Snap = letter == "l" ? .left : letter == "r" ? .right : .fill
+            guard let ax = Self.axWindow(for: window) else { return }
+            let snapped = Self.snap(ax, window: window, to: snap)
+            close()
+            Self.focus(snapped)
         default:
             return
         }
+    }
+
+    // MARK: Snapping
+
+    enum Snap: Equatable {
+        case left, right, fill
+    }
+
+    /// Moves and sizes the window to `snap` on the screen it is mostly on, and returns it with its
+    /// new frame so it can still be found to raise.
+    private static func snap(_ ax: AXUIElement, window: Window, to snap: Snap) -> Window {
+        if axBool(ax, kAXMinimizedAttribute) == true {
+            AXUIElementSetAttributeValue(ax, kAXMinimizedAttribute as CFString, kCFBooleanFalse)
+        }
+        let primaryHeight = NSScreen.screens.first?.frame.height ?? 0
+        let screens = NSScreen.screens.map { (frame: $0.frame, visible: $0.visibleFrame) }
+        guard
+            let visible = screenVisibleFrame(for: window.frame, screens: screens, primaryHeight: primaryHeight)
+                ?? NSScreen.underPointer?.visibleFrame
+        else { return window }
+        let target = snapFrame(snap, visible: visible, primaryHeight: primaryHeight)
+        var origin = target.origin
+        var size = target.size
+        // Position, size, then position again: an app that limits its size against the screen it
+        // is on would otherwise keep the old size when the window moves to another screen.
+        if let position = AXValueCreate(.cgPoint, &origin), let dimensions = AXValueCreate(.cgSize, &size) {
+            AXUIElementSetAttributeValue(ax, kAXPositionAttribute as CFString, position)
+            AXUIElementSetAttributeValue(ax, kAXSizeAttribute as CFString, dimensions)
+            AXUIElementSetAttributeValue(ax, kAXPositionAttribute as CFString, position)
+        }
+        return Window(
+            id: window.id, pid: window.pid, appName: window.appName, bundleID: window.bundleID, title: window.title,
+            frame: axFrame(ax) ?? target, place: window.place)
+    }
+
+    /// The frame `snap` gives a window on a screen whose visible area (without the menu bar and
+    /// Dock, in AppKit's bottom-left coordinates) is `visible`. The result is in the top-left
+    /// coordinates Accessibility uses, measured from the main screen, which is `primaryHeight` tall.
+    nonisolated static func snapFrame(_ snap: Snap, visible: CGRect, primaryHeight: CGFloat) -> CGRect {
+        let whole = CGRect(
+            x: visible.minX, y: primaryHeight - visible.maxY, width: visible.width, height: visible.height)
+        let half = (whole.width / 2).rounded(.down)
+        switch snap {
+        case .fill: return whole
+        case .left: return CGRect(x: whole.minX, y: whole.minY, width: half, height: whole.height)
+        case .right: return CGRect(x: whole.maxX - half, y: whole.minY, width: half, height: whole.height)
+        }
+    }
+
+    /// The visible area of the screen holding the center of `frame` (top-left coordinates), or nil
+    /// when the center is on none of them.
+    nonisolated static func screenVisibleFrame(
+        for frame: CGRect, screens: [(frame: CGRect, visible: CGRect)], primaryHeight: CGFloat
+    ) -> CGRect? {
+        let center = CGPoint(x: frame.midX, y: primaryHeight - frame.midY)
+        return screens.first { $0.frame.contains(center) }?.visible
     }
 
     private func remove(where gone: (Window) -> Bool) {
