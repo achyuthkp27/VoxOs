@@ -30,8 +30,12 @@ class AIEnhancementService: ObservableObject {
     private let screenCaptureService: ScreenCaptureService
     private let customVocabularyService: CustomVocabularyService
     private var baseTimeout: TimeInterval {
-        let stored = UserDefaults.standard.integer(forKey: DefaultsKeys.enhancementTimeoutSeconds)
-        return stored > 0 ? TimeInterval(stored) : 7
+        Self.timeout(storedSeconds: UserDefaults.standard.integer(forKey: DefaultsKeys.enhancementTimeoutSeconds))
+    }
+
+    /// The request timeout the user set, or 7 seconds when it was never set or is not positive.
+    static func timeout(storedSeconds: Int) -> TimeInterval {
+        storedSeconds > 0 ? TimeInterval(storedSeconds) : 7
     }
     private let rateLimitInterval: TimeInterval = 1.0
     private var lastRequestTime: Date?
@@ -479,7 +483,7 @@ class AIEnhancementService: ObservableObject {
                 formattedText
             )
         } catch let error as LLMKitError {
-            throw mapLLMKitError(error)
+            throw Self.mapLLMKitError(error)
         } catch let error as EnhancementError {
             throw error
         } catch {
@@ -502,7 +506,7 @@ class AIEnhancementService: ObservableObject {
         return key
     }
 
-    private func mapLLMKitError(_ error: LLMKitError) -> EnhancementError {
+    static func mapLLMKitError(_ error: LLMKitError) -> EnhancementError {
         switch error {
         case .missingAPIKey:
             return .notConfigured
@@ -536,18 +540,27 @@ class AIEnhancementService: ObservableObject {
         configuration: EnhancementRuntimeConfiguration,
         contextSnapshot: RecordingContextSnapshot?
     ) async throws -> (text: String, systemMessage: String?, userMessage: String?) {
-        var retriedTimeout = false
+        try await Self.retryingOnceOnTimeout(
+            retryOnTimeout,
+            onRetry: { logger.warning("Request timed out, retrying once (retry on timeout enabled)...") },
+            attempt: {
+                try await makeRequest(text: text, configuration: configuration, contextSnapshot: contextSnapshot)
+            })
+    }
 
+    /// Runs `attempt`, and once more after a timeout when `retryOnTimeout` is on. A dropped or
+    /// missing connection becomes `networkError`, so the user is told to check the network
+    /// rather than shown a raw URL error.
+    static func retryingOnceOnTimeout<T>(
+        _ retryOnTimeout: Bool, onRetry: () -> Void = {}, attempt: () async throws -> T
+    ) async throws -> T {
+        var retriedTimeout = false
         while true {
             do {
-                return try await makeRequest(
-                    text: text,
-                    configuration: configuration,
-                    contextSnapshot: contextSnapshot
-                )
+                return try await attempt()
             } catch EnhancementError.timeout where retryOnTimeout && !retriedTimeout {
                 retriedTimeout = true
-                logger.warning("Request timed out, retrying once (retry on timeout enabled)...")
+                onRetry()
             } catch let error as NSError
                 where error.domain == NSURLErrorDomain
                 && [NSURLErrorNotConnectedToInternet, NSURLErrorTimedOut, NSURLErrorNetworkConnectionLost].contains(
