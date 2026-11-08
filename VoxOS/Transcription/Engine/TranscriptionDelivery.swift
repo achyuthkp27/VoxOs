@@ -12,6 +12,8 @@ final class TranscriptionDelivery {
         let responseConfig: EnhancementRuntimeConfiguration?
         let responseError: String?
         let isAssistantFollowUp: Bool
+        /// A voice snippet: pasted as saved, without matching the writing style to the app.
+        var isVerbatim = false
     }
 
     struct Actions {
@@ -50,7 +52,7 @@ final class TranscriptionDelivery {
         }
 
         if let text = request.text {
-            await paste(text, output: request.output, actions: actions)
+            await paste(text, output: request.output, verbatim: request.isVerbatim, actions: actions)
         } else {
             await actions.dismiss()
         }
@@ -158,9 +160,9 @@ final class TranscriptionDelivery {
         String(format: "%.3f", duration)
     }
 
-    private func paste(_ text: String, output: OutputRuntimeConfiguration, actions: Actions) async {
+    private func paste(_ text: String, output: OutputRuntimeConfiguration, verbatim: Bool, actions: Actions) async {
         var textToPaste = deliverableText(from: text)
-        if WritingDestination.isEnabled {
+        if WritingDestination.isEnabled, !verbatim {
             textToPaste = WritingStyleFormatter.apply(textToPaste, category: WritingDestinationStore.categoryForPaste())
         }
         // Spacing is decided from what sits either side of the caret rather than always adding a

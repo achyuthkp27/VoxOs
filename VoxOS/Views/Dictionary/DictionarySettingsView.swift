@@ -4,6 +4,7 @@ import SwiftUI
 struct DictionarySettingsView: View {
     @Query private var vocabularyWords: [VocabularyWord]
     @Query private var wordReplacements: [WordReplacement]
+    @ObservedObject private var snippetStore = VoiceSnippetStore.shared
     @State private var selectedSection: DictionarySection = .spellings
     @State private var isShowingSettings = false
     private let dictionaryInfoMessage: LocalizedStringKey =
@@ -12,6 +13,7 @@ struct DictionarySettingsView: View {
     enum DictionarySection: String, CaseIterable, Hashable {
         case replacements = "Word Replacements"
         case spellings = "Vocabulary"
+        case snippets = "Snippets"
 
         /// One plain sentence on what the list does, shown under the switcher.
         var description: String {
@@ -26,6 +28,11 @@ struct DictionarySettingsView: View {
                     localized:
                         "Swapped exactly. Applied to every transcription, before anything is pasted."
                 )
+            case .snippets:
+                return String(
+                    localized:
+                        "Said on their own, pasted as saved. Say “scratch that” to take back the last paste."
+                )
             }
         }
 
@@ -35,6 +42,8 @@ struct DictionarySettingsView: View {
                 return "character.book.closed"
             case .replacements:
                 return "arrow.left.arrow.right"
+            case .snippets:
+                return "text.quote"
             }
         }
     }
@@ -91,6 +100,7 @@ struct DictionarySettingsView: View {
         Picker("", selection: $selectedSection.animation(.easeInOut(duration: 0.16))) {
             Text("Vocabulary \(vocabularyWords.count)").tag(DictionarySection.spellings)
             Text("Replacements \(wordReplacements.count)").tag(DictionarySection.replacements)
+            Text("Snippets \(snippetStore.snippets.count)").tag(DictionarySection.snippets)
         }
         .pickerStyle(.segmented)
         .labelsHidden()
@@ -105,6 +115,8 @@ struct DictionarySettingsView: View {
             VocabularyView()
         case .replacements:
             WordReplacementView()
+        case .snippets:
+            VoiceSnippetsView()
         }
     }
 }

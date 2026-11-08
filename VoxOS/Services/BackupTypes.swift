@@ -75,6 +75,8 @@ struct GeneralBackup: Codable {
     let cancelRecorderShortcut: ShortcutBackup?
     let openHistoryWindowShortcut: ShortcutBackup?
     let quickAddToDictionaryShortcut: ShortcutBackup?
+    /// Absent from backups made before Undo Last Paste.
+    let undoLastPasteShortcut: ShortcutBackup?
     let primaryRecordingShortcutRawValue: String?
     let secondaryRecordingShortcutRawValue: String?
     let primaryRecordingShortcutModeRawValue: String?

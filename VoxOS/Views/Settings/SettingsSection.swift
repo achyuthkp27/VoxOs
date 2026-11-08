@@ -24,7 +24,7 @@ enum SettingsSection: CaseIterable, Hashable {
         case .additionalShortcuts:
             return [
                 "Additional Shortcuts", "Paste Last Transcription (Original)", "Paste Last Transcription (Enhanced)",
-                "Retry Last Transcription", "Reset to default", "Cancel Recording", "Middle-Click Recording",
+                "Retry Last Transcription", "Undo Last Paste", "Reset to default", "Cancel Recording", "Middle-Click Recording",
                 "Activation Delay",
             ]
         case .recorder:
@@ -112,7 +112,7 @@ enum SettingsSection: CaseIterable, Hashable {
     var synonyms: [String] {
         switch self {
         case .shortcuts: return ["hotkey", "fn", "dictation"]
-        case .additionalShortcuts: return ["hotkey", "escape"]
+        case .additionalShortcuts: return ["hotkey", "escape", "scratch that", "undo"]
         case .recorder: return ["edge history", "hover", "battery", "power"]
         case .pasting: return ["clipboard"]
         case .transcription:

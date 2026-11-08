@@ -146,6 +146,9 @@ enum BackupImporter {
         if let dictionaryShortcut = general.quickAddToDictionaryShortcut {
             ShortcutStore.setShortcut(dictionaryShortcut.shortcut, for: .quickAddToDictionary)
         }
+        if let undoShortcut = general.undoLastPasteShortcut {
+            ShortcutStore.setShortcut(undoShortcut.shortcut, for: .undoLastPaste)
+        }
 
         if let shortcutRawValue = general.primaryRecordingShortcutRawValue,
             let shortcut = RecordingShortcutManager.ShortcutSelection(rawValue: shortcutRawValue)
@@ -245,6 +248,7 @@ enum BackupImporter {
             }) {
                 PasteMethod.setCurrent(method)
             }
+            VoiceSnippetStore.shared.reload()
         }
 
         logger.info("Successfully imported general settings.")

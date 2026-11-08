@@ -70,6 +70,7 @@ class CursorPaster {
         await wait(prePasteDelay)
 
         let pasteResult = await postPasteCommand()
+        if pasteResult.didPostPasteCommand { PasteUndo.recordPaste() }
         if shouldRestoreClipboard {
             scheduleClipboardRestore(
                 savedContents,

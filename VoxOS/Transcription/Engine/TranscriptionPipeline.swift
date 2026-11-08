@@ -66,6 +66,8 @@ class TranscriptionPipeline {
     ) async {
         let model = transcriptionConfiguration.model
         var finalText: String?
+        /// A snippet, pasted exactly as saved.
+        var isVerbatim = false
         var responseError: String?
         var outputForDelivery: OutputRuntimeConfiguration?
         var responseConfig: EnhancementRuntimeConfiguration?
@@ -120,10 +122,8 @@ class TranscriptionPipeline {
 
             text = text.trimmingCharacters(in: .whitespacesAndNewlines)
 
-            // Silence or an unintelligible hold produces no words. Rather than opening an empty
-            // assistant panel and leaving a blank row in history, drop the recording quietly.
-            if text.isEmpty {
-                logger.info("Transcription produced no words; discarding the recording")
+            /// Drops the recording and its history row, for a dictation with nothing to keep.
+            func discardRecording() async {
                 modelContext.delete(transcription)
                 do {
                     try modelContext.save()
@@ -138,6 +138,13 @@ class TranscriptionPipeline {
                 }
                 onStateChange(.idle)
                 await onDismiss()
+            }
+
+            // Silence or an unintelligible hold produces no words. Rather than opening an empty
+            // assistant panel and leaving a blank row in history, drop the recording quietly.
+            if text.isEmpty {
+                logger.info("Transcription produced no words; discarding the recording")
+                await discardRecording()
                 return
             }
 
@@ -155,11 +162,30 @@ class TranscriptionPipeline {
                     ?? resolvedOutputConfiguration.mode ?? transcriptionConfiguration.mode
             )
 
-            if formattingConfiguration.isTextFormattingEnabled {
+            // A whole dictation that is "scratch that" or a snippet's trigger is a command, not text:
+            // only when it would be pasted, so the Agent and Respond still hear every word.
+            let spokenCommand =
+                assistant.isFollowUp || resolvedOutputConfiguration.outputMode != .paste
+                ? nil : SpokenCommand.interpret(text, snippets: VoiceSnippetStore.all())
+            if spokenCommand == .undoLastPaste {
+                logger.info("Dictation was an undo phrase; undoing the last paste")
+                PasteUndo.undoLastPaste()
+                await discardRecording()
+                return
+            }
+            // A snippet is pasted exactly as saved: no formatting, replacements or AI cleanup.
+            if case .snippet(let body) = spokenCommand {
+                text = body
+                isVerbatim = true
+            }
+
+            if formattingConfiguration.isTextFormattingEnabled, !isVerbatim {
                 text = ParagraphFormatter.format(text)
             }
 
-            text = WordReplacementService.shared.applyReplacements(to: text, using: modelContext)
+            if !isVerbatim {
+                text = WordReplacementService.shared.applyReplacements(to: text, using: modelContext)
+            }
             let cleanedText = text
 
             let actualDuration = await AudioFileMetadata.duration(for: audioURL)
@@ -197,10 +223,11 @@ class TranscriptionPipeline {
                 // -text shortcut would hand the raw instruction to delivery and paste it over
                 // whatever the user had selected.
                 let shouldSkipEnhancement =
-                    !shouldRespondInRecorder
-                    && !resolvedOutputConfiguration.outputMode.requiresSelectedText
-                    && isSkipShortEnhancementEnabled
-                    && WordCounter.count(in: text) <= shortEnhancementWordThreshold
+                    isVerbatim
+                    || (!shouldRespondInRecorder
+                        && !resolvedOutputConfiguration.outputMode.requiresSelectedText
+                        && isSkipShortEnhancementEnabled
+                        && WordCounter.count(in: text) <= shortEnhancementWordThreshold)
 
                 // Checked before the enhancement branch, not inside it: a rewrite whose
                 // provider is unconfigured, whose enhancement is off, or which was skipped
@@ -363,7 +390,8 @@ class TranscriptionPipeline {
                 output: outputForDelivery ?? outputConfiguration(),
                 responseConfig: responseConfig,
                 responseError: responseError,
-                isAssistantFollowUp: assistant.isFollowUp
+                isAssistantFollowUp: assistant.isFollowUp,
+                isVerbatim: isVerbatim
             ),
             actions: TranscriptionDelivery.Actions(
                 setState: onStateChange,

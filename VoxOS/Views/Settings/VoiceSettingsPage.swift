@@ -176,6 +176,20 @@ struct VoiceSettingsPage: View {
                     }
 
                     LabeledContent {
+                        ShortcutRecorder(action: .undoLastPaste) {
+                            recordingShortcutManager.updateShortcutStatus()
+                        }
+                        .controlSize(.small)
+                    } label: {
+                        HStack(spacing: 2) {
+                            Text("Undo Last Paste")
+                            InfoTip(
+                                "Takes back the text VoxOS just pasted, as ⌘Z would, while that app is still in front. Saying “scratch that” on its own does the same."
+                            )
+                        }
+                    }
+
+                    LabeledContent {
                         HStack(spacing: 8) {
                             ShortcutRecorder(
                                 action: .cancelRecorder,

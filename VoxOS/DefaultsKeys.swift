@@ -191,6 +191,8 @@ enum DefaultsKeys {
     static let dismissedCorrectionSuggestions = "dismissedCorrectionSuggestions"
     /// History → Review suggestions the user said were not mishearings.
     static let dismissedReviewSuggestions = "dismissedReviewSuggestions"
+    /// Voice snippets: trigger phrase to the text pasted when it is the whole dictation.
+    static let voiceSnippets = "VoiceSnippets"
 
     // MARK: Licensing
     static let voxOSLicenseRequiresActivation = "VoxOSLicenseRequiresActivation"

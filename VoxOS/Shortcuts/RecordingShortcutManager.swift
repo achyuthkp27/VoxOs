@@ -478,6 +478,8 @@ class RecordingShortcutManager: ObservableObject {
             )
         case .quickAddToDictionary:
             DictionaryQuickAddManager.shared.toggle(modelContainer: engine.modelContext.container)
+        case .undoLastPaste:
+            PasteUndo.undoLastPaste()
         case .captureSystemAudio:
             await SystemAudioCaptureController.shared.toggleCapture()
         case .recallSystemAudio:

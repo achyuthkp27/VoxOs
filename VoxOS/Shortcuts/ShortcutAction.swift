@@ -9,6 +9,7 @@ enum ShortcutAction: Hashable {
     case cancelRecorder
     case openHistoryWindow
     case quickAddToDictionary
+    case undoLastPaste
     case captureSystemAudio
     case recallSystemAudio
     case agentDoubleTap
@@ -48,6 +49,8 @@ enum ShortcutAction: Hashable {
             return "openHistoryWindow"
         case .quickAddToDictionary:
             return "quickAddToDictionary"
+        case .undoLastPaste:
+            return "undoLastPaste"
         case .captureSystemAudio:
             return "captureSystemAudio"
         case .recallSystemAudio:
@@ -83,6 +86,8 @@ enum ShortcutAction: Hashable {
             return String(localized: "Open History Window")
         case .quickAddToDictionary:
             return String(localized: "Quick Add to Dictionary")
+        case .undoLastPaste:
+            return String(localized: "Undo Last Paste")
         case .captureSystemAudio:
             return String(localized: "Capture System Audio")
         case .recallSystemAudio:
@@ -112,6 +117,7 @@ enum ShortcutAction: Hashable {
         .pasteLastTranscription,
         .pasteLastEnhancement,
         .retryLastTranscription,
+        .undoLastPaste,
         .openHistoryWindow,
         .quickAddToDictionary,
         .captureSystemAudio,
