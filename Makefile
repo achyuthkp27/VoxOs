@@ -38,7 +38,7 @@ LOCAL_CODESIGN_IDENTITY ?=
 # lying around in ~/Downloads for Spotlight to index.
 INSTALL_PATH ?= /Applications/VoxOS.app
 
-.PHONY: parakeet-redux all clean whisper setup build local check healthcheck help dev run release release-setup test lint format
+.PHONY: parakeet-redux all clean whisper setup build local check healthcheck help dev run release release-setup test lint format hooks
 
 # Default target
 all: check build
@@ -198,6 +198,7 @@ help:
 	@echo "  test               Run the unit tests"
 	@echo "  lint               Check formatting with swift-format"
 	@echo "  format             Reformat sources in place with swift-format"
+	@echo "  hooks              Run lint before every git push"
 	@echo "  dev                Build and run the app (for development)"
 	@echo "  release            Build DMG and Appcast using release-notes/<version>.html"
 	@echo "  release-setup      Store notarization credentials in Keychain"
@@ -258,6 +259,11 @@ lint:
 
 format:
 	@xcrun swift-format format --in-place --recursive --parallel $(SWIFT_FORMAT_PATHS)
+
+# Points git at scripts/git-hooks, whose pre-push hook runs `make lint`.
+hooks:
+	@git config core.hooksPath scripts/git-hooks
+	@echo "Git hooks on: lint runs before every push (skip once with git push --no-verify)."
 
 # Local Parakeet Redux transcription server (see scripts/parakeet-redux/README.md)
 parakeet-redux:

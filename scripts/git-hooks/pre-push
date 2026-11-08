@@ -1,0 +1,10 @@
+#!/bin/sh
+# Runs before every push once `make hooks` has pointed git here. Lint takes seconds, so a
+# formatting slip is caught on this Mac instead of after the push. The tests stay a manual
+# `make test`: they take minutes and need the machine to themselves.
+# Skip once with: git push --no-verify
+cd "$(git rev-parse --show-toplevel)" || exit 1
+if ! make lint; then
+    echo "pre-push: lint failed. Run 'make format', commit, and push again." >&2
+    exit 1
+fi

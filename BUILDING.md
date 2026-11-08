@@ -53,6 +53,7 @@ for macOS permissions again after a rebuild.
 - `make run` — launch the installed app
 - `make test` — run the test suite (see "Development" in the README)
 - `make lint` / `make format` — check or apply swift-format
+- `make hooks` — run `make lint` before every `git push` (once per clone)
 - `make release` — build the signed DMG and Sparkle appcast from `release-notes/<version>.html`
 - `make release-setup` — store notarization credentials in Keychain
 - `make clean` — remove build artifacts
