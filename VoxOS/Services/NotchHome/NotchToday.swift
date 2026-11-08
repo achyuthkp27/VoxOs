@@ -249,6 +249,7 @@ final class NotchToday: ObservableObject {
         guard let url = event.joinURL else { return }
         ActivityTrail.mark("notch meeting joined")
         NSWorkspace.shared.open(url)
+        MeetingNotes.shared.joined(title: event.title, end: event.end)
         if meeting?.id == event.id { dismissMeeting() }
     }
 

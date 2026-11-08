@@ -24,6 +24,7 @@ struct NotchSettingsPage: View {
     @AppStorage(DefaultsKeys.notchRainEnabled) private var notchRainEnabled = true
     @AppStorage(DefaultsKeys.notchUnreadEnabled) private var notchUnreadEnabled = true
     @AppStorage(DefaultsKeys.notchMeetingsEnabled) private var notchMeetingsEnabled = true
+    @AppStorage(DefaultsKeys.meetingNotesEnabled) private var meetingNotesEnabled = false
     @AppStorage(DefaultsKeys.notchMusicEnabled) private var notchMusicEnabled = true
     @AppStorage(DefaultsKeys.notchMusicBarsEnabled) private var notchMusicBarsEnabled = false
     @AppStorage(DefaultsKeys.notchMusicBarsOnBattery) private var notchMusicBarsOnBattery = true
@@ -258,6 +259,14 @@ struct NotchSettingsPage: View {
                             Text("Meeting Countdown")
                             InfoTip(
                                 "Five minutes before a meeting in your calendar, the notch counts down to it, with Join when the event has a video-call link. Needs Calendar access, which the Calendar page asks for."
+                            )
+                        }
+                    }
+                    Toggle(isOn: $meetingNotesEnabled) {
+                        HStack(spacing: 2) {
+                            Text("Meeting Notes")
+                            InfoTip(
+                                "When you join a call with Join, VoxOS records the call’s sound (what the Mac plays, never your microphone) until the meeting ends, then saves a transcript with who spoke, a summary and action items to History. Needs System Audio Recording; the summary needs an AI model. Stop early from the menu bar."
                             )
                         }
                     }

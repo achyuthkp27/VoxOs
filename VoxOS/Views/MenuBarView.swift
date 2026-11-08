@@ -16,6 +16,7 @@ struct MenuBarView: View {
     @ObservedObject private var launchAtLoginManager = LaunchAtLoginManager.shared
     @ObservedObject private var modeManager = ModeManager.shared
     @ObservedObject var audioDeviceManager = AudioDeviceManager.shared
+    @ObservedObject private var meetingNotes = MeetingNotes.shared
     @AppStorage(DefaultsKeys.hasCompletedOnboardingV2) private var hasCompletedOnboardingV2 = false
     @AppStorage(DefaultsKeys.voiceAssistantEnabled) private var voiceEnabled = true
     @AppStorage(DefaultsKeys.notchMasterEnabled) private var notchEnabled = true
@@ -48,6 +49,12 @@ struct MenuBarView: View {
         Group {
             Button("Toggle Recorder") {
                 recorderUIManager.handleToggleRecorderPanelNotification()
+            }
+
+            if let meeting = meetingNotes.session {
+                Button("Stop Meeting Notes for “\(meeting.title)”") {
+                    Task { await meetingNotes.stop() }
+                }
             }
 
             Divider()

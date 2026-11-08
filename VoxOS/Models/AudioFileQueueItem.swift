@@ -30,9 +30,15 @@ class AudioFileQueueItem: Identifiable, ObservableObject {
 
     @Published var status: QueueItemStatus = .pending
     @Published var transcription: Transcription?
+    /// Used for the AI step instead of the mode's prompt: Meeting Notes' summary.
+    let prompt: CustomPrompt?
+    /// The file is a temporary recording, deleted once its copy is saved with the transcript.
+    let deletesSourceWhenDone: Bool
 
-    init(url: URL) {
+    init(url: URL, prompt: CustomPrompt? = nil, deletesSourceWhenDone: Bool = false) {
         self.url = url
         self.filename = url.lastPathComponent
+        self.prompt = prompt
+        self.deletesSourceWhenDone = deletesSourceWhenDone
     }
 }

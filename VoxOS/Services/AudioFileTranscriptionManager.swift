@@ -25,8 +25,9 @@ class AudioTranscriptionManager: ObservableObject {
 
     // MARK: - Queue Management
 
-    /// Add one or more audio file URLs to the queue. Invalid files are silently skipped.
-    func addToQueue(urls: [URL]) {
+    /// Add one or more audio file URLs to the queue. Invalid files are silently skipped. A
+    /// `prompt` replaces the mode's prompt for these files' AI step.
+    func addToQueue(urls: [URL], prompt: CustomPrompt? = nil, deletesSourceWhenDone: Bool = false) {
         for url in urls {
             guard FileManager.default.fileExists(atPath: url.path) else { continue }
             guard SupportedMedia.isSupported(url: url) else { continue }
@@ -37,7 +38,7 @@ class AudioTranscriptionManager: ObservableObject {
                 continue
             }
 
-            let item = AudioFileQueueItem(url: url)
+            let item = AudioFileQueueItem(url: url, prompt: prompt, deletesSourceWhenDone: deletesSourceWhenDone)
             queue.append(item)
         }
     }
@@ -226,7 +227,7 @@ class AudioTranscriptionManager: ObservableObject {
             // Handle enhancement if enabled
             var transcription: Transcription
 
-            let enhancementConfiguration = engine.enhancementService
+            let modeEnhancementConfiguration = engine.enhancementService
                 .flatMap { enhancementService in
                     enhancementService.getAIService().map { aiService in
                         ModeRuntimeResolver.currentEnhancementConfiguration(
@@ -236,6 +237,12 @@ class AudioTranscriptionManager: ObservableObject {
                         )
                     }
                 }
+            // An item's own prompt (Meeting Notes) runs on the mode's model even when the mode
+            // leaves AI cleanup off, since the summary is what the user asked for.
+            var enhancementConfiguration = modeEnhancementConfiguration
+            if let prompt = item.prompt {
+                enhancementConfiguration = modeEnhancementConfiguration?.replacingPrompt(prompt)
+            }
 
             if let enhancementService = engine.enhancementService,
                 let enhancementConfiguration,
@@ -299,6 +306,7 @@ class AudioTranscriptionManager: ObservableObject {
             item.transcription = transcription
             item.status = .completed
             lastCompletedItemId = item.id
+            if item.deletesSourceWhenDone { try? FileManager.default.removeItem(at: item.url) }
 
         } catch {
             if Task.isCancelled || error is CancellationError {

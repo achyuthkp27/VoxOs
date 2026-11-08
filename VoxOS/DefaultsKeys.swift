@@ -124,6 +124,8 @@ enum DefaultsKeys {
     static let notchPrivacyEnabled = "NotchPrivacyEnabled"
     /// A countdown band for the next meeting, with Join when it has a call link.
     static let notchMeetingsEnabled = "NotchMeetingsEnabled"
+    /// Joining a call from VoxOS records its sound and writes meeting notes to History. Off by default.
+    static let meetingNotesEnabled = "MeetingNotesEnabled"
     /// The notch shows the playing track and opens into a player on hover.
     static let notchMusicEnabled = "NotchMusicEnabled"
     /// The notch's music bars follow the real audio (needs System Audio Recording).
