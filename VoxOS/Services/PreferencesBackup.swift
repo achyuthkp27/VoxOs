@@ -53,8 +53,8 @@ struct PreferencesBackup: Codable, Equatable {
         DefaultsKeys.agentAutoCloseAfterOpen, AgentShell.allowRiskyKey, DefaultsKeys.agentLearningLanguage,
         // Dictionary and the rest
         DefaultsKeys.vocabularySortMode, DefaultsKeys.wordReplacementSortMode,
-        DefaultsKeys.dismissedCorrectionSuggestions, DefaultsKeys.dismissedReviewSuggestions, DefaultsKeys.voiceSnippets,
-        DefaultsKeys.dashboardDisplayName,
+        DefaultsKeys.dismissedCorrectionSuggestions, DefaultsKeys.dismissedReviewSuggestions,
+        DefaultsKeys.voiceSnippets, DefaultsKeys.dashboardDisplayName,
     ]
 
     /// Backed up by a named field of `GeneralBackup`, or by another backup category.
