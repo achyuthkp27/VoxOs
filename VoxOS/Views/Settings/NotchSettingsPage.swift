@@ -25,7 +25,7 @@ struct NotchSettingsPage: View {
     @AppStorage(DefaultsKeys.notchUnreadEnabled) private var notchUnreadEnabled = true
     @AppStorage(DefaultsKeys.notchMeetingsEnabled) private var notchMeetingsEnabled = true
     @AppStorage(DefaultsKeys.meetingNotesEnabled) private var meetingNotesEnabled = false
-    @AppStorage(DefaultsKeys.meetingNotesIncludeMicrophone) private var meetingNotesIncludeMicrophone = false
+    @AppStorage(DefaultsKeys.meetingNotesIncludeMicrophone) private var meetingNotesIncludeMicrophone = true
     @AppStorage(DefaultsKeys.notchMusicEnabled) private var notchMusicEnabled = true
     @AppStorage(DefaultsKeys.notchMusicBarsEnabled) private var notchMusicBarsEnabled = false
     @AppStorage(DefaultsKeys.notchMusicBarsOnBattery) private var notchMusicBarsOnBattery = true
@@ -267,7 +267,7 @@ struct NotchSettingsPage: View {
                         HStack(spacing: 2) {
                             Text("Meeting Notes")
                             InfoTip(
-                                "When you join a call with Join, or start from the menu bar, VoxOS records the call’s sound (what the Mac plays; your microphone only with Include My Microphone) until the meeting ends, then saves a transcript with who spoke, a summary and action items to History. Needs System Audio Recording; the summary needs an AI model. Stop early from the menu bar; a meeting under way when VoxOS quits is written up at the next launch."
+                                "When you join a call with Join, or start from the menu bar or its shortcut, VoxOS records both sides of the call (what the Mac plays and your microphone) until the meeting ends, then saves a transcript with who spoke, a summary and action items to History. Needs System Audio Recording; the summary needs an AI model. Stop early from the menu bar; a meeting under way when VoxOS quits is written up at the next launch."
                             )
                         }
                     }
@@ -276,7 +276,7 @@ struct NotchSettingsPage: View {
                             HStack(spacing: 2) {
                                 Text("Include My Microphone")
                                 InfoTip(
-                                    "Your microphone is recorded too and mixed with the call, so the notes have your side of the conversation. Off, only the other people are heard."
+                                    "On, your microphone is recorded with the call, so the notes have both sides of the conversation. Off, only what the Mac plays is recorded: the other people, not you. Headphones give the cleanest transcript; with speakers your microphone hears the call too."
                                 )
                             }
                         }

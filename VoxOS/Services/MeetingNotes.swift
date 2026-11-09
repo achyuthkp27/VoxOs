@@ -6,8 +6,9 @@ import os
 /// Notes for a call: its sound is recorded while it lasts, then transcribed with who spoke,
 /// summarized with action items, and saved to History.
 ///
-/// What the Mac plays is recorded, so the other people in the call; the microphone too only
-/// with Include My Microphone on. It starts when Join is clicked in the notch or on the
+/// Both sides are recorded: what the Mac plays, so the other people in the call, and the
+/// microphone, so you, mixed together when the call ends. Include My Microphone, on by
+/// default, can leave the microphone out. It starts when Join is clicked in the notch or on the
 /// Calendar page with Meeting Notes on, or from Start Meeting Notes in the menu bar. It stops at
 /// the meeting's end, or later while the call app still has the microphone, or from the menu
 /// bar. A recording under way when VoxOS quits is saved and written up at the next launch.
@@ -29,8 +30,11 @@ final class MeetingNotes: ObservableObject {
     @Published private(set) var session: Session?
 
     static var isEnabled: Bool { UserDefaults.standard.bool(forKey: DefaultsKeys.meetingNotesEnabled) }
-    static var includesMicrophone: Bool {
-        UserDefaults.standard.bool(forKey: DefaultsKeys.meetingNotesIncludeMicrophone)
+    static var includesMicrophone: Bool { includesMicrophone(in: .standard) }
+
+    /// A meeting has two sides, so the microphone is recorded unless the user turned it off.
+    nonisolated static func includesMicrophone(in defaults: UserDefaults) -> Bool {
+        defaults.object(forKey: DefaultsKeys.meetingNotesIncludeMicrophone) as? Bool ?? true
     }
 
     /// How long past its scheduled end a call is followed while it still has the microphone.

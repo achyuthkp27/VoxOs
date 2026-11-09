@@ -41,6 +41,15 @@ struct MeetingNotesTests {
         #expect(!MeetingNotes.shouldKeepRecording(session: session(minutes: 600), now: at(240), callStillOn: true))
     }
 
+    @Test func bothSidesAreRecordedUntilTheMicrophoneIsSwitchedOff() {
+        let name = "MeetingNotesTests.\(UUID().uuidString)"
+        let defaults = UserDefaults(suiteName: name)!
+        defer { defaults.removePersistentDomain(forName: name) }
+        #expect(MeetingNotes.includesMicrophone(in: defaults), "a meeting has two sides")
+        defaults.set(false, forKey: DefaultsKeys.meetingNotesIncludeMicrophone)
+        #expect(!MeetingNotes.includesMicrophone(in: defaults))
+    }
+
     @Test func aMeetingStartedByHandRunsUntilStopped() {
         var byHand = session(minutes: 0)
         byHand.endsByHand = true

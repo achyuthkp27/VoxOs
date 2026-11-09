@@ -126,7 +126,7 @@ enum DefaultsKeys {
     static let notchMeetingsEnabled = "NotchMeetingsEnabled"
     /// Joining a call from VoxOS records its sound and writes meeting notes to History. Off by default.
     static let meetingNotesEnabled = "MeetingNotesEnabled"
-    /// Meeting notes also record the microphone, mixed with the call. Off by default.
+    /// Meeting notes record the microphone too, mixed with the call, so both sides are heard. On by default.
     static let meetingNotesIncludeMicrophone = "MeetingNotesIncludeMicrophone"
     /// Meetings recorded when VoxOS quit, written up at the next launch: path and title.
     static let meetingNotesPending = "MeetingNotesPending"
