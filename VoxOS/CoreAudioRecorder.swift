@@ -861,23 +861,24 @@ final class CoreAudioRecorder: @unchecked Sendable {
 
         guard totalSamples > 0 else { return }
 
+        let levels = Self.meterLevels(UnsafeBufferPointer(start: samples, count: totalSamples))
+        averagePowerBits.store(levels.average.bitPattern, ordering: .relaxed)
+        peakPowerBits.store(levels.peak.bitPattern, ordering: .relaxed)
+    }
+
+    /// The recording meter's levels in decibels: the RMS and the peak of `samples`, with
+    /// silence floored at -120 dB rather than negative infinity.
+    static func meterLevels(_ samples: UnsafeBufferPointer<Float32>) -> (average: Float, peak: Float) {
+        guard !samples.isEmpty else { return (-120, -120) }
         var sum: Float = 0.0
         var peak: Float = 0.0
-
-        for i in 0..<totalSamples {
-            let sample = abs(samples[i])
-            sum += sample * sample
-            if sample > peak {
-                peak = sample
-            }
+        for sample in samples {
+            let magnitude = abs(sample)
+            sum += magnitude * magnitude
+            if magnitude > peak { peak = magnitude }
         }
-
-        let rms = sqrt(sum / Float(totalSamples))
-        let avgDb = 20.0 * log10(max(rms, 0.000001))
-        let peakDb = 20.0 * log10(max(peak, 0.000001))
-
-        averagePowerBits.store(avgDb.bitPattern, ordering: .relaxed)
-        peakPowerBits.store(peakDb.bitPattern, ordering: .relaxed)
+        let rms = sqrt(sum / Float(samples.count))
+        return (20.0 * log10(max(rms, 0.000001)), 20.0 * log10(max(peak, 0.000001)))
     }
 
     private func enqueueInputBuffer(
