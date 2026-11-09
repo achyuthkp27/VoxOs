@@ -75,21 +75,30 @@ struct WindowSwitcherView: View {
 
     private var footer: some View {
         let quitting = switcher.quitArmed.flatMap { pid in switcher.windows.first { $0.pid == pid }?.appName }
-        let text: Text =
+        return Group {
             if let quitting {
                 Text("Press Q again to quit \(quitting)")
             } else if switcher.searching {
                 Text("Type to search · ⌫ to go back · Return to switch")
             } else {
-                Text(
-                    "Tab to move · release to switch · W close · M minimize · H hide · Q twice quit · L/R half · F fill · / search"
-                )
+                // One line when the grid is wide enough for it (three windows or more);
+                // otherwise two, split between moving and acting rather than wherever the
+                // text happens to run out.
+                ViewThatFits(in: .horizontal) {
+                    Text(
+                        "Tab to move · release to switch · W close · M minimize · H hide · Q twice quit · L/R half · F fill · / search"
+                    )
+                    VStack(spacing: 2) {
+                        Text("Tab to move · release to switch · / search")
+                        Text("W close · M minimize · H hide · Q twice quit · L/R half · F fill")
+                    }
+                }
             }
-        return
-            text
-            .font(.app(size: 11))
-            .foregroundStyle(.white.opacity(quitting == nil ? 0.4 : 0.85))
-            .frame(maxWidth: .infinity, alignment: .center)
+        }
+        .font(.app(size: 11))
+        .foregroundStyle(.white.opacity(quitting == nil ? 0.4 : 0.85))
+        .multilineTextAlignment(.center)
+        .frame(maxWidth: .infinity, alignment: .center)
     }
 }
 

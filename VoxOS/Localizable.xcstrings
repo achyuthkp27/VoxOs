@@ -25948,6 +25948,22 @@
         }
       }
     },
+    "Tab to move · release to switch · / search" : {
+      "localizations" : {
+        "de" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Tab bewegen · loslassen wechselt · / suchen"
+          }
+        },
+        "zh-Hans" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Tab 移动 · 松开切换 · / 搜索"
+          }
+        }
+      }
+    },
     "Tab to move · release to switch · W close · M minimize · H hide · Q twice quit · L/R half · F fill · / search" : {
       "localizations" : {
         "de" : {
@@ -29961,6 +29977,22 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "VoxOS 使用你的麦克风来采集语音。"
+          }
+        }
+      }
+    },
+    "W close · M minimize · H hide · Q twice quit · L/R half · F fill" : {
+      "localizations" : {
+        "de" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "W schließen · M minimieren · H ausblenden · 2× Q beenden · L/R Hälfte · F füllen"
+          }
+        },
+        "zh-Hans" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "W 关闭 · M 最小化 · H 隐藏 · 两次 Q 退出 · L/R 半屏 · F 铺满"
           }
         }
       }
