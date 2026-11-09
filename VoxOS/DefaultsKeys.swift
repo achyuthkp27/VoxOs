@@ -128,6 +128,8 @@ enum DefaultsKeys {
     static let meetingNotesEnabled = "MeetingNotesEnabled"
     /// Meeting notes record the microphone too, mixed with the call, so both sides are heard. On by default.
     static let meetingNotesIncludeMicrophone = "MeetingNotesIncludeMicrophone"
+    /// A window shows the meeting's words as they are said while it is recorded. On by default.
+    static let meetingNotesLiveTranscript = "MeetingNotesLiveTranscript"
     /// Meetings recorded when VoxOS quit, written up at the next launch: path and title.
     static let meetingNotesPending = "MeetingNotesPending"
     /// The notch shows the playing track and opens into a player on hover.

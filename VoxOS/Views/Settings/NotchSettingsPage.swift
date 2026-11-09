@@ -26,6 +26,7 @@ struct NotchSettingsPage: View {
     @AppStorage(DefaultsKeys.notchMeetingsEnabled) private var notchMeetingsEnabled = true
     @AppStorage(DefaultsKeys.meetingNotesEnabled) private var meetingNotesEnabled = false
     @AppStorage(DefaultsKeys.meetingNotesIncludeMicrophone) private var meetingNotesIncludeMicrophone = true
+    @AppStorage(DefaultsKeys.meetingNotesLiveTranscript) private var meetingNotesLiveTranscript = true
     @AppStorage(DefaultsKeys.notchMusicEnabled) private var notchMusicEnabled = true
     @AppStorage(DefaultsKeys.notchMusicBarsEnabled) private var notchMusicBarsEnabled = false
     @AppStorage(DefaultsKeys.notchMusicBarsOnBattery) private var notchMusicBarsOnBattery = true
@@ -277,6 +278,14 @@ struct NotchSettingsPage: View {
                                 Text("Include My Microphone")
                                 InfoTip(
                                     "On, your microphone is recorded with the call, so the notes have both sides of the conversation. Off, only what the Mac plays is recorded: the other people, not you. Headphones give the cleanest transcript; with speakers your microphone hears the call too."
+                                )
+                            }
+                        }
+                        Toggle(isOn: $meetingNotesLiveTranscript) {
+                            HStack(spacing: 2) {
+                                Text("Show Live Transcript")
+                                InfoTip(
+                                    "While a meeting is recorded, a small window shows what is being said, transcribed every few seconds with the mode's speech model. The notes in History are written from the whole recording afterwards, with who spoke."
                                 )
                             }
                         }

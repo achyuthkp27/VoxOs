@@ -55,6 +55,7 @@ struct MenuBarView: View {
                 Button("Stop Meeting Notes for “\(meeting.title)”") {
                     Task { await meetingNotes.stop() }
                 }
+                Button("Show Live Transcript") { meetingNotes.showLiveTranscript() }
             } else {
                 Button("Start Meeting Notes") { meetingNotes.startByHand() }
             }

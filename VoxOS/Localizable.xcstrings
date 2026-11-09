@@ -2898,6 +2898,22 @@
         }
       }
     },
+    "A part could not be transcribed; the notes in History will still have it." : {
+      "localizations" : {
+        "de" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Ein Teil konnte nicht transkribiert werden; die Notizen im Verlauf enthalten ihn trotzdem."
+          }
+        },
+        "zh-Hans" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "有一部分未能转写；历史记录中的纪要仍会包含它。"
+          }
+        }
+      }
+    },
     "A short notice when AirPods or another Bluetooth device connects (with its battery), when the sound moves to another output, when Wi-Fi joins or drops, and when the power adapter goes in or out or the battery runs low." : {
       "localizations" : {
         "de" : {
@@ -15265,6 +15281,22 @@
         }
       }
     },
+    "Live Transcript" : {
+      "localizations" : {
+        "de" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Live-Transkript"
+          }
+        },
+        "zh-Hans" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "实时转写"
+          }
+        }
+      }
+    },
     "Live music bars: off" : {
       "localizations" : {
         "de" : {
@@ -16068,6 +16100,22 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "%@ 的会议"
+          }
+        }
+      }
+    },
+    "Meeting ended. The notes are being written up in History." : {
+      "localizations" : {
+        "de" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Besprechung beendet. Die Notizen werden im Verlauf ausgearbeitet."
+          }
+        },
+        "zh-Hans" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "会议已结束。纪要正在历史记录中整理。"
           }
         }
       }
@@ -17344,6 +17392,7 @@
       }
     },
     "No display is available to capture system audio from." : {
+      "extractionState" : "stale",
       "localizations" : {
         "de" : {
           "stringUnit" : {
@@ -17991,6 +18040,38 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "未导入任何设置。"
+          }
+        }
+      }
+    },
+    "No sound output is available to capture system audio from." : {
+      "localizations" : {
+        "de" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Keine Tonausgabe verfügbar, um Systemaudio aufzunehmen."
+          }
+        },
+        "zh-Hans" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "没有可用于捕获系统音频的声音输出。"
+          }
+        }
+      }
+    },
+    "No speech model is set up, so the live transcript is off." : {
+      "localizations" : {
+        "de" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Kein Sprachmodell eingerichtet, daher ist das Live-Transkript aus."
+          }
+        },
+        "zh-Hans" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "尚未设置语音模型，因此实时转写已关闭。"
           }
         }
       }
@@ -22624,6 +22705,7 @@
       }
     },
     "Requires Screen Recording permission. Captures only what your Mac plays — never your microphone." : {
+      "extractionState" : "stale",
       "localizations" : {
         "de" : {
           "stringUnit" : {
@@ -22635,6 +22717,22 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "需要屏幕录制权限。仅捕获 Mac 播放的声音——绝不录制你的麦克风。"
+          }
+        }
+      }
+    },
+    "Requires System Audio Recording permission. Captures only what your Mac plays — never your microphone or screen." : {
+      "localizations" : {
+        "de" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Erfordert die Berechtigung Systemaudioaufnahme. Nimmt nur auf, was dein Mac abspielt – nie dein Mikrofon oder deinen Bildschirm."
+          }
+        },
+        "zh-Hans" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "需要系统音频录制权限。仅捕获 Mac 播放的声音——绝不录制你的麦克风或屏幕。"
           }
         }
       }
@@ -24972,6 +25070,22 @@
         }
       }
     },
+    "Show Live Transcript" : {
+      "localizations" : {
+        "de" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Live-Transkript anzeigen"
+          }
+        },
+        "zh-Hans" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "显示实时转写"
+          }
+        }
+      }
+    },
     "Show Usage Limits and Costs" : {
       "localizations" : {
         "de" : {
@@ -26045,6 +26159,22 @@
         }
       }
     },
+    "Stop" : {
+      "localizations" : {
+        "de" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Stopp"
+          }
+        },
+        "zh-Hans" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "停止"
+          }
+        }
+      }
+    },
     "Stop Dictation When You Stop Talking" : {
       "localizations" : {
         "de" : {
@@ -26057,6 +26187,22 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "停止说话时结束听写"
+          }
+        }
+      }
+    },
+    "Stop Meeting Notes" : {
+      "localizations" : {
+        "de" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Besprechungsnotizen beenden"
+          }
+        },
+        "zh-Hans" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "停止会议纪要"
           }
         }
       }
@@ -28311,6 +28457,22 @@
         }
       }
     },
+    "Transcribing…" : {
+      "localizations" : {
+        "de" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Wird transkribiert …"
+          }
+        },
+        "zh-Hans" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "正在转写…"
+          }
+        }
+      }
+    },
     "Transcript Cleanup" : {
       "localizations" : {
         "de" : {
@@ -30471,6 +30633,7 @@
       }
     },
     "VoxOS needs Screen Recording permission to capture system audio." : {
+      "extractionState" : "stale",
       "localizations" : {
         "de" : {
           "stringUnit" : {
@@ -30482,6 +30645,22 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "VoxOS 需要屏幕录制权限才能捕获系统音频。"
+          }
+        }
+      }
+    },
+    "VoxOS needs System Audio Recording permission to capture system audio." : {
+      "localizations" : {
+        "de" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "VoxOS benötigt die Berechtigung Systemaudioaufnahme, um Systemaudio aufzunehmen."
+          }
+        },
+        "zh-Hans" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "VoxOS 需要系统音频录制权限才能捕获系统音频。"
           }
         }
       }
@@ -30822,6 +31001,22 @@
         }
       }
     },
+    "What is said shows here a few seconds later." : {
+      "localizations" : {
+        "de" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Was gesagt wird, erscheint hier einige Sekunden später."
+          }
+        },
+        "zh-Hans" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "所说的内容会在几秒后显示在这里。"
+          }
+        }
+      }
+    },
     "What should change?" : {
       "localizations" : {
         "de" : {
@@ -31027,6 +31222,22 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "当你说…"
+          }
+        }
+      }
+    },
+    "While a meeting is recorded, a small window shows what is being said, transcribed every few seconds with the mode's speech model. The notes in History are written from the whole recording afterwards, with who spoke." : {
+      "localizations" : {
+        "de" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Während eine Besprechung aufgenommen wird, zeigt ein kleines Fenster, was gesagt wird, alle paar Sekunden mit dem Sprachmodell des Modus transkribiert. Die Notizen im Verlauf werden danach aus der ganzen Aufnahme erstellt, mit den Sprechern."
+          }
+        },
+        "zh-Hans" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "录制会议时，一个小窗口会显示正在说的内容，每隔几秒用当前模式的语音模型转写一次。历史记录中的纪要会在之后根据完整录音生成，并标注说话人。"
           }
         }
       }

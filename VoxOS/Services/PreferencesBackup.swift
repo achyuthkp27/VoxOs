@@ -35,7 +35,8 @@ struct PreferencesBackup: Codable, Equatable {
         DefaultsKeys.notchMirrorEnabled, DefaultsKeys.notchClipboardEnabled, DefaultsKeys.notchLyricsEnabled,
         DefaultsKeys.notchRainEnabled, DefaultsKeys.notchUnreadEnabled, DefaultsKeys.notchPrivacyEnabled,
         DefaultsKeys.notchMeetingsEnabled, DefaultsKeys.meetingNotesEnabled,
-        DefaultsKeys.meetingNotesIncludeMicrophone, DefaultsKeys.notchMusicEnabled,
+        DefaultsKeys.meetingNotesIncludeMicrophone, DefaultsKeys.meetingNotesLiveTranscript,
+        DefaultsKeys.notchMusicEnabled,
         DefaultsKeys.notchMusicBarsEnabled, DefaultsKeys.notchMusicBarsOnBattery,
         // Claude Code: how its cards behave, not whether its hooks are installed on this Mac
         DefaultsKeys.claudeCodeApprovalsEnabled, DefaultsKeys.claudeCodeStatusEnabled,

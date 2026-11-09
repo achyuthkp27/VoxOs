@@ -47,7 +47,7 @@ final class MeetingNotes: ObservableObject {
     private let logger = Logger(subsystem: "com.achyuthkp.voxos", category: "MeetingNotes")
     private weak var engine: VoxOSEngine?
     private var checkTimer: Timer?
-    private var microphoneRecorder: AVAudioRecorder?
+    private var microphone: MeetingMicrophone?
 
     private init() {}
 
@@ -107,12 +107,17 @@ final class MeetingNotes: ObservableObject {
         let now = Date()
         var session = Session(
             title: title, startedAt: now, scheduledEnd: max(end, now), url: url, endsByHand: byHand)
+        let showsLive = MeetingLiveTranscript.isEnabled
         if Self.includesMicrophone {
             session.microphoneURL = startMicrophone(
-                to: Self.directory.appendingPathComponent("meeting_\(id)_mic.wav"))
+                to: Self.directory.appendingPathComponent("meeting_\(id)_mic.wav"), live: showsLive)
         }
         self.session = session
         ActivityTrail.mark("meeting notes started")
+        if showsLive, let engine, let mode = ModeManager.shared.currentEffectiveConfiguration {
+            MeetingLiveTranscript.shared.start(title: title, engine: engine, mode: mode, microphone: microphone)
+            LiveTranscriptWindow.shared.show()
+        }
         NotificationManager.shared.showNotification(
             title: session.microphoneURL == nil
                 ? String(localized: "Taking notes on “\(title)”: recording the call’s sound, not your microphone.")
@@ -128,21 +133,21 @@ final class MeetingNotes: ObservableObject {
 
     /// Records the default microphone in the system recording's format, so the two mix sample
     /// for sample. Nil, and the call is recorded without it, when the microphone cannot start.
-    private func startMicrophone(to url: URL) -> URL? {
-        let settings: [String: Any] = [
-            AVFormatIDKey: kAudioFormatLinearPCM,
-            AVSampleRateKey: SystemAudioCaptureService.outputSampleRate,
-            AVNumberOfChannelsKey: 1,
-            AVLinearPCMBitDepthKey: 16,
-            AVLinearPCMIsFloatKey: false,
-            AVLinearPCMIsBigEndianKey: false,
-        ]
-        guard let recorder = try? AVAudioRecorder(url: url, settings: settings), recorder.record() else {
-            logger.error("Meeting notes could not record the microphone; recording the call only")
+    private func startMicrophone(to url: URL, live: Bool) -> URL? {
+        let recorder = MeetingMicrophone()
+        do {
+            try recorder.start(to: url, live: live)
+        } catch {
+            logger.error("Meeting notes could not record the microphone, so only the call: \(error, privacy: .public)")
             return nil
         }
-        microphoneRecorder = recorder
+        microphone = recorder
         return url
+    }
+
+    /// Opens the live transcript of the meeting being recorded, after it was closed.
+    func showLiveTranscript() {
+        LiveTranscriptWindow.shared.show()
     }
 
     // MARK: Stopping
@@ -188,9 +193,10 @@ final class MeetingNotes: ObservableObject {
         self.session = nil
         checkTimer?.invalidate()
         checkTimer = nil
+        await MeetingLiveTranscript.shared.stop()
         let duration = await SystemAudioCaptureService.shared.stopCapture()
-        microphoneRecorder?.stop()
-        microphoneRecorder = nil
+        microphone?.stop()
+        microphone = nil
         ActivityTrail.mark("meeting notes stopped")
 
         guard duration >= Self.minLength else {
@@ -267,6 +273,14 @@ final class MeetingNotes: ObservableObject {
 /// sample, read and written in chunks so an hour's meeting never sits in memory at once.
 enum MeetingAudioMixer {
     enum MixError: Error { case formatsDiffer, noBuffer }
+
+    /// Two runs of samples summed, the shorter padded with silence, clipped to full scale.
+    static func mixed(_ first: [Float], _ second: [Float]) -> [Float] {
+        (0..<max(first.count, second.count)).map { i in
+            let sum = (i < first.count ? first[i] : 0) + (i < second.count ? second[i] : 0)
+            return min(1, max(-1, sum))
+        }
+    }
 
     static let chunkFrames: AVAudioFrameCount = 16_000 * 10
 
