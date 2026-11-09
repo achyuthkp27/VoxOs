@@ -25,6 +25,7 @@ struct NotchSettingsPage: View {
     @AppStorage(DefaultsKeys.notchUnreadEnabled) private var notchUnreadEnabled = true
     @AppStorage(DefaultsKeys.notchMeetingsEnabled) private var notchMeetingsEnabled = true
     @AppStorage(DefaultsKeys.meetingNotesEnabled) private var meetingNotesEnabled = false
+    @AppStorage(DefaultsKeys.meetingNotesIncludeMicrophone) private var meetingNotesIncludeMicrophone = false
     @AppStorage(DefaultsKeys.notchMusicEnabled) private var notchMusicEnabled = true
     @AppStorage(DefaultsKeys.notchMusicBarsEnabled) private var notchMusicBarsEnabled = false
     @AppStorage(DefaultsKeys.notchMusicBarsOnBattery) private var notchMusicBarsOnBattery = true
@@ -266,8 +267,18 @@ struct NotchSettingsPage: View {
                         HStack(spacing: 2) {
                             Text("Meeting Notes")
                             InfoTip(
-                                "When you join a call with Join, VoxOS records the call’s sound (what the Mac plays, never your microphone) until the meeting ends, then saves a transcript with who spoke, a summary and action items to History. Needs System Audio Recording; the summary needs an AI model. Stop early from the menu bar."
+                                "When you join a call with Join, or start from the menu bar, VoxOS records the call’s sound (what the Mac plays; your microphone only with Include My Microphone) until the meeting ends, then saves a transcript with who spoke, a summary and action items to History. Needs System Audio Recording; the summary needs an AI model. Stop early from the menu bar; a meeting under way when VoxOS quits is written up at the next launch."
                             )
+                        }
+                    }
+                    if meetingNotesEnabled {
+                        Toggle(isOn: $meetingNotesIncludeMicrophone) {
+                            HStack(spacing: 2) {
+                                Text("Include My Microphone")
+                                InfoTip(
+                                    "Your microphone is recorded too and mixed with the call, so the notes have your side of the conversation. Off, only the other people are heard."
+                                )
+                            }
                         }
                     }
                     Toggle(isOn: $notchDeviceAlertsEnabled) {

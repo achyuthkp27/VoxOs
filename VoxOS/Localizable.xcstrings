@@ -13658,6 +13658,22 @@
         }
       }
     },
+    "Include My Microphone" : {
+      "localizations" : {
+        "de" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Mein Mikrofon einbeziehen"
+          }
+        },
+        "zh-Hans" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "包含我的麦克风"
+          }
+        }
+      }
+    },
     "Individual categories" : {
       "localizations" : {
         "de" : {
@@ -15684,6 +15700,22 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "会议纪要"
+          }
+        }
+      }
+    },
+    "Meeting at %@" : {
+      "localizations" : {
+        "de" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Besprechung um %@"
+          }
+        },
+        "zh-Hans" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "%@ 的会议"
           }
         }
       }
@@ -25142,6 +25174,22 @@
         }
       }
     },
+    "Start Meeting Notes" : {
+      "localizations" : {
+        "de" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Besprechungsnotizen starten"
+          }
+        },
+        "zh-Hans" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "开始会议纪要"
+          }
+        }
+      }
+    },
     "Start Sound" : {
       "extractionState" : "stale",
       "localizations" : {
@@ -25912,6 +25960,22 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "Tab 移动 · 松开切换 · W 关闭 · M 最小化 · H 隐藏 · 两次 Q 退出 · L/R 半屏 · F 铺满 · / 搜索"
+          }
+        }
+      }
+    },
+    "Taking notes on “%@”: recording the call and your microphone." : {
+      "localizations" : {
+        "de" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Notizen zu „%@“: Der Anruf und dein Mikrofon werden aufgenommen."
+          }
+        },
+        "zh-Hans" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "正在为“%@”记录会议纪要：录制通话和你的麦克风。"
           }
         }
       }
@@ -30119,6 +30183,22 @@
         }
       }
     },
+    "When you join a call with Join, or start from the menu bar, VoxOS records the call’s sound (what the Mac plays; your microphone only with Include My Microphone) until the meeting ends, then saves a transcript with who spoke, a summary and action items to History. Needs System Audio Recording; the summary needs an AI model. Stop early from the menu bar; a meeting under way when VoxOS quits is written up at the next launch." : {
+      "localizations" : {
+        "de" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Wenn du einem Anruf mit Beitreten beitrittst oder über die Menüleiste startest, nimmt VoxOS den Ton des Anrufs auf (was der Mac abspielt; dein Mikrofon nur mit „Mein Mikrofon einbeziehen“), bis die Besprechung endet, und sichert dann ein Transkript mit den Sprechern, eine Zusammenfassung und Aufgaben im Verlauf. Erfordert Systemaudioaufnahme; die Zusammenfassung erfordert ein KI-Modell. Über die Menüleiste vorzeitig beenden; eine laufende Besprechung beim Beenden von VoxOS wird beim nächsten Start ausgearbeitet."
+          }
+        },
+        "zh-Hans" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "当你通过“加入”加入通话或从菜单栏开始时，VoxOS 会录制通话声音（Mac 播放的内容；仅在开启“包含我的麦克风”时录制你的麦克风），直到会议结束，然后将包含说话人、摘要和待办事项的转写稿存入历史记录。需要系统音频录制权限；摘要需要 AI 模型。可从菜单栏提前停止；VoxOS 退出时正在进行的会议会在下次启动时整理。"
+          }
+        }
+      }
+    },
     "When you say" : {
       "localizations" : {
         "de" : {
@@ -30898,6 +30978,22 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "你的许可证密钥已通过验证。VoxOS 已可在这台 Mac 上使用。"
+          }
+        }
+      }
+    },
+    "Your microphone is recorded too and mixed with the call, so the notes have your side of the conversation. Off, only the other people are heard." : {
+      "localizations" : {
+        "de" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Dein Mikrofon wird ebenfalls aufgenommen und mit dem Anruf gemischt, damit die Notizen auch deine Seite des Gesprächs enthalten. Wenn aus, sind nur die anderen zu hören."
+          }
+        },
+        "zh-Hans" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "你的麦克风也会被录制并与通话混合，这样纪要中会包含你这一方的发言。关闭时只录到其他人的声音。"
           }
         }
       }

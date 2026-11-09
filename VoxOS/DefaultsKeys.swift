@@ -126,6 +126,10 @@ enum DefaultsKeys {
     static let notchMeetingsEnabled = "NotchMeetingsEnabled"
     /// Joining a call from VoxOS records its sound and writes meeting notes to History. Off by default.
     static let meetingNotesEnabled = "MeetingNotesEnabled"
+    /// Meeting notes also record the microphone, mixed with the call. Off by default.
+    static let meetingNotesIncludeMicrophone = "MeetingNotesIncludeMicrophone"
+    /// Meetings recorded when VoxOS quit, written up at the next launch: path and title.
+    static let meetingNotesPending = "MeetingNotesPending"
     /// The notch shows the playing track and opens into a player on hover.
     static let notchMusicEnabled = "NotchMusicEnabled"
     /// The notch's music bars follow the real audio (needs System Audio Recording).

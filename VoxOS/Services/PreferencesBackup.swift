@@ -34,7 +34,8 @@ struct PreferencesBackup: Codable, Equatable {
         DefaultsKeys.notchMixerEnabled, DefaultsKeys.notchSoundOutputEnabled, DefaultsKeys.notchSoundInputEnabled,
         DefaultsKeys.notchMirrorEnabled, DefaultsKeys.notchClipboardEnabled, DefaultsKeys.notchLyricsEnabled,
         DefaultsKeys.notchRainEnabled, DefaultsKeys.notchUnreadEnabled, DefaultsKeys.notchPrivacyEnabled,
-        DefaultsKeys.notchMeetingsEnabled, DefaultsKeys.meetingNotesEnabled, DefaultsKeys.notchMusicEnabled,
+        DefaultsKeys.notchMeetingsEnabled, DefaultsKeys.meetingNotesEnabled,
+        DefaultsKeys.meetingNotesIncludeMicrophone, DefaultsKeys.notchMusicEnabled,
         DefaultsKeys.notchMusicBarsEnabled, DefaultsKeys.notchMusicBarsOnBattery,
         // Claude Code: how its cards behave, not whether its hooks are installed on this Mac
         DefaultsKeys.claudeCodeApprovalsEnabled, DefaultsKeys.claudeCodeStatusEnabled,
@@ -86,7 +87,7 @@ struct PreferencesBackup: Codable, Equatable {
         DefaultsKeys.currentTranscriptionModel, DefaultsKeys.currentModel, DefaultsKeys.appleFnUsageType,
         // Caches, superseded keys and where a view was left
         DefaultsKeys.openRouterModels, DefaultsKeys.aiFallbackProviders, DefaultsKeys.selectedPromptId,
-        DefaultsKeys.notchSoundSection, AppSidebar.collapsedKey,
+        DefaultsKeys.notchSoundSection, AppSidebar.collapsedKey, DefaultsKeys.meetingNotesPending,
         // Secrets and licensing
         DefaultsKeys.agentLinearAPIToken, DefaultsKeys.voxOSLicenseRequiresActivation,
         DefaultsKeys.voxOSActivationsLimit, DefaultsKeys.voxOSDeviceIdentifier,

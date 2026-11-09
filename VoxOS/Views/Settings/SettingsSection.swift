@@ -74,7 +74,7 @@ enum SettingsSection: CaseIterable, Hashable {
         case .notchNotices:
             return [
                 "Notices", "Volume & Brightness in the Notch", "Mic & Camera in Use", "Meeting Countdown",
-                "Meeting Notes",
+                "Meeting Notes", "Include My Microphone",
                 "Device Alerts", "Downloads", "Focus", "Unread Counts", "Rain Soon",
             ]
         case .claudeCode:

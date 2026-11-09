@@ -30,6 +30,16 @@ class AppDelegate: NSObject, NSApplicationDelegate {
         return true
     }
 
+    /// A meeting being recorded is saved first, to be written up at the next launch.
+    func applicationShouldTerminate(_ sender: NSApplication) -> NSApplication.TerminateReply {
+        guard MeetingNotes.shared.session != nil else { return .terminateNow }
+        Task { @MainActor in
+            await MeetingNotes.shared.stopForQuit()
+            NSApp.reply(toApplicationShouldTerminate: true)
+        }
+        return .terminateLater
+    }
+
     func applicationShouldTerminateAfterLastWindowClosed(_ sender: NSApplication) -> Bool {
         return false
     }

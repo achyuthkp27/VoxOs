@@ -1,3 +1,4 @@
+import AVFoundation
 import Foundation
 import Testing
 
@@ -40,6 +41,13 @@ struct MeetingNotesTests {
         #expect(!MeetingNotes.shouldKeepRecording(session: session(minutes: 600), now: at(240), callStillOn: true))
     }
 
+    @Test func aMeetingStartedByHandRunsUntilStopped() {
+        var byHand = session(minutes: 0)
+        byHand.endsByHand = true
+        #expect(MeetingNotes.shouldKeepRecording(session: byHand, now: at(90), callStillOn: false))
+        #expect(!MeetingNotes.shouldKeepRecording(session: byHand, now: at(240), callStillOn: true))
+    }
+
     @Test func thePromptNamesTheMeetingAndAsksForActionItems() {
         let prompt = MeetingNotes.prompt(title: "Quarterly planning")
         #expect(prompt.promptText.contains("Quarterly planning"))
@@ -74,5 +82,57 @@ struct MeetingNotesTests {
             deletesSourceWhenDone: true)
         #expect(meeting.prompt?.title == String(localized: "Meeting Notes"))
         #expect(meeting.deletesSourceWhenDone)
+    }
+
+    // MARK: - Mixing in the microphone
+
+    private func wav(_ samples: [Float], name: String) throws -> URL {
+        let url = FileManager.default.temporaryDirectory.appendingPathComponent("\(name)-\(UUID().uuidString).wav")
+        let settings: [String: Any] = [
+            AVFormatIDKey: kAudioFormatLinearPCM, AVSampleRateKey: 16_000.0, AVNumberOfChannelsKey: 1,
+            AVLinearPCMBitDepthKey: 16, AVLinearPCMIsFloatKey: false, AVLinearPCMIsBigEndianKey: false,
+        ]
+        let file = try AVAudioFile(
+            forWriting: url, settings: settings, commonFormat: .pcmFormatFloat32, interleaved: false)
+        let buffer = try #require(
+            AVAudioPCMBuffer(pcmFormat: file.processingFormat, frameCapacity: AVAudioFrameCount(samples.count)))
+        buffer.frameLength = AVAudioFrameCount(samples.count)
+        for (i, sample) in samples.enumerated() { buffer.floatChannelData![0][i] = sample }
+        try file.write(from: buffer)
+        return url
+    }
+
+    private func samples(_ url: URL) throws -> [Float] {
+        let file = try AVAudioFile(forReading: url, commonFormat: .pcmFormatFloat32, interleaved: false)
+        let buffer = try #require(
+            AVAudioPCMBuffer(pcmFormat: file.processingFormat, frameCapacity: AVAudioFrameCount(file.length)))
+        try file.read(into: buffer)
+        return (0..<Int(buffer.frameLength)).map { buffer.floatChannelData![0][$0] }
+    }
+
+    @Test func theMicrophoneIsAddedToTheCallSampleForSample() throws {
+        let call = try wav([0.1, 0.2, -0.3, 0.4], name: "call")
+        let microphone = try wav([0.25, -0.25], name: "mic")
+        let mixed = FileManager.default.temporaryDirectory.appendingPathComponent("mixed-\(UUID().uuidString).wav")
+        defer { [call, microphone, mixed].forEach { try? FileManager.default.removeItem(at: $0) } }
+
+        try MeetingAudioMixer.mix(call, microphone, into: mixed)
+
+        let result = try samples(mixed)
+        #expect(result.count == 4, "as long as the longer recording")
+        for (got, want) in zip(result, [Float(0.35), -0.05, -0.3, 0.4]) {
+            #expect(abs(got - want) < 0.001)
+        }
+    }
+
+    @Test func aLoudSumIsClippedRatherThanWrapped() throws {
+        let call = try wav([0.9], name: "call")
+        let microphone = try wav([0.9], name: "mic")
+        let mixed = FileManager.default.temporaryDirectory.appendingPathComponent("mixed-\(UUID().uuidString).wav")
+        defer { [call, microphone, mixed].forEach { try? FileManager.default.removeItem(at: $0) } }
+
+        try MeetingAudioMixer.mix(call, microphone, into: mixed)
+
+        #expect(try samples(mixed).first.map { $0 > 0.99 } == true)
     }
 }
