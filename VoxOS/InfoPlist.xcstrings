@@ -17,10 +17,10 @@
             "value" : "VoxOS"
           }
         },
-        "zh-Hans": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "VoxOS"
+        "zh-Hans" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "VoxOS"
           }
         }
       }
@@ -41,10 +41,10 @@
             "value" : "VoxOS"
           }
         },
-        "zh-Hans": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "VoxOS"
+        "zh-Hans" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "VoxOS"
           }
         }
       }
@@ -64,10 +64,10 @@
             "value" : "Audio/Video File"
           }
         },
-        "zh-Hans": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "音频/视频文件"
+        "zh-Hans" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "音频/视频文件"
           }
         }
       }
@@ -88,10 +88,34 @@
             "value" : "VoxOS needs to interact with your browser to detect the current website for applying website-specific configurations."
           }
         },
-        "zh-Hans": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "VoxOS 需要与浏览器交互以检测当前网站，从而应用针对特定网站的配置。"
+        "zh-Hans" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "VoxOS 需要与浏览器交互以检测当前网站，从而应用针对特定网站的配置。"
+          }
+        }
+      }
+    },
+    "NSAudioCaptureUsageDescription" : {
+      "comment" : "Privacy - Audio Capture Usage Description",
+      "extractionState" : "extracted_with_value",
+      "localizations" : {
+        "de" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "VoxOS hört, was Ihr Mac abspielt, um die Musikbalken in der Notch zu bewegen und es zu transkribieren, wenn Sie Systemaudio aufnehmen oder Besprechungsnotizen erstellen. Gespeichert wird nur, was Sie aufnehmen."
+          }
+        },
+        "en" : {
+          "stringUnit" : {
+            "state" : "new",
+            "value" : "VoxOS listens to what your Mac plays to move the notch's music bars, and to transcribe it when you capture system audio or take meeting notes. Only what you capture or record is kept."
+          }
+        },
+        "zh-Hans" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "VoxOS 会监听 Mac 播放的声音，用于让刘海中的音乐条跳动，并在你捕获系统音频或记录会议纪要时进行转写。只会保留你捕获或录制的内容。"
           }
         }
       }
@@ -112,10 +136,10 @@
             "value" : ""
           }
         },
-        "zh-Hans": {
-          "stringUnit": {
-            "state": "translated",
-            "value": ""
+        "zh-Hans" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : ""
           }
         }
       }
@@ -136,10 +160,10 @@
             "value" : "VoxOS needs access to your microphone to record audio for transcription."
           }
         },
-        "zh-Hans": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "VoxOS 需要访问麦克风以录制音频用于转录。"
+        "zh-Hans" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "VoxOS 需要访问麦克风以录制音频用于转录。"
           }
         }
       }
@@ -159,10 +183,10 @@
             "value" : "VoxOS needs screen recording access to understand context from your screen for improved transcription accuracy."
           }
         },
-        "zh-Hans": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "VoxOS 需要屏幕录制权限以理解屏幕上的上下文，提高转录准确性。"
+        "zh-Hans" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "VoxOS 需要屏幕录制权限以理解屏幕上的上下文，提高转录准确性。"
           }
         }
       }

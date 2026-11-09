@@ -498,7 +498,7 @@ struct VoiceSettingsPage: View {
                     Text(
                         systemAudioController.isCapturing
                             ? "Capturing system audio…"
-                            : "Requires Screen Recording permission. Captures only what your Mac plays — never your microphone."
+                            : "Requires System Audio Recording permission. Captures only what your Mac plays — never your microphone or screen."
                     )
                     .settingsCaption()
                 }

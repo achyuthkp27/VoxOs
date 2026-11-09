@@ -1,21 +1,26 @@
 import AVFoundation
-import CoreGraphics
+import AudioToolbox
+import CoreAudio
 import Foundation
-import ScreenCaptureKit
 import os
 
 /// Captures what the Mac is *playing* — the far side of a call, a video, a podcast — and
 /// never the microphone. Output matches what `CoreAudioRecorder` produces (16 kHz mono
 /// PCM) so the existing transcription services can consume it unchanged.
 ///
-/// Two modes share one stream:
+/// It listens through a Core Audio process tap on the system output, like the notch's music
+/// bars, so it needs only the System Audio Recording permission: nothing of the screen is
+/// captured. VoxOS's own sounds are left out of the tap.
+///
+/// Three uses share one tap:
 /// - **Capture**: writes everything between `startCapture` and `stopCapture` to a WAV file.
 /// - **Buffering**: keeps only the most recent N seconds in memory, so a shortcut can ask
 ///   "what was just said?" after the fact without keeping any of it on disk.
-final class SystemAudioCaptureService: NSObject, @unchecked Sendable {
+/// - **Live**: hands out what arrived since the last ask, for a meeting's live transcript.
+final class SystemAudioCaptureService: @unchecked Sendable {
     enum CaptureError: LocalizedError {
         case permissionDenied
-        case noDisplayAvailable
+        case noOutputDevice
         case formatUnavailable
         case notBuffering
         case bufferEmpty
@@ -23,9 +28,9 @@ final class SystemAudioCaptureService: NSObject, @unchecked Sendable {
         var errorDescription: String? {
             switch self {
             case .permissionDenied:
-                return String(localized: "VoxOS needs Screen Recording permission to capture system audio.")
-            case .noDisplayAvailable:
-                return String(localized: "No display is available to capture system audio from.")
+                return String(localized: "VoxOS needs System Audio Recording permission to capture system audio.")
+            case .noOutputDevice:
+                return String(localized: "No sound output is available to capture system audio from.")
             case .formatUnavailable:
                 return String(localized: "The system audio format could not be read.")
             case .notBuffering:
@@ -42,17 +47,26 @@ final class SystemAudioCaptureService: NSObject, @unchecked Sendable {
     static let outputSampleRate: Double = 16000
     /// Hard ceiling on the rolling buffer so memory stays bounded (~2 MB/min at 16 kHz float).
     static let maximumBufferSeconds: Double = 300
+    /// The live samples kept when nobody asks for them, so a stalled reader cannot grow memory.
+    static let maximumLiveSeconds: Double = 120
 
     private let logger = Logger(subsystem: "com.achyuthkp.voxos", category: "SystemAudioCapture")
-    private let sampleQueue = DispatchQueue(label: "com.achyuthkp.voxos.systemaudio.samples")
+    /// Building and destroying the tap run here; its buffers arrive on `ioQueue`. Kept apart
+    /// because AudioDeviceStop waits for the IO block to return.
+    private let controlQueue = DispatchQueue(label: "com.achyuthkp.voxos.systemaudio.control")
+    private let ioQueue = DispatchQueue(label: "com.achyuthkp.voxos.systemaudio.io", qos: .userInitiated)
     private let stateLock = NSLock()
 
-    private var stream: SCStream?
-    private var isStartingStream = false
-    /// Fired when the stream dies underneath us (display change, permission revoked).
+    private var tapID = AudioObjectID(kAudioObjectUnknown)
+    private var aggregateID = AudioObjectID(kAudioObjectUnknown)
+    private var procID: AudioDeviceIOProcID?
+    private var outputListener: AudioObjectPropertyListenerBlock?
+    /// Fired when the tap dies underneath us and cannot be rebuilt (no output device left).
     var onStreamStopped: (@Sendable () -> Void)?
+
+    private var tapFormat: AVAudioFormat?
     private var converter: AVAudioConverter?
-    private var converterInputFormat: AVAudioFormat?
+    private var mono: [Float] = []
 
     private var audioFile: AVAudioFile?
     private var isWritingToFile = false
@@ -62,6 +76,9 @@ final class SystemAudioCaptureService: NSObject, @unchecked Sendable {
     private var ringFilled = false
     private var ringCapacity = 0
     private var isBuffering = false
+
+    private var isCollectingLive = false
+    private var liveSamples: [Float] = []
 
     /// All state access goes through here; the closure is synchronous, so no lock is ever
     /// held across an `await`.
@@ -80,71 +97,43 @@ final class SystemAudioCaptureService: NSObject, @unchecked Sendable {
         )!
     }()
 
-    private override init() {
-        super.init()
-    }
+    private init() {}
 
     // MARK: - Permission
 
-    /// Screen Recording permission gates system-audio capture, exactly as it gates screen capture.
-    static func hasPermission() -> Bool {
-        CGPreflightScreenCaptureAccess()
-    }
+    /// macOS has no way to ask ahead whether System Audio Recording is allowed: it asks the user
+    /// the first time a tap starts, and a denied tap delivers silence rather than failing.
+    static func hasPermission() -> Bool { true }
 
     @discardableResult
-    static func requestPermission() async -> Bool {
-        await ScreenCaptureService.requestScreenCapturePermissionRegistration()
-    }
+    static func requestPermission() async -> Bool { true }
 
     // MARK: - Public state
 
-    var isCapturingToFile: Bool {
-        stateLock.lock()
-        defer { stateLock.unlock() }
-        return isWritingToFile
-    }
+    var isCapturingToFile: Bool { withState { isWritingToFile } }
 
-    var isBufferingRecentAudio: Bool {
-        stateLock.lock()
-        defer { stateLock.unlock() }
-        return isBuffering
-    }
+    var isBufferingRecentAudio: Bool { withState { isBuffering } }
 
     /// Seconds of audio currently held in the rolling buffer.
     var bufferedSeconds: Double {
-        stateLock.lock()
-        defer { stateLock.unlock() }
-        let frames = ringFilled ? ringCapacity : ringWriteIndex
-        return Double(frames) / Self.outputSampleRate
+        withState {
+            let frames = ringFilled ? ringCapacity : ringWriteIndex
+            return Double(frames) / Self.outputSampleRate
+        }
     }
 
     // MARK: - Capture to file
 
     /// Records system audio to `url` (16 kHz mono WAV) until `stopCapture()` is called.
     func startCapture(to url: URL) async throws {
-        try await ensureStreamRunning()
+        try ensureTapRunning()
 
         let file: AVAudioFile
         do {
-            file = try AVAudioFile(
-                forWriting: url,
-                settings: [
-                    AVFormatIDKey: kAudioFormatLinearPCM,
-                    AVSampleRateKey: Self.outputSampleRate,
-                    AVNumberOfChannelsKey: 1,
-                    AVLinearPCMBitDepthKey: 16,
-                    AVLinearPCMIsFloatKey: false,
-                    AVLinearPCMIsBigEndianKey: false,
-                    AVLinearPCMIsNonInterleaved: false,
-                ]
-            )
+            file = try AVAudioFile(forWriting: url, settings: Self.fileSettings)
         } catch {
-            // Otherwise the stream keeps running with nothing consuming it and the screen
-            // recording indicator stays lit.
-            let stillNeeded = withState { isBuffering }
-            if !stillNeeded {
-                await teardownStream()
-            }
+            // Otherwise the tap keeps running with nothing consuming it.
+            if !withState({ isBuffering || isCollectingLive }) { tearDownTap() }
             throw error
         }
 
@@ -163,16 +152,43 @@ final class SystemAudioCaptureService: NSObject, @unchecked Sendable {
             let frames = audioFile?.length ?? 0
             audioFile = nil
             isWritingToFile = false
-            return (frames, isBuffering)
+            return (frames, isBuffering || isCollectingLive)
         }
 
-        if !stillNeeded {
-            await teardownStream()
-        }
+        if !stillNeeded { tearDownTap() }
 
         let seconds = Double(frames) / Self.outputSampleRate
         logger.info("Stopped system audio capture (\(String(format: "%.1f", seconds), privacy: .public)s)")
         return seconds
+    }
+
+    // MARK: - Live
+
+    /// Starts keeping what arrives for `takeLiveSamples()`. Runs alongside a capture.
+    func startLive() throws {
+        try ensureTapRunning()
+        withState {
+            liveSamples = []
+            isCollectingLive = true
+        }
+    }
+
+    func stopLive() {
+        let stillNeeded: Bool = withState {
+            isCollectingLive = false
+            liveSamples = []
+            return isWritingToFile || isBuffering
+        }
+        if !stillNeeded { tearDownTap() }
+    }
+
+    /// The 16 kHz mono samples that arrived since the last call.
+    func takeLiveSamples() -> [Float] {
+        withState {
+            let taken = liveSamples
+            liveSamples = []
+            return taken
+        }
     }
 
     // MARK: - Rolling buffer
@@ -180,7 +196,7 @@ final class SystemAudioCaptureService: NSObject, @unchecked Sendable {
     /// Starts keeping the most recent `seconds` of system audio in memory.
     func startBuffering(seconds: Double) async throws {
         let clamped = min(max(seconds, 5), Self.maximumBufferSeconds)
-        try await ensureStreamRunning()
+        try ensureTapRunning()
 
         withState {
             ringCapacity = Int(clamped * Self.outputSampleRate)
@@ -200,12 +216,10 @@ final class SystemAudioCaptureService: NSObject, @unchecked Sendable {
             ringCapacity = 0
             ringWriteIndex = 0
             ringFilled = false
-            return isWritingToFile
+            return isWritingToFile || isCollectingLive
         }
 
-        if !stillNeeded {
-            await teardownStream()
-        }
+        if !stillNeeded { tearDownTap() }
         logger.info("Stopped system audio buffering")
     }
 
@@ -222,39 +236,37 @@ final class SystemAudioCaptureService: NSObject, @unchecked Sendable {
         stateLock.unlock()
 
         guard !samples.isEmpty else { throw CaptureError.bufferEmpty }
+        try Self.write(samples, to: url, format: outputFormat)
+        return Double(samples.count) / Self.outputSampleRate
+    }
 
-        let file = try AVAudioFile(
-            forWriting: url,
-            settings: [
-                AVFormatIDKey: kAudioFormatLinearPCM,
-                AVSampleRateKey: Self.outputSampleRate,
-                AVNumberOfChannelsKey: 1,
-                AVLinearPCMBitDepthKey: 16,
-                AVLinearPCMIsFloatKey: false,
-                AVLinearPCMIsBigEndianKey: false,
-                AVLinearPCMIsNonInterleaved: false,
-            ]
-        )
-
+    /// Writes 16 kHz mono `samples` to `url` as a WAV file.
+    static func write(_ samples: [Float], to url: URL, format: AVAudioFormat? = nil) throws {
         guard
-            let buffer = AVAudioPCMBuffer(
-                pcmFormat: outputFormat,
-                frameCapacity: AVAudioFrameCount(samples.count)
-            )
-        else {
-            throw CaptureError.formatUnavailable
-        }
-
+            let format = format
+                ?? AVAudioFormat(
+                    commonFormat: .pcmFormatFloat32, sampleRate: outputSampleRate, channels: 1, interleaved: false),
+            let buffer = AVAudioPCMBuffer(pcmFormat: format, frameCapacity: AVAudioFrameCount(samples.count))
+        else { throw CaptureError.formatUnavailable }
+        let file = try AVAudioFile(forWriting: url, settings: fileSettings)
         buffer.frameLength = AVAudioFrameCount(samples.count)
         if let channel = buffer.floatChannelData?[0] {
             samples.withUnsafeBufferPointer { source in
                 channel.update(from: source.baseAddress!, count: samples.count)
             }
         }
-
         try file.write(from: buffer)
-        return Double(samples.count) / Self.outputSampleRate
     }
+
+    static let fileSettings: [String: Any] = [
+        AVFormatIDKey: kAudioFormatLinearPCM,
+        AVSampleRateKey: outputSampleRate,
+        AVNumberOfChannelsKey: 1,
+        AVLinearPCMBitDepthKey: 16,
+        AVLinearPCMIsFloatKey: false,
+        AVLinearPCMIsBigEndianKey: false,
+        AVLinearPCMIsNonInterleaved: false,
+    ]
 
     /// Caller must hold `stateLock`.
     private func orderedBufferedSamples(limitedTo seconds: Double) -> [Float] {
@@ -274,152 +286,188 @@ final class SystemAudioCaptureService: NSObject, @unchecked Sendable {
         return ordered
     }
 
-    // MARK: - Stream lifecycle
+    // MARK: - Tap lifecycle
 
-    private func ensureStreamRunning() async throws {
-        let (alreadyRunning, starting): (Bool, Bool) = withState {
-            let running = stream != nil
-            let starting = isStartingStream
-            if !running, !starting { isStartingStream = true }
-            return (running, starting)
+    private func ensureTapRunning() throws {
+        var failure: CaptureError?
+        controlQueue.sync {
+            guard aggregateID == kAudioObjectUnknown else { return }
+            failure = buildTap()
+            if failure == nil { watchDefaultOutput() }
         }
-        if alreadyRunning { return }
-        if starting {
-            // Another caller is bringing the stream up; wait for it rather than start a second one.
-            for _ in 0..<50 {
-                try? await Task.sleep(nanoseconds: 100_000_000)
-                let (ready, still): (Bool, Bool) = withState { (stream != nil, isStartingStream) }
-                if ready { return }
-                if !still { break }
-            }
-            throw CaptureError.formatUnavailable
-        }
-        defer { withState { isStartingStream = false } }
-
-        guard await Self.requestPermission() else {
-            throw CaptureError.permissionDenied
-        }
-
-        let content = try await SCShareableContent.excludingDesktopWindows(false, onScreenWindowsOnly: false)
-        guard let display = content.displays.first else {
-            throw CaptureError.noDisplayAvailable
-        }
-
-        let filter = SCContentFilter(display: display, excludingApplications: [], exceptingWindows: [])
-
-        let configuration = SCStreamConfiguration()
-        configuration.capturesAudio = true
-        // Never record the user talking — this feature is explicitly system output only.
-        // (Off by default; set explicitly where the API exists so intent is unambiguous.)
-        if #available(macOS 15.0, *) {
-            configuration.captureMicrophone = false
-        }
-        // Keep VoxOS's own sounds out of the transcript.
-        configuration.excludesCurrentProcessAudio = true
-        configuration.sampleRate = 48000
-        configuration.channelCount = 2
-        // Video frames are unavoidable on an SCStream, so make them as cheap as possible:
-        // a 2x2 capture at 1 fps that we never register an output for.
-        configuration.width = 2
-        configuration.height = 2
-        configuration.minimumFrameInterval = CMTime(value: 1, timescale: 1)
-        configuration.queueDepth = 3
-
-        let newStream = SCStream(filter: filter, configuration: configuration, delegate: self)
-        try newStream.addStreamOutput(self, type: .audio, sampleHandlerQueue: sampleQueue)
-        try await newStream.startCapture()
-
-        withState { stream = newStream }
-
-        logger.info("System audio stream started")
+        if let failure { throw failure }
     }
 
-    private func teardownStream() async {
-        let current: SCStream? = withState {
-            let current = stream
-            stream = nil
+    private func tearDownTap() {
+        controlQueue.sync {
+            unwatchDefaultOutput()
+            destroyTap()
+        }
+        logger.info("System audio tap stopped")
+    }
+
+    /// Runs on `controlQueue`. A global tap on the output, without VoxOS, read through a private
+    /// aggregate device clocked by the current output.
+    private func buildTap() -> CaptureError? {
+        let description = CATapDescription(
+            stereoGlobalTapButExcludeProcesses: SystemAudioLevels.processObject(for: getpid()).map { [$0] } ?? [])
+        description.uuid = UUID()
+        description.name = "VoxOS system audio capture"
+        description.isPrivate = true
+        description.muteBehavior = .unmuted
+
+        var tap = AudioObjectID(kAudioObjectUnknown)
+        var status = AudioHardwareCreateProcessTap(description, &tap)
+        guard status == noErr, tap != kAudioObjectUnknown else {
+            logger.error("System audio tap not created (\(status, privacy: .public))")
+            return .permissionDenied
+        }
+        tapID = tap
+
+        guard let outputUID = Self.defaultOutputUID() else {
+            destroyTap()
+            return .noOutputDevice
+        }
+        guard let format = Self.format(ofTap: tap) else {
+            destroyTap()
+            return .formatUnavailable
+        }
+        withState {
+            tapFormat = format
             converter = nil
-            converterInputFormat = nil
-            return current
         }
 
-        guard let current else { return }
-        do {
-            try await current.stopCapture()
-        } catch {
-            logger.error("Failed to stop system audio stream: \(error.localizedDescription, privacy: .public)")
+        let aggregate: [String: Any] = [
+            kAudioAggregateDeviceNameKey: "VoxOS system audio capture",
+            kAudioAggregateDeviceUIDKey: UUID().uuidString,
+            kAudioAggregateDeviceMainSubDeviceKey: outputUID,
+            kAudioAggregateDeviceIsPrivateKey: true,
+            kAudioAggregateDeviceIsStackedKey: false,
+            kAudioAggregateDeviceTapAutoStartKey: true,
+            kAudioAggregateDeviceSubDeviceListKey: [[kAudioSubDeviceUIDKey: outputUID]],
+            kAudioAggregateDeviceTapListKey: [
+                [kAudioSubTapDriftCompensationKey: true, kAudioSubTapUIDKey: description.uuid.uuidString]
+            ],
+        ]
+        var device = AudioObjectID(kAudioObjectUnknown)
+        status = AudioHardwareCreateAggregateDevice(aggregate as CFDictionary, &device)
+        guard status == noErr, device != kAudioObjectUnknown else {
+            destroyTap()
+            logger.error("System audio aggregate device not created (\(status, privacy: .public))")
+            return .formatUnavailable
         }
+        aggregateID = device
+
+        var proc: AudioDeviceIOProcID?
+        status = AudioDeviceCreateIOProcIDWithBlock(&proc, device, ioQueue) { [weak self] _, input, _, _, _ in
+            self?.consume(input)
+        }
+        guard status == noErr, let proc else {
+            destroyTap()
+            return .formatUnavailable
+        }
+        procID = proc
+        status = AudioDeviceStart(device, proc)
+        guard status == noErr else {
+            destroyTap()
+            return .formatUnavailable
+        }
+        logger.info("System audio tap listening at \(format.sampleRate, privacy: .public) Hz")
+        return nil
+    }
+
+    /// Runs on `controlQueue`.
+    private func destroyTap() {
+        if aggregateID != kAudioObjectUnknown, let procID {
+            AudioDeviceStop(aggregateID, procID)
+            AudioDeviceDestroyIOProcID(aggregateID, procID)
+        }
+        procID = nil
+        if aggregateID != kAudioObjectUnknown { AudioHardwareDestroyAggregateDevice(aggregateID) }
+        aggregateID = AudioObjectID(kAudioObjectUnknown)
+        if tapID != kAudioObjectUnknown { AudioHardwareDestroyProcessTap(tapID) }
+        tapID = AudioObjectID(kAudioObjectUnknown)
+        withState { converter = nil }
+    }
+
+    /// The aggregate is clocked by the output it was built on; when the output changes
+    /// (AirPods connect, a display's speakers), the tap is rebuilt on the new one, and the
+    /// capture, buffer and live samples carry on.
+    private func watchDefaultOutput() {
+        var address = Self.defaultOutputAddress
+        let listener: AudioObjectPropertyListenerBlock = { [weak self] _, _ in
+            guard let self else { return }
+            self.controlQueue.async {
+                guard self.aggregateID != kAudioObjectUnknown else { return }
+                self.destroyTap()
+                if self.buildTap() != nil {
+                    self.unwatchDefaultOutput()
+                    self.withState {
+                        self.audioFile = nil
+                        self.isWritingToFile = false
+                        self.isBuffering = false
+                        self.isCollectingLive = false
+                    }
+                    self.onStreamStopped?()
+                }
+            }
+        }
+        outputListener = listener
+        AudioObjectAddPropertyListenerBlock(AudioObjectID(kAudioObjectSystemObject), &address, controlQueue, listener)
+    }
+
+    private func unwatchDefaultOutput() {
+        guard let outputListener else { return }
+        var address = Self.defaultOutputAddress
+        AudioObjectRemovePropertyListenerBlock(
+            AudioObjectID(kAudioObjectSystemObject), &address, controlQueue, outputListener)
+        self.outputListener = nil
     }
 
     // MARK: - Sample handling
 
-    private func appendToRing(_ samples: UnsafeBufferPointer<Float>) {
-        guard ringCapacity > 0 else { return }
-
-        for sample in samples {
-            ringBuffer[ringWriteIndex] = sample
-            ringWriteIndex += 1
-            if ringWriteIndex == ringCapacity {
-                ringWriteIndex = 0
-                ringFilled = true
+    /// Mixes whatever layout the tap delivers to mono, converts it to 16 kHz, and hands it to
+    /// the file, the rolling buffer and the live samples.
+    private func consume(_ input: UnsafePointer<AudioBufferList>) {
+        guard withState({ isWritingToFile || isBuffering || isCollectingLive }) else { return }
+        let buffers = UnsafeMutableAudioBufferListPointer(UnsafeMutablePointer(mutating: input))
+        guard let first = buffers.first, let firstData = first.mData else { return }
+        let channels = Int(max(1, first.mNumberChannels))
+        let frames = Int(first.mDataByteSize) / (MemoryLayout<Float>.size * channels)
+        guard frames > 0 else { return }
+        if mono.count != frames { mono = [Float](repeating: 0, count: frames) }
+        if buffers.count > 1 {
+            for frame in 0..<frames { mono[frame] = 0 }
+            for buffer in buffers {
+                guard let data = buffer.mData else { continue }
+                let samples = data.assumingMemoryBound(to: Float.self)
+                for frame in 0..<frames { mono[frame] += samples[frame] / Float(buffers.count) }
+            }
+        } else {
+            let samples = firstData.assumingMemoryBound(to: Float.self)
+            for frame in 0..<frames {
+                var sum: Float = 0
+                for channel in 0..<channels { sum += samples[frame * channels + channel] }
+                mono[frame] = sum / Float(channels)
             }
         }
-    }
-
-    private func converter(for inputFormat: AVAudioFormat) -> AVAudioConverter? {
-        if let converter, converterInputFormat == inputFormat {
-            return converter
-        }
-        let newConverter = AVAudioConverter(from: inputFormat, to: outputFormat)
-        converter = newConverter
-        converterInputFormat = inputFormat
-        return newConverter
-    }
-}
-
-// MARK: - SCStreamOutput
-
-extension SystemAudioCaptureService: SCStreamOutput {
-    func stream(_ stream: SCStream, didOutputSampleBuffer sampleBuffer: CMSampleBuffer, of type: SCStreamOutputType) {
-        guard type == .audio, sampleBuffer.isValid else { return }
-
-        stateLock.lock()
-        let needsAudio = isWritingToFile || isBuffering
-        stateLock.unlock()
-        guard needsAudio else { return }
 
         guard
-            let formatDescription = CMSampleBufferGetFormatDescription(sampleBuffer),
-            let asbd = CMAudioFormatDescriptionGetStreamBasicDescription(formatDescription)?.pointee,
-            let inputFormat = AVAudioFormat(streamDescription: [asbd])
+            let pair = withState({ () -> (AVAudioConverter, AVAudioFormat)? in
+                guard let tapFormat else { return nil }
+                if converter == nil { converter = AVAudioConverter(from: tapFormat, to: outputFormat) }
+                return converter.map { ($0, tapFormat) }
+            }),
+            case (let audioConverter, let inputFormat) = pair,
+            let inputBuffer = AVAudioPCMBuffer(pcmFormat: inputFormat, frameCapacity: AVAudioFrameCount(frames)),
+            let inputChannel = inputBuffer.floatChannelData?[0]
         else { return }
+        inputBuffer.frameLength = AVAudioFrameCount(frames)
+        mono.withUnsafeBufferPointer { inputChannel.update(from: $0.baseAddress!, count: frames) }
 
-        guard
-            let inputBuffer = AVAudioPCMBuffer(
-                pcmFormat: inputFormat,
-                frameCapacity: AVAudioFrameCount(CMSampleBufferGetNumSamples(sampleBuffer))
-            )
-        else { return }
-        inputBuffer.frameLength = inputBuffer.frameCapacity
-
-        let copyStatus = CMSampleBufferCopyPCMDataIntoAudioBufferList(
-            sampleBuffer,
-            at: 0,
-            frameCount: Int32(inputBuffer.frameLength),
-            into: inputBuffer.mutableAudioBufferList
-        )
-        guard copyStatus == noErr else { return }
-
-        stateLock.lock()
-        let audioConverter = converter(for: inputFormat)
-        stateLock.unlock()
-        guard let audioConverter else { return }
-
-        // 48 kHz stereo in, 16 kHz mono out — the ratio bounds the output frame count.
         let ratio = outputFormat.sampleRate / inputFormat.sampleRate
-        let capacity = AVAudioFrameCount(Double(inputBuffer.frameLength) * ratio) + 1024
+        let capacity = AVAudioFrameCount(Double(frames) * ratio) + 1024
         guard let outputBuffer = AVAudioPCMBuffer(pcmFormat: outputFormat, frameCapacity: capacity) else { return }
-
         var suppliedInput = false
         var conversionError: NSError?
         audioConverter.convert(to: outputBuffer, error: &conversionError) { _, statusPointer in
@@ -431,20 +479,23 @@ extension SystemAudioCaptureService: SCStreamOutput {
             statusPointer.pointee = .haveData
             return inputBuffer
         }
-
         if let conversionError {
             logger.error("System audio conversion failed: \(conversionError.localizedDescription, privacy: .public)")
             return
         }
         guard outputBuffer.frameLength > 0, let channel = outputBuffer.floatChannelData?[0] else { return }
+        let converted = UnsafeBufferPointer(start: channel, count: Int(outputBuffer.frameLength))
 
         stateLock.lock()
-        if isBuffering {
-            appendToRing(UnsafeBufferPointer(start: channel, count: Int(outputBuffer.frameLength)))
+        if isBuffering { appendToRing(converted) }
+        if isCollectingLive {
+            liveSamples.append(contentsOf: converted)
+            let limit = Int(Self.maximumLiveSeconds * Self.outputSampleRate)
+            if liveSamples.count > limit { liveSamples.removeFirst(liveSamples.count - limit) }
         }
         // Written under the lock: AVAudioFile is not thread-safe, and stopCapture() reads
-        // `length` and drops the file under this same lock. This runs on the sample queue, not
-        // the real-time thread, so holding the lock across the write is fine.
+        // `length` and drops the file under this same lock. This runs on `ioQueue`, a dispatch
+        // queue rather than the real-time thread, so holding the lock across the write is fine.
         if isWritingToFile, let file = audioFile {
             do {
                 try file.write(from: outputBuffer)
@@ -454,19 +505,53 @@ extension SystemAudioCaptureService: SCStreamOutput {
         }
         stateLock.unlock()
     }
-}
 
-// MARK: - SCStreamDelegate
+    /// Caller must hold `stateLock`.
+    private func appendToRing(_ samples: UnsafeBufferPointer<Float>) {
+        guard ringCapacity > 0 else { return }
+        for sample in samples {
+            ringBuffer[ringWriteIndex] = sample
+            ringWriteIndex += 1
+            if ringWriteIndex == ringCapacity {
+                ringWriteIndex = 0
+                ringFilled = true
+            }
+        }
+    }
 
-extension SystemAudioCaptureService: SCStreamDelegate {
-    func stream(_ stream: SCStream, didStopWithError error: Error) {
-        logger.error("System audio stream stopped: \(error.localizedDescription, privacy: .public)")
-        stateLock.lock()
-        self.stream = nil
-        audioFile = nil
-        isWritingToFile = false
-        isBuffering = false
-        stateLock.unlock()
-        onStreamStopped?()
+    // MARK: - Core Audio properties
+
+    private static var defaultOutputAddress: AudioObjectPropertyAddress {
+        AudioObjectPropertyAddress(
+            mSelector: kAudioHardwarePropertyDefaultOutputDevice, mScope: kAudioObjectPropertyScopeGlobal,
+            mElement: kAudioObjectPropertyElementMain)
+    }
+
+    private static func defaultOutputUID() -> String? {
+        var address = defaultOutputAddress
+        var device = AudioObjectID(kAudioObjectUnknown)
+        var size = UInt32(MemoryLayout<AudioObjectID>.size)
+        guard
+            AudioObjectGetPropertyData(AudioObjectID(kAudioObjectSystemObject), &address, 0, nil, &size, &device)
+                == noErr, device != kAudioObjectUnknown
+        else { return nil }
+        address.mSelector = kAudioDevicePropertyDeviceUID
+        var uid: Unmanaged<CFString>?
+        size = UInt32(MemoryLayout<Unmanaged<CFString>?>.size)
+        guard AudioObjectGetPropertyData(device, &address, 0, nil, &size, &uid) == noErr, let uid else { return nil }
+        return uid.takeRetainedValue() as String
+    }
+
+    /// The tap's sample rate, as the mono float format the IO block's downmix produces.
+    private static func format(ofTap tap: AudioObjectID) -> AVAudioFormat? {
+        var address = AudioObjectPropertyAddress(
+            mSelector: kAudioTapPropertyFormat, mScope: kAudioObjectPropertyScopeGlobal,
+            mElement: kAudioObjectPropertyElementMain)
+        var description = AudioStreamBasicDescription()
+        var size = UInt32(MemoryLayout<AudioStreamBasicDescription>.size)
+        let rate =
+            AudioObjectGetPropertyData(tap, &address, 0, nil, &size, &description) == noErr
+                && description.mSampleRate > 0 ? description.mSampleRate : 48_000
+        return AVAudioFormat(commonFormat: .pcmFormatFloat32, sampleRate: rate, channels: 1, interleaved: false)
     }
 }

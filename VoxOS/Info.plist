@@ -17,7 +17,7 @@
 	<key>NSCalendarsFullAccessUsageDescription</key>
 	<string>VoxOS shows your next events on the notch's Today page.</string>
 	<key>NSAudioCaptureUsageDescription</key>
-	<string>VoxOS listens to what your Mac is playing only to move the music bars in the notch. Nothing is recorded or stored.</string>
+	<string>VoxOS listens to what your Mac plays to move the notch's music bars, and to transcribe it when you capture system audio or take meeting notes. Only what you capture or record is kept.</string>
 	<key>NSScreenCaptureUsageDescription</key>
 	<string>VoxOS needs screen recording access to understand context from your screen for improved transcription accuracy.</string>
 	<key>NSLocationUsageDescription</key>
