@@ -11,6 +11,7 @@ enum ShortcutAction: Hashable {
     case quickAddToDictionary
     case undoLastPaste
     case toggleMeetingNotes
+    case toggleLiveTranscript
     case captureSystemAudio
     case recallSystemAudio
     case agentDoubleTap
@@ -54,6 +55,8 @@ enum ShortcutAction: Hashable {
             return "undoLastPaste"
         case .toggleMeetingNotes:
             return "toggleMeetingNotes"
+        case .toggleLiveTranscript:
+            return "toggleLiveTranscript"
         case .captureSystemAudio:
             return "captureSystemAudio"
         case .recallSystemAudio:
@@ -93,6 +96,8 @@ enum ShortcutAction: Hashable {
             return String(localized: "Undo Last Paste")
         case .toggleMeetingNotes:
             return String(localized: "Start or Stop Meeting Notes")
+        case .toggleLiveTranscript:
+            return String(localized: "Show or Hide Live Transcript")
         case .captureSystemAudio:
             return String(localized: "Capture System Audio")
         case .recallSystemAudio:
@@ -124,6 +129,7 @@ enum ShortcutAction: Hashable {
         .retryLastTranscription,
         .undoLastPaste,
         .toggleMeetingNotes,
+        .toggleLiveTranscript,
         .openHistoryWindow,
         .quickAddToDictionary,
         .captureSystemAudio,
@@ -171,7 +177,7 @@ extension ShortcutAction {
         case .primaryRecording, .secondaryRecording, .pasteLastTranscription, .pasteLastEnhancement,
             .retryLastTranscription, .cancelRecorder, .openHistoryWindow, .quickAddToDictionary, .undoLastPaste:
             return .namedField
-        case .captureSystemAudio, .recallSystemAudio, .toggleMeetingNotes:
+        case .captureSystemAudio, .recallSystemAudio, .toggleMeetingNotes, .toggleLiveTranscript:
             return .byName
         case .mode:
             return .withItsMode
@@ -181,5 +187,7 @@ extension ShortcutAction {
     }
 
     /// The actions `GeneralBackup.shortcuts` carries.
-    static let backedUpByName: [ShortcutAction] = [.captureSystemAudio, .recallSystemAudio, .toggleMeetingNotes]
+    static let backedUpByName: [ShortcutAction] = [
+        .captureSystemAudio, .recallSystemAudio, .toggleMeetingNotes, .toggleLiveTranscript,
+    ]
 }

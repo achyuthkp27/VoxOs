@@ -204,6 +204,20 @@ struct VoiceSettingsPage: View {
                     }
 
                     LabeledContent {
+                        ShortcutRecorder(action: .toggleLiveTranscript) {
+                            recordingShortcutManager.updateShortcutStatus()
+                        }
+                        .controlSize(.small)
+                    } label: {
+                        HStack(spacing: 2) {
+                            Text("Show or Hide Live Transcript")
+                            InfoTip(
+                                "Hides the live transcript window while a meeting is recorded, or brings it back. Hiding it does not stop the recording."
+                            )
+                        }
+                    }
+
+                    LabeledContent {
                         HStack(spacing: 8) {
                             ShortcutRecorder(
                                 action: .cancelRecorder,

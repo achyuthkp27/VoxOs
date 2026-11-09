@@ -145,11 +145,6 @@ final class MeetingNotes: ObservableObject {
         return url
     }
 
-    /// Opens the live transcript of the meeting being recorded, after it was closed.
-    func showLiveTranscript() {
-        LiveTranscriptWindow.shared.show()
-    }
-
     // MARK: Stopping
 
     /// Stops when the meeting is over: past its end and the call has let go of the microphone.

@@ -17,6 +17,7 @@ struct MenuBarView: View {
     @ObservedObject private var modeManager = ModeManager.shared
     @ObservedObject var audioDeviceManager = AudioDeviceManager.shared
     @ObservedObject private var meetingNotes = MeetingNotes.shared
+    @ObservedObject private var liveTranscriptWindow = LiveTranscriptWindow.shared
     @AppStorage(DefaultsKeys.hasCompletedOnboardingV2) private var hasCompletedOnboardingV2 = false
     @AppStorage(DefaultsKeys.voiceAssistantEnabled) private var voiceEnabled = true
     @AppStorage(DefaultsKeys.notchMasterEnabled) private var notchEnabled = true
@@ -55,7 +56,9 @@ struct MenuBarView: View {
                 Button("Stop Meeting Notes for “\(meeting.title)”") {
                     Task { await meetingNotes.stop() }
                 }
-                Button("Show Live Transcript") { meetingNotes.showLiveTranscript() }
+                Button(liveTranscriptWindow.isShown ? "Hide Live Transcript" : "Show Live Transcript") {
+                    liveTranscriptWindow.toggle()
+                }
             } else {
                 Button("Start Meeting Notes") { meetingNotes.startByHand() }
             }

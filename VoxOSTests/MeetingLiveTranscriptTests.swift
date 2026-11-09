@@ -40,4 +40,12 @@ struct MeetingLiveTranscriptTests {
         #expect(MeetingTranscriptView.elapsed(from: start, to: start.addingTimeInterval(3_725)) == "1:02:05")
         #expect(MeetingTranscriptView.elapsed(from: start, to: start.addingTimeInterval(-5)) == "0:00")
     }
+
+    @Test func samplesBecomeLittleEndian16BitPCMForTheStream() {
+        let data = MeetingLiveTranscript.pcm16([0, 1, -1, 2])
+        let values = stride(from: 0, to: data.count, by: 2).map { i in
+            Int16(littleEndian: data.subdata(in: i..<(i + 2)).withUnsafeBytes { $0.load(as: Int16.self) })
+        }
+        #expect(values == [0, Int16.max, -Int16.max, Int16.max], "out-of-range samples are clipped, not wrapped")
+    }
 }

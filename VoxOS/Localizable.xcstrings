@@ -10834,6 +10834,22 @@
         }
       }
     },
+    "ENDED" : {
+      "localizations" : {
+        "de" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "BEENDET"
+          }
+        },
+        "zh-Hans" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "已结束"
+          }
+        }
+      }
+    },
     "Each mode's own" : {
       "localizations" : {
         "de" : {
@@ -13257,6 +13273,22 @@
         }
       }
     },
+    "Hide" : {
+      "localizations" : {
+        "de" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Ausblenden"
+          }
+        },
+        "zh-Hans" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "隐藏"
+          }
+        }
+      }
+    },
     "Hide Dock Icon" : {
       "localizations" : {
         "de" : {
@@ -13269,6 +13301,22 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "隐藏程序坞图标"
+          }
+        }
+      }
+    },
+    "Hide Live Transcript" : {
+      "localizations" : {
+        "de" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Live-Transkript ausblenden"
+          }
+        },
+        "zh-Hans" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "隐藏实时转写"
           }
         }
       }
@@ -13289,6 +13337,22 @@
         }
       }
     },
+    "Hide the live transcript; the meeting keeps recording" : {
+      "localizations" : {
+        "de" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Live-Transkript ausblenden; die Besprechung wird weiter aufgenommen"
+          }
+        },
+        "zh-Hans" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "隐藏实时转写；会议会继续录制"
+          }
+        }
+      }
+    },
     "Hides the App" : {
       "localizations" : {
         "de" : {
@@ -13301,6 +13365,22 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "隐藏应用"
+          }
+        }
+      }
+    },
+    "Hides the live transcript window while a meeting is recorded, or brings it back. Hiding it does not stop the recording." : {
+      "localizations" : {
+        "de" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Blendet das Live-Transkript-Fenster während einer Besprechungsaufnahme aus oder wieder ein. Das Ausblenden beendet die Aufnahme nicht."
+          }
+        },
+        "zh-Hans" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "在录制会议时隐藏或重新显示实时转写窗口。隐藏不会停止录制。"
           }
         }
       }
@@ -14468,6 +14548,22 @@
         }
       }
     },
+    "LIVE" : {
+      "localizations" : {
+        "de" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "LIVE"
+          }
+        },
+        "zh-Hans" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "直播中"
+          }
+        }
+      }
+    },
     "LONG BREAK" : {
       "localizations" : {
         "de" : {
@@ -15341,6 +15437,38 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "实时文本"
+          }
+        }
+      }
+    },
+    "Live transcript" : {
+      "localizations" : {
+        "de" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Live-Transkript"
+          }
+        },
+        "zh-Hans" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "实时转写"
+          }
+        }
+      }
+    },
+    "Live transcript, every few seconds" : {
+      "localizations" : {
+        "de" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Live-Transkript, alle paar Sekunden"
+          }
+        },
+        "zh-Hans" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "实时转写（每隔几秒）"
           }
         }
       }
@@ -17544,6 +17672,22 @@
         }
       }
     },
+    "No meeting is being recorded, so there is no live transcript." : {
+      "localizations" : {
+        "de" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Es wird keine Besprechung aufgenommen, daher gibt es kein Live-Transkript."
+          }
+        },
+        "zh-Hans" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "当前没有录制会议，因此没有实时转写。"
+          }
+        }
+      }
+    },
     "No microphones found" : {
       "localizations" : {
         "de" : {
@@ -18887,6 +19031,22 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "没有可撤销的内容——上次粘贴是在其他应用中或已过去较久。"
+          }
+        }
+      }
+    },
+    "Nothing was said" : {
+      "localizations" : {
+        "de" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Es wurde nichts gesagt"
+          }
+        },
+        "zh-Hans" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "没有人说话"
           }
         }
       }
@@ -25230,6 +25390,22 @@
         }
       }
     },
+    "Show or Hide Live Transcript" : {
+      "localizations" : {
+        "de" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Live-Transkript ein- oder ausblenden"
+          }
+        },
+        "zh-Hans" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "显示或隐藏实时转写"
+          }
+        }
+      }
+    },
     "Show the camera" : {
       "localizations" : {
         "de" : {
@@ -27359,6 +27535,22 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "当前演唱的歌词行，显示在“音乐”页面的艺人下方，来自 lrclib.net。查询歌曲时会把歌名和艺人发送到那里，每首歌一次，且仅在“音乐”页面打开时进行。"
+          }
+        }
+      }
+    },
+    "The live transcript could not start; the notes in History will still have it." : {
+      "localizations" : {
+        "de" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Das Live-Transkript konnte nicht starten; die Notizen im Verlauf enthalten es trotzdem."
+          }
+        },
+        "zh-Hans" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "实时转写无法启动；历史记录中的纪要仍会包含这些内容。"
           }
         }
       }
@@ -31469,6 +31661,38 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "每日词数"
+          }
+        }
+      }
+    },
+    "Words show here as they are said." : {
+      "localizations" : {
+        "de" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Wörter erscheinen hier, während sie gesagt werden."
+          }
+        },
+        "zh-Hans" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "说出的话会即时显示在这里。"
+          }
+        }
+      }
+    },
+    "Words show here every few seconds; this speech model cannot stream." : {
+      "localizations" : {
+        "de" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Wörter erscheinen hier alle paar Sekunden; dieses Sprachmodell kann nicht streamen."
+          }
+        },
+        "zh-Hans" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "文字每隔几秒显示在这里；此语音模型不支持流式转写。"
           }
         }
       }

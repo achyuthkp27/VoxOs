@@ -486,6 +486,8 @@ class RecordingShortcutManager: ObservableObject {
             } else {
                 MeetingNotes.shared.startByHand()
             }
+        case .toggleLiveTranscript:
+            LiveTranscriptWindow.shared.toggle()
         case .captureSystemAudio:
             await SystemAudioCaptureController.shared.toggleCapture()
         case .recallSystemAudio:
