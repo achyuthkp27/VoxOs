@@ -3,6 +3,7 @@ import SwiftUI
 /// The Snippets tab: a phrase and the text pasted when that phrase is the whole dictation.
 struct VoiceSnippetsView: View {
     @ObservedObject private var store = VoiceSnippetStore.shared
+    @AppStorage(DefaultsKeys.snippetsSortDescending) private var sortDescending = false
     @State private var trigger = ""
     @State private var text = ""
     @State private var editing: EditedSnippet?
@@ -14,7 +15,9 @@ struct VoiceSnippetsView: View {
     }
 
     private var sortedTriggers: [String] {
-        store.snippets.keys.sorted { $0.localizedCaseInsensitiveCompare($1) == .orderedAscending }
+        store.snippets.keys.sorted {
+            $0.localizedCaseInsensitiveCompare($1) == (sortDescending ? .orderedDescending : .orderedAscending)
+        }
     }
 
     var body: some View {
@@ -39,8 +42,8 @@ struct VoiceSnippetsView: View {
                         title: store.snippets.count == 1
                             ? String(localized: "1 snippet")
                             : String(localized: "\(store.snippets.count) snippets"),
-                        sortLabel: String(localized: "Phrase A–Z"),
-                        onToggleSort: {})
+                        sortLabel: sortDescending ? String(localized: "Phrase Z–A") : String(localized: "Phrase A–Z"),
+                        onToggleSort: { sortDescending.toggle() })
 
                     VStack(spacing: 0) {
                         ForEach(sortedTriggers, id: \.self) { key in

@@ -19790,6 +19790,22 @@
         }
       }
     },
+    "Phrase Z–A" : {
+      "localizations" : {
+        "de" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Wendung Z–A"
+          }
+        },
+        "zh-Hans" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "短语 Z–A"
+          }
+        }
+      }
+    },
     "Pick the microphone VoxOS should use for recordings." : {
       "localizations" : {
         "de" : {

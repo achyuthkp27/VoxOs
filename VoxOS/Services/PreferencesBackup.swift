@@ -54,7 +54,7 @@ struct PreferencesBackup: Codable, Equatable {
         // Dictionary and the rest
         DefaultsKeys.vocabularySortMode, DefaultsKeys.wordReplacementSortMode,
         DefaultsKeys.dismissedCorrectionSuggestions, DefaultsKeys.dismissedReviewSuggestions,
-        DefaultsKeys.voiceSnippets, DefaultsKeys.dashboardDisplayName,
+        DefaultsKeys.voiceSnippets, DefaultsKeys.snippetsSortDescending, DefaultsKeys.dashboardDisplayName,
     ]
 
     /// Backed up by a named field of `GeneralBackup`, or by another backup category.

@@ -195,6 +195,8 @@ enum DefaultsKeys {
     static let dismissedReviewSuggestions = "dismissedReviewSuggestions"
     /// Voice snippets: trigger phrase to the text pasted when it is the whole dictation.
     static let voiceSnippets = "VoiceSnippets"
+    /// The Snippets list runs Z to A by phrase instead of A to Z.
+    static let snippetsSortDescending = "SnippetsSortDescending"
 
     // MARK: Licensing
     static let voxOSLicenseRequiresActivation = "VoxOSLicenseRequiresActivation"
