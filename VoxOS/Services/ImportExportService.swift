@@ -190,7 +190,11 @@ class ImportExportService {
             restoreClipboardAfterPaste: UserDefaults.standard.bool(forKey: DefaultsKeys.restoreClipboardAfterPaste),
             clipboardRestoreDelay: UserDefaults.standard.double(forKey: DefaultsKeys.clipboardRestoreDelay),
             appSwitcher: AppSwitcherBackup.current(),
-            preferences: PreferencesBackup.current()
+            preferences: PreferencesBackup.current(),
+            shortcuts: Dictionary(
+                uniqueKeysWithValues: ShortcutAction.backedUpByName.compactMap { action in
+                    ShortcutStore.shortcut(for: action).map { (action.storageName, ShortcutBackup($0)) }
+                })
         )
 
         let exportedSettings = BackupFile(

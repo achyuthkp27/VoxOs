@@ -143,3 +143,37 @@ enum ShortcutAction: Hashable {
         index == 9 ? "10" : "\(index + 1)"
     }
 }
+
+// MARK: - Backups
+
+extension ShortcutAction {
+    /// How a backup carries this action's shortcut. The switch has no default, so a new action
+    /// does not build until it is given one.
+    enum BackupCoverage: Equatable {
+        /// A named field of `GeneralBackup`, kept for backups made before `shortcuts`.
+        case namedField
+        /// `GeneralBackup.shortcuts`, by `storageName`.
+        case byName
+        /// With its mode, in the Modes category.
+        case withItsMode
+        /// Nothing to back up: a fixed gesture or a key that only works inside the recorder.
+        case notRecordable
+    }
+
+    var backupCoverage: BackupCoverage {
+        switch self {
+        case .primaryRecording, .secondaryRecording, .pasteLastTranscription, .pasteLastEnhancement,
+            .retryLastTranscription, .cancelRecorder, .openHistoryWindow, .quickAddToDictionary, .undoLastPaste:
+            return .namedField
+        case .captureSystemAudio, .recallSystemAudio:
+            return .byName
+        case .mode:
+            return .withItsMode
+        case .agentDoubleTap, .dictateAndSend, .recorderPanelEscape, .recorderPanelMode:
+            return .notRecordable
+        }
+    }
+
+    /// The actions `GeneralBackup.shortcuts` carries.
+    static let backedUpByName: [ShortcutAction] = [.captureSystemAudio, .recallSystemAudio]
+}

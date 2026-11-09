@@ -137,3 +137,55 @@ struct PreferencesBackupTests {
         #expect(backup.generalSettings?.preferences == nil)
     }
 }
+
+/// Every shortcut the user can record is carried by a backup.
+@Suite
+struct ShortcutBackupCoverageTests {
+
+    private static let repo = URL(fileURLWithPath: #filePath).deletingLastPathComponent().deletingLastPathComponent()
+
+    /// The actions with a shortcut recorder somewhere in the app, by case name.
+    private static func recordableActions() throws -> Set<String> {
+        let appFolder = repo.appendingPathComponent("VoxOS")
+        let files =
+            FileManager.default.enumerator(at: appFolder, includingPropertiesForKeys: nil)?
+            .compactMap { $0 as? URL }.filter { $0.pathExtension == "swift" } ?? []
+        var names = Set<String>()
+        let pattern = try Regex(#"ShortcutRecorder\(\s*action:\s*\.(\w+)"#)
+        for file in files {
+            let text = (try? String(contentsOf: file, encoding: .utf8)) ?? ""
+            for match in text.matches(of: pattern) { names.insert(String(match.output[1].substring ?? "")) }
+        }
+        return names
+    }
+
+    /// The simple actions, by case name, so the scan's names can be checked.
+    private let simpleActions: [String: ShortcutAction] = [
+        "primaryRecording": .primaryRecording, "secondaryRecording": .secondaryRecording,
+        "pasteLastTranscription": .pasteLastTranscription, "pasteLastEnhancement": .pasteLastEnhancement,
+        "retryLastTranscription": .retryLastTranscription, "cancelRecorder": .cancelRecorder,
+        "openHistoryWindow": .openHistoryWindow, "quickAddToDictionary": .quickAddToDictionary,
+        "undoLastPaste": .undoLastPaste, "captureSystemAudio": .captureSystemAudio,
+        "recallSystemAudio": .recallSystemAudio, "agentDoubleTap": .agentDoubleTap, "dictateAndSend": .dictateAndSend,
+    ]
+
+    @Test func everyRecordableShortcutIsBackedUp() throws {
+        let recordable = try Self.recordableActions()
+        #expect(recordable.count >= 10)
+        for name in recordable where name != "mode" {
+            let action = try #require(simpleActions[name], "\(name) has a recorder but no entry here")
+            #expect(action.backupCoverage != .notRecordable, "\(name) has a recorder but is not backed up")
+        }
+    }
+
+    @Test func theByNameListHoldsExactlyTheByNameActions() {
+        let byName = simpleActions.values.filter { $0.backupCoverage == .byName }
+        #expect(Set(byName) == Set(ShortcutAction.backedUpByName))
+    }
+
+    @Test func aBackupFromBeforeShortcutsByNameStillOpens() throws {
+        let json = #"{"version":"1.0","generalSettings":{"isMenuBarOnly":true}}"#
+        let backup = try JSONDecoder().decode(BackupFile.self, from: Data(json.utf8))
+        #expect(backup.generalSettings?.shortcuts == nil)
+    }
+}

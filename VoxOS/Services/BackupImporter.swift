@@ -149,6 +149,11 @@ enum BackupImporter {
         if let undoShortcut = general.undoLastPasteShortcut {
             ShortcutStore.setShortcut(undoShortcut.shortcut, for: .undoLastPaste)
         }
+        for action in ShortcutAction.backedUpByName {
+            if let backup = general.shortcuts?[action.storageName] {
+                ShortcutStore.setShortcut(backup.shortcut, for: action)
+            }
+        }
 
         if let shortcutRawValue = general.primaryRecordingShortcutRawValue,
             let shortcut = RecordingShortcutManager.ShortcutSelection(rawValue: shortcutRawValue)

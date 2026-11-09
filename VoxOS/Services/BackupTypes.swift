@@ -104,6 +104,8 @@ struct GeneralBackup: Codable {
     let appSwitcher: AppSwitcherBackup?
     /// Every other setting, by key. Absent from backups made before it was added.
     let preferences: PreferencesBackup?
+    /// Shortcuts without a named field, by `ShortcutAction.storageName`.
+    let shortcuts: [String: ShortcutBackup]?
 }
 
 /// The app switcher's settings: its switches, its key, the letters given to apps and the apps it
