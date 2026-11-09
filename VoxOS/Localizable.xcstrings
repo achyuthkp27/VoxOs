@@ -2687,6 +2687,38 @@
         }
       }
     },
+    "A band with how far a download in the Downloads folder has got, and a notice when it is done." : {
+      "localizations" : {
+        "de" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Ein Band, das zeigt, wie weit ein Download im Ordner „Downloads“ ist, und ein Hinweis, wenn er fertig ist."
+          }
+        },
+        "zh-Hans" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "显示“下载”文件夹中下载进度的横条，并在完成时给出提示。"
+          }
+        }
+      }
+    },
+    "A card with Claude's last message for a few seconds when a session finishes, with a button to hear it. Not while that session's terminal is in front." : {
+      "localizations" : {
+        "de" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Eine Karte mit Claudes letzter Nachricht für einige Sekunden, wenn eine Sitzung endet, mit einer Taste zum Anhören. Nicht, solange das Terminal dieser Sitzung vorne ist."
+          }
+        },
+        "zh-Hans" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "会话结束时，显示 Claude 最后一条消息的卡片几秒钟，并附有收听按钮。该会话的终端位于最前时不显示。"
+          }
+        }
+      }
+    },
     "A closer look at your VoxOS usage." : {
       "comment" : "A description of the dashboard insights view.",
       "extractionState" : "stale",
@@ -2814,6 +2846,70 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "发生网络错误：%@"
+          }
+        }
+      }
+    },
+    "A notice when Mail, Messages or another app's unread badge in the Dock goes up, read from the Dock once a minute." : {
+      "localizations" : {
+        "de" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Ein Hinweis, wenn das Ungelesen-Kennzeichen von Mail, Nachrichten oder einer anderen App im Dock steigt; wird einmal pro Minute aus dem Dock gelesen."
+          }
+        },
+        "zh-Hans" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "当“邮件”、“信息”或其他应用在程序坞中的未读标记增加时给出提示，每分钟从程序坞读取一次。"
+          }
+        }
+      }
+    },
+    "A notice when rain is about to start where you are, from the weather checked every half hour. Only once location access has been given on the Weather page." : {
+      "localizations" : {
+        "de" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Ein Hinweis, wenn es bei dir bald zu regnen beginnt, anhand des halbstündlich abgerufenen Wetters. Erst nachdem auf der Wetterseite der Standortzugriff erlaubt wurde."
+          }
+        },
+        "zh-Hans" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "根据每半小时检查一次的天气，在你所在地即将下雨时给出提示。仅在“天气”页面授予定位权限后可用。"
+          }
+        }
+      }
+    },
+    "A notice with the Focus's own name and symbol when one turns on or off." : {
+      "localizations" : {
+        "de" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Ein Hinweis mit Name und Symbol des Fokus, wenn einer ein- oder ausgeschaltet wird."
+          }
+        },
+        "zh-Hans" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "专注模式开启或关闭时，显示带有其名称和符号的提示。"
+          }
+        }
+      }
+    },
+    "A short notice when AirPods or another Bluetooth device connects (with its battery), when the sound moves to another output, when Wi-Fi joins or drops, and when the power adapter goes in or out or the battery runs low." : {
+      "localizations" : {
+        "de" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Ein kurzer Hinweis, wenn sich AirPods oder ein anderes Bluetooth-Gerät verbinden (mit Akkustand), wenn der Ton auf eine andere Ausgabe wechselt, wenn sich das WLAN verbindet oder trennt und wenn das Netzteil angeschlossen oder getrennt wird oder der Akku schwach ist."
+          }
+        },
+        "zh-Hans" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "当 AirPods 或其他蓝牙设备连接时（显示电量）、声音切换到其他输出时、Wi-Fi 连接或断开时，以及接入或拔下电源适配器或电池电量不足时，给出简短提示。"
           }
         }
       }
@@ -2949,6 +3045,22 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "AI 模型"
+          }
+        }
+      }
+    },
+    "AI Models → Main & Fallback Model. The fallback is tried when the main model is rate-limited, down, unreachable or answers with nothing. Off by default: your text only goes to models you pick there." : {
+      "localizations" : {
+        "de" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "KI-Modelle → Haupt- und Ausweichmodell. Das Ausweichmodell wird versucht, wenn das Hauptmodell begrenzt, ausgefallen oder nicht erreichbar ist oder nichts zurückgibt. Standardmäßig aus: Dein Text geht nur an Modelle, die du dort auswählst."
+          }
+        },
+        "zh-Hans" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "AI 模型 → 主模型和备用模型。当主模型受到速率限制、宕机、无法访问或返回空内容时，会尝试备用模型。默认关闭：你的文本只会发送到你在那里选择的模型。"
           }
         }
       }
@@ -4200,6 +4312,22 @@
         }
       }
     },
+    "Adds a notify line to ~/.codex/config.toml (after a backup) that tells VoxOS when a Codex turn ends. A notify of your own is never replaced. Codex cannot hand approvals to another app, so only the end of a turn shows." : {
+      "localizations" : {
+        "de" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Fügt ~/.codex/config.toml (nach einer Sicherung) eine notify-Zeile hinzu, die VoxOS meldet, wenn eine Codex-Runde endet. Ein eigenes notify wird nie ersetzt. Codex kann Freigaben nicht an eine andere App übergeben, daher erscheint nur das Ende einer Runde."
+          }
+        },
+        "zh-Hans" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "在 ~/.codex/config.toml 中添加一行 notify（会先备份），在 Codex 回合结束时通知 VoxOS。你自己的 notify 永远不会被替换。Codex 无法把批准交给其他应用，因此只显示回合结束。"
+          }
+        }
+      }
+    },
     "Adds hooks to ~/.claude/settings.json that report to VoxOS on this Mac only (127.0.0.1). A request still shows in the terminal too; whichever you answer first wins. Turning this off removes the hooks." : {
       "localizations" : {
         "de" : {
@@ -4212,6 +4340,22 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "在 ~/.claude/settings.json 中添加钩子，仅向本机上的 VoxOS 报告（127.0.0.1）。请求仍会显示在终端中，以你先回答的一方为准。关闭此项会移除这些钩子。"
+          }
+        }
+      }
+    },
+    "Adds hooks to ~/.gemini/settings.json (after a backup) that tell VoxOS when a Gemini turn ends and when a tool waits for your approval. Your own hooks are never touched. Gemini's hooks cannot answer an approval, so you still answer it in the terminal." : {
+      "localizations" : {
+        "de" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Fügt ~/.gemini/settings.json (nach einer Sicherung) Hooks hinzu, die VoxOS melden, wenn eine Gemini-Runde endet und wenn ein Werkzeug auf deine Freigabe wartet. Deine eigenen Hooks werden nie angetastet. Die Hooks von Gemini können keine Freigabe beantworten, daher beantwortest du sie weiterhin im Terminal."
+          }
+        },
+        "zh-Hans" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "在 ~/.gemini/settings.json 中添加钩子（会先备份），在 Gemini 回合结束以及工具等待你批准时通知 VoxOS。你自己的钩子不会被改动。Gemini 的钩子无法回答批准请求，因此你仍需在终端中回答。"
           }
         }
       }
@@ -4264,6 +4408,22 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "联盟计划"
+          }
+        }
+      }
+    },
+    "After ⌃⌃, the Agent sends your request once you pause, so there is no second tap. It learns how quiet your room is each time, and in a noisy room it waits for the live transcript to settle instead." : {
+      "localizations" : {
+        "de" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Nach ⌃⌃ sendet der Agent deine Anfrage, sobald du eine Pause machst, ohne zweites Tippen. Er lernt jedes Mal, wie ruhig dein Raum ist, und wartet in einem lauten Raum stattdessen, bis sich das Live-Transkript beruhigt."
+          }
+        },
+        "zh-Hans" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "按下 ⌃⌃ 后，你一停顿，智能体就会发送请求，无需再按一次。它每次都会了解房间有多安静；在嘈杂的房间里，它会改为等待实时转写稳定下来。"
           }
         }
       }
@@ -5391,6 +5551,22 @@
         }
       }
     },
+    "Assign a unique keyboard shortcut to instantly activate this mode and start recording." : {
+      "localizations" : {
+        "de" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Weise ein eindeutiges Tastaturkürzel zu, um diesen Modus sofort zu aktivieren und die Aufnahme zu starten."
+          }
+        },
+        "zh-Hans" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "分配一个唯一的键盘快捷键，即可立即启用此模式并开始录音。"
+          }
+        }
+      }
+    },
     "Assistant" : {
       "extractionState" : "manual",
       "localizations" : {
@@ -5977,6 +6153,22 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "备份"
+          }
+        }
+      }
+    },
+    "Bars beside the notch and in the player that move with what is actually playing. They listen to the Mac's sound output while music plays, which needs the System Audio Recording permission and shows macOS's purple recording dot meanwhile. Off, the bars still move but listen to nothing. Nothing is recorded or stored. A click on the bars in the player switches this too." : {
+      "localizations" : {
+        "de" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Balken neben der Notch und im Player, die sich mit dem bewegen, was tatsächlich spielt. Sie hören während der Musikwiedergabe auf die Tonausgabe des Mac, was die Berechtigung Systemaudioaufnahme erfordert und so lange den violetten Aufnahmepunkt von macOS zeigt. Wenn aus, bewegen sich die Balken weiter, hören aber auf nichts. Nichts wird aufgenommen oder gespeichert. Ein Klick auf die Balken im Player schaltet dies ebenfalls um."
+          }
+        },
+        "zh-Hans" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "刘海旁和播放器中的音乐条会随实际播放的内容跳动。播放音乐时，它们会监听 Mac 的声音输出，这需要系统音频录制权限，期间会显示 macOS 的紫色录制圆点。关闭时，音乐条仍会跳动，但不监听任何声音。不会录制或存储任何内容。点按播放器中的音乐条也可切换此项。"
           }
         }
       }
@@ -7353,6 +7545,22 @@
         }
       }
     },
+    "Clicks, typing and keys follow the app in front; opening or switching to an app follows that app. Shell commands, scripts, files, plugins and MCP tools always use the Control Mode above." : {
+      "localizations" : {
+        "de" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Klicks, Tippen und Tasten richten sich nach der vorderen App; das Öffnen einer App oder der Wechsel dorthin richtet sich nach dieser App. Shell-Befehle, Skripte, Dateien, Plugins und MCP-Werkzeuge verwenden immer den Steuerungsmodus oben."
+          }
+        },
+        "zh-Hans" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "点按、输入和按键遵循最前面的应用；打开或切换到某个应用时遵循该应用。Shell 命令、脚本、文件、插件和 MCP 工具始终使用上方的控制模式。"
+          }
+        }
+      }
+    },
     "Clipboard" : {
       "localizations" : {
         "de" : {
@@ -7606,6 +7814,22 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "命令行工具"
+          }
+        }
+      }
+    },
+    "Commands that look destructive (rm -rf, sudo, disk formatting, piping downloads into a shell…) are refused unless this is on. When on, they run and the agent tells you what it did." : {
+      "localizations" : {
+        "de" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Befehle, die zerstörerisch aussehen (rm -rf, sudo, Festplattenformatierung, Downloads direkt in eine Shell leiten …), werden abgelehnt, sofern dies nicht eingeschaltet ist. Wenn an, laufen sie, und der Agent sagt dir, was er getan hat."
+          }
+        },
+        "zh-Hans" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "看起来具有破坏性的命令（rm -rf、sudo、格式化磁盘、把下载内容直接传给 Shell…）会被拒绝，除非开启此项。开启后，这些命令会运行，智能体会告诉你它做了什么。"
           }
         }
       }
@@ -9745,6 +9969,22 @@
         }
       }
     },
+    "Dictation adapts to where it is pasted: full sentences in Mail, short and casual in Slack or Messages, lists in Notes, code-form names in editors. Modes with a custom prompt still take priority." : {
+      "localizations" : {
+        "de" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Das Diktat passt sich an, wo es eingefügt wird: ganze Sätze in Mail, kurz und locker in Slack oder Nachrichten, Listen in Notizen, Namen in Code-Schreibweise in Editoren. Modi mit eigenem Prompt haben weiterhin Vorrang."
+          }
+        },
+        "zh-Hans" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "听写会根据粘贴位置调整：在“邮件”中写完整句子，在 Slack 或“信息”中简短随意，在“备忘录”中用列表，在编辑器中用代码形式的名称。带有自定义提示词的模式仍然优先。"
+          }
+        }
+      }
+    },
     "Dictation and the Agent from their shortcuts" : {
       "localizations" : {
         "de" : {
@@ -11452,6 +11692,22 @@
         }
       }
     },
+    "Every mode can choose its own speech model, language and AI model. When one differs from this line, it is highlighted on that mode." : {
+      "localizations" : {
+        "de" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Jeder Modus kann sein eigenes Sprachmodell, seine Sprache und sein KI-Modell wählen. Weicht eines von dieser Zeile ab, wird es bei diesem Modus hervorgehoben."
+          }
+        },
+        "zh-Hans" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "每个模式都可以选择自己的语音模型、语言和 AI 模型。与此行不同时，会在该模式上突出显示。"
+          }
+        }
+      }
+    },
     "Examples" : {
       "localizations" : {
         "de" : {
@@ -12420,6 +12676,22 @@
         }
       }
     },
+    "Five minutes before a meeting in your calendar, the notch counts down to it, with Join when the event has a video-call link. Needs Calendar access, which the Calendar page asks for." : {
+      "localizations" : {
+        "de" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Fünf Minuten vor einer Besprechung in deinem Kalender zählt die Notch herunter, mit „Beitreten“, wenn das Ereignis einen Videoanruf-Link hat. Erfordert Kalenderzugriff, nach dem die Kalenderseite fragt."
+          }
+        },
+        "zh-Hans" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "日历中的会议开始前五分钟，刘海会进行倒计时；如果日程含有视频通话链接，还会显示“加入”。需要日历访问权限，“日历”页面会请求该权限。"
+          }
+        }
+      }
+    },
     "Fix the same mistake the same way, every time" : {
       "localizations" : {
         "de" : {
@@ -12512,6 +12784,22 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "后续消息"
+          }
+        }
+      }
+    },
+    "For dictation started with a tap: VoxOS stops and pastes once you pause, a little longer than the Agent's pause." : {
+      "localizations" : {
+        "de" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Für Diktate, die mit Tippen gestartet wurden: VoxOS stoppt und fügt ein, sobald du eine Pause machst, etwas länger als die Pause des Agent."
+          }
+        },
+        "zh-Hans" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "适用于轻点开始的听写：你一停顿，VoxOS 就会停止并粘贴，停顿时间比智能体的稍长。"
           }
         }
       }
@@ -13353,6 +13641,22 @@
         }
       }
     },
+    "If enabled, your instructions are combined with a general-purpose template to improve transcription quality.\n\nDisable for full control over the AI's system prompt (for advanced users)." : {
+      "localizations" : {
+        "de" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Wenn aktiviert, werden deine Anweisungen mit einer allgemeinen Vorlage kombiniert, um die Transkriptionsqualität zu verbessern.\n\nDeaktiviere dies für die volle Kontrolle über den System-Prompt der KI (für Fortgeschrittene)."
+          }
+        },
+        "zh-Hans" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "启用后，你的指令会与通用模板结合，以提高转写质量。\n\n停用后可完全控制 AI 的系统提示词（适合高级用户）。"
+          }
+        }
+      }
+    },
     "Immediately" : {
       "localizations" : {
         "de" : {
@@ -14164,6 +14468,22 @@
         }
       }
     },
+    "Labels each turn in an imported recording with who spoke. Needs a Parakeet model — it is the only one that reports word timings, which speaker labels are built from. Downloads a speaker model the first time it runs." : {
+      "localizations" : {
+        "de" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Kennzeichnet jeden Redebeitrag in einer importierten Aufnahme mit dem Sprecher. Erfordert ein Parakeet-Modell – nur dieses liefert Wortzeitpunkte, aus denen die Sprecherkennzeichnung entsteht. Lädt beim ersten Mal ein Sprechermodell."
+          }
+        },
+        "zh-Hans" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "为导入录音中的每段发言标注说话人。需要 Parakeet 模型——只有它会提供单词时间戳，说话人标签正是据此生成。首次运行时会下载说话人模型。"
+          }
+        }
+      }
+    },
     "Language" : {
       "localizations" : {
         "de" : {
@@ -14781,6 +15101,22 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "液态玻璃"
+          }
+        }
+      }
+    },
+    "Liquid Glass: the open card, Claude Code's cards and the recorder are glass below the notch, which stays black. Solid Black: one opaque black surface. Collapsed bands are black either way, as they sit beside the hardware notch." : {
+      "localizations" : {
+        "de" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Liquid Glass: Die geöffnete Karte, die Karten von Claude Code und der Rekorder sind unter der Notch aus Glas, die Notch selbst bleibt schwarz. Tiefschwarz: eine undurchsichtige schwarze Fläche. Eingeklappte Bänder sind in beiden Fällen schwarz, da sie neben der echten Notch liegen."
+          }
+        },
+        "zh-Hans" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "液态玻璃：展开的卡片、Claude Code 卡片和录音器在刘海下方呈玻璃质感，刘海本身保持黑色。纯黑：一整块不透明的黑色。收起的横条在两种情况下都是黑色，因为它们位于硬件刘海旁边。"
           }
         }
       }
@@ -15539,6 +15875,22 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "主模型和备用模型在 AI 模型中设置。"
+          }
+        }
+      }
+    },
+    "Main: every mode uses this model instead of its own. Agent: the Agent uses this one instead, for example a stronger model than dictation cleanup needs. Fallback: tried when the model in use is rate-limited, down, unreachable or answers with nothing. Your text only goes to the models you pick here." : {
+      "localizations" : {
+        "de" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Haupt: Jeder Modus verwendet dieses Modell statt seines eigenen. Agent: Der Agent verwendet stattdessen dieses, etwa ein stärkeres Modell, als die Diktatverbesserung braucht. Ausweich: wird versucht, wenn das verwendete Modell begrenzt, ausgefallen oder nicht erreichbar ist oder nichts zurückgibt. Dein Text geht nur an die Modelle, die du hier auswählst."
+          }
+        },
+        "zh-Hans" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "主模型：所有模式都使用此模型，而不是各自的模型。智能体：智能体改用此模型，例如比听写润色所需更强的模型。备用：当前模型受到速率限制、宕机、无法访问或返回空内容时尝试。你的文本只会发送到你在此选择的模型。"
           }
         }
       }
@@ -18538,6 +18890,22 @@
         }
       }
     },
+    "Off by default: the notch appears only on the shortcut. On, a slim tab stays under the notch between dictations; hover to see it, click to start recording. Only on displays with a notch." : {
+      "localizations" : {
+        "de" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Standardmäßig aus: Die Notch erscheint nur beim Kürzel. Wenn an, bleibt zwischen Diktaten ein schmaler Reiter unter der Notch; fahre darüber, um ihn zu sehen, klicke, um die Aufnahme zu starten. Nur auf Displays mit Notch."
+          }
+        },
+        "zh-Hans" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "默认关闭：刘海只在按下快捷键时出现。开启后，听写之间刘海下方会保留一个细长标签；悬停即可看到，点按即可开始录音。仅适用于带刘海的显示器。"
+          }
+        }
+      }
+    },
     "Off, nothing shows in the notch between dictations, and Claude Code's requests stay in the terminal." : {
       "localizations" : {
         "de" : {
@@ -18554,6 +18922,22 @@
         }
       }
     },
+    "Off, the bars stay ambient while the Mac runs on battery and listen to nothing. In Low Power Mode they always do." : {
+      "localizations" : {
+        "de" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Wenn aus, bleiben die Balken im Akkubetrieb dekorativ und hören auf nichts. Im Stromsparmodus tun sie das immer."
+          }
+        },
+        "zh-Hans" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "关闭时，Mac 使用电池时音乐条只作装饰，不监听任何声音。在低电量模式下始终如此。"
+          }
+        }
+      }
+    },
     "Off, the shortcuts below start nothing: no dictation, no Agent. They are kept as they are." : {
       "localizations" : {
         "de" : {
@@ -18566,6 +18950,22 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "关闭后，下方快捷键不会启动任何功能：没有听写，也没有智能体。快捷键本身保持不变。"
+          }
+        }
+      }
+    },
+    "Off: while a full-screen app is in front (a video, a game), Notch Home and its animations step aside. Claude Code requests still show." : {
+      "localizations" : {
+        "de" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Aus: Solange eine Vollbild-App vorne ist (ein Video, ein Spiel), treten Notch Home und seine Animationen zurück. Anfragen von Claude Code erscheinen weiterhin."
+          }
+        },
+        "zh-Hans" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "关闭：全屏应用（视频、游戏）位于最前时，刘海主页及其动画会让开。Claude Code 的请求仍会显示。"
           }
         }
       }
@@ -18682,6 +19082,86 @@
         }
       }
     },
+    "On the Sound page: each playing app with its own volume. An app turned down is played on through a system audio tap, which needs System Audio Recording and shows macOS's purple dot until every app is back at full." : {
+      "localizations" : {
+        "de" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Auf der Tonseite: jede spielende App mit eigener Lautstärke. Eine leiser gestellte App wird über einen Systemaudio-Abgriff weitergespielt, was Systemaudioaufnahme erfordert und den violetten Punkt von macOS zeigt, bis jede App wieder auf voller Lautstärke ist."
+          }
+        },
+        "zh-Hans" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "在“声音”页面：每个正在播放的应用都有自己的音量。调低音量的应用会通过系统音频分流继续播放，这需要系统音频录制权限，并会显示 macOS 的紫色圆点，直到所有应用恢复满音量。"
+          }
+        }
+      }
+    },
+    "On the Sound page: switch the Mac's sound output between speakers, headphones and other devices." : {
+      "localizations" : {
+        "de" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Auf der Tonseite: die Tonausgabe des Mac zwischen Lautsprechern, Kopfhörern und anderen Geräten wechseln."
+          }
+        },
+        "zh-Hans" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "在“声音”页面：在扬声器、耳机和其他设备之间切换 Mac 的声音输出。"
+          }
+        }
+      }
+    },
+    "On the Sound page: switch the active microphone between built-in, AirPods and external microphones." : {
+      "localizations" : {
+        "de" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Auf der Tonseite: das aktive Mikrofon zwischen eingebautem Mikrofon, AirPods und externen Mikrofonen wechseln."
+          }
+        },
+        "zh-Hans" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "在“声音”页面：在内建麦克风、AirPods 和外接麦克风之间切换当前麦克风。"
+          }
+        }
+      }
+    },
+    "On the Sound page: the last few pieces of text you copied; a click copies one again. Kept in memory only, never what a password manager marks as secret. Off by default: it checks the clipboard once a second." : {
+      "localizations" : {
+        "de" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Auf der Tonseite: die letzten Textstücke, die du kopiert hast; ein Klick kopiert eines erneut. Nur im Speicher gehalten, nie, was ein Passwortmanager als geheim markiert. Standardmäßig aus: Es prüft die Zwischenablage einmal pro Sekunde."
+          }
+        },
+        "zh-Hans" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "在“声音”页面：你最近拷贝的几段文本；点按即可再次拷贝。仅保存在内存中，绝不包括密码管理器标记为机密的内容。默认关闭：它每秒检查一次剪贴板。"
+          }
+        }
+      }
+    },
+    "On the Sound page: your camera as a mirror, only after a click and only while it is open." : {
+      "localizations" : {
+        "de" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Auf der Tonseite: deine Kamera als Spiegel, nur nach einem Klick und nur, solange er geöffnet ist."
+          }
+        },
+        "zh-Hans" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "在“声音”页面：把摄像头当作镜子，仅在点按后且仅在打开期间使用。"
+          }
+        }
+      }
+    },
     "On this Mac" : {
       "localizations" : {
         "de" : {
@@ -18727,6 +19207,38 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "设备端"
+          }
+        }
+      }
+    },
+    "On: Notch Home and Claude Code's cards move to the display with the front window, as a notch drawn from that display's menu bar where it has none. Off: they stay on the display with a notch, or on the main display when no display has one." : {
+      "localizations" : {
+        "de" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "An: Notch Home und die Karten von Claude Code wandern auf das Display mit dem vorderen Fenster, als Notch, die aus der Menüleiste dieses Displays gezeichnet wird, wo es keine hat. Aus: Sie bleiben auf dem Display mit Notch oder auf dem Hauptdisplay, wenn keines eine hat."
+          }
+        },
+        "zh-Hans" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "开启：刘海主页和 Claude Code 卡片会移到最前窗口所在的显示器；若该显示器没有刘海，则从其菜单栏绘制一个。关闭：它们留在带刘海的显示器上；若都没有刘海，则留在主显示器上。"
+          }
+        }
+      }
+    },
+    "On: the notch's cards and bands are left out of screenshots, screen recordings and screen sharing, so a call never shows a Claude Code request or what is playing. Off by default, so a screenshot of the notch still shows it." : {
+      "localizations" : {
+        "de" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "An: Die Karten und Bänder der Notch werden in Bildschirmfotos, Bildschirmaufnahmen und bei der Bildschirmfreigabe ausgelassen, damit ein Anruf nie eine Claude-Code-Anfrage oder die laufende Musik zeigt. Standardmäßig aus, damit ein Bildschirmfoto der Notch sie weiterhin zeigt."
+          }
+        },
+        "zh-Hans" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "开启：刘海的卡片和横条不会出现在截屏、屏幕录制和屏幕共享中，因此通话时绝不会显示 Claude Code 请求或正在播放的内容。默认关闭，因此刘海的截屏仍会显示它们。"
           }
         }
       }
@@ -20174,6 +20686,22 @@
         }
       }
     },
+    "Press once to start capturing what your Mac is playing, press again to stop. The transcript is copied to the clipboard and pasted at the cursor. Your microphone is never recorded." : {
+      "localizations" : {
+        "de" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Einmal drücken, um aufzunehmen, was dein Mac abspielt, erneut drücken zum Beenden. Das Transkript wird in die Zwischenablage kopiert und an der Einfügemarke eingefügt. Dein Mikrofon wird nie aufgenommen."
+          }
+        },
+        "zh-Hans" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "按一次开始捕获 Mac 正在播放的声音，再按一次停止。转写稿会拷贝到剪贴板并粘贴到光标处。绝不会录制你的麦克风。"
+          }
+        }
+      }
+    },
     "Press shortcut" : {
       "localizations" : {
         "de" : {
@@ -20533,6 +21061,22 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "购买许可证"
+          }
+        }
+      }
+    },
+    "Push the pointer to the top of the notch, or drag files toward it, to open Music, Calendar, Reminders, Pomodoro and Shelf. Between hovers it shows one thing at a time: a notice, the next meeting, a microphone or camera in use, a running timer, or the playing track." : {
+      "localizations" : {
+        "de" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Bewege den Zeiger an den oberen Rand der Notch oder ziehe Dateien dorthin, um Musik, Kalender, Erinnerungen, Pomodoro und Ablage zu öffnen. Zwischen dem Überfahren zeigt sie jeweils eine Sache: einen Hinweis, die nächste Besprechung, ein verwendetes Mikrofon oder eine Kamera, einen laufenden Timer oder den spielenden Titel."
+          }
+        },
+        "zh-Hans" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "把指针推到刘海顶部，或把文件拖向刘海，即可打开音乐、日历、提醒事项、番茄钟和文件架。悬停之间，它一次只显示一项：提示、下一场会议、正在使用的麦克风或摄像头、正在运行的计时器，或正在播放的歌曲。"
           }
         }
       }
@@ -22449,6 +22993,22 @@
         }
       }
     },
+    "Reveals recent transcriptions when the pointer reaches the left edge of the screen. Watching for that means tracking every mouse movement, so turning it off measurably reduces battery use. Takes effect after a restart." : {
+      "localizations" : {
+        "de" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Zeigt letzte Transkriptionen, wenn der Zeiger den linken Bildschirmrand erreicht. Dafür wird jede Mausbewegung verfolgt, daher senkt das Ausschalten den Akkuverbrauch messbar. Wird nach einem Neustart wirksam."
+          }
+        },
+        "zh-Hans" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "当指针到达屏幕左边缘时显示最近的转写。为此需要追踪每次鼠标移动，因此关闭此项能明显降低耗电。重新启动后生效。"
+          }
+        }
+      }
+    },
     "Review" : {
       "localizations" : {
         "de" : {
@@ -23788,6 +24348,22 @@
         }
       }
     },
+    "Sends what you dictated in chat boxes. Without this, hold fn+⌃ to dictate and send just once. A mode's own auto-send key still wins." : {
+      "localizations" : {
+        "de" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Sendet in Chatfeldern, was du diktiert hast. Ohne dies halte fn+⌃, um nur einmal zu diktieren und zu senden. Die eigene Auto-Senden-Taste eines Modus hat weiterhin Vorrang."
+          }
+        },
+        "zh-Hans" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "在聊天框中发送你听写的内容。不开启时，按住 fn+⌃ 可仅此一次听写并发送。模式自带的自动发送键仍然优先。"
+          }
+        }
+      }
+    },
     "Separate multiple originals with commas:" : {
       "localizations" : {
         "de" : {
@@ -24589,7 +25165,6 @@
       }
     },
     "Shows live text while recording with realtime models." : {
-      "extractionState" : "stale",
       "localizations" : {
         "de" : {
           "stringUnit" : {
@@ -25980,6 +26555,22 @@
         }
       }
     },
+    "Takes back the text VoxOS just pasted, as ⌘Z would, while that app is still in front. Saying “scratch that” on its own does the same." : {
+      "localizations" : {
+        "de" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Nimmt den Text zurück, den VoxOS gerade eingefügt hat, wie ⌘Z es tun würde, solange diese App noch vorne ist. „streich das“ allein zu sagen bewirkt dasselbe."
+          }
+        },
+        "zh-Hans" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "撤回 VoxOS 刚刚粘贴的文本，效果与 ⌘Z 相同，前提是该应用仍在最前。单独说“删掉刚才的”也有同样效果。"
+          }
+        }
+      }
+    },
     "Taking notes on “%@”: recording the call and your microphone." : {
       "localizations" : {
         "de" : {
@@ -26396,6 +26987,22 @@
         }
       }
     },
+    "The assigned shortcut cancels the recording. Resetting restores the default double-Escape behavior." : {
+      "localizations" : {
+        "de" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Das zugewiesene Kürzel bricht die Aufnahme ab. Zurücksetzen stellt das Standardverhalten mit zweimal Escape wieder her."
+          }
+        },
+        "zh-Hans" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "分配的快捷键会取消录音。重置后恢复默认的连按两次 Esc 行为。"
+          }
+        }
+      }
+    },
     "The audio file is invalid or corrupted" : {
       "localizations" : {
         "de" : {
@@ -26542,6 +27149,22 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "密钥有效，但 VoxOS 无法安全地存储它。"
+          }
+        }
+      }
+    },
+    "The line being sung, under the artist on the Music page, from lrclib.net. Looking a song up sends its title and artist there, once per song, only while the Music page is open." : {
+      "localizations" : {
+        "de" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Die gerade gesungene Zeile, unter dem Künstler auf der Musikseite, von lrclib.net. Beim Nachschlagen eines Songs werden Titel und Künstler dorthin gesendet, einmal pro Song und nur, solange die Musikseite geöffnet ist."
+          }
+        },
+        "zh-Hans" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "当前演唱的歌词行，显示在“音乐”页面的艺人下方，来自 lrclib.net。查询歌曲时会把歌名和艺人发送到那里，每首歌一次，且仅在“音乐”页面打开时进行。"
           }
         }
       }
@@ -26792,6 +27415,22 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "为“%@”模式选择的转写模型不可用"
+          }
+        }
+      }
+    },
+    "The volume and brightness keys show their level in the notch instead of macOS's pop-up, in the same steps (Option-Shift for finer ones). Needs Accessibility, which VoxOS already uses for its shortcuts. An external display's brightness, an output without a volume, and keys pressed while the notch is hidden stay with macOS." : {
+      "localizations" : {
+        "de" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Die Lautstärke- und Helligkeitstasten zeigen ihren Pegel in der Notch statt im Pop-up von macOS, in denselben Schritten (Wahl-Umschalt für feinere). Erfordert Bedienungshilfen, die VoxOS bereits für seine Kürzel nutzt. Die Helligkeit eines externen Displays, eine Ausgabe ohne Lautstärke und Tasten, die bei ausgeblendeter Notch gedrückt werden, bleiben bei macOS."
+          }
+        },
+        "zh-Hans" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "音量和亮度键会在刘海中显示调节级别，取代 macOS 的弹出窗口，步进相同（按住 Option-Shift 可更精细）。需要辅助功能权限，VoxOS 的快捷键已在使用该权限。外接显示器的亮度、没有音量的输出，以及刘海隐藏时按下的按键，仍由 macOS 处理。"
           }
         }
       }
@@ -29475,6 +30114,22 @@
         }
       }
     },
+    "VoxOS automatically switches to this mode based on the app or website you're using, or when you say a trigger word during recording." : {
+      "localizations" : {
+        "de" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "VoxOS wechselt automatisch in diesen Modus, je nach verwendeter App oder Website oder wenn du während der Aufnahme ein Auslösewort sagst."
+          }
+        },
+        "zh-Hans" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "VoxOS 会根据你正在使用的应用或网站，或在录音时说出触发词时，自动切换到此模式。"
+          }
+        }
+      }
+    },
     "VoxOS automatically understands what you are working with and selects your preferred setup. You can always configure this by editing or creating new modes." : {
       "localizations" : {
         "de" : {
@@ -30183,6 +30838,38 @@
         }
       }
     },
+    "When a request only opens an app or page (“open Slack”), the Agent panel closes by itself a moment after it does. It stays open for answers, errors, questions, and anything that did more than open." : {
+      "localizations" : {
+        "de" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Wenn eine Anfrage nur eine App oder Seite öffnet („öffne Slack“), schließt sich das Agent-Panel einen Moment danach von selbst. Es bleibt offen bei Antworten, Fehlern, Fragen und allem, was mehr als nur öffnet."
+          }
+        },
+        "zh-Hans" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "当请求只是打开某个应用或页面（“打开 Slack”）时，智能体面板会在完成后片刻自动关闭。对于回答、错误、提问以及任何不只是打开的操作，它会保持打开。"
+          }
+        }
+      }
+    },
+    "When a session runs git push, the notch says how that push's GitHub Actions run ended. GitHub's gh CLI is asked once a minute until the run completes, and only then." : {
+      "localizations" : {
+        "de" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Wenn eine Sitzung git push ausführt, sagt die Notch, wie der GitHub-Actions-Lauf dieses Pushs geendet hat. Die gh-CLI von GitHub wird einmal pro Minute gefragt, bis der Lauf abgeschlossen ist, und nur dann."
+          }
+        },
+        "zh-Hans" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "当会话运行 git push 时，刘海会告诉你此次推送的 GitHub Actions 运行结果。在运行完成之前，每分钟询问一次 GitHub 的 gh 命令行工具，且仅在此期间询问。"
+          }
+        }
+      }
+    },
     "When a whole dictation is a snippet’s phrase, VoxOS pastes the snippet exactly as saved, skipping AI cleanup. Edit a snippet to give it several lines." : {
       "localizations" : {
         "de" : {
@@ -30195,6 +30882,22 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "当整段听写正是某个文本片段的短语时，VoxOS 会按保存的原样粘贴该片段，跳过 AI 润色。编辑文本片段即可让它包含多行。"
+          }
+        }
+      }
+    },
+    "When the app running the session is in front, a request waits as a small band with a count instead of a card, since the terminal is asking too. Click the band to answer in the notch." : {
+      "localizations" : {
+        "de" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Wenn die App, in der die Sitzung läuft, vorne ist, wartet eine Anfrage als kleines Band mit Zähler statt als Karte, da das Terminal ebenfalls fragt. Klicke auf das Band, um in der Notch zu antworten."
+          }
+        },
+        "zh-Hans" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "当运行该会话的应用位于最前时，请求会以带计数的小横条而不是卡片的形式等待，因为终端也在询问。点按横条即可在刘海中回答。"
           }
         }
       }
@@ -30259,6 +30962,22 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "当你说…"
+          }
+        }
+      }
+    },
+    "While another app uses the microphone or a camera, the notch shows it, with the app's icon. A click on the microphone mutes it; the mute is undone when the call ends." : {
+      "localizations" : {
+        "de" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Solange eine andere App das Mikrofon oder eine Kamera verwendet, zeigt die Notch dies mit dem Symbol der App. Ein Klick auf das Mikrofon schaltet es stumm; die Stummschaltung wird aufgehoben, wenn der Anruf endet."
+          }
+        },
+        "zh-Hans" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "当其他应用正在使用麦克风或摄像头时，刘海会显示出来，并附上该应用的图标。点按麦克风即可将其静音；通话结束时会取消静音。"
           }
         }
       }
@@ -30840,6 +31559,22 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "下次启动 App 时，你会再次看到介绍页面。"
+          }
+        }
+      }
+    },
+    "Your 5-hour and weekly limits, with a notice in the notch at 80% and 95%, and what sessions cost each day. Your status line command is kept and still draws the status line; VoxOS only gets a copy of its input. Switching this off puts your status line back as it was." : {
+      "localizations" : {
+        "de" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Deine 5-Stunden- und Wochenlimits, mit einem Hinweis in der Notch bei 80 und 95 Prozent, und was Sitzungen pro Tag kosten. Dein Statuszeilen-Befehl bleibt erhalten und zeichnet weiterhin die Statuszeile; VoxOS erhält nur eine Kopie seiner Eingabe. Ausschalten stellt deine Statuszeile wieder her, wie sie war."
+          }
+        },
+        "zh-Hans" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "你的 5 小时和每周限额（达到 80% 和 95% 时在刘海中提示），以及会话每天的费用。你的状态栏命令会保留，并继续绘制状态栏；VoxOS 只获取其输入的副本。关闭此项会把状态栏恢复原样。"
           }
         }
       }
