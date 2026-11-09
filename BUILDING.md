@@ -54,6 +54,7 @@ for macOS permissions again after a rebuild.
 - `make test` — run the test suite (see "Development" in the README)
 - `make lint` / `make format` — check or apply swift-format
 - `make hooks` — run `make lint` before every `git push` (once per clone)
+- `make strings` — add new UI strings to `Localizable.xcstrings` after `make local`; translate them before committing
 - `make release` — build the signed DMG and Sparkle appcast from `release-notes/<version>.html`
 - `make release-setup` — store notarization credentials in Keychain
 - `make clean` — remove build artifacts
