@@ -34,11 +34,14 @@ class AudioFileQueueItem: Identifiable, ObservableObject {
     let prompt: CustomPrompt?
     /// The file is a temporary recording, deleted once its copy is saved with the transcript.
     let deletesSourceWhenDone: Bool
+    /// The label History shows in place of the mode's name: "Meeting Notes" for a meeting.
+    let label: String?
 
-    init(url: URL, prompt: CustomPrompt? = nil, deletesSourceWhenDone: Bool = false) {
+    init(url: URL, prompt: CustomPrompt? = nil, deletesSourceWhenDone: Bool = false, label: String? = nil) {
         self.url = url
         self.filename = url.lastPathComponent
         self.prompt = prompt
         self.deletesSourceWhenDone = deletesSourceWhenDone
+        self.label = label
     }
 }

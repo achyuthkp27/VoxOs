@@ -27,7 +27,8 @@ class AudioTranscriptionManager: ObservableObject {
 
     /// Add one or more audio file URLs to the queue. Invalid files are silently skipped. A
     /// `prompt` replaces the mode's prompt for these files' AI step.
-    func addToQueue(urls: [URL], prompt: CustomPrompt? = nil, deletesSourceWhenDone: Bool = false) {
+    func addToQueue(urls: [URL], prompt: CustomPrompt? = nil, deletesSourceWhenDone: Bool = false, label: String? = nil)
+    {
         for url in urls {
             guard FileManager.default.fileExists(atPath: url.path) else { continue }
             guard SupportedMedia.isSupported(url: url) else { continue }
@@ -38,7 +39,8 @@ class AudioTranscriptionManager: ObservableObject {
                 continue
             }
 
-            let item = AudioFileQueueItem(url: url, prompt: prompt, deletesSourceWhenDone: deletesSourceWhenDone)
+            let item = AudioFileQueueItem(
+                url: url, prompt: prompt, deletesSourceWhenDone: deletesSourceWhenDone, label: label)
             queue.append(item)
         }
     }
@@ -268,8 +270,8 @@ class AudioTranscriptionManager: ObservableObject {
                         enhancementDuration: enhancementResult.duration,
                         aiRequestSystemMessage: enhancementResult.systemMessage,
                         aiRequestUserMessage: enhancementResult.userMessage,
-                        modeName: modeMetadata.name,
-                        modeEmoji: modeMetadata.emoji
+                        modeName: item.label ?? modeMetadata.name,
+                        modeEmoji: item.label == nil ? modeMetadata.emoji : nil
                     )
                 } catch {
                     let failureMessage = EnhancementFailureFormatter.message(for: error)
@@ -281,8 +283,8 @@ class AudioTranscriptionManager: ObservableObject {
                         transcriptionModelName: currentModel.displayName,
                         promptName: nil,
                         transcriptionDuration: transcriptionDuration,
-                        modeName: modeMetadata.name,
-                        modeEmoji: modeMetadata.emoji
+                        modeName: item.label ?? modeMetadata.name,
+                        modeEmoji: item.label == nil ? modeMetadata.emoji : nil
                     )
                 }
             } else {
@@ -293,8 +295,8 @@ class AudioTranscriptionManager: ObservableObject {
                     transcriptionModelName: currentModel.displayName,
                     promptName: nil,
                     transcriptionDuration: transcriptionDuration,
-                    modeName: modeMetadata.name,
-                    modeEmoji: modeMetadata.emoji
+                    modeName: item.label ?? modeMetadata.name,
+                    modeEmoji: item.label == nil ? modeMetadata.emoji : nil
                 )
             }
 

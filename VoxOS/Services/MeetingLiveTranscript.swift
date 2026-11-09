@@ -428,22 +428,25 @@ struct MeetingTranscriptView: View {
                     .font(.app(size: 14, weight: .semibold))
                     .foregroundStyle(AppTheme.Text.primary)
                     .lineLimit(1)
-                Text(live.isStreaming ? "Live transcript" : "Live transcript, every few seconds")
-                    .font(.app(size: 11))
-                    .foregroundStyle(AppTheme.Text.secondary)
-            }
-            Spacer(minLength: 6)
-            if let start = live.startedAt, live.isRunning {
-                TimelineView(.periodic(from: .now, by: 1)) { context in
-                    Text(verbatim: Self.elapsed(from: start, to: context.date))
-                        .font(.appMono(size: 11, weight: .semibold))
-                        .monospacedDigit()
-                        .foregroundStyle(AppTheme.Text.secondary)
-                        .padding(.horizontal, 8)
-                        .padding(.vertical, 4)
-                        .background(Capsule().fill(AppTheme.Surface.controlActive))
+                    .truncationMode(.middle)
+                    .help(Text(verbatim: live.title))
+                // The clock rides on the subtitle, so the title keeps the row's width.
+                HStack(spacing: 4) {
+                    Text(live.isStreaming ? "Live transcript" : "Live transcript, every few seconds")
+                    if let start = live.startedAt, live.isRunning {
+                        Text(verbatim: "·")
+                        TimelineView(.periodic(from: .now, by: 1)) { context in
+                            Text(verbatim: Self.elapsed(from: start, to: context.date))
+                                .monospacedDigit()
+                        }
+                    }
                 }
+                .font(.app(size: 11))
+                .foregroundStyle(AppTheme.Text.secondary)
+                .lineLimit(1)
             }
+            .layoutPriority(1)
+            Spacer(minLength: 6)
             IconButton(symbol: copied ? "checkmark" : "doc.on.doc", help: "Copy") { copy() }
                 .disabled(live.allText.isEmpty)
             IconButton(symbol: "minus", help: "Hide the live transcript; the meeting keeps recording") {

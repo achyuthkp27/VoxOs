@@ -91,6 +91,9 @@ struct MeetingNotesTests {
             deletesSourceWhenDone: true)
         #expect(meeting.prompt?.title == String(localized: "Meeting Notes"))
         #expect(meeting.deletesSourceWhenDone)
+        #expect(plain.label == nil, "an imported file keeps its mode's name in History")
+        let labelled = AudioFileQueueItem(url: URL(fileURLWithPath: "/tmp/c.wav"), label: "Meeting Notes")
+        #expect(labelled.label == "Meeting Notes")
     }
 
     // MARK: - Mixing in the microphone
