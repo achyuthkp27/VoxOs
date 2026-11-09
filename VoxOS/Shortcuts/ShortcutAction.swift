@@ -10,6 +10,7 @@ enum ShortcutAction: Hashable {
     case openHistoryWindow
     case quickAddToDictionary
     case undoLastPaste
+    case toggleMeetingNotes
     case captureSystemAudio
     case recallSystemAudio
     case agentDoubleTap
@@ -51,6 +52,8 @@ enum ShortcutAction: Hashable {
             return "quickAddToDictionary"
         case .undoLastPaste:
             return "undoLastPaste"
+        case .toggleMeetingNotes:
+            return "toggleMeetingNotes"
         case .captureSystemAudio:
             return "captureSystemAudio"
         case .recallSystemAudio:
@@ -88,6 +91,8 @@ enum ShortcutAction: Hashable {
             return String(localized: "Quick Add to Dictionary")
         case .undoLastPaste:
             return String(localized: "Undo Last Paste")
+        case .toggleMeetingNotes:
+            return String(localized: "Start or Stop Meeting Notes")
         case .captureSystemAudio:
             return String(localized: "Capture System Audio")
         case .recallSystemAudio:
@@ -118,6 +123,7 @@ enum ShortcutAction: Hashable {
         .pasteLastEnhancement,
         .retryLastTranscription,
         .undoLastPaste,
+        .toggleMeetingNotes,
         .openHistoryWindow,
         .quickAddToDictionary,
         .captureSystemAudio,
@@ -165,7 +171,7 @@ extension ShortcutAction {
         case .primaryRecording, .secondaryRecording, .pasteLastTranscription, .pasteLastEnhancement,
             .retryLastTranscription, .cancelRecorder, .openHistoryWindow, .quickAddToDictionary, .undoLastPaste:
             return .namedField
-        case .captureSystemAudio, .recallSystemAudio:
+        case .captureSystemAudio, .recallSystemAudio, .toggleMeetingNotes:
             return .byName
         case .mode:
             return .withItsMode
@@ -175,5 +181,5 @@ extension ShortcutAction {
     }
 
     /// The actions `GeneralBackup.shortcuts` carries.
-    static let backedUpByName: [ShortcutAction] = [.captureSystemAudio, .recallSystemAudio]
+    static let backedUpByName: [ShortcutAction] = [.captureSystemAudio, .recallSystemAudio, .toggleMeetingNotes]
 }

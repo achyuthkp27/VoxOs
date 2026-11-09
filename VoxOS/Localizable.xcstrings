@@ -25832,6 +25832,22 @@
         }
       }
     },
+    "Start or Stop Meeting Notes" : {
+      "localizations" : {
+        "de" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Besprechungsnotizen starten oder beenden"
+          }
+        },
+        "zh-Hans" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "开始或停止会议纪要"
+          }
+        }
+      }
+    },
     "Start or stop the VoxOS recorder for voice transcription." : {
       "localizations" : {
         "de" : {
@@ -25977,6 +25993,22 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "正在启动…"
+          }
+        }
+      }
+    },
+    "Starts meeting notes for the call you are on, or stops the one being recorded and writes it up, as Start Meeting Notes in the menu bar does." : {
+      "localizations" : {
+        "de" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Startet Besprechungsnotizen für den Anruf, in dem du bist, oder beendet die laufende Aufnahme und arbeitet sie aus, wie „Besprechungsnotizen starten“ in der Menüleiste."
+          }
+        },
+        "zh-Hans" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "为你正在进行的通话开始会议纪要，或停止正在录制的纪要并进行整理，效果与菜单栏中的“开始会议纪要”相同。"
           }
         }
       }

@@ -165,7 +165,8 @@ struct ShortcutBackupCoverageTests {
         "pasteLastTranscription": .pasteLastTranscription, "pasteLastEnhancement": .pasteLastEnhancement,
         "retryLastTranscription": .retryLastTranscription, "cancelRecorder": .cancelRecorder,
         "openHistoryWindow": .openHistoryWindow, "quickAddToDictionary": .quickAddToDictionary,
-        "undoLastPaste": .undoLastPaste, "captureSystemAudio": .captureSystemAudio,
+        "undoLastPaste": .undoLastPaste, "toggleMeetingNotes": .toggleMeetingNotes,
+        "captureSystemAudio": .captureSystemAudio,
         "recallSystemAudio": .recallSystemAudio, "agentDoubleTap": .agentDoubleTap, "dictateAndSend": .dictateAndSend,
     ]
 

@@ -190,6 +190,20 @@ struct VoiceSettingsPage: View {
                     }
 
                     LabeledContent {
+                        ShortcutRecorder(action: .toggleMeetingNotes) {
+                            recordingShortcutManager.updateShortcutStatus()
+                        }
+                        .controlSize(.small)
+                    } label: {
+                        HStack(spacing: 2) {
+                            Text("Start or Stop Meeting Notes")
+                            InfoTip(
+                                "Starts meeting notes for the call you are on, or stops the one being recorded and writes it up, as Start Meeting Notes in the menu bar does."
+                            )
+                        }
+                    }
+
+                    LabeledContent {
                         HStack(spacing: 8) {
                             ShortcutRecorder(
                                 action: .cancelRecorder,

@@ -480,6 +480,12 @@ class RecordingShortcutManager: ObservableObject {
             DictionaryQuickAddManager.shared.toggle(modelContainer: engine.modelContext.container)
         case .undoLastPaste:
             PasteUndo.undoLastPaste()
+        case .toggleMeetingNotes:
+            if MeetingNotes.shared.session != nil {
+                await MeetingNotes.shared.stop()
+            } else {
+                MeetingNotes.shared.startByHand()
+            }
         case .captureSystemAudio:
             await SystemAudioCaptureController.shared.toggleCapture()
         case .recallSystemAudio:
