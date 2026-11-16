@@ -105,7 +105,7 @@ enum AppDefaults {
 
             // Key Sounds: off until asked for, as it listens to every key.
             DefaultsKeys.keySoundsEnabled: false,
-            DefaultsKeys.keySoundsProfile: KeySoundSynth.Profile.bucklingSpring.rawValue,
+            DefaultsKeys.keySoundsProfile: KeySoundSynth.Profile.redLinear.rawValue,
             DefaultsKeys.keySoundsVolume: 0.6,
             DefaultsKeys.keySoundsKeyUp: true,
             DefaultsKeys.keySoundsStereo: true,

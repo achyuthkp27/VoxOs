@@ -117,11 +117,11 @@ struct KeySoundsTests {
         #expect(KeySoundSynth.recordedBank("no-such-switch").isEmpty)
     }
 
-    @Test func anUnknownSwitchFallsBackToTheFirst() {
+    @Test func anUnknownSwitchFallsBackToRedLinear() {
         let suite = "KeySoundsTests.\(UUID().uuidString)"
         let defaults = UserDefaults(suiteName: suite)!
         defer { defaults.removePersistentDomain(forName: suite) }
         defaults.set("gone", forKey: DefaultsKeys.keySoundsProfile)
-        #expect(KeySounds.Settings.read(from: defaults).profile == .bucklingSpring)
+        #expect(KeySounds.Settings.read(from: defaults).profile == .redLinear)
     }
 }

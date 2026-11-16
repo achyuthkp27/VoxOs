@@ -22,7 +22,7 @@ final class KeySounds: ObservableObject {
     /// What the player needs to know, read from the settings.
     struct Settings: Equatable, Sendable {
         var enabled = false
-        var profile = KeySoundSynth.Profile.bucklingSpring
+        var profile = KeySoundSynth.Profile.redLinear
         var volume: Float = 0.6
         var keyUp = true
         var stereo = true
@@ -34,7 +34,7 @@ final class KeySounds: ObservableObject {
             Settings(
                 enabled: defaults.bool(forKey: DefaultsKeys.keySoundsEnabled),
                 profile: defaults.string(forKey: DefaultsKeys.keySoundsProfile).flatMap(KeySoundSynth.Profile.init)
-                    ?? .bucklingSpring,
+                    ?? .redLinear,
                 volume: Float(defaults.double(forKey: DefaultsKeys.keySoundsVolume)),
                 keyUp: defaults.bool(forKey: DefaultsKeys.keySoundsKeyUp),
                 stereo: defaults.bool(forKey: DefaultsKeys.keySoundsStereo),
