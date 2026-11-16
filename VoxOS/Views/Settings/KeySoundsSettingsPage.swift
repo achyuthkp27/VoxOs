@@ -6,7 +6,7 @@ import UniformTypeIdentifiers
 /// quiet in, each its own section.
 struct KeySoundsSettingsPage: View {
     @AppStorage(DefaultsKeys.keySoundsEnabled) private var enabled = false
-    @AppStorage(DefaultsKeys.keySoundsProfile) private var profileRaw = KeySoundSynth.Profile.creamy.rawValue
+    @AppStorage(DefaultsKeys.keySoundsProfile) private var profileRaw = KeySoundSynth.Profile.bucklingSpring.rawValue
     @AppStorage(DefaultsKeys.keySoundsVolume) private var volume = 0.6
     @AppStorage(DefaultsKeys.keySoundsKeyUp) private var keyUp = true
     @AppStorage(DefaultsKeys.keySoundsStereo) private var stereo = true
@@ -17,7 +17,7 @@ struct KeySoundsSettingsPage: View {
 
     private var search: SettingsSearchMatcher { SettingsSearchMatcher(query: settingsSearch) }
 
-    private var profile: KeySoundSynth.Profile { KeySoundSynth.Profile(rawValue: profileRaw) ?? .creamy }
+    private var profile: KeySoundSynth.Profile { KeySoundSynth.Profile(rawValue: profileRaw) ?? .bucklingSpring }
 
     /// How keys sound and the quiet apps show only while the switch is on.
     private var layout: SettingsPageLayout {

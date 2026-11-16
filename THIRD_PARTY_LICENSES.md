@@ -27,3 +27,19 @@ LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
 OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
 SOFTWARE.
 ```
+
+---
+
+## Key Sounds recordings (CC0, public domain)
+
+The Buckling Spring and Heavy Buckling Spring switches in Key Sounds are short slices of these
+recordings from Wikimedia Commons, dedicated to the public domain under CC0 1.0. No attribution
+is required; the authors are credited here anyway.
+
+- "Typing - Model M 1986.ogg" by Raymangold22 —
+  https://commons.wikimedia.org/wiki/File:Typing_-_Model_M_1986.ogg
+- "Typing - Model M13 1999.ogg" by Raymangold22 —
+  https://commons.wikimedia.org/wiki/File:Typing_-_Model_M13_1999.ogg
+- "IBM M2 sound.ogg" by Anonimski — https://commons.wikimedia.org/wiki/File:IBM_M2_sound.ogg
+- "Typing - Model F 122 1984.ogg" by Raymangold22 —
+  https://commons.wikimedia.org/wiki/File:Typing_-_Model_F_122_1984.ogg

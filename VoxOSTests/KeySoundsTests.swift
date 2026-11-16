@@ -19,7 +19,12 @@ struct KeySoundsTests {
         for keyClass in KeySoundSynth.KeyClass.allCases {
             for stroke in KeySoundSynth.Stroke.allCases {
                 let variants = bank[KeySoundSynth.SoundKey(keyClass: keyClass, stroke: stroke)] ?? []
-                #expect(variants.count == KeySoundSynth.variantCount)
+                // A recorded switch has as many takes as were recorded; one made in code has its set.
+                if profile.recording == nil {
+                    #expect(variants.count == KeySoundSynth.variantCount)
+                } else {
+                    #expect(variants.count >= 6)
+                }
                 for buffer in variants {
                     #expect(buffer.frameLength > 0)
                     // Audible, and never clipping.
@@ -96,11 +101,27 @@ struct KeySoundsTests {
         #expect(settings.quietApps == ["com.example.game"])
     }
 
+    @Test(arguments: KeySoundSynth.Profile.allCases.filter { $0.recording != nil })
+    func recordedSwitchesAreBundledWithTheirPressesReleasesAndBigKeys(_ profile: KeySoundSynth.Profile) {
+        let bank = KeySoundSynth.recordedBank(profile.recording!)
+        #expect(!bank.isEmpty, "the recordings are missing from the app bundle")
+        let press = bank[KeySoundSynth.SoundKey(keyClass: .standard, stroke: .down)] ?? []
+        let space = bank[KeySoundSynth.SoundKey(keyClass: .space, stroke: .down)] ?? []
+        let release = bank[KeySoundSynth.SoundKey(keyClass: .standard, stroke: .up)] ?? []
+        #expect(press.count >= 10)
+        #expect(space.count >= 4)
+        #expect(release.count >= 6)
+    }
+
+    @Test func aMissingRecordingFallsBackToSoundsMadeInCode() {
+        #expect(KeySoundSynth.recordedBank("no-such-switch").isEmpty)
+    }
+
     @Test func anUnknownSwitchFallsBackToTheFirst() {
         let suite = "KeySoundsTests.\(UUID().uuidString)"
         let defaults = UserDefaults(suiteName: suite)!
         defer { defaults.removePersistentDomain(forName: suite) }
         defaults.set("gone", forKey: DefaultsKeys.keySoundsProfile)
-        #expect(KeySounds.Settings.read(from: defaults).profile == .creamy)
+        #expect(KeySounds.Settings.read(from: defaults).profile == .bucklingSpring)
     }
 }

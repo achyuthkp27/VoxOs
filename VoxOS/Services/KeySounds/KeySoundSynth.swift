@@ -11,8 +11,11 @@ enum KeySoundSynth {
     /// Variants made of each key and stroke; one is picked at random per press.
     static let variantCount = 6
 
-    /// A switch, by the sound it makes.
+    /// A switch, by the sound it makes. The first two are recordings of real keyboards; the rest
+    /// are made in code.
     enum Profile: String, CaseIterable, Identifiable {
+        case bucklingSpring
+        case heavyBucklingSpring
         case creamy
         case tactile
         case clicky
@@ -22,8 +25,19 @@ enum KeySoundSynth {
 
         var id: String { rawValue }
 
+        /// The name its recorded sounds are bundled under, for a recorded switch.
+        var recording: String? {
+            switch self {
+            case .bucklingSpring: return "modelm"
+            case .heavyBucklingSpring: return "modelf"
+            default: return nil
+            }
+        }
+
         var title: String {
             switch self {
+            case .bucklingSpring: return String(localized: "Buckling Spring")
+            case .heavyBucklingSpring: return String(localized: "Heavy Buckling Spring")
             case .creamy: return String(localized: "Creamy Linear")
             case .tactile: return String(localized: "Tactile Bump")
             case .clicky: return String(localized: "Crisp Clicky")
@@ -35,6 +49,10 @@ enum KeySoundSynth {
 
         var detail: String {
             switch self {
+            case .bucklingSpring:
+                return String(localized: "Recorded from real IBM Model M keyboards: loud, crisp and clicky.")
+            case .heavyBucklingSpring:
+                return String(localized: "Recorded from a real IBM Model F: deeper, heavier and more resonant.")
             case .creamy: return String(localized: "Smooth and muted, like lubed linear switches.")
             case .tactile: return String(localized: "A soft bump before a rounded bottom-out.")
             case .clicky: return String(localized: "A bright click on every press and release.")
@@ -91,8 +109,13 @@ enum KeySoundSynth {
 
     // MARK: Making the buffers
 
-    /// Every variant of every key and stroke of `profile`.
+    /// Every variant of every key and stroke of `profile`: its recordings, or sounds made in code.
     static func makeBank(for profile: Profile, seed: UInt64 = 0x5EED) -> [SoundKey: [AVAudioPCMBuffer]] {
+        if let recording = profile.recording {
+            let recorded = recordedBank(recording)
+            if !recorded.isEmpty { return recorded }
+            return makeBank(for: .clicky, seed: seed)
+        }
         var rng = SplitMix(seed: seed ^ profile.rawValue.stableHash)
         var bank: [SoundKey: [AVAudioPCMBuffer]] = [:]
         for keyClass in KeyClass.allCases {
@@ -119,6 +142,75 @@ enum KeySoundSynth {
         case .modifier: press = 0.55
         }
         return stroke == .up ? press * 0.5 : press
+    }
+
+    /// A recorded switch's sounds, bundled as `ks-<name>-down-NN.wav` (presses), `-up-` (releases)
+    /// and `-big-` (the space bar, Return and Delete), each at the loudness of its key and stroke.
+    static func recordedBank(_ name: String, bundle: Bundle = .main) -> [SoundKey: [AVAudioPCMBuffer]] {
+        func load(_ kind: String) -> [[Float]] {
+            (1...99).lazy.map { String(format: "ks-%@-%@-%02d", name, kind, $0) }
+                .prefix { recordingURL($0, bundle: bundle) != nil }
+                .compactMap { recordingURL($0, bundle: bundle).flatMap(samples(at:)) }
+        }
+        let presses = load("down")
+        let releases = load("up")
+        let big = load("big")
+        guard !presses.isEmpty else { return [:] }
+        var bank: [SoundKey: [AVAudioPCMBuffer]] = [:]
+        for keyClass in KeyClass.allCases {
+            let large = keyClass == .space || keyClass == .returnKey || keyClass == .backspace
+            let down = large && !big.isEmpty ? big : presses
+            let up = releases.isEmpty ? presses : releases
+            for (stroke, takes) in [(Stroke.down, down), (.up, up)] {
+                let peak = loudness(keyClass, stroke)
+                bank[SoundKey(keyClass: keyClass, stroke: stroke)] = takes.compactMap { take in
+                    let loudest = take.reduce(0) { max($0, abs($1)) }
+                    guard loudest > 0 else { return nil }
+                    return buffer(from: take.map { $0 / loudest * peak })
+                }
+            }
+        }
+        return bank
+    }
+
+    private static func recordingURL(_ name: String, bundle: Bundle) -> URL? {
+        bundle.url(forResource: name, withExtension: "wav")
+            ?? bundle.url(forResource: name, withExtension: "wav", subdirectory: "KeySounds")
+            ?? bundle.url(forResource: name, withExtension: "wav", subdirectory: "Sounds/KeySounds")
+    }
+
+    /// A sound file's samples, as mono at `sampleRate`.
+    private static func samples(at url: URL) -> [Float]? {
+        guard let file = try? AVAudioFile(forReading: url),
+            let format = AVAudioFormat(standardFormatWithSampleRate: sampleRate, channels: 1),
+            let source = AVAudioPCMBuffer(
+                pcmFormat: file.processingFormat, frameCapacity: AVAudioFrameCount(file.length)),
+            (try? file.read(into: source)) != nil
+        else { return nil }
+        if file.processingFormat.sampleRate == sampleRate, file.processingFormat.channelCount == 1,
+            let channel = source.floatChannelData?[0]
+        {
+            return Array(UnsafeBufferPointer(start: channel, count: Int(source.frameLength)))
+        }
+        guard let converter = AVAudioConverter(from: file.processingFormat, to: format),
+            let converted = AVAudioPCMBuffer(
+                pcmFormat: format,
+                frameCapacity: AVAudioFrameCount(
+                    Double(source.frameLength) * sampleRate / file.processingFormat.sampleRate)
+                    + 1024)
+        else { return nil }
+        var supplied = false
+        converter.convert(to: converted, error: nil) { _, status in
+            if supplied {
+                status.pointee = .endOfStream
+                return nil
+            }
+            supplied = true
+            status.pointee = .haveData
+            return source
+        }
+        guard let channel = converted.floatChannelData?[0] else { return nil }
+        return Array(UnsafeBufferPointer(start: channel, count: Int(converted.frameLength)))
     }
 
     static func buffer(from samples: [Float]) -> AVAudioPCMBuffer? {
@@ -263,6 +355,9 @@ enum KeySoundSynth {
 
     static func voice(_ profile: Profile) -> Voice {
         switch profile {
+        // Recorded switches; made in code only if their recordings are missing, as the clicky one.
+        case .bucklingSpring, .heavyBucklingSpring:
+            return voice(.clicky)
         case .creamy:
             return Voice(
                 noiseCenter: 1_900, noiseWidth: 1_800, noiseDecay: 0.0035, noiseLevel: 0.9,

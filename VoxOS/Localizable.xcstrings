@@ -6533,6 +6533,22 @@
         }
       }
     },
+    "Buckling Spring" : {
+      "localizations" : {
+        "de" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Knickfeder"
+          }
+        },
+        "zh-Hans" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "屈曲弹簧"
+          }
+        }
+      }
+    },
     "Built in" : {
       "localizations" : {
         "de" : {
@@ -13624,6 +13640,22 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "使用 %@ 识别"
+          }
+        }
+      }
+    },
+    "Heavy Buckling Spring" : {
+      "localizations" : {
+        "de" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Schwere Knickfeder"
+          }
+        },
+        "zh-Hans" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "厚重屈曲弹簧"
           }
         }
       }
@@ -22884,6 +22916,38 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "录制第一次会话以开始积累进展。"
+          }
+        }
+      }
+    },
+    "Recorded from a real IBM Model F: deeper, heavier and more resonant." : {
+      "localizations" : {
+        "de" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Aufgenommen von einer echten IBM Model F: tiefer, schwerer und mit mehr Nachklang."
+          }
+        },
+        "zh-Hans" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "录自真实的 IBM Model F：更低沉、更厚重、更有共鸣。"
+          }
+        }
+      }
+    },
+    "Recorded from real IBM Model M keyboards: loud, crisp and clicky." : {
+      "localizations" : {
+        "de" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Aufgenommen von echten IBM-Model-M-Tastaturen: laut, knackig und klickend."
+          }
+        },
+        "zh-Hans" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "录自真实的 IBM Model M 键盘：响亮、清脆、有咔嗒声。"
           }
         }
       }
