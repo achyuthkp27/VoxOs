@@ -108,6 +108,17 @@ enum AppDefaults {
             // On: clicks played through the speakers would be heard on a call or in a recording.
             DefaultsKeys.keySoundsQuietWhileMicrophone: true,
 
+            // Focus Blur: off until asked for.
+            DefaultsKeys.focusBlurEnabled: false,
+            DefaultsKeys.focusBlurStrength: 0.85,
+            DefaultsKeys.focusBlurTint: FocusBlur.Tint.system.rawValue,
+            DefaultsKeys.focusBlurDim: 0.15,
+            DefaultsKeys.focusBlurGrain: false,
+            DefaultsKeys.focusBlurAppWide: false,
+            DefaultsKeys.focusBlurOtherDisplays: FocusBlur.OtherDisplays.blur.rawValue,
+            // Off: watching the pointer is a wake-up on every move.
+            DefaultsKeys.focusBlurShake: false,
+
             // Cleanup
             CleanupSettingsKeys.isTranscriptionCleanupEnabled: false,
             CleanupSettingsKeys.transcriptionRetentionMinutes: 1440,

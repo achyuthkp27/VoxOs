@@ -22,6 +22,7 @@ struct MenuBarView: View {
     @AppStorage(DefaultsKeys.voiceAssistantEnabled) private var voiceEnabled = true
     @AppStorage(DefaultsKeys.notchMasterEnabled) private var notchEnabled = true
     @AppStorage(DefaultsKeys.keySoundsEnabled) private var keySoundsEnabled = false
+    @AppStorage(DefaultsKeys.focusBlurEnabled) private var focusBlurEnabled = false
 
     var body: some View {
         VStack {
@@ -77,6 +78,7 @@ struct MenuBarView: View {
             }
             .disabled(!notchEnabled)
             Toggle("Key Sounds", isOn: $keySoundsEnabled)
+            Toggle("Focus Blur", isOn: $focusBlurEnabled)
 
             Divider()
 

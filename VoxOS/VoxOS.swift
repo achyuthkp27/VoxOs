@@ -189,6 +189,8 @@ struct VoxOSApp: App {
             AppSwitcher.shared.refresh()
             // A switch's sound on every key, when switched on in Settings.
             KeySounds.shared.refresh()
+            // Every window but the one in use blurred, when switched on in Settings.
+            FocusBlur.shared.refresh()
             MainThreadWatchdog.shared.start()
             MainThreadWatchdog.shared.pause(while: PowerState.shared.$isAway.eraseToAnyPublisher())
         }

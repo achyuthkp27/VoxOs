@@ -95,6 +95,24 @@ enum DefaultsKeys {
     static let keySoundsQuietWhileMicrophone = "KeySoundsQuietWhileMicrophone"
     /// Apps Key Sounds stays silent in while they are in front, by bundle identifier.
     static let keySoundsQuietApps = "KeySoundsQuietApps"
+    /// Focus Blur: every window but the one in use is blurred. Off until switched on.
+    static let focusBlurEnabled = "FocusBlurEnabled"
+    /// How strongly the windows behind are blurred, 0.1…1.
+    static let focusBlurStrength = "FocusBlurStrength"
+    /// The blur's tint, as `FocusBlur.Tint.rawValue`.
+    static let focusBlurTint = "FocusBlurTint"
+    /// How much the tint darkens (or, light, brightens) the windows behind, 0…0.6.
+    static let focusBlurDim = "FocusBlurDim"
+    /// A little film grain over the blur.
+    static let focusBlurGrain = "FocusBlurGrain"
+    /// The front app's other windows stacked behind its front one stay sharp too.
+    static let focusBlurAppWide = "FocusBlurAppWide"
+    /// What displays without the front window do, as `FocusBlur.OtherDisplays.rawValue`.
+    static let focusBlurOtherDisplays = "FocusBlurOtherDisplays"
+    /// Shaking the pointer turns Focus Blur on or off.
+    static let focusBlurShake = "FocusBlurShake"
+    /// Apps that are never blurred behind, by bundle identifier: nothing blurs while one is in front.
+    static let focusBlurIgnoredApps = "FocusBlurIgnoredApps"
     /// The order Notch Home's pages are walked in, as `NotchHomePage.rawValue`s.
     static let notchPageOrder = "NotchPageOrder"
     /// The Notch Home pages switched off in Settings, as `NotchHomePage.rawValue`s.

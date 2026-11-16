@@ -10,6 +10,7 @@ enum SettingsSection: CaseIterable, Hashable {
     case notchLook, notchHome, notchPages, notchMusic, notchSound, notchNotices, claudeCode
     case appSwitcher, appSwitcherLetters, windowSwitcher, appsLeftAlone
     case keySounds, keySoundsBehavior, keySoundsQuietApps
+    case focusBlur, focusBlurBehavior, focusBlurApps
     case general, appearance, backup, diagnostics
 
     var terms: [String] { labels + synonyms }
@@ -110,6 +111,15 @@ enum SettingsSection: CaseIterable, Hashable {
             ]
         case .keySoundsQuietApps:
             return ["Quiet Apps", "Keep an App Quiet…"]
+        case .focusBlur:
+            return ["Focus Blur", "Blur Every Window but the One in Use", "Blur", "Tint", "Dim", "Film Grain"]
+        case .focusBlurBehavior:
+            return [
+                "Which Windows Stay Sharp", "Keep the App's Other Windows Sharp", "Other Displays",
+                "Shake the Pointer to Turn On or Off",
+            ]
+        case .focusBlurApps:
+            return ["Never Blur Behind", "Add an App…"]
         case .general:
             return [
                 "General", "Hide Dock Icon", "Launch at Login", "Automatically Check for Updates", "Check for Updates",
@@ -171,6 +181,9 @@ enum SettingsSection: CaseIterable, Hashable {
             ]
         case .keySoundsBehavior: return ["key up", "release", "stereo", "spatial", "pan", "pitch", "call", "mic"]
         case .keySoundsQuietApps: return ["mute", "ignore", "games", "exclude"]
+        case .focusBlur: return ["focus", "distraction", "dim", "darken", "frosted", "glass", "grain", "noise"]
+        case .focusBlurBehavior: return ["app windows", "monitor", "display", "screens", "shake", "gesture"]
+        case .focusBlurApps: return ["ignore", "exclude", "unblurred"]
         case .general: return ["dock", "login", "updates", "onboarding"]
         case .appearance: return ["interface", "dark", "light", "theme"]
         case .backup: return ["backup", "restore"]

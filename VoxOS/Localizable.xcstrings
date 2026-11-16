@@ -3969,6 +3969,22 @@
         }
       }
     },
+    "Add an App…" : {
+      "localizations" : {
+        "de" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "App hinzufügen …"
+          }
+        },
+        "zh-Hans" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "添加 App…"
+          }
+        }
+      }
+    },
     "Add app or website..." : {
       "localizations" : {
         "de" : {
@@ -6299,6 +6315,70 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "基础 URL 必须使用 HTTPS（仅 localhost 可使用普通 HTTP）"
+          }
+        }
+      }
+    },
+    "Blur" : {
+      "localizations" : {
+        "de" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Unschärfe"
+          }
+        },
+        "zh-Hans" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "模糊"
+          }
+        }
+      }
+    },
+    "Blur Every Window but the One in Use" : {
+      "localizations" : {
+        "de" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Alle Fenster außer dem aktiven weichzeichnen"
+          }
+        },
+        "zh-Hans" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "模糊除当前窗口外的所有窗口"
+          }
+        }
+      }
+    },
+    "Blur Everything" : {
+      "localizations" : {
+        "de" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Alles weichzeichnen"
+          }
+        },
+        "zh-Hans" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "全部模糊"
+          }
+        }
+      }
+    },
+    "Blur behind this app again" : {
+      "localizations" : {
+        "de" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Hinter dieser App wieder weichzeichnen"
+          }
+        },
+        "zh-Hans" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "重新模糊此 App 后面的内容"
           }
         }
       }
@@ -10193,6 +10273,22 @@
         }
       }
     },
+    "Dim" : {
+      "localizations" : {
+        "de" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Abdunkeln"
+          }
+        },
+        "zh-Hans" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "调暗"
+          }
+        }
+      }
+    },
     "Disabled" : {
       "localizations" : {
         "de" : {
@@ -12737,6 +12833,22 @@
         }
       }
     },
+    "Film Grain" : {
+      "localizations" : {
+        "de" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Filmkorn"
+          }
+        },
+        "zh-Hans" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "胶片颗粒"
+          }
+        }
+      }
+    },
     "Finalizing model files…" : {
       "localizations" : {
         "de" : {
@@ -12848,6 +12960,22 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "专注模式"
+          }
+        }
+      }
+    },
+    "Focus Blur" : {
+      "localizations" : {
+        "de" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Fokus-Unschärfe"
+          }
+        },
+        "zh-Hans" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "专注模糊"
           }
         }
       }
@@ -14595,6 +14723,22 @@
         }
       }
     },
+    "Keep Their Front Window Sharp" : {
+      "localizations" : {
+        "de" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Ihr vorderstes Fenster scharf lassen"
+          }
+        },
+        "zh-Hans" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "保持其最前窗口清晰"
+          }
+        }
+      }
+    },
     "Keep an App Quiet…" : {
       "localizations" : {
         "de" : {
@@ -14623,6 +14767,22 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "继续规划"
+          }
+        }
+      }
+    },
+    "Keep the App's Other Windows Sharp" : {
+      "localizations" : {
+        "de" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Andere Fenster der App scharf lassen"
+          }
+        },
+        "zh-Hans" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "保持该 App 的其他窗口清晰"
           }
         }
       }
@@ -16376,6 +16536,22 @@
         }
       }
     },
+    "Match the System" : {
+      "localizations" : {
+        "de" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Wie das System"
+          }
+        },
+        "zh-Hans" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "跟随系统"
+          }
+        }
+      }
+    },
     "Meeting Countdown" : {
       "localizations" : {
         "de" : {
@@ -17362,6 +17538,38 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "网络连接失败。请检查你的网络。"
+          }
+        }
+      }
+    },
+    "Never Blur" : {
+      "localizations" : {
+        "de" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Nie weichzeichnen"
+          }
+        },
+        "zh-Hans" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "从不模糊"
+          }
+        }
+      }
+    },
+    "Never Blur Behind" : {
+      "localizations" : {
+        "de" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Nie dahinter weichzeichnen"
+          }
+        },
+        "zh-Hans" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "从不在其后模糊"
           }
         }
       }
@@ -20259,6 +20467,22 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "其他"
+          }
+        }
+      }
+    },
+    "Other Displays" : {
+      "localizations" : {
+        "de" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Andere Bildschirme"
+          }
+        },
+        "zh-Hans" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "其他显示器"
           }
         }
       }
@@ -25261,6 +25485,22 @@
         }
       }
     },
+    "Shake the Pointer to Turn On or Off" : {
+      "localizations" : {
+        "de" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Zeiger schütteln zum Ein- oder Ausschalten"
+          }
+        },
+        "zh-Hans" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "摇动指针以开启或关闭"
+          }
+        }
+      }
+    },
     "Share of words" : {
       "localizations" : {
         "de" : {
@@ -28237,6 +28477,22 @@
         }
       }
     },
+    "The window you're working in stays sharp and the rest soften behind it. Click a blurred window to bring it forward." : {
+      "localizations" : {
+        "de" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Das Fenster, in dem du arbeitest, bleibt scharf, der Rest verschwimmt dahinter. Klicke auf ein weichgezeichnetes Fenster, um es nach vorn zu holen."
+          }
+        },
+        "zh-Hans" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "你正在使用的窗口保持清晰，其余窗口在其后变得柔和。点按模糊的窗口即可将其移到前面。"
+          }
+        }
+      }
+    },
     "These estimated tokens are a rough estimate of token usage. They are not exact token counts or provider-reported billing usage." : {
       "comment" : "Explains that model usage token totals are approximate and not billing-grade provider counts.",
       "isCommentAutoGenerated" : true,
@@ -28745,6 +29001,22 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "超时时长"
+          }
+        }
+      }
+    },
+    "Tint" : {
+      "localizations" : {
+        "de" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Tönung"
+          }
+        },
+        "zh-Hans" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "色调"
           }
         }
       }
@@ -31866,6 +32138,22 @@
         }
       }
     },
+    "Which Windows Stay Sharp" : {
+      "localizations" : {
+        "de" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Welche Fenster scharf bleiben"
+          }
+        },
+        "zh-Hans" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "哪些窗口保持清晰"
+          }
+        }
+      }
+    },
     "While a meeting is recorded, a small window shows what is being said, transcribed every few seconds with the mode's speech model. The notes in History are written from the whole recording afterwards, with who spoke." : {
       "localizations" : {
         "de" : {
@@ -31910,6 +32198,22 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "当其中之一位于最前时，%@ 加字母会直接发送给它，适用于游戏、虚拟机和远程桌面。"
+          }
+        }
+      }
+    },
+    "While one of these is in front, nothing is blurred: for video calls, screen sharing and games." : {
+      "localizations" : {
+        "de" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Solange eine davon vorn ist, wird nichts weichgezeichnet: für Videoanrufe, Bildschirmfreigabe und Spiele."
+          }
+        },
+        "zh-Hans" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "当其中任一 App 在最前面时，不会模糊任何内容：适用于视频通话、屏幕共享和游戏。"
           }
         }
       }
@@ -31992,6 +32296,22 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "替换为"
+          }
+        }
+      }
+    },
+    "With the app's other windows kept sharp, its windows stacked right behind the front one stay clear too. A shake is a few quick strokes side to side." : {
+      "localizations" : {
+        "de" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Bleiben die anderen Fenster der App scharf, bleiben auch ihre direkt hinter dem vordersten gestapelten Fenster klar. Ein Schütteln sind ein paar schnelle Bewegungen hin und her."
+          }
+        },
+        "zh-Hans" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "保持该 App 其他窗口清晰时，紧叠在最前窗口后面的该 App 窗口也会保持清晰。摇动是指几下快速的左右移动。"
           }
         }
       }

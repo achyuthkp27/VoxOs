@@ -42,6 +42,10 @@ struct PreferencesBackup: Codable, Equatable {
         DefaultsKeys.keySoundsEnabled, DefaultsKeys.keySoundsProfile, DefaultsKeys.keySoundsVolume,
         DefaultsKeys.keySoundsKeyUp, DefaultsKeys.keySoundsStereo, DefaultsKeys.keySoundsVaryPitch,
         DefaultsKeys.keySoundsQuietWhileMicrophone, DefaultsKeys.keySoundsQuietApps,
+        // Focus Blur
+        DefaultsKeys.focusBlurEnabled, DefaultsKeys.focusBlurStrength, DefaultsKeys.focusBlurTint,
+        DefaultsKeys.focusBlurDim, DefaultsKeys.focusBlurGrain, DefaultsKeys.focusBlurAppWide,
+        DefaultsKeys.focusBlurOtherDisplays, DefaultsKeys.focusBlurShake, DefaultsKeys.focusBlurIgnoredApps,
         // Claude Code: how its cards behave, not whether its hooks are installed on this Mac
         DefaultsKeys.claudeCodeApprovalsEnabled, DefaultsKeys.claudeCodeStatusEnabled,
         DefaultsKeys.claudeCodeQuietInTerminal, DefaultsKeys.claudeCodeRepliesEnabled,
