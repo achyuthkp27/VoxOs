@@ -22,7 +22,7 @@ final class LockScreenWidgets {
 
     private var enabled = false
     private var panel: NSPanel?
-    private var observers: [NSObjectProtocol] = []
+    private let lockWatch = LockWatch()
     private let logger = Logger(subsystem: "com.achyuthkp.voxos", category: "LockScreenWidgets")
 
     private init() {}
@@ -33,18 +33,11 @@ final class LockScreenWidgets {
         enabled = wanted
         if wanted {
             prepare()
-            let center = DistributedNotificationCenter.default()
-            observers = [
-                center.addObserver(forName: .init("com.apple.screenIsLocked"), object: nil, queue: .main) {
-                    [weak self] _ in MainActor.assumeIsolated { self?.show() }
-                },
-                center.addObserver(forName: .init("com.apple.screenIsUnlocked"), object: nil, queue: .main) {
-                    [weak self] _ in MainActor.assumeIsolated { self?.hide() }
-                },
-            ]
+            lockWatch.start { [weak self] locked in
+                if locked { self?.show() } else { self?.hide() }
+            }
         } else {
-            observers.forEach { DistributedNotificationCenter.default().removeObserver($0) }
-            observers = []
+            lockWatch.stop()
             panel?.orderOut(nil)
             panel = nil
         }
@@ -98,6 +91,34 @@ final class LockScreenWidgets {
         panel.contentView = NSHostingView(rootView: LockScreenWidgetsView())
         return panel
     }
+}
+
+/// The screen locking and unlocking. macOS holds distributed notifications back from an app that
+/// is not in front until it is, and VoxOS is never in front, so these ask for delivery at once;
+/// the block-based observer cannot.
+@MainActor
+private final class LockWatch: NSObject {
+    private var onChange: ((Bool) -> Void)?
+
+    func start(_ onChange: @escaping (Bool) -> Void) {
+        stop()
+        self.onChange = onChange
+        let center = DistributedNotificationCenter.default()
+        center.addObserver(
+            self, selector: #selector(locked), name: .init("com.apple.screenIsLocked"), object: nil,
+            suspensionBehavior: .deliverImmediately)
+        center.addObserver(
+            self, selector: #selector(unlocked), name: .init("com.apple.screenIsUnlocked"), object: nil,
+            suspensionBehavior: .deliverImmediately)
+    }
+
+    func stop() {
+        DistributedNotificationCenter.default().removeObserver(self)
+        onChange = nil
+    }
+
+    @objc private func locked() { onChange?(true) }
+    @objc private func unlocked() { onChange?(false) }
 }
 
 /// The row itself: each widget a small glass tile, shown only when it has something to say.
