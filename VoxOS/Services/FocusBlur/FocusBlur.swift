@@ -8,9 +8,10 @@ import os
 /// sheet, so a blurred window is brought forward by clicking it as usual, and the sheet follows.
 ///
 /// Nothing is blurred while an app chosen in Settings is in front, or while no window is (the
-/// desktop). A quick shake of the pointer turns it on or off, when allowed in Settings. Uses
-/// only public AppKit and window-list calls, and Accessibility, when granted, to follow a switch
-/// between two windows of one app at once rather than at the next check.
+/// desktop). A quick shake of the pointer turns it on or off, when allowed in Settings. The blur's
+/// strength uses the window server's own background blur (`SkyLight`, private, with the visual
+/// effect view as the fallback); Accessibility, when granted, follows a switch between two
+/// windows of one app at once rather than at the next check.
 @MainActor
 final class FocusBlur: ObservableObject {
     static let shared = FocusBlur()
@@ -376,8 +377,9 @@ final class FocusBlur: ObservableObject {
 
 // MARK: - The sheet
 
-/// One display's blurred sheet: a window as large as the display that blurs what is behind it,
-/// with a tint and, if asked for, a little grain. It never takes a click or the keyboard.
+/// One display's blurred sheet: a window as large as the display that blurs what is behind it
+/// (by the window server's own background blur, at the strength set), with a tint and, if asked
+/// for, a little grain. It never takes a click or the keyboard.
 final class FocusBlurSheet: NSPanel {
     private let blur = NSVisualEffectView()
     private let tintLayer = CALayer()
@@ -426,9 +428,21 @@ final class FocusBlurSheet: NSPanel {
     override var canBecomeKey: Bool { false }
     override var canBecomeMain: Bool { false }
 
+    /// The blur radius for a strength of 0.1…1, in points.
+    nonisolated static func radius(for strength: Double) -> Int {
+        Int((8 + min(max(strength, 0.1), 1) * 52).rounded())
+    }
+
     @MainActor
     func apply(_ settings: FocusBlur.Settings) {
-        blur.alphaValue = CGFloat(min(max(settings.strength, 0.1), 1))
+        // A real blur radius where the window server offers one; otherwise the visual effect
+        // view's fixed blur, always whole (a faded one lets the sharp text show through).
+        if SkyLight.setBackgroundBlur(self, radius: Self.radius(for: settings.strength)) {
+            blur.isHidden = true
+        } else {
+            blur.isHidden = false
+            blur.alphaValue = 1
+        }
         switch settings.tint {
         case .system:
             blur.appearance = nil

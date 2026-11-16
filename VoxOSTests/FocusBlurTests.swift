@@ -108,6 +108,11 @@ struct FocusBlurTests {
         #expect(!fired)
     }
 
+    @Test func theBlurGrowsWithItsStrength() {
+        #expect(FocusBlurSheet.radius(for: 0.2) < FocusBlurSheet.radius(for: 1))
+        #expect(FocusBlurSheet.radius(for: 5) == FocusBlurSheet.radius(for: 1))
+    }
+
     @Test func settingsAreReadFromTheirKeys() {
         let suite = "FocusBlurTests.\(UUID().uuidString)"
         let defaults = UserDefaults(suiteName: suite)!
