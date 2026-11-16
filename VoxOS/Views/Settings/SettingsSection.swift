@@ -65,7 +65,8 @@ enum SettingsSection: CaseIterable, Hashable {
             return ["Look", "Notch Material", "Liquid Glass", "Solid Black", "Always-Visible Notch Tab"]
         case .notchHome:
             return [
-                "Notch Home", "Show in Full Screen", "Follow the Display in Use", "Hide from Screenshots & Sharing",
+                "Notch Home", "Lock Screen Widgets", "Show in Full Screen", "Follow the Display in Use",
+                "Hide from Screenshots & Sharing",
             ]
         case .notchPages:
             return ["Pages", "Reset"]
@@ -156,7 +157,8 @@ enum SettingsSection: CaseIterable, Hashable {
         case .notchLook: return ["notch", "tab", "glass"]
         case .notchHome:
             return [
-                "full screen", "fullscreen", "external display", "monitor", "display", "screenshot", "screen sharing",
+                "lock screen", "locked", "widgets", "full screen", "fullscreen", "external display", "monitor",
+                "display", "screenshot", "screen sharing",
                 "privacy",
             ]
         case .notchPages:

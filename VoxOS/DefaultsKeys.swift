@@ -117,6 +117,8 @@ enum DefaultsKeys {
     static let notchHUDStyle = "NotchHUDStyle"
     /// macOS's notification banners are said again in the notch as they arrive.
     static let notchNotificationsEnabled = "NotchNotificationsEnabled"
+    /// Now playing, the next event, the weather and the battery on the lock screen.
+    static let lockScreenWidgetsEnabled = "LockScreenWidgetsEnabled"
     /// Voice Prompter's text size, in points.
     static let prompterFontSize = "PrompterFontSize"
     /// How many lines of the script the prompter shows.

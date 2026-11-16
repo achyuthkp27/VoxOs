@@ -75,6 +75,8 @@ enum AppDefaults {
             DefaultsKeys.notchHUDStyle: NotchHUD.Style.bar.rawValue,
             // Off: it reads every banner through Accessibility.
             DefaultsKeys.notchNotificationsEnabled: false,
+            // Off: it draws over the lock screen through a private window server call.
+            DefaultsKeys.lockScreenWidgetsEnabled: false,
             // Off: a screenshot of a notch bug should show the notch.
             DefaultsKeys.notchHiddenFromCapture: false,
             DefaultsKeys.notchDownloadsEnabled: true,

@@ -16461,6 +16461,22 @@
         }
       }
     },
+    "Lock Screen Widgets" : {
+      "localizations" : {
+        "de" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Widgets auf dem Sperrbildschirm"
+          }
+        },
+        "zh-Hans" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "锁定屏幕小组件"
+          }
+        }
+      }
+    },
     "Locked" : {
       "localizations" : {
         "de" : {
@@ -32748,6 +32764,22 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "当其中任一 App 在最前面时，打字不发声：适用于游戏、音乐 App 和录屏工具。"
+          }
+        }
+      }
+    },
+    "While the Mac is locked: what is playing, the next event, the weather and the battery, under the clock. Uses a private macOS call to draw above the lock screen, so a macOS update can stop it working." : {
+      "localizations" : {
+        "de" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Solange der Mac gesperrt ist: was gerade läuft, der nächste Termin, das Wetter und die Batterie, unter der Uhr. Nutzt einen privaten macOS-Aufruf, um über dem Sperrbildschirm zu zeichnen, daher kann ein macOS-Update es außer Kraft setzen."
+          }
+        },
+        "zh-Hans" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Mac 锁定时，在时钟下方显示正在播放的内容、下一个日程、天气和电池。它使用 macOS 的私有调用在锁定屏幕上方绘制，因此 macOS 更新可能使其失效。"
           }
         }
       }

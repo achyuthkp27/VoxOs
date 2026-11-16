@@ -186,6 +186,7 @@ final class NotchHomeManager {
         } else {
             NotchNotifications.shared.stop()
         }
+        LockScreenWidgets.shared.setEnabled(enabled && LockScreenWidgets.isEnabled)
         // Switched off: every app back to full, which also ends its tap.
         if !(enabled && NotchMixer.isEnabled), mixerWasOn { NotchMixer.shared.reset() }
         mixerWasOn = enabled && NotchMixer.isEnabled

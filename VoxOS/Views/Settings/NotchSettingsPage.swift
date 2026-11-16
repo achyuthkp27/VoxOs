@@ -14,6 +14,7 @@ struct NotchSettingsPage: View {
     @AppStorage(DefaultsKeys.notchHUDEnabled) private var notchHUDEnabled = true
     @AppStorage(DefaultsKeys.notchHUDStyle) private var notchHUDStyle = NotchHUD.Style.bar.rawValue
     @AppStorage(DefaultsKeys.notchNotificationsEnabled) private var notchNotificationsEnabled = false
+    @AppStorage(DefaultsKeys.lockScreenWidgetsEnabled) private var lockScreenWidgetsEnabled = false
     @AppStorage(DefaultsKeys.notchHiddenFromCapture) private var notchHiddenFromCapture = false
     @AppStorage(DefaultsKeys.notchDownloadsEnabled) private var notchDownloadsEnabled = true
     @AppStorage(DefaultsKeys.notchFocusEnabled) private var notchFocusEnabled = true
@@ -103,6 +104,14 @@ struct NotchSettingsPage: View {
                         }
                     }
                     if notchHomeEnabled {
+                        Toggle(isOn: $lockScreenWidgetsEnabled) {
+                            HStack(spacing: 2) {
+                                Text("Lock Screen Widgets")
+                                InfoTip(
+                                    "While the Mac is locked: what is playing, the next event, the weather and the battery, under the clock. Uses a private macOS call to draw above the lock screen, so a macOS update can stop it working."
+                                )
+                            }
+                        }
                         Toggle(isOn: $notchHomeInFullScreen) {
                             HStack(spacing: 2) {
                                 Text("Show in Full Screen")
