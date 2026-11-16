@@ -73,6 +73,8 @@ enum AppDefaults {
             DefaultsKeys.notchMasterEnabled: true,
             DefaultsKeys.notchHUDEnabled: true,
             DefaultsKeys.notchHUDStyle: NotchHUD.Style.bar.rawValue,
+            // Off: it reads every banner through Accessibility.
+            DefaultsKeys.notchNotificationsEnabled: false,
             // Off: a screenshot of a notch bug should show the notch.
             DefaultsKeys.notchHiddenFromCapture: false,
             DefaultsKeys.notchDownloadsEnabled: true,

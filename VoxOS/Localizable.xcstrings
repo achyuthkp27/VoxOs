@@ -11224,6 +11224,22 @@
         }
       }
     },
+    "Each notification banner is said again in the notch for a few seconds: the app, the title and the start of the message. Read from Notification Center through Accessibility; macOS's own banner still shows." : {
+      "localizations" : {
+        "de" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Jedes Mitteilungsbanner erscheint für ein paar Sekunden auch in der Notch: die App, der Titel und der Anfang der Nachricht. Gelesen aus der Mitteilungszentrale über die Bedienungshilfen; das Banner von macOS erscheint weiterhin."
+          }
+        },
+        "zh-Hans" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "每条通知横幅都会在刘海中再显示几秒：App、标题和消息开头。通过辅助功能从通知中心读取；macOS 自己的横幅仍会显示。"
+          }
+        }
+      }
+    },
     "Each server's tools become Agent tools. Tools a server marks read-only run freely; everything else follows the Control Mode above. Remote servers use \"url\" plus \"headers\"; put tokens in the Keychain with secret_save and write {{secret:name}}. Servers that need a browser sign-in are not supported." : {
       "localizations" : {
         "de" : {
@@ -19757,6 +19773,22 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "提示"
+          }
+        }
+      }
+    },
+    "Notifications" : {
+      "localizations" : {
+        "de" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Mitteilungen"
+          }
+        },
+        "zh-Hans" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "通知"
           }
         }
       }

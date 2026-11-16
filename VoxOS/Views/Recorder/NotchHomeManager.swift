@@ -90,6 +90,8 @@ final class NotchHomeManager {
             .store(in: &cancellables)
         AppSwitcher.shared.$notice.receive(on: RunLoop.main).sink { [weak self] _ in self?.setNeedsRefresh() }
             .store(in: &cancellables)
+        NotchNotifications.shared.$notice.receive(on: RunLoop.main).sink { [weak self] _ in self?.setNeedsRefresh() }
+            .store(in: &cancellables)
         ClaudeCodeUsage.shared.$notice.receive(on: RunLoop.main).sink { [weak self] _ in self?.setNeedsRefresh() }
             .store(in: &cancellables)
         CodexActivity.shared.$notice.receive(on: RunLoop.main).sink { [weak self] _ in self?.setNeedsRefresh() }
@@ -179,6 +181,11 @@ final class NotchHomeManager {
         if enabled && NotchClipboard.isEnabled { NotchClipboard.shared.start() } else { NotchClipboard.shared.stop() }
         NotchRainWatch.shared.setActive(enabled && NotchRainWatch.isEnabled && NotchRainWatch.locationAllowed)
         if enabled && NotchUnread.isEnabled { NotchUnread.shared.start() } else { NotchUnread.shared.stop() }
+        if enabled && NotchNotifications.isEnabled {
+            NotchNotifications.shared.start()
+        } else {
+            NotchNotifications.shared.stop()
+        }
         // Switched off: every app back to full, which also ends its tap.
         if !(enabled && NotchMixer.isEnabled), mixerWasOn { NotchMixer.shared.reset() }
         mixerWasOn = enabled && NotchMixer.isEnabled
@@ -195,16 +202,21 @@ final class NotchHomeManager {
             !NotchHome.showsInFullScreen && screen.map(frontAppFillsScreen(on:)) == true
         let track = Self.shown(tracks, selected: selectedPlayer)
         let timers = NotchTimers.shared
+        // Typed one step at a time: as one chain this is more than the type checker will take.
+        let firstNotice: NotchHome.Notice? = AppSwitcher.shared.notice ?? NotchNotifications.shared.notice
+        let deviceNotice: NotchHome.Notice? = Self.notice(
+            device: NotchDeviceAlerts.shared.notice, finished: timers.finished)
+        let agentNotice: NotchHome.Notice? =
+            NotchFocus.shared.notice ?? ClaudeCodeUsage.shared.notice ?? GeminiActivity.shared.notice
+            ?? CodexActivity.shared.notice
+        let watchNotice: NotchHome.Notice? =
+            ClaudeCodeCIWatch.shared.notice ?? NotchRainWatch.shared.notice ?? NotchUnread.shared.notice
+            ?? Self.downloadNotice(NotchDownloads.shared.finished)
         var content = NotchHome.content(
             enabled: enabled && !hiddenForFullScreen, hasNotch: screen != nil,
             blocked: uiManager.isRecorderPanelVisible || uiManager.isClaudeCodeCardVisible, hovered: hovered,
             dropping: dropping,
-            notice: AppSwitcher.shared.notice
-                ?? Self.notice(device: NotchDeviceAlerts.shared.notice, finished: timers.finished)
-                ?? NotchFocus.shared.notice ?? ClaudeCodeUsage.shared.notice ?? GeminiActivity.shared.notice
-                ?? CodexActivity.shared.notice
-                ?? ClaudeCodeCIWatch.shared.notice ?? NotchRainWatch.shared.notice ?? NotchUnread.shared.notice
-                ?? Self.downloadNotice(NotchDownloads.shared.finished),
+            notice: firstNotice ?? deviceNotice ?? agentNotice ?? watchNotice,
             timerRunning: timers.running != nil, musicPlaying: track?.isPlaying == true, meeting: meeting,
             privacy: NotchPrivacy.shared.state, level: NotchHUD.shared.level,
             downloads: NotchDownloads.shared.active)

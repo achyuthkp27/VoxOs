@@ -13,6 +13,7 @@ struct NotchSettingsPage: View {
     @AppStorage(DefaultsKeys.notchFollowsActiveDisplay) private var notchFollowsActiveDisplay = false
     @AppStorage(DefaultsKeys.notchHUDEnabled) private var notchHUDEnabled = true
     @AppStorage(DefaultsKeys.notchHUDStyle) private var notchHUDStyle = NotchHUD.Style.bar.rawValue
+    @AppStorage(DefaultsKeys.notchNotificationsEnabled) private var notchNotificationsEnabled = false
     @AppStorage(DefaultsKeys.notchHiddenFromCapture) private var notchHiddenFromCapture = false
     @AppStorage(DefaultsKeys.notchDownloadsEnabled) private var notchDownloadsEnabled = true
     @AppStorage(DefaultsKeys.notchFocusEnabled) private var notchFocusEnabled = true
@@ -256,6 +257,11 @@ struct NotchSettingsPage: View {
                             }
                         }
                     }
+                    Toggle(isOn: $notchNotificationsEnabled) {
+                        HStack(spacing: 2) {
+                            Text("Notifications")
+                            InfoTip(
+                                "Each notification banner is said again in the notch for a few seconds: the app, the title and the start of the message. Read from Notification Center through Accessibility; macOS's own banner still shows."
                             )
                         }
                     }

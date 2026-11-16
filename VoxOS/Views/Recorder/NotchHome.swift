@@ -76,6 +76,8 @@ enum NotchHome {
         let symbol: String
         let title: String
         let detail: String?
+        /// An app's bundle identifier: its icon is shown in place of the symbol.
+        var appIcon: String? = nil
     }
 
     enum Content: Equatable {

@@ -229,7 +229,11 @@ struct NotchHomeView: View {
             }
         case .notice(let notice):
             HStack(spacing: 7) {
-                Image(systemName: notice.symbol).font(.system(size: 12, weight: .semibold))
+                if let icon = NotchHomeApp.icon(for: notice.appIcon) {
+                    Image(nsImage: icon).resizable().frame(width: 15, height: 15)
+                } else {
+                    Image(systemName: notice.symbol).font(.system(size: 12, weight: .semibold))
+                }
                 Text(verbatim: notice.title).font(.app(size: 12, weight: .semibold)).lineLimit(1)
             }
             .foregroundStyle(.white)

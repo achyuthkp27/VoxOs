@@ -38,7 +38,7 @@ struct PreferencesBackup: Codable, Equatable {
         DefaultsKeys.meetingNotesIncludeMicrophone, DefaultsKeys.meetingNotesLiveTranscript,
         DefaultsKeys.notchMusicEnabled,
         DefaultsKeys.notchMusicBarsEnabled, DefaultsKeys.notchMusicBarsOnBattery,
-        DefaultsKeys.notchHUDStyle,
+        DefaultsKeys.notchHUDStyle, DefaultsKeys.notchNotificationsEnabled,
         // Key Sounds
         DefaultsKeys.keySoundsEnabled, DefaultsKeys.keySoundsProfile, DefaultsKeys.keySoundsVolume,
         DefaultsKeys.keySoundsKeyUp, DefaultsKeys.keySoundsStereo, DefaultsKeys.keySoundsVaryPitch,

@@ -115,6 +115,8 @@ enum DefaultsKeys {
     static let focusBlurIgnoredApps = "FocusBlurIgnoredApps"
     /// How the volume and brightness level is drawn in the notch, as `NotchHUD.Style.rawValue`.
     static let notchHUDStyle = "NotchHUDStyle"
+    /// macOS's notification banners are said again in the notch as they arrive.
+    static let notchNotificationsEnabled = "NotchNotificationsEnabled"
     /// Voice Prompter's text size, in points.
     static let prompterFontSize = "PrompterFontSize"
     /// How many lines of the script the prompter shows.
