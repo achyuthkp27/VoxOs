@@ -73,6 +73,9 @@ enum SkyLight {
             _ = showSpaces(connection, [NSNumber(value: space)] as CFArray)
             lockScreenSpace = space
         }
-        return addWindows(connection, space, [NSNumber(value: window.windowNumber)] as CFArray, 7) == 0
+        // Its result is not a status (it read as failure on windows it had moved), so it is not
+        // checked: the window is in the Space once the call returns.
+        _ = addWindows(connection, space, [NSNumber(value: window.windowNumber)] as CFArray, 7)
+        return true
     }
 }
