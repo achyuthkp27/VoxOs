@@ -127,9 +127,10 @@ final class NotchNotifications: ObservableObject {
     }
 
     private func show(_ banner: Banner) {
+        let appID = Self.bundleID(forAppNamed: banner.app)
         notice = NotchHome.Notice(
-            symbol: "bell.badge.fill", title: Self.title(of: banner), detail: banner.body.isEmpty ? nil : banner.body,
-            appIcon: Self.bundleID(forAppNamed: banner.app))
+            symbol: "bell.badge.fill", title: Self.title(of: banner, withIcon: appID != nil),
+            detail: banner.body.isEmpty ? nil : banner.body, appIcon: appID)
         clearTask?.cancel()
         clearTask = Task { @MainActor [weak self] in
             try? await Task.sleep(for: .seconds(Self.lifetime))
@@ -138,8 +139,10 @@ final class NotchNotifications: ObservableObject {
         }
     }
 
-    /// The band's title: the app and the notification's title, or whichever there is.
-    nonisolated static func title(of banner: Banner) -> String {
+    /// The band's title. With the app's icon beside it, the notification's own title, as the
+    /// band's wing has room for little; without one, the app and the title, or whichever there is.
+    nonisolated static func title(of banner: Banner, withIcon: Bool = false) -> String {
+        if withIcon, !banner.title.isEmpty { return banner.title }
         switch (banner.app.isEmpty, banner.title.isEmpty) {
         case (false, false): return banner.app == banner.title ? banner.app : "\(banner.app) · \(banner.title)"
         case (false, true): return banner.app
@@ -196,9 +199,23 @@ final class NotchNotifications: ObservableObject {
             body: title.isEmpty ? subtitle : message)
     }
 
+    /// The app a banner names, running or not (Script Editor posts for scripts without running).
     private static func bundleID(forAppNamed name: String) -> String? {
         guard !name.isEmpty else { return nil }
-        return NSWorkspace.shared.runningApplications.first { $0.localizedName == name }?.bundleIdentifier
+        if let running = NSWorkspace.shared.runningApplications.first(where: { $0.localizedName == name }) {
+            return running.bundleIdentifier
+        }
+        let fileManager = FileManager.default
+        let folders =
+            fileManager.urls(for: .applicationDirectory, in: .allDomainsMask)
+            + fileManager.urls(for: .applicationDirectory, in: .systemDomainMask).map {
+                $0.appendingPathComponent("Utilities")
+            }
+        for folder in folders {
+            let url = folder.appendingPathComponent(name + ".app")
+            if fileManager.fileExists(atPath: url.path), let id = Bundle(url: url)?.bundleIdentifier { return id }
+        }
+        return nil
     }
 
     private static func string(_ element: AXUIElement, _ attribute: String) -> String? {

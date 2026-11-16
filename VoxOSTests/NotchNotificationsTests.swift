@@ -16,6 +16,8 @@ struct NotchNotificationsTests {
         #expect(banner?.title == "Anna Berg")
         #expect(banner?.body == "Lunch? — See you at one")
         #expect(NotchNotifications.title(of: banner!) == "Mail · Anna Berg")
+        // With Mail's icon beside it, the band has room for the title alone.
+        #expect(NotchNotifications.title(of: banner!, withIcon: true) == "Anna Berg")
     }
 
     @Test func anAppNameWithACommaStaysWhole() {
