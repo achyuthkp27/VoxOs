@@ -15,6 +15,8 @@ final class PowerState: ObservableObject {
         let charging: Bool
         /// On the adapter, whether or not it is charging (it holds at 80% to spare the battery).
         let onAdapter: Bool
+        /// Minutes until full while charging, once macOS has worked it out.
+        var minutesToFull: Int? = nil
     }
 
     /// Running on the battery, not an adapter. Always false on a Mac without one.
@@ -109,6 +111,8 @@ final class PowerState: ObservableObject {
         return Battery(
             percent: min(100, max(0, Int((Double(current) / Double(maximum) * 100).rounded()))),
             charging: description[kIOPSIsChargingKey] as? Bool ?? false,
-            onAdapter: description[kIOPSPowerSourceStateKey] as? String == kIOPSACPowerValue)
+            onAdapter: description[kIOPSPowerSourceStateKey] as? String == kIOPSACPowerValue,
+            // -1 while macOS is still working it out.
+            minutesToFull: (description[kIOPSTimeToFullChargeKey] as? Int).flatMap { $0 > 0 ? $0 : nil })
     }
 }

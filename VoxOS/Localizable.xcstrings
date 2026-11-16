@@ -1827,6 +1827,28 @@
         }
       }
     },
+    "%lld%% · %@ to full" : {
+      "localizations" : {
+        "de" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "%lld%% · voll in %@"
+          }
+        },
+        "en" : {
+          "stringUnit" : {
+            "state" : "new",
+            "value" : "%1$lld%% · %2$@ to full"
+          }
+        },
+        "zh-Hans" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "%lld%% · %@ 后充满"
+          }
+        }
+      }
+    },
     "%lldm" : {
       "localizations" : {
         "de" : {
@@ -7007,6 +7029,38 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "更新日志"
+          }
+        }
+      }
+    },
+    "Charged" : {
+      "localizations" : {
+        "de" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Geladen"
+          }
+        },
+        "zh-Hans" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "已充满"
+          }
+        }
+      }
+    },
+    "Charging" : {
+      "localizations" : {
+        "de" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Wird geladen"
+          }
+        },
+        "zh-Hans" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "正在充电"
           }
         }
       }

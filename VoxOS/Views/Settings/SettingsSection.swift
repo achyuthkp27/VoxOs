@@ -175,6 +175,7 @@ enum SettingsSection: CaseIterable, Hashable {
                 "volume", "brightness", "HUD", "keys", "mute", "meeting", "zoom", "join", "bluetooth", "airpods",
                 "wifi", "charging", "low battery", "download", "do not disturb", "unread", "badge", "rain", "notes",
                 "summary", "action items", "record call", "transcript", "HUD", "segments", "percentage",
+                "charging", "charged",
             ]
         case .claudeCode: return ["hooks", "permission", "approve", "plan"]
         case .appSwitcher: return ["rcmd", "right command", "accessibility", "switch apps"]

@@ -151,7 +151,12 @@ final class NotchDeviceAlerts: ObservableObject {
         guard let old, let new else { return nil }
         let percent = "\(new.percent)%"
         if !old.onAdapter, new.onAdapter {
-            return ("power-on", "battery.100percent.bolt", String(localized: "Plugged in"), percent)
+            let title = new.charging ? String(localized: "Charging") : String(localized: "Plugged in")
+            return ("power-on", "battery.100percent.bolt", title, chargeDetail(new))
+        }
+        // Charging stopped on the adapter: full, or held where macOS keeps it to spare the battery.
+        if old.charging, !new.charging, new.onAdapter, old.onAdapter {
+            return ("charged", "battery.100percent.bolt", String(localized: "Charged"), percent)
         }
         if old.onAdapter, !new.onAdapter {
             return ("power-off", batterySymbol(new.percent), String(localized: "On battery"), percent)
@@ -160,6 +165,13 @@ final class NotchDeviceAlerts: ObservableObject {
             return ("battery-low-\(level)", batterySymbol(new.percent), String(localized: "Low battery"), percent)
         }
         return nil
+    }
+
+    /// "73%", or "73% · 1:25 to full" once macOS knows how long charging will take.
+    nonisolated static func chargeDetail(_ battery: PowerState.Battery) -> String {
+        guard battery.charging, let minutes = battery.minutesToFull else { return "\(battery.percent)%" }
+        let time = String(format: "%d:%02d", minutes / 60, minutes % 60)
+        return String(localized: "\(battery.percent)% · \(time) to full")
     }
 
     nonisolated static func batterySymbol(_ percent: Int) -> String {
