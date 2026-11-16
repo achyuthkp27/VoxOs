@@ -63,17 +63,26 @@ final class LockScreenWidgets {
             return
         }
         self.panel = panel
+        logger.notice("Lock screen row ready")
     }
 
     private func show() {
-        guard enabled, let panel, let screen = NSScreen.screens.first else { return }
-        panel.setFrame(Self.frame(on: screen.frame, size: Self.size), display: true)
+        guard enabled, let panel else {
+            logger.notice("Screen locked; no row to show")
+            return
+        }
+        // Moved only when the display changed, so a lock does nothing to the row but show it.
+        if let screen = NSScreen.screens.first {
+            let frame = Self.frame(on: screen.frame, size: Self.size)
+            if panel.frame != frame { panel.setFrame(frame, display: true) }
+        }
         panel.alphaValue = 1
-        ActivityTrail.mark("lock screen widgets shown")
+        logger.notice("Screen locked; row shown")
     }
 
     private func hide() {
         panel?.alphaValue = 0
+        logger.notice("Screen unlocked; row hidden")
     }
 
     private func makePanel() -> NSPanel {
