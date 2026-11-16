@@ -338,8 +338,7 @@ struct NotchHomeView: View {
                     .monospacedDigit()
             }
         case .level(let level):
-            NotchLevelMeter(value: level.muted ? 0 : level.value)
-                .frame(width: NotchHome.levelMeterWidth, height: NotchHome.levelMeterHeight)
+            NotchLevelIndicator(level: level)
                 .accessibilityLabel(Text(level.kind == .volume ? "Volume" : "Brightness"))
                 .accessibilityValue(Text("\(Int((level.muted ? 0 : level.value) * 100)) percent"))
         case .privacy(let privacy):
@@ -437,12 +436,13 @@ private struct NotchBlur: ViewModifier {
 /// A slim meter for volume or brightness, filling from the left.
 struct NotchLevelMeter: View {
     let value: Float
+    var fill: Color = .white
 
     var body: some View {
         GeometryReader { geo in
             ZStack(alignment: .leading) {
                 Capsule().fill(.white.opacity(0.18))
-                Capsule().fill(.white).frame(width: max(0, geo.size.width * CGFloat(min(1, max(0, value)))))
+                Capsule().fill(fill).frame(width: max(0, geo.size.width * CGFloat(min(1, max(0, value)))))
             }
         }
         .animation(.easeOut(duration: 0.12), value: value)
@@ -459,9 +459,55 @@ private struct NotchLevelReadout: View {
                 .font(.system(size: 11, weight: .semibold))
                 .foregroundStyle(.white)
                 .frame(width: 18, alignment: .leading)
-            NotchLevelMeter(value: level.muted ? 0 : level.value)
-                .frame(width: NotchHome.levelMeterWidth, height: NotchHome.levelMeterHeight)
+            NotchLevelIndicator(level: level)
         }
+    }
+}
+
+/// The level as the HUD style chosen in Settings draws it, in the band's fixed width.
+struct NotchLevelIndicator: View {
+    let level: NotchHUD.Level
+    @AppStorage(DefaultsKeys.notchHUDStyle) private var styleRaw = NotchHUD.Style.bar.rawValue
+
+    private var value: Float { level.muted ? 0 : level.value }
+
+    var body: some View {
+        switch NotchHUD.Style(rawValue: styleRaw) ?? .bar {
+        case .bar:
+            NotchLevelMeter(value: value)
+                .frame(width: NotchHome.levelMeterWidth, height: NotchHome.levelMeterHeight)
+        case .colored:
+            NotchLevelMeter(value: value, fill: level.kind == .volume ? AppTheme.Accent.primary : .yellow)
+                .frame(width: NotchHome.levelMeterWidth, height: NotchHome.levelMeterHeight + 1)
+        case .segments:
+            NotchLevelSegments(value: value)
+                .frame(width: NotchHome.levelMeterWidth, height: 8)
+        case .percent:
+            Text(verbatim: "\(Int((value * 100).rounded()))%")
+                .font(.appMono(size: 12, weight: .semibold))
+                .foregroundStyle(.white)
+                .monospacedDigit()
+                .contentTransition(.numericText(value: Double(value)))
+                .frame(width: NotchHome.levelMeterWidth, alignment: .trailing)
+                .animation(.easeOut(duration: 0.12), value: value)
+        }
+    }
+}
+
+/// macOS's old pop-up: sixteen blocks, one per step, lit up to the level.
+struct NotchLevelSegments: View {
+    let value: Float
+    static let count = 16
+
+    var body: some View {
+        let lit = Int((value * Float(Self.count)).rounded())
+        HStack(spacing: 1) {
+            ForEach(0..<Self.count, id: \.self) { index in
+                RoundedRectangle(cornerRadius: 1, style: .continuous)
+                    .fill(.white.opacity(index < lit ? 1 : 0.18))
+            }
+        }
+        .animation(.easeOut(duration: 0.12), value: lit)
     }
 }
 

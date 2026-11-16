@@ -113,6 +113,8 @@ enum DefaultsKeys {
     static let focusBlurShake = "FocusBlurShake"
     /// Apps that are never blurred behind, by bundle identifier: nothing blurs while one is in front.
     static let focusBlurIgnoredApps = "FocusBlurIgnoredApps"
+    /// How the volume and brightness level is drawn in the notch, as `NotchHUD.Style.rawValue`.
+    static let notchHUDStyle = "NotchHUDStyle"
     /// Voice Prompter's text size, in points.
     static let prompterFontSize = "PrompterFontSize"
     /// How many lines of the script the prompter shows.

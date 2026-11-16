@@ -12,6 +12,7 @@ struct NotchSettingsPage: View {
     @AppStorage(DefaultsKeys.notchPrivacyEnabled) private var notchPrivacyEnabled = true
     @AppStorage(DefaultsKeys.notchFollowsActiveDisplay) private var notchFollowsActiveDisplay = false
     @AppStorage(DefaultsKeys.notchHUDEnabled) private var notchHUDEnabled = true
+    @AppStorage(DefaultsKeys.notchHUDStyle) private var notchHUDStyle = NotchHUD.Style.bar.rawValue
     @AppStorage(DefaultsKeys.notchHiddenFromCapture) private var notchHiddenFromCapture = false
     @AppStorage(DefaultsKeys.notchDownloadsEnabled) private var notchDownloadsEnabled = true
     @AppStorage(DefaultsKeys.notchFocusEnabled) private var notchFocusEnabled = true
@@ -245,6 +246,16 @@ struct NotchSettingsPage: View {
                             Text("Volume & Brightness in the Notch")
                             InfoTip(
                                 "The volume and brightness keys show their level in the notch instead of macOS's pop-up, in the same steps (Option-Shift for finer ones). Needs Accessibility, which VoxOS already uses for its shortcuts. An external display's brightness, an output without a volume, and keys pressed while the notch is hidden stay with macOS."
+                            )
+                        }
+                    }
+                    if notchHUDEnabled {
+                        Picker("Level Style", selection: $notchHUDStyle) {
+                            ForEach(NotchHUD.Style.allCases) { style in
+                                Text(verbatim: style.title).tag(style.rawValue)
+                            }
+                        }
+                    }
                             )
                         }
                     }

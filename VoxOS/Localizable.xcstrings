@@ -6301,6 +6301,22 @@
         }
       }
     },
+    "Bar" : {
+      "localizations" : {
+        "de" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Balken"
+          }
+        },
+        "zh-Hans" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "条形"
+          }
+        }
+      }
+    },
     "Bars beside the notch and in the player that move with what is actually playing. They listen to the Mac's sound output while music plays, which needs the System Audio Recording permission and shows macOS's purple recording dot meanwhile. Off, the bars still move but listen to nothing. Nothing is recorded or stored. A click on the bars in the player switches this too." : {
       "localizations" : {
         "de" : {
@@ -7974,6 +7990,22 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "收起边栏（⌃⌘S）"
+          }
+        }
+      }
+    },
+    "Colored Bar" : {
+      "localizations" : {
+        "de" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Farbiger Balken"
+          }
+        },
+        "zh-Hans" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "彩色条形"
           }
         }
       }
@@ -15405,6 +15437,22 @@
         }
       }
     },
+    "Level Style" : {
+      "localizations" : {
+        "de" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Pegelstil"
+          }
+        },
+        "zh-Hans" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "音量条样式"
+          }
+        }
+      }
+    },
     "License Key" : {
       "localizations" : {
         "de" : {
@@ -21183,6 +21231,22 @@
         }
       }
     },
+    "Percentage" : {
+      "localizations" : {
+        "de" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Prozent"
+          }
+        },
+        "zh-Hans" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "百分比"
+          }
+        }
+      }
+    },
     "Performance Analysis" : {
       "localizations" : {
         "de" : {
@@ -24981,6 +25045,22 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "查看会话何时在工作，并在此允许或回答其请求。这会在 ~/.claude/settings.json 中添加钩子。"
+          }
+        }
+      }
+    },
+    "Segments" : {
+      "localizations" : {
+        "de" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Segmente"
+          }
+        },
+        "zh-Hans" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "分段"
           }
         }
       }

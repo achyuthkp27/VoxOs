@@ -72,6 +72,7 @@ enum AppDefaults {
             DefaultsKeys.voiceAssistantEnabled: true,
             DefaultsKeys.notchMasterEnabled: true,
             DefaultsKeys.notchHUDEnabled: true,
+            DefaultsKeys.notchHUDStyle: NotchHUD.Style.bar.rawValue,
             // Off: a screenshot of a notch bug should show the notch.
             DefaultsKeys.notchHiddenFromCapture: false,
             DefaultsKeys.notchDownloadsEnabled: true,

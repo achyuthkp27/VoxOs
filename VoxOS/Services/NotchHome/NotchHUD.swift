@@ -41,6 +41,25 @@ final class NotchHUD: ObservableObject {
         }
     }
 
+    /// How the level is drawn in the band, chosen in Settings.
+    enum Style: String, CaseIterable, Identifiable {
+        case bar
+        case colored
+        case segments
+        case percent
+
+        var id: String { rawValue }
+
+        var title: String {
+            switch self {
+            case .bar: return String(localized: "Bar")
+            case .colored: return String(localized: "Colored Bar")
+            case .segments: return String(localized: "Segments")
+            case .percent: return String(localized: "Percentage")
+            }
+        }
+    }
+
     /// How long the level stays after the last key.
     static let lifetime: TimeInterval = 1.5
     /// macOS's step, and its fine step with Option and Shift.

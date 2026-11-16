@@ -77,7 +77,8 @@ enum SettingsSection: CaseIterable, Hashable {
             ]
         case .notchNotices:
             return [
-                "Notices", "Volume & Brightness in the Notch", "Mic & Camera in Use", "Meeting Countdown",
+                "Notices", "Volume & Brightness in the Notch", "Level Style", "Mic & Camera in Use",
+                "Meeting Countdown",
                 "Meeting Notes", "Include My Microphone", "Show Live Transcript",
                 "Device Alerts", "Downloads", "Focus", "Unread Counts", "Rain Soon",
             ]
@@ -173,7 +174,7 @@ enum SettingsSection: CaseIterable, Hashable {
             return [
                 "volume", "brightness", "HUD", "keys", "mute", "meeting", "zoom", "join", "bluetooth", "airpods",
                 "wifi", "charging", "low battery", "download", "do not disturb", "unread", "badge", "rain", "notes",
-                "summary", "action items", "record call", "transcript",
+                "summary", "action items", "record call", "transcript", "HUD", "segments", "percentage",
             ]
         case .claudeCode: return ["hooks", "permission", "approve", "plan"]
         case .appSwitcher: return ["rcmd", "right command", "accessibility", "switch apps"]
