@@ -9,7 +9,8 @@ import os
 /// a group (subrole `AXNotificationCenterBanner`) with a unique identifier, a description of
 /// "App, Title, Subtitle, Body", and title, subtitle and body texts. Nothing is polled: the
 /// banners are read when Notification Center reports a change. A banner already on screen when
-/// this starts, and the list shown while Notification Center itself is open, are never said.
+/// this starts, the list shown while Notification Center itself is open, and banners that arrive
+/// while the screen is locked are never said.
 /// macOS's own banner still shows. Off until switched on.
 @MainActor
 final class NotchNotifications: ObservableObject {
@@ -122,7 +123,8 @@ final class NotchNotifications: ObservableObject {
             primed = true
             return
         }
-        guard banners.count <= Self.maxBannersAtOnce, let newest = fresh.last else { return }
+        // A banner that arrives while the screen is locked is never said, then or after unlocking.
+        guard banners.count <= Self.maxBannersAtOnce, let newest = fresh.last, !Self.screenIsLocked() else { return }
         show(newest)
     }
 
@@ -137,6 +139,12 @@ final class NotchNotifications: ObservableObject {
             guard !Task.isCancelled else { return }
             self?.notice = nil
         }
+    }
+
+    /// Whether the screen is locked now, from the login session itself (no notification needed).
+    nonisolated static func screenIsLocked() -> Bool {
+        let session = CGSessionCopyCurrentDictionary() as? [String: Any]
+        return session?["CGSSessionScreenIsLocked"] as? Bool == true
     }
 
     /// The band's title. With the app's icon beside it, the notification's own title, as the
