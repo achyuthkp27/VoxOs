@@ -43,3 +43,13 @@ is required; the authors are credited here anyway.
 - "IBM M2 sound.ogg" by Anonimski — https://commons.wikimedia.org/wiki/File:IBM_M2_sound.ogg
 - "Typing - Model F 122 1984.ogg" by Raymangold22 —
   https://commons.wikimedia.org/wiki/File:Typing_-_Model_F_122_1984.ogg
+
+## Key Sounds recording (CC BY 4.0)
+
+The Red Linear switch in Key Sounds is made of short slices of this recording, cut into single
+keystrokes and level-matched for VoxOS:
+
+- "Typing on Keychron V1 Ultra (Red Linear Switch).wav" by C40115 —
+  https://commons.wikimedia.org/wiki/File:Typing_on_Keychron_V1_Ultra_(Red_Linear_Switch).wav
+  — licensed under Creative Commons Attribution 4.0 International,
+  https://creativecommons.org/licenses/by/4.0/

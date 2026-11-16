@@ -22936,6 +22936,22 @@
         }
       }
     },
+    "Recorded from a real Keychron V1 Ultra with red linear switches: smooth and quieter. Recording by C40115, CC BY 4.0." : {
+      "localizations" : {
+        "de" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Aufgenommen von einer echten Keychron V1 Ultra mit roten linearen Schaltern: geschmeidig und leiser. Aufnahme von C40115, CC BY 4.0."
+          }
+        },
+        "zh-Hans" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "录自配备红轴线性开关的真实 Keychron V1 Ultra：顺滑、更安静。录音作者 C40115，CC BY 4.0。"
+          }
+        }
+      }
+    },
     "Recorded from real IBM Model M keyboards: loud, crisp and clicky." : {
       "localizations" : {
         "de" : {
@@ -23147,6 +23163,22 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "找回或管理你的许可证"
+          }
+        }
+      }
+    },
+    "Red Linear" : {
+      "localizations" : {
+        "de" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Rot linear"
+          }
+        },
+        "zh-Hans" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "红轴线性"
           }
         }
       }

@@ -11,11 +11,12 @@ enum KeySoundSynth {
     /// Variants made of each key and stroke; one is picked at random per press.
     static let variantCount = 6
 
-    /// A switch, by the sound it makes. The first two are recordings of real keyboards; the rest
-    /// are made in code.
+    /// A switch, by the sound it makes. The first three are recordings of real keyboards; the
+    /// rest are made in code.
     enum Profile: String, CaseIterable, Identifiable {
         case bucklingSpring
         case heavyBucklingSpring
+        case redLinear
         case creamy
         case tactile
         case clicky
@@ -30,6 +31,7 @@ enum KeySoundSynth {
             switch self {
             case .bucklingSpring: return "modelm"
             case .heavyBucklingSpring: return "modelf"
+            case .redLinear: return "keychron"
             default: return nil
             }
         }
@@ -38,6 +40,7 @@ enum KeySoundSynth {
             switch self {
             case .bucklingSpring: return String(localized: "Buckling Spring")
             case .heavyBucklingSpring: return String(localized: "Heavy Buckling Spring")
+            case .redLinear: return String(localized: "Red Linear")
             case .creamy: return String(localized: "Creamy Linear")
             case .tactile: return String(localized: "Tactile Bump")
             case .clicky: return String(localized: "Crisp Clicky")
@@ -53,6 +56,11 @@ enum KeySoundSynth {
                 return String(localized: "Recorded from real IBM Model M keyboards: loud, crisp and clicky.")
             case .heavyBucklingSpring:
                 return String(localized: "Recorded from a real IBM Model F: deeper, heavier and more resonant.")
+            case .redLinear:
+                return String(
+                    localized:
+                        "Recorded from a real Keychron V1 Ultra with red linear switches: smooth and quieter. Recording by C40115, CC BY 4.0."
+                )
             case .creamy: return String(localized: "Smooth and muted, like lubed linear switches.")
             case .tactile: return String(localized: "A soft bump before a rounded bottom-out.")
             case .clicky: return String(localized: "A bright click on every press and release.")
@@ -114,7 +122,7 @@ enum KeySoundSynth {
         if let recording = profile.recording {
             let recorded = recordedBank(recording)
             if !recorded.isEmpty { return recorded }
-            return makeBank(for: .clicky, seed: seed)
+            return makeBank(for: profile == .redLinear ? .creamy : .clicky, seed: seed)
         }
         var rng = SplitMix(seed: seed ^ profile.rawValue.stableHash)
         var bank: [SoundKey: [AVAudioPCMBuffer]] = [:]
@@ -358,6 +366,8 @@ enum KeySoundSynth {
         // Recorded switches; made in code only if their recordings are missing, as the clicky one.
         case .bucklingSpring, .heavyBucklingSpring:
             return voice(.clicky)
+        case .redLinear:
+            return voice(.creamy)
         case .creamy:
             return Voice(
                 noiseCenter: 1_900, noiseWidth: 1_800, noiseDecay: 0.0035, noiseLevel: 0.9,
