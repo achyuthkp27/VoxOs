@@ -51,6 +51,11 @@ struct MenuBarView: View {
 
     private var completedOnboardingMenu: some View {
         Group {
+            // The main window, on the page it was left on.
+            Button("Open VoxOS") { showMainWindow() }
+
+            Divider()
+
             Button("Toggle Recorder") {
                 recorderUIManager.handleToggleRecorderPanelNotification()
             }
