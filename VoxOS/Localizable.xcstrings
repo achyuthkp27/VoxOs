@@ -245,6 +245,22 @@
         }
       }
     },
+    "%@ Every sound is made on this Mac, and only keys typed on a keyboard sound. The system volume is the limit." : {
+      "localizations" : {
+        "de" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "%@ Jeder Klang entsteht auf diesem Mac, und nur auf einer Tastatur getippte Tasten klingen. Die Systemlautstärke ist die Obergrenze."
+          }
+        },
+        "zh-Hans" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "%@ 所有声音都在这台 Mac 上生成，只有在键盘上敲击的按键才会发声。系统音量是上限。"
+          }
+        }
+      }
+    },
     "%@ Mode" : {
       "localizations" : {
         "de" : {
@@ -2703,6 +2719,22 @@
         }
       }
     },
+    "A bright click on every press and release." : {
+      "localizations" : {
+        "de" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Ein heller Klick bei jedem Drücken und Loslassen."
+          }
+        },
+        "zh-Hans" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "每次按下和松开都有清脆的咔嗒声。"
+          }
+        }
+      }
+    },
     "A card with Claude's last message for a few seconds when a session finishes, with a button to hear it. Not while that session's terminal is in front." : {
       "localizations" : {
         "de" : {
@@ -2926,6 +2958,22 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "当 AirPods 或其他蓝牙设备连接时（显示电量）、声音切换到其他输出时、Wi-Fi 连接或断开时，以及接入或拔下电源适配器或电池电量不足时，给出简短提示。"
+          }
+        }
+      }
+    },
+    "A soft bump before a rounded bottom-out." : {
+      "localizations" : {
+        "de" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Ein sanfter Widerstand vor einem runden Anschlag."
+          }
+        },
+        "zh-Hans" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "触底前有一个柔和的段落感。"
           }
         }
       }
@@ -8710,6 +8758,22 @@
         }
       }
     },
+    "Creamy Linear" : {
+      "localizations" : {
+        "de" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Cremig linear"
+          }
+        },
+        "zh-Hans" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "顺滑线性"
+          }
+        }
+      }
+    },
     "Create & Select" : {
       "localizations" : {
         "de" : {
@@ -8757,6 +8821,22 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "创建时间"
+          }
+        }
+      }
+    },
+    "Crisp Clicky" : {
+      "localizations" : {
+        "de" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Knackig klickend"
+          }
+        },
+        "zh-Hans" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "清脆有声"
           }
         }
       }
@@ -9162,6 +9242,22 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "要停用许可证吗？"
+          }
+        }
+      }
+    },
+    "Deep Thock" : {
+      "localizations" : {
+        "de" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Tiefer Thock"
+          }
+        },
+        "zh-Hans" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "低沉闷响"
           }
         }
       }
@@ -13624,6 +13720,22 @@
         }
       }
     },
+    "How Keys Sound" : {
+      "localizations" : {
+        "de" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Wie Tasten klingen"
+          }
+        },
+        "zh-Hans" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "按键音效"
+          }
+        }
+      }
+    },
     "How much you dictate, when, and with which models." : {
       "localizations" : {
         "de" : {
@@ -14451,6 +14563,22 @@
         }
       }
     },
+    "Keep Quiet" : {
+      "localizations" : {
+        "de" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Stumm lassen"
+          }
+        },
+        "zh-Hans" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "保持安静"
+          }
+        }
+      }
+    },
     "Keep Recent System Audio" : {
       "localizations" : {
         "de" : {
@@ -14467,6 +14595,22 @@
         }
       }
     },
+    "Keep an App Quiet…" : {
+      "localizations" : {
+        "de" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Eine App stumm lassen …"
+          }
+        },
+        "zh-Hans" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "让某个 App 保持安静…"
+          }
+        }
+      }
+    },
     "Keep planning" : {
       "localizations" : {
         "de" : {
@@ -14479,6 +14623,22 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "继续规划"
+          }
+        }
+      }
+    },
+    "Key Sounds" : {
+      "localizations" : {
+        "de" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Tastenklänge"
+          }
+        },
+        "zh-Hans" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "按键音"
           }
         }
       }
@@ -14544,6 +14704,22 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "键盘快捷键："
+          }
+        }
+      }
+    },
+    "Keys on the left of the keyboard sound from the left speaker, keys on the right from the right. While a call, a recording or a dictation is listening, the keys stay quiet so the clicks aren't picked up." : {
+      "localizations" : {
+        "de" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Tasten links auf der Tastatur klingen aus dem linken Lautsprecher, Tasten rechts aus dem rechten. Während ein Anruf, eine Aufnahme oder ein Diktat zuhört, bleiben die Tasten still, damit die Klicks nicht mitgeschnitten werden."
+          }
+        },
+        "zh-Hans" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "键盘左侧的按键从左声道发声，右侧的从右声道发声。通话、录音或听写正在使用麦克风时，按键保持安静，以免咔嗒声被录进去。"
           }
         }
       }
@@ -15943,6 +16119,22 @@
         }
       }
     },
+    "Low and heavy, like a thick case with foam." : {
+      "localizations" : {
+        "de" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Tief und schwer, wie ein dickes Gehäuse mit Dämpfung."
+          }
+        },
+        "zh-Hans" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "低沉厚重，像带消音棉的厚实外壳。"
+          }
+        }
+      }
+    },
     "Low battery" : {
       "localizations" : {
         "de" : {
@@ -17106,6 +17298,22 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "Apple 原生"
+          }
+        }
+      }
+    },
+    "Needs Accessibility to hear the keys" : {
+      "localizations" : {
+        "de" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Benötigt Bedienungshilfen, um die Tasten zu hören"
+          }
+        },
+        "zh-Hans" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "需要辅助功能权限才能听到按键"
           }
         }
       }
@@ -20655,6 +20863,22 @@
         }
       }
     },
+    "Place Keys Left and Right" : {
+      "localizations" : {
+        "de" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Tasten links und rechts platzieren"
+          }
+        },
+        "zh-Hans" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "按键左右定位"
+          }
+        }
+      }
+    },
     "Play" : {
       "localizations" : {
         "de" : {
@@ -20667,6 +20891,38 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "播放"
+          }
+        }
+      }
+    },
+    "Play a Sound as You Type" : {
+      "localizations" : {
+        "de" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Beim Tippen einen Klang abspielen"
+          }
+        },
+        "zh-Hans" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "打字时播放声音"
+          }
+        }
+      }
+    },
+    "Play sounds in this app again" : {
+      "localizations" : {
+        "de" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "In dieser App wieder Klänge abspielen"
+          }
+        },
+        "zh-Hans" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "在此 App 中重新播放声音"
           }
         }
       }
@@ -21005,6 +21261,22 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "按下快捷键，朗读示例文本，然后再次按下。"
+          }
+        }
+      }
+    },
+    "Preview" : {
+      "localizations" : {
+        "de" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Vorhören"
+          }
+        },
+        "zh-Hans" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "试听"
           }
         }
       }
@@ -21418,6 +21690,22 @@
         }
       }
     },
+    "Quiet Apps" : {
+      "localizations" : {
+        "de" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Stumme Apps"
+          }
+        },
+        "zh-Hans" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "静音 App"
+          }
+        }
+      }
+    },
     "Quiet While Its Terminal Is in Front" : {
       "localizations" : {
         "de" : {
@@ -21430,6 +21718,38 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "其终端位于最前时保持安静"
+          }
+        }
+      }
+    },
+    "Quiet While the Microphone Is in Use" : {
+      "localizations" : {
+        "de" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Still, solange das Mikrofon benutzt wird"
+          }
+        },
+        "zh-Hans" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "麦克风使用时保持安静"
+          }
+        }
+      }
+    },
+    "Quiet scissor keys, for late nights." : {
+      "localizations" : {
+        "de" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Leise Scherentasten, für späte Abende."
+          }
+        },
+        "zh-Hans" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "安静的剪刀脚按键，适合深夜。"
           }
         }
       }
@@ -25600,6 +25920,22 @@
         }
       }
     },
+    "Smooth and muted, like lubed linear switches." : {
+      "localizations" : {
+        "de" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Weich und gedämpft, wie geschmierte lineare Schalter."
+          }
+        },
+        "zh-Hans" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "顺滑柔和，像润过的线性轴。"
+          }
+        }
+      }
+    },
     "Snippet" : {
       "localizations" : {
         "de" : {
@@ -25628,6 +25964,22 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "文本片段 %lld"
+          }
+        }
+      }
+    },
+    "Soft Laptop" : {
+      "localizations" : {
+        "de" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Leiser Laptop"
+          }
+        },
+        "zh-Hans" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "轻柔笔记本"
           }
         }
       }
@@ -25759,6 +26111,22 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "声音页面"
+          }
+        }
+      }
+    },
+    "Sound When Keys Are Let Go" : {
+      "localizations" : {
+        "de" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Klang beim Loslassen der Tasten"
+          }
+        },
+        "zh-Hans" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "松开按键时发声"
           }
         }
       }
@@ -26681,6 +27049,22 @@
         }
       }
     },
+    "Switch" : {
+      "localizations" : {
+        "de" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Schalter"
+          }
+        },
+        "zh-Hans" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "轴体"
+          }
+        }
+      }
+    },
     "Switch AI provider" : {
       "localizations" : {
         "de" : {
@@ -26921,6 +27305,22 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "Tab 移动 · 松开切换 · W 关闭 · M 最小化 · H 隐藏 · 两次 Q 退出 · L/R 半屏 · F 铺满 · / 搜索"
+          }
+        }
+      }
+    },
+    "Tactile Bump" : {
+      "localizations" : {
+        "de" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Taktil"
+          }
+        },
+        "zh-Hans" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "段落感"
           }
         }
       }
@@ -29237,6 +29637,38 @@
         }
       }
     },
+    "Typebars striking paper, with a bell on Return." : {
+      "localizations" : {
+        "de" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Typenhebel auf Papier, mit einer Glocke bei Return."
+          }
+        },
+        "zh-Hans" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "铅字杆敲击纸张，按回车时响铃。"
+          }
+        }
+      }
+    },
+    "Typewriter" : {
+      "localizations" : {
+        "de" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Schreibmaschine"
+          }
+        },
+        "zh-Hans" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "打字机"
+          }
+        }
+      }
+    },
     "Unavailable" : {
       "localizations" : {
         "de" : {
@@ -29869,6 +30301,22 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "变量：VOXOS_SYSTEM_PROMPT、VOXOS_USER_PROMPT、VOXOS_FULL_PROMPT"
+          }
+        }
+      }
+    },
+    "Vary the Pitch of Each Press" : {
+      "localizations" : {
+        "de" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Tonhöhe jedes Anschlags variieren"
+          }
+        },
+        "zh-Hans" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "每次按键音高略有变化"
           }
         }
       }
@@ -31462,6 +31910,22 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "当其中之一位于最前时，%@ 加字母会直接发送给它，适用于游戏、虚拟机和远程桌面。"
+          }
+        }
+      }
+    },
+    "While one of these is in front, typing makes no sound: for games, music apps and screen recorders." : {
+      "localizations" : {
+        "de" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Solange eine davon vorn ist, macht Tippen keinen Klang: für Spiele, Musik-Apps und Bildschirmrekorder."
+          }
+        },
+        "zh-Hans" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "当其中任一 App 在最前面时，打字不发声：适用于游戏、音乐 App 和录屏工具。"
           }
         }
       }

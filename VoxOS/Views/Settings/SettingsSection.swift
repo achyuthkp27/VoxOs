@@ -9,6 +9,7 @@ enum SettingsSection: CaseIterable, Hashable {
     case shortcuts, additionalShortcuts, recorder, pasting, transcription, agent, mcp, systemAudio
     case notchLook, notchHome, notchPages, notchMusic, notchSound, notchNotices, claudeCode
     case appSwitcher, appSwitcherLetters, windowSwitcher, appsLeftAlone
+    case keySounds, keySoundsBehavior, keySoundsQuietApps
     case general, appearance, backup, diagnostics
 
     var terms: [String] { labels + synonyms }
@@ -97,6 +98,18 @@ enum SettingsSection: CaseIterable, Hashable {
             return ["Window Switcher", "Show Windows with"]
         case .appsLeftAlone:
             return ["Apps Left Alone", "Leave an App Alone…"]
+        case .keySounds:
+            return [
+                "Key Sounds", "Play a Sound as You Type", "Switch", "Preview", "Volume",
+                "Needs Accessibility to hear the keys", "Open Accessibility Settings",
+            ]
+        case .keySoundsBehavior:
+            return [
+                "How Keys Sound", "Sound When Keys Are Let Go", "Place Keys Left and Right",
+                "Vary the Pitch of Each Press", "Quiet While the Microphone Is in Use",
+            ]
+        case .keySoundsQuietApps:
+            return ["Quiet Apps", "Keep an App Quiet…"]
         case .general:
             return [
                 "General", "Hide Dock Icon", "Launch at Login", "Automatically Check for Updates", "Check for Updates",
@@ -151,6 +164,13 @@ enum SettingsSection: CaseIterable, Hashable {
         case .windowSwitcher:
             return ["windows", "tab", "thumbnails", "minimized", "Screen Recording", "snap", "half", "tile", "fill"]
         case .appsLeftAlone: return ["ignore", "games", "virtual machines", "remote desktop"]
+        case .keySounds:
+            return [
+                "keyboard", "typing", "mechanical", "click", "clicky", "linear", "tactile", "thock", "typewriter",
+                "laptop",
+            ]
+        case .keySoundsBehavior: return ["key up", "release", "stereo", "spatial", "pan", "pitch", "call", "mic"]
+        case .keySoundsQuietApps: return ["mute", "ignore", "games", "exclude"]
         case .general: return ["dock", "login", "updates", "onboarding"]
         case .appearance: return ["interface", "dark", "light", "theme"]
         case .backup: return ["backup", "restore"]

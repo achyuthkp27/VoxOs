@@ -79,6 +79,22 @@ enum DefaultsKeys {
     static let appSwitcherSameLetterHides = "AppSwitcherSameLetterHides"
     /// Holding the app switcher's key alone shows the letters and their apps. On unless switched off.
     static let appSwitcherShowsLetters = "AppSwitcherShowsLetters"
+    /// Key Sounds: a switch's sound on every key typed. Off until switched on.
+    static let keySoundsEnabled = "KeySoundsEnabled"
+    /// The switch Key Sounds plays, as `KeySoundSynth.Profile.rawValue`.
+    static let keySoundsProfile = "KeySoundsProfile"
+    /// Key Sounds' loudness, 0…1, under the system volume.
+    static let keySoundsVolume = "KeySoundsVolume"
+    /// Keys sound when let go as well as when pressed.
+    static let keySoundsKeyUp = "KeySoundsKeyUp"
+    /// Each key sounds from where it sits on the keyboard, left to right.
+    static let keySoundsStereo = "KeySoundsStereo"
+    /// Each press is pitched a little differently.
+    static let keySoundsVaryPitch = "KeySoundsVaryPitch"
+    /// Keys are silent while any app is listening to the microphone.
+    static let keySoundsQuietWhileMicrophone = "KeySoundsQuietWhileMicrophone"
+    /// Apps Key Sounds stays silent in while they are in front, by bundle identifier.
+    static let keySoundsQuietApps = "KeySoundsQuietApps"
     /// The order Notch Home's pages are walked in, as `NotchHomePage.rawValue`s.
     static let notchPageOrder = "NotchPageOrder"
     /// The Notch Home pages switched off in Settings, as `NotchHomePage.rawValue`s.

@@ -1,10 +1,12 @@
 import SwiftUI
 
-/// Which page of settings: the voice assistant's, the notch's, the app switcher's, or the rest.
+/// Which page of settings: the voice assistant's, the notch's, the app switcher's, Key Sounds', or
+/// the rest.
 enum SettingsScope: Equatable {
     case voice
     case notch
     case appSwitcher
+    case keySounds
     case general
 }
 
@@ -18,6 +20,7 @@ struct SettingsView: View {
         case .voice: VoiceSettingsPage()
         case .notch: NotchSettingsPage()
         case .appSwitcher: AppSwitcherSettingsPage()
+        case .keySounds: KeySoundsSettingsPage()
         case .general: GeneralSettingsPage()
         }
     }

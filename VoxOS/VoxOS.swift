@@ -187,6 +187,8 @@ struct VoxOSApp: App {
         if !ProcessIdentity.isTestHost {
             // Right Command and a letter switches apps, when switched on in Settings.
             AppSwitcher.shared.refresh()
+            // A switch's sound on every key, when switched on in Settings.
+            KeySounds.shared.refresh()
             MainThreadWatchdog.shared.start()
             MainThreadWatchdog.shared.pause(while: PowerState.shared.$isAway.eraseToAnyPublisher())
         }

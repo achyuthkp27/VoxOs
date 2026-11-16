@@ -98,6 +98,16 @@ enum AppDefaults {
             DefaultsKeys.notchMusicBarsOnBattery: true,
             RecorderDisplaySettingsKeys.showLiveTranscript: true,
 
+            // Key Sounds: off until asked for, as it listens to every key.
+            DefaultsKeys.keySoundsEnabled: false,
+            DefaultsKeys.keySoundsProfile: KeySoundSynth.Profile.creamy.rawValue,
+            DefaultsKeys.keySoundsVolume: 0.6,
+            DefaultsKeys.keySoundsKeyUp: true,
+            DefaultsKeys.keySoundsStereo: true,
+            DefaultsKeys.keySoundsVaryPitch: true,
+            // On: clicks played through the speakers would be heard on a call or in a recording.
+            DefaultsKeys.keySoundsQuietWhileMicrophone: true,
+
             // Cleanup
             CleanupSettingsKeys.isTranscriptionCleanupEnabled: false,
             CleanupSettingsKeys.transcriptionRetentionMinutes: 1440,

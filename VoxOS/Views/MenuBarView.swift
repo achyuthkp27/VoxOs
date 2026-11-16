@@ -21,6 +21,7 @@ struct MenuBarView: View {
     @AppStorage(DefaultsKeys.hasCompletedOnboardingV2) private var hasCompletedOnboardingV2 = false
     @AppStorage(DefaultsKeys.voiceAssistantEnabled) private var voiceEnabled = true
     @AppStorage(DefaultsKeys.notchMasterEnabled) private var notchEnabled = true
+    @AppStorage(DefaultsKeys.keySoundsEnabled) private var keySoundsEnabled = false
 
     var body: some View {
         VStack {
@@ -75,6 +76,7 @@ struct MenuBarView: View {
                     NotchHome.openRequest, object: nil, userInfo: nil, deliverImmediately: true)
             }
             .disabled(!notchEnabled)
+            Toggle("Key Sounds", isOn: $keySoundsEnabled)
 
             Divider()
 
