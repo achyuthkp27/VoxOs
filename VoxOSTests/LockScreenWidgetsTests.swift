@@ -13,7 +13,7 @@ struct LockScreenWidgetsTests {
         let screen = CGRect(x: 0, y: 0, width: 1512, height: 982)
         let frame = LockScreenWidgets.frame(on: screen, size: LockScreenWidgets.size)
         #expect(frame.midX == CGFloat(756))
-        #expect(frame.maxY < screen.maxY * 0.7)
+        #expect(frame.maxY <= screen.maxY * 0.72)
         #expect(frame.minY > screen.maxY * 0.3)
     }
 }

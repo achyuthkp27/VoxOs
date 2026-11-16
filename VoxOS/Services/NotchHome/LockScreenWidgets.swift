@@ -8,8 +8,10 @@ import os
 ///
 /// macOS draws its lock screen above every app window, so the row goes into a Space of its own at
 /// the lock screen's level (`SkyLight.showOnLockScreen`, a private call loaded at run time); on a
-/// macOS without that call the row is simply not shown. It is shown when the screen locks and
-/// taken away when it unlocks, never takes a click, and is built only while switched on.
+/// macOS without that call the row is simply not shown. A window moved there once the screen has
+/// locked is never drawn (measured on macOS 26), so the row is moved there as soon as it is
+/// switched on and stays, fully transparent and never taking a click, until the screen locks;
+/// it fades out again on unlock. It is built only while switched on.
 @MainActor
 final class LockScreenWidgets {
     static let shared = LockScreenWidgets()
@@ -30,6 +32,7 @@ final class LockScreenWidgets {
         guard wanted != enabled else { return }
         enabled = wanted
         if wanted {
+            prepare()
             let center = DistributedNotificationCenter.default()
             observers = [
                 center.addObserver(forName: .init("com.apple.screenIsLocked"), object: nil, queue: .main) {
@@ -42,34 +45,42 @@ final class LockScreenWidgets {
         } else {
             observers.forEach { DistributedNotificationCenter.default().removeObserver($0) }
             observers = []
-            hide()
+            panel?.orderOut(nil)
             panel = nil
         }
     }
 
-    /// Where the row goes on a screen: centred, a little above the middle, under the clock.
+    /// Where the row goes on a screen: centred, its top a little below macOS's clock.
     nonisolated static func frame(on screen: CGRect, size: CGSize) -> CGRect {
         CGRect(
-            x: (screen.midX - size.width / 2).rounded(), y: (screen.minY + screen.height * 0.6 - size.height).rounded(),
+            x: (screen.midX - size.width / 2).rounded(), y: (screen.minY + screen.height * 0.7 - size.height).rounded(),
             width: size.width, height: size.height)
     }
 
-    private func show() {
-        guard enabled, let screen = NSScreen.screens.first else { return }
-        let panel = panel ?? makePanel()
-        self.panel = panel
+    /// Puts the row, transparent, in the lock screen's Space ahead of any lock.
+    private func prepare() {
+        guard panel == nil, let screen = NSScreen.screens.first else { return }
+        let panel = makePanel()
+        panel.alphaValue = 0
         panel.setFrame(Self.frame(on: screen.frame, size: Self.size), display: true)
         panel.orderFrontRegardless()
-        if SkyLight.showOnLockScreen(panel) {
-            ActivityTrail.mark("lock screen widgets shown")
-        } else {
+        guard SkyLight.showOnLockScreen(panel) else {
             logger.error("Lock screen widgets could not be put above the lock screen")
             panel.orderOut(nil)
+            return
         }
+        self.panel = panel
+    }
+
+    private func show() {
+        guard enabled, let panel, let screen = NSScreen.screens.first else { return }
+        panel.setFrame(Self.frame(on: screen.frame, size: Self.size), display: true)
+        panel.alphaValue = 1
+        ActivityTrail.mark("lock screen widgets shown")
     }
 
     private func hide() {
-        panel?.orderOut(nil)
+        panel?.alphaValue = 0
     }
 
     private func makePanel() -> NSPanel {
