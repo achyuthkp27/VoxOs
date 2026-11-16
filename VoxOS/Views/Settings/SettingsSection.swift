@@ -11,6 +11,7 @@ enum SettingsSection: CaseIterable, Hashable {
     case appSwitcher, appSwitcherLetters, windowSwitcher, appsLeftAlone
     case keySounds, keySoundsBehavior, keySoundsQuietApps
     case focusBlur, focusBlurBehavior, focusBlurApps
+    case prompter, prompterLook
     case general, appearance, backup, diagnostics
 
     var terms: [String] { labels + synonyms }
@@ -120,6 +121,12 @@ enum SettingsSection: CaseIterable, Hashable {
             ]
         case .focusBlurApps:
             return ["Never Blur Behind", "Add an App…"]
+        case .prompter:
+            return ["Voice Prompter", "Show Prompter", "Close Prompter", "Load from Clipboard"]
+        case .prompterLook:
+            return [
+                "Prompter Look", "Text Size", "Lines Shown:", "Width", "Background", "Hide from Screenshots & Sharing",
+            ]
         case .general:
             return [
                 "General", "Hide Dock Icon", "Launch at Login", "Automatically Check for Updates", "Check for Updates",
@@ -184,6 +191,8 @@ enum SettingsSection: CaseIterable, Hashable {
         case .focusBlur: return ["focus", "distraction", "dim", "darken", "frosted", "glass", "grain", "noise"]
         case .focusBlurBehavior: return ["app windows", "monitor", "display", "screens", "shake", "gesture"]
         case .focusBlurApps: return ["ignore", "exclude", "unblurred"]
+        case .prompter: return ["teleprompter", "script", "speech", "notes", "presentation", "video", "camera"]
+        case .prompterLook: return ["font", "size", "opacity", "screen sharing", "zoom", "hide"]
         case .general: return ["dock", "login", "updates", "onboarding"]
         case .appearance: return ["interface", "dark", "light", "theme"]
         case .backup: return ["backup", "restore"]

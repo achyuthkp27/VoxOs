@@ -119,6 +119,14 @@ enum AppDefaults {
             // Off: watching the pointer is a wake-up on every move.
             DefaultsKeys.focusBlurShake: false,
 
+            // Voice Prompter
+            DefaultsKeys.prompterFontSize: 24.0,
+            DefaultsKeys.prompterLines: 4,
+            DefaultsKeys.prompterWidth: 620.0,
+            DefaultsKeys.prompterOpacity: 0.92,
+            // On: a script read on a call is for the reader only.
+            DefaultsKeys.prompterHiddenFromCapture: true,
+
             // Cleanup
             CleanupSettingsKeys.isTranscriptionCleanupEnabled: false,
             CleanupSettingsKeys.transcriptionRetentionMinutes: 1440,

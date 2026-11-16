@@ -3952,6 +3952,22 @@
         }
       }
     },
+    "Add a script in Settings → Voice Prompter." : {
+      "localizations" : {
+        "de" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Füge in Einstellungen → Sprach-Prompter ein Skript hinzu."
+          }
+        },
+        "zh-Hans" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "请在“设置 → 语音提词器”中添加稿子。"
+          }
+        }
+      }
+    },
     "Add a trailing space after pasted transcription output." : {
       "extractionState" : "manual",
       "localizations" : {
@@ -4847,6 +4863,22 @@
         }
       }
     },
+    "Allow Speech Recognition for VoxOS in System Settings to follow your voice." : {
+      "localizations" : {
+        "de" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Erlaube VoxOS die Spracherkennung in den Systemeinstellungen, damit es deiner Stimme folgt."
+          }
+        },
+        "zh-Hans" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "请在系统设置中允许 VoxOS 使用语音识别，以便跟随你的声音。"
+          }
+        }
+      }
+    },
     "Allow VoxOS to work across all your apps." : {
       "localizations" : {
         "de" : {
@@ -4891,6 +4923,22 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "在刘海中允许或拒绝请求"
+          }
+        }
+      }
+    },
+    "Allow the microphone for VoxOS in System Settings to follow your voice." : {
+      "localizations" : {
+        "de" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Erlaube VoxOS das Mikrofon in den Systemeinstellungen, damit es deiner Stimme folgt."
+          }
+        },
+        "zh-Hans" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "请在系统设置中允许 VoxOS 使用麦克风，以便跟随你的声音。"
           }
         }
       }
@@ -6217,6 +6265,22 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "返回文件架"
+          }
+        }
+      }
+    },
+    "Background" : {
+      "localizations" : {
+        "de" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Hintergrund"
+          }
+        },
+        "zh-Hans" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "背景"
           }
         }
       }
@@ -7765,6 +7829,22 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "打开内容后关闭"
+          }
+        }
+      }
+    },
+    "Close Prompter" : {
+      "localizations" : {
+        "de" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Prompter schließen"
+          }
+        },
+        "zh-Hans" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "关闭提词器"
           }
         }
       }
@@ -13497,6 +13577,22 @@
         }
       }
     },
+    "Hidden, the prompter stays out of screenshots, recordings and screen sharing in apps like Zoom, Teams and Meet, so only you see the script." : {
+      "localizations" : {
+        "de" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Ausgeblendet erscheint der Prompter nicht in Bildschirmfotos, Aufnahmen und Bildschirmfreigaben in Apps wie Zoom, Teams und Meet, sodass nur du das Skript siehst."
+          }
+        },
+        "zh-Hans" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "隐藏后，提词器不会出现在截图、录屏以及 Zoom、Teams、Meet 等 App 的屏幕共享中，只有你能看到稿子。"
+          }
+        }
+      }
+    },
     "Hide" : {
       "localizations" : {
         "de" : {
@@ -15031,6 +15127,22 @@
         }
       }
     },
+    "Larger Text" : {
+      "localizations" : {
+        "de" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Größerer Text"
+          }
+        },
+        "zh-Hans" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "放大文字"
+          }
+        }
+      }
+    },
     "Last 30 Days" : {
       "extractionState" : "manual",
       "localizations" : {
@@ -15537,6 +15649,22 @@
         }
       }
     },
+    "Lines Shown: %lld" : {
+      "localizations" : {
+        "de" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Angezeigte Zeilen: %lld"
+          }
+        },
+        "zh-Hans" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "显示行数：%lld"
+          }
+        }
+      }
+    },
     "Liquid Glass" : {
       "localizations" : {
         "de" : {
@@ -15565,6 +15693,22 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "液态玻璃：展开的卡片、Claude Code 卡片和录音器在刘海下方呈玻璃质感，刘海本身保持黑色。纯黑：一整块不透明的黑色。收起的横条在两种情况下都是黑色，因为它们位于硬件刘海旁边。"
+          }
+        }
+      }
+    },
+    "Listen" : {
+      "localizations" : {
+        "de" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Zuhören"
+          }
+        },
+        "zh-Hans" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "聆听"
           }
         }
       }
@@ -15855,6 +15999,22 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "载入模板或输入命令，以启用本地 CLI 润色。"
+          }
+        }
+      }
+    },
+    "Load from Clipboard" : {
+      "localizations" : {
+        "de" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Aus der Zwischenablage laden"
+          }
+        },
+        "zh-Hans" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "从剪贴板载入"
           }
         }
       }
@@ -18104,6 +18264,22 @@
         }
       }
     },
+    "No microphone is available." : {
+      "localizations" : {
+        "de" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Kein Mikrofon verfügbar."
+          }
+        },
+        "zh-Hans" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "没有可用的麦克风。"
+          }
+        }
+      }
+    },
     "No microphones found" : {
       "localizations" : {
         "de" : {
@@ -19884,6 +20060,22 @@
         }
       }
     },
+    "On-device recognition isn't available for %@, so the prompter won't listen." : {
+      "localizations" : {
+        "de" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Für %@ ist keine Erkennung auf dem Gerät verfügbar, daher hört der Prompter nicht zu."
+          }
+        },
+        "zh-Hans" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "%@ 不支持设备端识别，因此提词器不会聆听。"
+          }
+        }
+      }
+    },
     "On: Notch Home and Claude Code's cards move to the display with the front window, as a notch drawn from that display's menu bar where it has none. Off: they stay on the display with a notch, or on the main display when no display has one." : {
       "localizations" : {
         "de" : {
@@ -20873,6 +21065,22 @@
         }
       }
     },
+    "Pause Listening" : {
+      "localizations" : {
+        "de" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Zuhören pausieren"
+          }
+        },
+        "zh-Hans" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "暂停聆听"
+          }
+        }
+      }
+    },
     "Pause Media While Recording" : {
       "extractionState" : "stale",
       "localizations" : {
@@ -21697,6 +21905,22 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "提示词名称"
+          }
+        }
+      }
+    },
+    "Prompter Look" : {
+      "localizations" : {
+        "de" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Aussehen des Prompters"
+          }
+        },
+        "zh-Hans" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "提词器外观"
           }
         }
       }
@@ -25806,6 +26030,22 @@
         }
       }
     },
+    "Show Prompter" : {
+      "localizations" : {
+        "de" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Prompter anzeigen"
+          }
+        },
+        "zh-Hans" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "显示提词器"
+          }
+        }
+      }
+    },
     "Show Usage Limits and Costs" : {
       "localizations" : {
         "de" : {
@@ -26156,6 +26396,22 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "跳到下一个时段"
+          }
+        }
+      }
+    },
+    "Smaller Text" : {
+      "localizations" : {
+        "de" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Kleinerer Text"
+          }
+        },
+        "zh-Hans" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "缩小文字"
           }
         }
       }
@@ -26675,6 +26931,22 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "开始会议纪要"
+          }
+        }
+      }
+    },
+    "Start Over" : {
+      "localizations" : {
+        "de" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Von vorn beginnen"
+          }
+        },
+        "zh-Hans" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "从头开始"
           }
         }
       }
@@ -27793,6 +28065,22 @@
         }
       }
     },
+    "Text Size" : {
+      "localizations" : {
+        "de" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Textgröße"
+          }
+        },
+        "zh-Hans" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "文字大小"
+          }
+        }
+      }
+    },
     "Text cleanup" : {
       "localizations" : {
         "de" : {
@@ -28211,6 +28499,22 @@
         }
       }
     },
+    "The microphone could not be started." : {
+      "localizations" : {
+        "de" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Das Mikrofon konnte nicht gestartet werden."
+          }
+        },
+        "zh-Hans" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "无法启动麦克风。"
+          }
+        }
+      }
+    },
     "The model provider is not supported by this service." : {
       "localizations" : {
         "de" : {
@@ -28341,6 +28645,22 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "提供的 API 密钥无效。"
+          }
+        }
+      }
+    },
+    "The script scrolls under the notch as you read it aloud and waits when you stop. Words in [square brackets] are notes: they show but are never waited for. Click a word to start from it, or scroll over the prompter to move. Speech is recognized on this Mac." : {
+      "localizations" : {
+        "de" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Das Skript scrollt unter der Notch, während du es vorliest, und wartet, wenn du aufhörst. Wörter in [eckigen Klammern] sind Notizen: Sie werden angezeigt, aber nie abgewartet. Klicke auf ein Wort, um dort zu beginnen, oder scrolle über dem Prompter, um dich zu bewegen. Die Sprache wird auf diesem Mac erkannt."
+          }
+        },
+        "zh-Hans" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "朗读时，稿子会在刘海下方滚动，停下时它会等待。[方括号] 中的文字是备注：会显示，但从不等待。点按某个词可从该处开始，或在提词器上滚动来移动位置。语音在这台 Mac 上识别。"
           }
         }
       }
@@ -30979,6 +31299,22 @@
         }
       }
     },
+    "Voice Prompter" : {
+      "localizations" : {
+        "de" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Sprach-Prompter"
+          }
+        },
+        "zh-Hans" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "语音提词器"
+          }
+        }
+      }
+    },
     "Voicing, Voice ink" : {
       "localizations" : {
         "de" : {
@@ -31913,6 +32249,22 @@
         }
       }
     },
+    "Welcome! This is the VoxOS prompter. Read this aloud and the text follows your voice. [pause]\n\nStop talking and it waits for you. Skip a sentence and it catches up; go back and it goes back with you.\n\nWords in square brackets are notes for you. They show, but the prompter never waits for them. [smile]\n\nPaste your own script in Settings, or copy it and choose Load from Clipboard." : {
+      "localizations" : {
+        "de" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Willkommen! Das ist der VoxOS-Prompter. Lies dies laut vor, und der Text folgt deiner Stimme. [Pause]\n\nHör auf zu sprechen, und er wartet auf dich. Überspringe einen Satz, und er holt auf; geh zurück, und er geht mit.\n\nWörter in eckigen Klammern sind Notizen für dich. Sie werden angezeigt, aber der Prompter wartet nie auf sie. [lächeln]\n\nFüge dein eigenes Skript in den Einstellungen ein, oder kopiere es und wähle „Aus der Zwischenablage laden“."
+          }
+        },
+        "zh-Hans" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "欢迎！这是 VoxOS 提词器。大声朗读，文字会跟随你的声音。[停顿]\n\n停下来，它就等你。跳过一句，它会跟上；往回读，它也随你回去。\n\n方括号中的文字是给你的备注。它们会显示，但提词器从不等待它们。[微笑]\n\n在设置中粘贴你自己的稿子，或复制后选择“从剪贴板载入”。"
+          }
+        }
+      }
+    },
     "What is said shows here a few seconds later." : {
       "localizations" : {
         "de" : {
@@ -32248,6 +32600,22 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "Whisper 提示词"
+          }
+        }
+      }
+    },
+    "Width" : {
+      "localizations" : {
+        "de" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Breite"
+          }
+        },
+        "zh-Hans" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "宽度"
           }
         }
       }

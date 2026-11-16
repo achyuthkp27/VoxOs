@@ -183,7 +183,7 @@ enum NavigationSection: CaseIterable, Identifiable {
     var items: [ViewType] {
         switch self {
         case .main: return [.dashboard, .modes, .transcribeAudio, .history, .dictionary]
-        case .aiTools: return [.models, .audio]
+        case .aiTools: return [.models, .audio, .prompter]
         case .preferences: return [.voiceAssistant, .notch, .appSwitcher, .keySounds, .focusBlur, .settings]
         }
     }
@@ -217,6 +217,7 @@ extension ViewType {
         case .appSwitcher: return String(localized: "App Switcher")
         case .keySounds: return String(localized: "Key Sounds")
         case .focusBlur: return String(localized: "Focus Blur")
+        case .prompter: return String(localized: "Voice Prompter")
         case .settings: return String(localized: "Settings")
         case .license: return String(localized: "VoxOS Pro")
         }
@@ -237,6 +238,7 @@ extension ViewType {
         case .appSwitcher: return ["rcmd", "right command", "letter", "window switcher", "windows", "switch apps"]
         case .keySounds: return ["keyboard", "typing", "mechanical", "click", "switch", "thock", "typewriter"]
         case .focusBlur: return ["blur", "focus", "dim", "windows", "distraction", "shake"]
+        case .prompter: return ["teleprompter", "script", "speech", "presentation", "video", "read aloud"]
         case .settings: return ["preferences", "general", "appearance", "backup"]
         case .license: return ["pro", "license"]
         }
@@ -256,6 +258,7 @@ extension ViewType {
         case .appSwitcher: return "command"
         case .keySounds: return "keyboard.fill"
         case .focusBlur: return "camera.filters"
+        case .prompter: return "text.viewfinder"
         case .settings: return "gearshape.fill"
         case .license: return "sparkles"
         }

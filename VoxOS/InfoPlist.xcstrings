@@ -190,6 +190,30 @@
           }
         }
       }
+    },
+    "NSSpeechRecognitionUsageDescription" : {
+      "comment" : "Privacy - Speech Recognition Usage Description",
+      "extractionState" : "extracted_with_value",
+      "localizations" : {
+        "de" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "VoxOS erkennt Ihre Sprache auf diesem Mac, damit der Sprach-Prompter beim Vorlesen mitlaufen kann."
+          }
+        },
+        "en" : {
+          "stringUnit" : {
+            "state" : "new",
+            "value" : "VoxOS recognizes your speech on this Mac so the Voice Prompter can follow along as you read."
+          }
+        },
+        "zh-Hans" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "VoxOS 会在这台 Mac 上识别你的语音，让语音提词器随你的朗读滚动。"
+          }
+        }
+      }
     }
   },
   "version" : "1.0"

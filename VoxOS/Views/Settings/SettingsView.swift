@@ -1,13 +1,14 @@
 import SwiftUI
 
 /// Which page of settings: the voice assistant's, the notch's, the app switcher's, Key Sounds',
-/// Focus Blur's, or the rest.
+/// Focus Blur's, Voice Prompter's, or the rest.
 enum SettingsScope: Equatable {
     case voice
     case notch
     case appSwitcher
     case keySounds
     case focusBlur
+    case prompter
     case general
 }
 
@@ -23,6 +24,7 @@ struct SettingsView: View {
         case .appSwitcher: AppSwitcherSettingsPage()
         case .keySounds: KeySoundsSettingsPage()
         case .focusBlur: FocusBlurSettingsPage()
+        case .prompter: PrompterSettingsPage()
         case .general: GeneralSettingsPage()
         }
     }

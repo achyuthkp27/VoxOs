@@ -14,6 +14,7 @@ enum ViewType: String, CaseIterable, Identifiable {
     case appSwitcher = "App Switcher"
     case keySounds = "Key Sounds"
     case focusBlur = "Focus Blur"
+    case prompter = "Voice Prompter"
     case settings = "Settings"
     case license = "VoxOS Pro"
 
@@ -116,6 +117,8 @@ struct ContentView: View {
             SettingsView(scope: .keySounds)
         case .focusBlur:
             SettingsView(scope: .focusBlur)
+        case .prompter:
+            SettingsView(scope: .prompter)
         case .settings:
             SettingsView()
         case .license:

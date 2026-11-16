@@ -18,6 +18,7 @@ struct MenuBarView: View {
     @ObservedObject var audioDeviceManager = AudioDeviceManager.shared
     @ObservedObject private var meetingNotes = MeetingNotes.shared
     @ObservedObject private var liveTranscriptWindow = LiveTranscriptWindow.shared
+    @ObservedObject private var prompter = Prompter.shared
     @AppStorage(DefaultsKeys.hasCompletedOnboardingV2) private var hasCompletedOnboardingV2 = false
     @AppStorage(DefaultsKeys.voiceAssistantEnabled) private var voiceEnabled = true
     @AppStorage(DefaultsKeys.notchMasterEnabled) private var notchEnabled = true
@@ -79,6 +80,7 @@ struct MenuBarView: View {
             .disabled(!notchEnabled)
             Toggle("Key Sounds", isOn: $keySoundsEnabled)
             Toggle("Focus Blur", isOn: $focusBlurEnabled)
+            Button(prompter.isShown ? "Close Prompter" : "Show Prompter") { prompter.toggle() }
 
             Divider()
 

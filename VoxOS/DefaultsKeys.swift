@@ -113,6 +113,16 @@ enum DefaultsKeys {
     static let focusBlurShake = "FocusBlurShake"
     /// Apps that are never blurred behind, by bundle identifier: nothing blurs while one is in front.
     static let focusBlurIgnoredApps = "FocusBlurIgnoredApps"
+    /// Voice Prompter's text size, in points.
+    static let prompterFontSize = "PrompterFontSize"
+    /// How many lines of the script the prompter shows.
+    static let prompterLines = "PrompterLines"
+    /// The prompter's width, in points.
+    static let prompterWidth = "PrompterWidth"
+    /// How opaque the prompter's background is, 0.4…1.
+    static let prompterOpacity = "PrompterOpacity"
+    /// The prompter stays out of screenshots, recordings and screen sharing.
+    static let prompterHiddenFromCapture = "PrompterHiddenFromCapture"
     /// The order Notch Home's pages are walked in, as `NotchHomePage.rawValue`s.
     static let notchPageOrder = "NotchPageOrder"
     /// The Notch Home pages switched off in Settings, as `NotchHomePage.rawValue`s.
