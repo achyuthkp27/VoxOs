@@ -129,6 +129,17 @@ enum DefaultsKeys {
     static let prompterOpacity = "PrompterOpacity"
     /// The prompter stays out of screenshots, recordings and screen sharing.
     static let prompterHiddenFromCapture = "PrompterHiddenFromCapture"
+    /// The script's colour as "#RRGGBB"; empty for white.
+    static let prompterTextColor = "PrompterTextColor"
+    /// What moves the prompter on: "words" follows the words read aloud (speech recognition),
+    /// "pace" moves at a steady pace (`PrompterFollow`).
+    static let prompterFollow = "PrompterFollow"
+    /// The steady pace, in words per minute.
+    static let prompterPace = "PrompterPace"
+    /// At a steady pace, move only while the microphone hears speaking.
+    static let prompterPaceWhileSpeaking = "PrompterPaceWhileSpeaking"
+    /// How quiet a voice still counts as speaking for the steady pace, 0…1 (higher hears quieter).
+    static let prompterMicSensitivity = "PrompterMicSensitivity"
     /// The order Notch Home's pages are walked in, as `NotchHomePage.rawValue`s.
     static let notchPageOrder = "NotchPageOrder"
     /// The Notch Home pages switched off in Settings, as `NotchHomePage.rawValue`s.

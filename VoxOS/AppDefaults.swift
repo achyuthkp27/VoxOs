@@ -125,10 +125,15 @@ enum AppDefaults {
             DefaultsKeys.focusBlurShake: false,
 
             // Voice Prompter
-            DefaultsKeys.prompterFontSize: 24.0,
+            DefaultsKeys.prompterFontSize: 20.0,
             DefaultsKeys.prompterLines: 4,
-            DefaultsKeys.prompterWidth: 620.0,
-            DefaultsKeys.prompterOpacity: 0.92,
+            DefaultsKeys.prompterWidth: 380.0,
+            DefaultsKeys.prompterOpacity: 1.0,
+            DefaultsKeys.prompterTextColor: "",
+            DefaultsKeys.prompterFollow: "words",
+            DefaultsKeys.prompterPace: 140.0,
+            DefaultsKeys.prompterPaceWhileSpeaking: true,
+            DefaultsKeys.prompterMicSensitivity: 0.5,
             // On: a script read on a call is for the reader only.
             DefaultsKeys.prompterHiddenFromCapture: true,
 

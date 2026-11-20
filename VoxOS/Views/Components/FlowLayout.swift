@@ -2,6 +2,8 @@ import SwiftUI
 
 struct FlowLayout: Layout {
     var spacing: CGFloat = 6
+    /// Each row centred in the width instead of starting at the left edge.
+    var centered = false
 
     func sizeThatFits(proposal: ProposedViewSize, subviews: Subviews, cache: inout ()) -> CGSize {
         computeLayout(maxWidth: proposal.width ?? .infinity, subviews: subviews).size
@@ -26,6 +28,16 @@ struct FlowLayout: Layout {
         var y: CGFloat = 0
         var rowHeight: CGFloat = 0
         var maxX: CGFloat = 0
+        var rowStart = 0
+
+        // Shifts the row just finished, from `rowStart` up to here, to the middle.
+        func centerRow(endingBefore end: Int) {
+            guard centered, maxWidth.isFinite, end > rowStart else { return }
+            let used = positions[end - 1].x + sizes[end - 1].width
+            let shift = ((maxWidth - used) / 2).rounded(.down)
+            guard shift > 0 else { return }
+            for index in rowStart..<end { positions[index].x += shift }
+        }
 
         for subview in subviews {
             let naturalSize = subview.sizeThatFits(.unspecified)
@@ -39,6 +51,8 @@ struct FlowLayout: Layout {
             }
 
             if x > 0, x + itemSize.width > maxWidth {
+                centerRow(endingBefore: positions.count)
+                rowStart = positions.count
                 x = 0
                 y += rowHeight + spacing
                 rowHeight = 0
@@ -49,6 +63,7 @@ struct FlowLayout: Layout {
             x += itemSize.width + spacing
             maxX = max(maxX, x - spacing)
         }
+        centerRow(endingBefore: positions.count)
 
         return (
             CGSize(width: maxWidth.isFinite ? maxWidth : maxX, height: y + rowHeight),

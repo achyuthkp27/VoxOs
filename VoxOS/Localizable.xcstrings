@@ -1805,6 +1805,22 @@
         }
       }
     },
+    "%lld wpm" : {
+      "localizations" : {
+        "de" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "%lld W/Min"
+          }
+        },
+        "zh-Hans" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "%lld 词/分钟"
+          }
+        }
+      }
+    },
     "%lld%% of words, %@ words" : {
       "localizations" : {
         "de" : {
@@ -13210,6 +13226,22 @@
         }
       }
     },
+    "Follow" : {
+      "localizations" : {
+        "de" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Folgen"
+          }
+        },
+        "zh-Hans" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "跟随"
+          }
+        }
+      }
+    },
     "Follow the Display in Use" : {
       "localizations" : {
         "de" : {
@@ -13728,6 +13760,7 @@
       }
     },
     "Hide" : {
+      "extractionState" : "stale",
       "localizations" : {
         "de" : {
           "stringUnit" : {
@@ -16990,6 +17023,22 @@
         }
       }
     },
+    "Mic Sensitivity" : {
+      "localizations" : {
+        "de" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Mikrofonempfindlichkeit"
+          }
+        },
+        "zh-Hans" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "麦克风灵敏度"
+          }
+        }
+      }
+    },
     "Microphone" : {
       "localizations" : {
         "de" : {
@@ -17282,7 +17331,6 @@
       }
     },
     "Model Catalog" : {
-      "extractionState" : "stale",
       "localizations" : {
         "de" : {
           "stringUnit" : {
@@ -17574,6 +17622,22 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "上移"
+          }
+        }
+      }
+    },
+    "Moving at a steady pace" : {
+      "localizations" : {
+        "de" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Läuft in gleichmäßigem Tempo"
+          }
+        },
+        "zh-Hans" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "以固定速度滚动"
           }
         }
       }
@@ -20243,6 +20307,7 @@
       }
     },
     "On-device recognition isn't available for %@, so the prompter won't listen." : {
+      "extractionState" : "stale",
       "localizations" : {
         "de" : {
           "stringUnit" : {
@@ -20254,6 +20319,22 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "%@ 不支持设备端识别，因此提词器不会聆听。"
+          }
+        }
+      }
+    },
+    "On-device recognition isn't available for %@. Choose Steady Pace in Settings → Voice Prompter to scroll without it." : {
+      "localizations" : {
+        "de" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Die Erkennung auf dem Gerät ist für %@ nicht verfügbar. Wähle „Gleichmäßiges Tempo“ unter Einstellungen → Sprach-Prompter, um ohne sie zu scrollen."
+          }
+        },
+        "zh-Hans" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "%@ 不支持设备端识别。请在“设置 → 语音提词器”中选择“固定速度”，无需识别即可滚动。"
           }
         }
       }
@@ -20286,6 +20367,22 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "开启：刘海的卡片和横条不会出现在截屏、屏幕录制和屏幕共享中，因此通话时绝不会显示 Claude Code 请求或正在播放的内容。默认关闭，因此刘海的截屏仍会显示它们。"
+          }
+        }
+      }
+    },
+    "Only While Speaking" : {
+      "localizations" : {
+        "de" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Nur beim Sprechen"
+          }
+        },
+        "zh-Hans" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "仅在说话时"
           }
         }
       }
@@ -20953,6 +21050,22 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "PRO"
+          }
+        }
+      }
+    },
+    "Pace" : {
+      "localizations" : {
+        "de" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Tempo"
+          }
+        },
+        "zh-Hans" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "速度"
           }
         }
       }
@@ -27509,6 +27622,22 @@
         }
       }
     },
+    "Steady Pace" : {
+      "localizations" : {
+        "de" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Gleichmäßiges Tempo"
+          }
+        },
+        "zh-Hans" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "固定速度"
+          }
+        }
+      }
+    },
     "Stop" : {
       "localizations" : {
         "de" : {
@@ -28359,6 +28488,22 @@
         }
       }
     },
+    "Text Color" : {
+      "localizations" : {
+        "de" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Textfarbe"
+          }
+        },
+        "zh-Hans" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "文字颜色"
+          }
+        }
+      }
+    },
     "Text Size" : {
       "localizations" : {
         "de" : {
@@ -28944,6 +29089,7 @@
       }
     },
     "The script scrolls under the notch as you read it aloud and waits when you stop. Words in [square brackets] are notes: they show but are never waited for. Click a word to start from it, or scroll over the prompter to move. Speech is recognized on this Mac." : {
+      "extractionState" : "stale",
       "localizations" : {
         "de" : {
           "stringUnit" : {
@@ -28955,6 +29101,22 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "朗读时，稿子会在刘海下方滚动，停下时它会等待。[方括号] 中的文字是备注：会显示，但从不等待。点按某个词可从该处开始，或在提词器上滚动来移动位置。语音在这台 Mac 上识别。"
+          }
+        }
+      }
+    },
+    "The script scrolls under the notch as you read it aloud and waits when you stop. Words in [square brackets] are notes: they show but are never waited for. Click a word to start from it, scroll over the prompter to move, or drag its bottom-right corner to resize it. Speech is recognized on this Mac." : {
+      "localizations" : {
+        "de" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Das Skript scrollt unter der Notch, während du es laut vorliest, und wartet, wenn du aufhörst. Wörter in [eckigen Klammern] sind Notizen: Sie werden angezeigt, aber es wird nie auf sie gewartet. Klicke auf ein Wort, um dort zu beginnen, scrolle über dem Prompter, um dich zu bewegen, oder ziehe an seiner unteren rechten Ecke, um die Größe zu ändern. Die Sprache wird auf diesem Mac erkannt."
+          }
+        },
+        "zh-Hans" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "朗读时，脚本会在刘海下方滚动，停下时它会等待。[方括号] 中的文字是备注：会显示，但从不等待。点按一个词可从该处开始，在提词器上滚动可移动位置，拖移其右下角可调整大小。语音在这台 Mac 上识别。"
           }
         }
       }
@@ -29936,6 +30098,7 @@
       }
     },
     "Transcribing…" : {
+      "extractionState" : "stale",
       "localizations" : {
         "de" : {
           "stringUnit" : {
@@ -32453,6 +32616,22 @@
         }
       }
     },
+    "Waiting while the pointer is over it" : {
+      "localizations" : {
+        "de" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Wartet, solange der Zeiger darüber ist"
+          }
+        },
+        "zh-Hans" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "指针停留其上时暂停"
+          }
+        }
+      }
+    },
     "Walkthroughs and product updates" : {
       "comment" : "Link to a YouTube channel dedicated to tutorials and updates related to VoxOS.",
       "isCommentAutoGenerated" : true,
@@ -32560,6 +32739,7 @@
       }
     },
     "What is said shows here a few seconds later." : {
+      "extractionState" : "stale",
       "localizations" : {
         "de" : {
           "stringUnit" : {
@@ -33089,6 +33269,38 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "词数"
+          }
+        }
+      }
+    },
+    "Words Read Aloud" : {
+      "localizations" : {
+        "de" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Laut gelesene Wörter"
+          }
+        },
+        "zh-Hans" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "朗读的文字"
+          }
+        }
+      }
+    },
+    "Words Read Aloud follows what you say, word by word. Steady Pace scrolls at a set speed instead and works in any language; with Only While Speaking it waits whenever you go quiet. Either way it waits while the pointer is over the prompter." : {
+      "localizations" : {
+        "de" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "„Laut gelesene Wörter“ folgt Wort für Wort dem, was du sagst. „Gleichmäßiges Tempo“ scrollt stattdessen mit fester Geschwindigkeit und funktioniert in jeder Sprache; mit „Nur beim Sprechen“ wartet es, sobald du still bist. In beiden Fällen wartet es, solange der Zeiger über dem Prompter ist."
+          }
+        },
+        "zh-Hans" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "“朗读的文字”会逐词跟随你所说的内容。“固定速度”则以设定速度滚动，适用于任何语言；开启“仅在说话时”后，你一安静它就会等待。无论哪种方式，指针停留在提词器上时都会暂停。"
           }
         }
       }

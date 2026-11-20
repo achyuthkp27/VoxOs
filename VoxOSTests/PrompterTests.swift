@@ -84,11 +84,67 @@ struct PrompterTests {
         #expect(script.wordIndex(atSpoken: 5) == script.words.count)
     }
 
-    @Test func theCardHangsUnderTheMenuBarInTheMiddle() {
+    @Test func theBandHangsFromTheTopEdgeInTheMiddle() {
         let screen = CGRect(x: 0, y: 0, width: 1512, height: 982)
-        let frame = PrompterWindow.frame(on: screen, topInset: 38, size: CGSize(width: 600, height: 160))
+        let frame = PrompterWindow.frame(on: screen, size: CGSize(width: 380, height: 160))
         #expect(frame.midX == 756)
-        #expect(frame.maxY == CGFloat(982 - 38 - 6))
-        #expect(PrompterWindow.height(fontSize: 24, lines: 4) > PrompterWindow.height(fontSize: 24, lines: 2))
+        #expect(frame.maxY == 982)
+        #expect(
+            PrompterWindow.height(fontSize: 24, lines: 4, notchHeight: 38)
+                > PrompterWindow.height(fontSize: 24, lines: 2, notchHeight: 38))
+        // The notch row comes on top of the text, not out of it.
+        let withNotch = PrompterWindow.height(fontSize: 20, lines: 4, notchHeight: 38)
+        let without = PrompterWindow.height(fontSize: 20, lines: 4, notchHeight: 0)
+        #expect(withNotch - without == CGFloat(38))
+    }
+
+    @Test func theBandIsNeverNarrowerThanTheNotchNorWiderThanTheScreen() {
+        let narrowest = PrompterWindow.width(100, notchWidth: 300, screenWidth: 1512)
+        #expect(narrowest >= CGFloat(300) + PrompterWindow.shoulder * 2)
+        #expect(PrompterWindow.width(2000, notchWidth: 185, screenWidth: 1000) == CGFloat(960))
+        #expect(PrompterWindow.width(500, notchWidth: 185, screenWidth: 1512) == CGFloat(500))
+    }
+
+    @Test func aDraggedHeightSettlesOnTheNearestWholeLine() {
+        for lines in PrompterWindow.linesRange {
+            let height = PrompterWindow.height(fontSize: 20, lines: lines, notchHeight: 38)
+            #expect(PrompterWindow.lines(forHeight: height + 4, fontSize: 20, notchHeight: 38) == lines)
+        }
+        #expect(PrompterWindow.lines(forHeight: 10, fontSize: 20, notchHeight: 38) == 2)
+        #expect(PrompterWindow.lines(forHeight: 5000, fontSize: 20, notchHeight: 38) == 8)
+    }
+
+    @Test func theSteadyPaceKeepsTheFractionOfAWord() {
+        var pacer = PrompterPacer()
+        // 120 words a minute is two a second: twenty steps of a twentieth of a second.
+        let words = (0..<20).reduce(0) { total, _ in total + pacer.step(seconds: 0.05, wordsPerMinute: 120) }
+        #expect(words == 2)
+        let none = pacer.step(seconds: 0, wordsPerMinute: 120)
+        let stopped = pacer.step(seconds: 1, wordsPerMinute: 0)
+        #expect(none == 0)
+        #expect(stopped == 0)
+    }
+
+    @Test func speakingHoldsThroughTheGapsBetweenWords() {
+        var gate = PrompterVoiceGate()
+        let start = Date(timeIntervalSince1970: 0)
+        let silent = gate.hear(level: 0, sensitivity: 0.5, at: start)
+        let loud = gate.hear(level: 0.9, sensitivity: 0.5, at: start)
+        let gap = gate.hear(level: 0, sensitivity: 0.5, at: start.addingTimeInterval(0.3))
+        let after = gate.hear(level: 0, sensitivity: 0.5, at: start.addingTimeInterval(PrompterVoiceGate.hold + 0.1))
+        #expect(!silent)
+        #expect(loud)
+        #expect(gap)
+        #expect(!after)
+        // More sensitive hears a quieter voice.
+        #expect(PrompterVoiceGate.threshold(sensitivity: 1) < PrompterVoiceGate.threshold(sensitivity: 0))
+    }
+
+    @Test func theTextColourSurvivesItsSetting() {
+        #expect(PrompterTextColor.rgb(hex: "") == nil)
+        #expect(PrompterTextColor.rgb(hex: "#zzzzzz") == nil)
+        let rgb = PrompterTextColor.rgb(hex: "#FF8000")
+        #expect(rgb?.red == 1 && rgb?.blue == 0)
+        #expect(PrompterTextColor.hex(PrompterTextColor.color(hex: "#FF8000")) == "#FF8000")
     }
 }

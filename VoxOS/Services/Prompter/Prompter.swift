@@ -6,7 +6,8 @@ import os
 /// A teleprompter under the notch that follows the voice: the script scrolls as it is read aloud,
 /// stops while the speaker pauses or ad-libs, follows a skipped sentence and goes back for a
 /// repeated one. The current word is lit, what has been read dims, and notes in square brackets
-/// show but are never waited for.
+/// show but are never waited for. It can instead move at a steady pace, only while the voice is
+/// heard if asked, for a language without on-device recognition. With the pointer over it, it waits.
 ///
 /// Speech is recognised on this Mac only (Apple's on-device recognition); where a language has no
 /// on-device model the prompter says so rather than sending audio anywhere. The window stays out of
@@ -29,7 +30,9 @@ final class Prompter: ObservableObject {
                 return String(localized: "Allow the microphone for VoxOS in System Settings to follow your voice.")
             case .noOnDeviceModel(let language):
                 return String(
-                    localized: "On-device recognition isn't available for \(language), so the prompter won't listen.")
+                    localized:
+                        "On-device recognition isn't available for \(language). Choose Steady Pace in Settings → Voice Prompter to scroll without it."
+                )
             case .failed(let reason):
                 return reason
             }
@@ -45,6 +48,14 @@ final class Prompter: ObservableObject {
     /// The microphone's level, 0…1, for the meter.
     @Published private(set) var level: Float = 0
     @Published private(set) var problem: Problem?
+    /// The pointer is over the prompter, so it waits where it is.
+    @Published private(set) var isHoverPaused = false
+    /// At a steady pace: the microphone hears speaking right now.
+    @Published private(set) var isSpeaking = false
+    /// The microphone is on: following words, or at a steady pace that waits for speaking.
+    @Published private(set) var usesMicrophone = false
+    /// What this run follows, read when listening starts.
+    @Published private(set) var follow = PrompterFollow.words
 
     private let audioEngine = AVAudioEngine()
     private let feed = PrompterFeed()
@@ -54,6 +65,10 @@ final class Prompter: ObservableObject {
     /// Bumped for each recognition task, so a late result from a finished one is ignored.
     private var generation = 0
     private let window = PrompterWindow()
+    private var pacer = PrompterPacer()
+    private var voiceGate = PrompterVoiceGate()
+    private var paceTimer: Timer?
+    private var lastPaceTick = Date()
     private let logger = Logger(subsystem: "com.achyuthkp.voxos", category: "Prompter")
 
     private init() {
@@ -135,8 +150,33 @@ final class Prompter: ObservableObject {
         window.relayout()
     }
 
+    /// Words or a steady pace, or listening while pacing, changed: a running prompter switches over.
+    func followChanged() {
+        guard isListening else { return }
+        stopListening()
+        Task { await startListening() }
+    }
+
+    /// The pointer came over the prompter or left it. Over it, the place stays put; speech heard
+    /// meanwhile is not followed, so recognition starts again from the place on the way out.
+    func setHoverPaused(_ paused: Bool) {
+        guard paused != isHoverPaused else { return }
+        isHoverPaused = paused
+        if paused {
+            pacer.reset()
+        } else {
+            lastPaceTick = Date()
+            if follow == .words { restartRecognition() }
+        }
+    }
+
     private func startListening() async {
         guard !isListening else { return }
+        follow = PrompterFollow.current
+        if follow == .pace {
+            await startPacing()
+            return
+        }
         guard await Self.speechAllowed() else {
             problem = .speechDenied
             return
@@ -152,11 +192,53 @@ final class Prompter: ObservableObject {
             return
         }
         self.recognizer = recognizer
+        guard startAudio() else { return }
+        isListening = true
+        beginRecognition()
+    }
+
+    /// The steady pace: a clock moves the place on, and, when asked, only while the microphone
+    /// hears speaking. No speech recognition, so no Speech Recognition permission either.
+    private func startPacing() async {
+        let whileSpeaking = UserDefaults.standard.bool(forKey: DefaultsKeys.prompterPaceWhileSpeaking)
+        if whileSpeaking {
+            guard await AVCaptureDevice.requestAccess(for: .audio) else {
+                problem = .microphoneDenied
+                return
+            }
+            guard startAudio() else { return }
+        }
+        guard !isListening else { return }
+        pacer.reset()
+        voiceGate.reset()
+        isSpeaking = false
+        lastPaceTick = Date()
+        isListening = true
+        let timer = Timer(timeInterval: 1.0 / 20, repeats: true) { [weak self] _ in
+            MainActor.assumeIsolated { self?.paceTick() }
+        }
+        RunLoop.main.add(timer, forMode: .common)
+        paceTimer = timer
+    }
+
+    private func paceTick() {
+        let now = Date()
+        let elapsed = now.timeIntervalSince(lastPaceTick)
+        lastPaceTick = now
+        let waiting = usesMicrophone && !isSpeaking
+        guard isListening, !isHoverPaused, !waiting, !isFinished else { return }
+        let pace = UserDefaults.standard.double(forKey: DefaultsKeys.prompterPace)
+        let words = pacer.step(seconds: elapsed, wordsPerMinute: pace)
+        if words > 0 { cursor = min(cursor + words, script.spokenWords.count) }
+    }
+
+    /// The microphone into the meter (and, following words, into the recogniser).
+    private func startAudio() -> Bool {
         let input = audioEngine.inputNode
         let format = input.outputFormat(forBus: 0)
         guard format.sampleRate > 0 else {
             problem = .failed(String(localized: "No microphone is available."))
-            return
+            return false
         }
         input.removeTap(onBus: 0)
         let feed = self.feed
@@ -167,6 +249,11 @@ final class Prompter: ObservableObject {
             Task { @MainActor in
                 guard let self else { return }
                 self.level = self.level * 0.6 + level * 0.4
+                if self.follow == .pace {
+                    let sensitivity = UserDefaults.standard.double(forKey: DefaultsKeys.prompterMicSensitivity)
+                    let speaking = self.voiceGate.hear(level: self.level, sensitivity: sensitivity, at: Date())
+                    if speaking != self.isSpeaking { self.isSpeaking = speaking }
+                }
             }
         }
         do {
@@ -176,19 +263,25 @@ final class Prompter: ObservableObject {
             input.removeTap(onBus: 0)
             problem = .failed(String(localized: "The microphone could not be started."))
             logger.error("Prompter audio did not start: \(error, privacy: .public)")
-            return
+            return false
         }
-        isListening = true
-        beginRecognition()
+        usesMicrophone = true
+        return true
     }
 
     private func stopListening() {
         guard isListening else { return }
         isListening = false
+        paceTimer?.invalidate()
+        paceTimer = nil
         endRecognition()
-        audioEngine.inputNode.removeTap(onBus: 0)
-        audioEngine.stop()
+        if usesMicrophone {
+            audioEngine.inputNode.removeTap(onBus: 0)
+            audioEngine.stop()
+            usesMicrophone = false
+        }
         level = 0
+        isSpeaking = false
     }
 
     /// A new recognition task from the current place: after a jump, and whenever one ends (they
@@ -214,7 +307,7 @@ final class Prompter: ObservableObject {
             let ended = error != nil || result?.isFinal == true
             Task { @MainActor in
                 guard let self, current == self.generation else { return }
-                if !heard.isEmpty {
+                if !heard.isEmpty, !self.isHoverPaused {
                     let next = PrompterAligner.advance(
                         from: self.cursor, script: self.script.spokenWords, heard: heard)
                     // Within one task the place only moves on, unless the match is strong (the
@@ -238,7 +331,7 @@ final class Prompter: ObservableObject {
     }
 
     private func restartRecognition() {
-        guard isListening else { return }
+        guard isListening, follow == .words else { return }
         beginRecognition()
     }
 

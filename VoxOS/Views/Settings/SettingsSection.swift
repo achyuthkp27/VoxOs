@@ -11,7 +11,7 @@ enum SettingsSection: CaseIterable, Hashable {
     case appSwitcher, appSwitcherLetters, windowSwitcher, appsLeftAlone
     case keySounds, keySoundsBehavior, keySoundsQuietApps
     case focusBlur, focusBlurBehavior, focusBlurApps
-    case prompter, prompterLook
+    case prompter, prompterFollow, prompterLook
     case general, appearance, backup, diagnostics
 
     var terms: [String] { labels + synonyms }
@@ -125,9 +125,12 @@ enum SettingsSection: CaseIterable, Hashable {
             return ["Never Blur Behind", "Add an App…"]
         case .prompter:
             return ["Voice Prompter", "Show Prompter", "Close Prompter", "Load from Clipboard"]
+        case .prompterFollow:
+            return ["Follow", "Words Read Aloud", "Steady Pace", "Pace", "Only While Speaking", "Mic Sensitivity"]
         case .prompterLook:
             return [
-                "Prompter Look", "Text Size", "Lines Shown:", "Width", "Background", "Hide from Screenshots & Sharing",
+                "Prompter Look", "Text Size", "Lines Shown:", "Width", "Background", "Text Color",
+                "Hide from Screenshots & Sharing",
             ]
         case .general:
             return [
@@ -196,7 +199,8 @@ enum SettingsSection: CaseIterable, Hashable {
         case .focusBlurBehavior: return ["app windows", "monitor", "display", "screens", "shake", "gesture"]
         case .focusBlurApps: return ["ignore", "exclude", "unblurred"]
         case .prompter: return ["teleprompter", "script", "speech", "notes", "presentation", "video", "camera"]
-        case .prompterLook: return ["font", "size", "opacity", "screen sharing", "zoom", "hide"]
+        case .prompterFollow: return ["scroll", "speed", "wpm", "words per minute", "microphone", "auto scroll"]
+        case .prompterLook: return ["font", "size", "opacity", "screen sharing", "zoom", "hide", "colour", "resize"]
         case .general: return ["dock", "login", "updates", "onboarding"]
         case .appearance: return ["interface", "dark", "light", "theme"]
         case .backup: return ["backup", "restore"]

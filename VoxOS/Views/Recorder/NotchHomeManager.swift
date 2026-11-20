@@ -70,6 +70,9 @@ final class NotchHomeManager {
             .store(in: &cancellables)
         uiManager.$isClaudeCodeCardVisible.receive(on: RunLoop.main).sink { [weak self] _ in self?.setNeedsRefresh() }
             .store(in: &cancellables)
+        // The prompter grows out of the notch too; Notch Home steps aside while it is up.
+        Prompter.shared.$isShown.receive(on: RunLoop.main).sink { [weak self] _ in self?.setNeedsRefresh() }
+            .store(in: &cancellables)
         NotchTimers.shared.$running.receive(on: RunLoop.main).sink { [weak self] _ in self?.setNeedsRefresh() }
             .store(in: &cancellables)
         NotchTimers.shared.$finished.receive(on: RunLoop.main).sink { [weak self] _ in self?.setNeedsRefresh() }
@@ -215,7 +218,8 @@ final class NotchHomeManager {
             ?? Self.downloadNotice(NotchDownloads.shared.finished)
         var content = NotchHome.content(
             enabled: enabled && !hiddenForFullScreen, hasNotch: screen != nil,
-            blocked: uiManager.isRecorderPanelVisible || uiManager.isClaudeCodeCardVisible, hovered: hovered,
+            blocked: uiManager.isRecorderPanelVisible || uiManager.isClaudeCodeCardVisible || Prompter.shared.isShown,
+            hovered: hovered,
             dropping: dropping,
             notice: firstNotice ?? deviceNotice ?? agentNotice ?? watchNotice,
             timerRunning: timers.running != nil, musicPlaying: track?.isPlaying == true, meeting: meeting,

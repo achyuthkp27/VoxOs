@@ -49,7 +49,9 @@ struct PreferencesBackup: Codable, Equatable {
         DefaultsKeys.focusBlurOtherDisplays, DefaultsKeys.focusBlurShake, DefaultsKeys.focusBlurIgnoredApps,
         // Voice Prompter (the script itself is a file, not a setting)
         DefaultsKeys.prompterFontSize, DefaultsKeys.prompterLines, DefaultsKeys.prompterWidth,
-        DefaultsKeys.prompterOpacity, DefaultsKeys.prompterHiddenFromCapture,
+        DefaultsKeys.prompterOpacity, DefaultsKeys.prompterHiddenFromCapture, DefaultsKeys.prompterTextColor,
+        DefaultsKeys.prompterFollow, DefaultsKeys.prompterPace, DefaultsKeys.prompterPaceWhileSpeaking,
+        DefaultsKeys.prompterMicSensitivity,
         // Claude Code: how its cards behave, not whether its hooks are installed on this Mac
         DefaultsKeys.claudeCodeApprovalsEnabled, DefaultsKeys.claudeCodeStatusEnabled,
         DefaultsKeys.claudeCodeQuietInTerminal, DefaultsKeys.claudeCodeRepliesEnabled,
