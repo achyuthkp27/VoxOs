@@ -53,7 +53,11 @@ SDK with `make local`.
   on). Holding the notch row asks the Agent.
 - **Notes** — `NotchNotes`: rich-text notes written in the card, one RTF file each in
   Application Support (`Notes/`), never synced. While one is open the card takes the keyboard
-  without making VoxOS active, and stays open until it loses it.
+  without making VoxOS active, and stays open until it loses it. A calendar meeting can have its
+  own note (by occurrence), which the meeting's write-up goes into; there is one note per day.
+- **Call** — `NotchCalls`: another app using the microphone or a camera for a few seconds. A
+  running pomodoro pauses for it and the volume preset chosen for calls applies; both are
+  undone when it ends.
 - **Live music bars** — bars driven by the real output through `SystemAudioLevels` (a Core Audio
   tap), in the band and on the Music page, only when the setting is on (a click on the player's
   bars switches it) and `PowerState` allows: never in Low Power Mode, on battery only if allowed.
