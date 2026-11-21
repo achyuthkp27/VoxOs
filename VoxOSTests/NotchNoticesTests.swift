@@ -95,26 +95,33 @@ struct NotchNoticesTests {
             color: .white, joinURL: link)
     }
 
-    @Test func theCountdownCoversFiveMinutesEitherSideOfTheStart() {
-        let soon = Self.event("Standup", startsIn: 4)
+    @Test func theCountdownCoversTwoMinutesEitherSideOfTheStart() {
+        let soon = Self.event("Standup", startsIn: 1.5)
         let later = Self.event("Review", startsIn: 60)
         var found = NotchToday.meeting(in: [later, soon], now: Self.nine)
         #expect(found.current?.id == "Standup")
         #expect(found.next?.id == "Review")
-        found = NotchToday.meeting(in: [Self.event("Early", startsIn: 6)], now: Self.nine)
-        #expect(found.current == nil, "more than five minutes out")
+        found = NotchToday.meeting(in: [Self.event("Early", startsIn: 3)], now: Self.nine)
+        #expect(found.current == nil, "more than two minutes out")
         #expect(found.next?.id == "Early")
-        #expect(NotchToday.meeting(in: [Self.event("Late", startsIn: -4)], now: Self.nine).current?.id == "Late")
-        #expect(NotchToday.meeting(in: [Self.event("Gone", startsIn: -6)], now: Self.nine).current == nil)
+        #expect(NotchToday.meeting(in: [Self.event("Late", startsIn: -1.5)], now: Self.nine).current?.id == "Late")
+        #expect(NotchToday.meeting(in: [Self.event("Gone", startsIn: -3)], now: Self.nine).current == nil)
         #expect(
             NotchToday.meeting(in: [Self.event("Holiday", startsIn: 2, allDay: true)], now: Self.nine).current == nil)
         #expect(
-            NotchToday.meeting(in: [Self.event("Short", startsIn: -3, length: 2)], now: Self.nine).current == nil,
+            NotchToday.meeting(in: [Self.event("Short", startsIn: -1.5, length: 1)], now: Self.nine).current == nil,
             "a meeting that has ended")
     }
 
+    @Test func aHiddenMeetingIsOneOccurrenceOfIt() {
+        let today = Self.event("Standup", startsIn: 1)
+        let tomorrow = Self.event("Standup", startsIn: 24 * 60 + 1)
+        #expect(NotchToday.occurrence(of: today) != NotchToday.occurrence(of: tomorrow))
+        #expect(NotchToday.occurrence(of: today) == NotchToday.occurrence(of: Self.event("Standup", startsIn: 1)))
+    }
+
     @Test func theNextCheckIsWhenTheAnswerCanChange() {
-        let soon = Self.event("Standup", startsIn: 4)
+        let soon = Self.event("Standup", startsIn: 1)
         let later = Self.event("Review", startsIn: 60)
         #expect(
             NotchToday.nextCheck(current: soon, next: later, now: Self.nine)

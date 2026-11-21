@@ -278,7 +278,7 @@ struct NotchSettingsPage: View {
                         HStack(spacing: 2) {
                             Text("Meeting Countdown")
                             InfoTip(
-                                "Five minutes before a meeting in your calendar, the notch counts down to it, with Join when the event has a video-call link. Needs Calendar access, which the Calendar page asks for."
+                                "From two minutes before a meeting in your calendar until two minutes after it starts, the notch counts down to it, with Join when the event has a video-call link. Hover over the countdown to hide it. Needs Calendar access, which the Calendar page asks for."
                             )
                         }
                     }

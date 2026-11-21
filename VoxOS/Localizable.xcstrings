@@ -13438,22 +13438,6 @@
         }
       }
     },
-    "Five minutes before a meeting in your calendar, the notch counts down to it, with Join when the event has a video-call link. Needs Calendar access, which the Calendar page asks for." : {
-      "localizations" : {
-        "de" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Fünf Minuten vor einer Besprechung in deinem Kalender zählt die Notch herunter, mit „Beitreten“, wenn das Ereignis einen Videoanruf-Link hat. Erfordert Kalenderzugriff, nach dem die Kalenderseite fragt."
-          }
-        },
-        "zh-Hans" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "日历中的会议开始前五分钟，刘海会进行倒计时；如果日程含有视频通话链接，还会显示“加入”。需要日历访问权限，“日历”页面会请求该权限。"
-          }
-        }
-      }
-    },
     "Fix the same mistake the same way, every time" : {
       "localizations" : {
         "de" : {
@@ -13610,6 +13594,22 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "免费更新"
+          }
+        }
+      }
+    },
+    "From two minutes before a meeting in your calendar until two minutes after it starts, the notch counts down to it, with Join when the event has a video-call link. Hover over the countdown to hide it. Needs Calendar access, which the Calendar page asks for." : {
+      "localizations" : {
+        "de" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Von zwei Minuten vor einem Termin in deinem Kalender bis zwei Minuten nach seinem Beginn zählt die Notch zu ihm herunter, mit „Beitreten“, wenn der Termin einen Videoanruf-Link hat. Bewege den Zeiger über den Countdown, um ihn auszublenden. Benötigt Kalenderzugriff, den die Kalenderseite anfragt."
+          }
+        },
+        "zh-Hans" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "从日历中会议开始前两分钟到开始后两分钟，刘海会倒计时，若活动含视频通话链接则显示“加入”。将指针悬停在倒计时上即可隐藏。需要日历访问权限，日历页面会请求该权限。"
           }
         }
       }
@@ -14164,6 +14164,22 @@
         }
       }
     },
+    "Hide This Meeting" : {
+      "localizations" : {
+        "de" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Diesen Termin ausblenden"
+          }
+        },
+        "zh-Hans" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "隐藏此会议"
+          }
+        }
+      }
+    },
     "Hide from Screenshots & Sharing" : {
       "localizations" : {
         "de" : {
@@ -14192,6 +14208,22 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "隐藏实时转写；会议会继续录制"
+          }
+        }
+      }
+    },
+    "Hide this meeting" : {
+      "localizations" : {
+        "de" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Diesen Termin ausblenden"
+          }
+        },
+        "zh-Hans" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "隐藏此会议"
           }
         }
       }
@@ -31301,6 +31333,22 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "请尝试选择其他模型，或重新下载当前模型。"
+          }
+        }
+      }
+    },
+    "Turn Off Meeting Countdown" : {
+      "localizations" : {
+        "de" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Termin-Countdown ausschalten"
+          }
+        },
+        "zh-Hans" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "关闭会议倒计时"
           }
         }
       }

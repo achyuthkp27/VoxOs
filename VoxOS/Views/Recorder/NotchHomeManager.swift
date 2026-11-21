@@ -541,6 +541,8 @@ final class NotchHomeManager {
         case .dismiss:
             guard model.content != .bare else { return }
             ActivityTrail.mark("notch home band swiped away")
+            // A meeting swiped away stays away, like one hidden with its button.
+            if case .meeting = model.content { NotchToday.shared.dismissMeeting() }
             dismissedBand = Self.bandKey(model.content, track: model.track, timer: NotchTimers.shared.running)
             refresh()
         case .restore:

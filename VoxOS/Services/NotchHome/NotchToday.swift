@@ -90,9 +90,11 @@ final class NotchToday: ObservableObject {
     nonisolated static let eventLimit = 100
     static let weatherLifetime: TimeInterval = 30 * 60
     /// The countdown shows from this long before a meeting…
-    nonisolated static let meetingLead: TimeInterval = 5 * 60
+    nonisolated static let meetingLead: TimeInterval = 2 * 60
     /// …until this long after it starts, for joining a little late.
-    nonisolated static let meetingGrace: TimeInterval = 5 * 60
+    nonisolated static let meetingGrace: TimeInterval = 2 * 60
+    /// The Calendar page offers Join from this long before a call.
+    nonisolated static let joinLead: TimeInterval = 10 * 60
     /// Hosts of video calls whose links are a way in.
     nonisolated static let meetingHosts = [
         "zoom.us", "zoomgov.com", "meet.google.com", "teams.microsoft.com", "teams.live.com", "webex.com",
@@ -118,8 +120,8 @@ final class NotchToday: ObservableObject {
     private var reloadTask: Task<Void, Never>?
     private var watchingMeetings = false
     private var meetingTimer: Timer?
-    /// A meeting joined or swiped away from the band; it does not come back.
-    private var dismissedMeeting: String?
+    /// Meetings joined, hidden or swiped away from the band, by occurrence; they do not come back.
+    private var dismissedMeetings: Set<String> = []
     /// Every event in the days around the selected one.
     private var stripEvents: [Event] = []
 
@@ -238,11 +240,19 @@ final class NotchToday: ObservableObject {
         }
     }
 
-    /// Joined or swiped away: gone until the next meeting.
+    /// Joined, hidden or swiped away: gone until the next meeting (a repeating event's next
+    /// occurrence still shows).
     func dismissMeeting() {
         guard let meeting else { return }
-        dismissedMeeting = meeting.id
+        ActivityTrail.mark("notch meeting hidden")
+        dismissedMeetings.insert(Self.occurrence(of: meeting))
         self.meeting = nil
+        checkMeetings()
+    }
+
+    /// One occurrence of an event: a repeating event shares its identifier across them.
+    nonisolated static func occurrence(of event: Event) -> String {
+        "\(event.id)@\(Int(event.start.timeIntervalSince1970))"
     }
 
     func join(_ event: Event) {
@@ -270,7 +280,7 @@ final class NotchToday: ObservableObject {
                     && event.attendees?.first(where: \.isCurrentUser)?.participantStatus != .declined
             }
             .map(Self.event(from:))
-            .filter { $0.id != dismissedMeeting }
+            .filter { !dismissedMeetings.contains(Self.occurrence(of: $0)) }
         let (current, next) = Self.meeting(in: candidates, now: now)
         if meeting != current { meeting = current }
         guard let wake = Self.nextCheck(current: current, next: next, now: now) else { return }
@@ -307,7 +317,7 @@ final class NotchToday: ObservableObject {
 
     /// The Calendar page offers Join from a few minutes before a call until it ends.
     nonisolated static func canJoin(_ event: Event, now: Date) -> Bool {
-        event.joinURL != nil && now >= event.start.addingTimeInterval(-2 * meetingLead) && now < event.end
+        event.joinURL != nil && now >= event.start.addingTimeInterval(-joinLead) && now < event.end
     }
 
     /// "4m" before the start, rounded up so it never says 0; "now" from the start.

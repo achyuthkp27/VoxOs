@@ -271,6 +271,8 @@ struct NotchHomeView: View {
             }
             .foregroundStyle(.white)
             .frame(maxWidth: NotchHome.noticeWing - inset - NotchDesign.contentInset, alignment: .leading)
+            .contentShape(Rectangle())
+            .contextMenu { NotchMeetingMenu() }
         case .privacy(let privacy):
             NotchPrivacyGlyphs(state: privacy, onToggleMute: onToggleMute)
         case .note(let line):
@@ -345,18 +347,8 @@ struct NotchHomeView: View {
                     .lineLimit(1)
             }
         case .meeting(let meeting):
-            HStack(spacing: 6) {
-                // Meetings start on the minute, so a minute's tick keeps the count right.
-                TimelineView(.everyMinute) { context in
-                    Text(verbatim: NotchToday.countdown(to: meeting.start, now: context.date))
-                        .font(.appMono(size: 12, weight: .semibold))
-                        .foregroundStyle(.white.opacity(0.75))
-                        .monospacedDigit()
-                }
-                if meeting.joinURL != nil {
-                    NotchJoinButton { onJoin(meeting) }
-                }
-            }
+            NotchMeetingTrailing(meeting: meeting, onJoin: { onJoin(meeting) })
+                .contextMenu { NotchMeetingMenu() }
         case .download(let item, let others):
             HStack(spacing: 6) {
                 if others > 0 {
@@ -544,7 +536,58 @@ struct NotchLevelSegments: View {
     }
 }
 
-/// "Join", on the meeting band and beside a meeting on the Calendar page.
+/// The meeting band's right side: the countdown, and Join when there is a link. Under the pointer
+/// the countdown gives way to a button that hides the meeting.
+struct NotchMeetingTrailing: View {
+    let meeting: NotchToday.Event
+    let onJoin: () -> Void
+    @State private var hovering = false
+
+    var body: some View {
+        HStack(spacing: 6) {
+            ZStack {
+                // Meetings start on the minute, so a minute's tick keeps the count right.
+                TimelineView(.everyMinute) { context in
+                    Text(verbatim: NotchToday.countdown(to: meeting.start, now: context.date))
+                        .font(.appMono(size: 12, weight: .semibold))
+                        .foregroundStyle(.white.opacity(0.75))
+                        .monospacedDigit()
+                }
+                .opacity(hovering ? 0 : 1)
+                if hovering {
+                    Button(action: NotchToday.shared.dismissMeeting) {
+                        Image(systemName: "xmark")
+                            .font(.system(size: 9, weight: .bold))
+                            .foregroundStyle(.white.opacity(0.85))
+                            .frame(width: 18, height: 18)
+                            .background(Circle().fill(.white.opacity(0.16)))
+                            .contentShape(Circle())
+                    }
+                    .buttonStyle(.plain)
+                    .help(Text("Hide this meeting"))
+                    .transition(.opacity)
+                }
+            }
+            if meeting.joinURL != nil {
+                NotchJoinButton(action: onJoin)
+            }
+        }
+        .contentShape(Rectangle())
+        .onHover { inside in withAnimation(.easeOut(duration: 0.12)) { hovering = inside } }
+        .accessibilityAction(named: Text("Hide this meeting")) { NotchToday.shared.dismissMeeting() }
+    }
+}
+
+/// A right click on the meeting band: hide this one, or stop the countdown for all meetings.
+struct NotchMeetingMenu: View {
+    var body: some View {
+        Button("Hide This Meeting", systemImage: "xmark") { NotchToday.shared.dismissMeeting() }
+        Button("Turn Off Meeting Countdown", systemImage: "bell.slash") {
+            UserDefaults.standard.set(false, forKey: DefaultsKeys.notchMeetingsEnabled)
+        }
+    }
+}
+
 /// Files dragged onto the open card: onto the Shelf page's AirDrop zone they go by AirDrop;
 /// anywhere else they are kept on the shelf. Text dropped on the notch, open or not, becomes a new
 /// note, shown on the Notes page.
@@ -627,6 +670,7 @@ struct NotchCardDropDelegate: DropDelegate {
     }
 }
 
+/// "Join", on the meeting band and beside a meeting on the Calendar page.
 struct NotchJoinButton: View {
     let action: () -> Void
     @State private var hovered = false
