@@ -202,6 +202,16 @@ enum DefaultsKeys {
     static let notchDailyNote = "NotchDailyNote"
     /// Notes written for calendar meetings, by occurrence, as JSON.
     static let notchMeetingNotes = "NotchMeetingNotes"
+    /// Notes shown in the notch while an app is in front: bundle id to note id.
+    static let notchAppNotes = "NotchAppNotes"
+    /// Until when (seconds since 1970) notices and the meeting band stay out of the notch.
+    static let notchQuietUntil = "NotchQuietUntil"
+    /// The collapsed notch says how long until the next meeting when nothing else shows. Off by default.
+    static let notchFreeTimeEnabled = "NotchFreeTimeEnabled"
+    /// Apps hidden while a Pomodoro focus session runs, by bundle id.
+    static let notchFocusHiddenApps = "NotchFocusHiddenApps"
+    /// A meeting's action items are added to Reminders when its notes are written. Off by default.
+    static let meetingActionsToReminders = "MeetingActionsToReminders"
     /// Meetings recorded when VoxOS quit, written up at the next launch: path and title.
     static let meetingNotesPending = "MeetingNotesPending"
     /// The notch shows the playing track and opens into a player on hover.

@@ -491,6 +491,8 @@ class RecordingShortcutManager: ObservableObject {
         case .newNote:
             NotchNotes.shared.create()
             NotchNotes.showInNotch()
+        case .dictateToTodaysNote:
+            NotchNotes.shared.dictateIntoToday()
         case .captureSystemAudio:
             await SystemAudioCaptureController.shared.toggleCapture()
         case .recallSystemAudio:

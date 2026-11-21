@@ -101,6 +101,8 @@ enum NotchHome {
         case download(NotchDownloads.Item, others: Int)
         /// The note pinned to the notch: its first line, when nothing else is to be said.
         case note(String)
+        /// No meeting on, and the next one at this time; only when asked for in Settings.
+        case free(Date)
         case expanded
 
         /// Shows something beyond the hardware notch.
@@ -121,6 +123,34 @@ enum NotchHome {
     }
     static var showsInFullScreen: Bool { UserDefaults.standard.bool(forKey: DefaultsKeys.notchHomeInFullScreen) }
     static var meetingsEnabled: Bool { UserDefaults.standard.bool(forKey: DefaultsKeys.notchMeetingsEnabled) }
+    static var freeTimeEnabled: Bool { UserDefaults.standard.bool(forKey: DefaultsKeys.notchFreeTimeEnabled) }
+    static func setQuiet(until: Date?) {
+        ActivityTrail.mark(until == nil ? "notch quiet ended" : "notch quiet")
+        if let until {
+            UserDefaults.standard.set(until.timeIntervalSince1970, forKey: DefaultsKeys.notchQuietUntil)
+        } else {
+            UserDefaults.standard.removeObject(forKey: DefaultsKeys.notchQuietUntil)
+        }
+    }
+
+    /// The start of tomorrow's working day: 8 in the morning.
+    static func tomorrowMorning(now: Date = Date(), calendar: Calendar = .current) -> Date {
+        let tomorrow = calendar.date(byAdding: .day, value: 1, to: calendar.startOfDay(for: now)) ?? now
+        return calendar.date(bySettingHour: 8, minute: 0, second: 0, of: tomorrow) ?? tomorrow
+    }
+
+    /// "until 3:00 PM"; "for 25m" when it is less than an hour away.
+    static func freeDetail(_ until: Date, now: Date = Date()) -> String {
+        let minutes = Int((until.timeIntervalSince(now) / 60).rounded(.down))
+        if minutes < 60 { return String(localized: "for \(max(1, minutes))m") }
+        return String(localized: "until \(until.formatted(date: .omitted, time: .shortened))")
+    }
+
+    /// Until when notices and the meeting band are kept out of the notch; nil when they are not.
+    static func quietUntil(now: Date = Date()) -> Date? {
+        let until = UserDefaults.standard.double(forKey: DefaultsKeys.notchQuietUntil)
+        return until > now.timeIntervalSince1970 ? Date(timeIntervalSince1970: until) : nil
+    }
     /// Left out of screenshots, recordings and screen sharing.
     static var hiddenFromCapture: Bool { UserDefaults.standard.bool(forKey: DefaultsKeys.notchHiddenFromCapture) }
 
@@ -129,7 +159,8 @@ enum NotchHome {
     static func content(
         enabled: Bool, hasNotch: Bool, blocked: Bool, hovered: Bool, dropping: Bool, notice: Notice?,
         timerRunning: Bool, musicPlaying: Bool, meeting: NotchToday.Event? = nil, privacy: NotchPrivacy.State? = nil,
-        level: NotchHUD.Level? = nil, downloads: [NotchDownloads.Item] = [], pinnedNote: String? = nil
+        level: NotchHUD.Level? = nil, downloads: [NotchDownloads.Item] = [], pinnedNote: String? = nil,
+        freeUntil: Date? = nil
     ) -> Content {
         guard enabled, hasNotch, !blocked else { return .hidden }
         if hovered || dropping { return .expanded }
@@ -142,6 +173,7 @@ enum NotchHome {
         if timerRunning { return .timer }
         if musicPlaying { return .playing }
         if let pinnedNote { return .note(pinnedNote) }
+        if let freeUntil { return .free(freeUntil) }
         return .bare
     }
 
@@ -155,7 +187,7 @@ enum NotchHome {
             return CGSize(width: notchWidth + wing * 2, height: notchHeight)
         case .timer:
             return CGSize(width: notchWidth + timerWing * 2, height: notchHeight)
-        case .notice, .meeting, .download, .note:
+        case .notice, .meeting, .download, .note, .free:
             return CGSize(width: notchWidth + noticeWing * 2, height: notchHeight)
         case .privacy:
             return CGSize(width: notchWidth + privacyWing * 2, height: notchHeight)
@@ -179,7 +211,8 @@ enum NotchHome {
     static func radii(for content: Content) -> NotchDesign.Radii {
         switch content {
         case .hidden, .bare: return NotchDesign.resting
-        case .playing, .timer, .notice, .meeting, .privacy, .level, .download, .note: return NotchDesign.listening
+        case .playing, .timer, .notice, .meeting, .privacy, .level, .download, .note, .free:
+            return NotchDesign.listening
         case .expanded: return NotchDesign.expanded
         }
     }

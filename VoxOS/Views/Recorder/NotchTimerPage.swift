@@ -24,6 +24,7 @@ struct NotchTimerPage: View {
     enum SettingsTab: Equatable {
         case duration
         case notifications
+        case week
     }
 
     enum Setting: CaseIterable, Equatable {
@@ -109,6 +110,8 @@ struct NotchTimerPage: View {
                         .font(.app(size: 15, weight: .semibold))
                         .foregroundStyle(color)
                         .lineLimit(1)
+                        .truncationMode(.tail)
+                        .frame(maxWidth: 170, alignment: .trailing)
                 }
                 if kind.isPomodoro {
                     HStack(spacing: 6) {
@@ -142,6 +145,8 @@ struct NotchTimerPage: View {
                 Divider()
                 Button("Skip to the Next Session") { timers.skip() }
             }
+            Divider()
+            NotchFocusAppsMenu(apps: .shared)
         }
     }
 
@@ -211,6 +216,8 @@ struct NotchTimerPage: View {
     }
 
     private func caption(_ running: NotchTimer?) -> String {
+        // Focus on a checklist item: the item.
+        if let task = running?.task { return task.item }
         switch running?.kind ?? .focus {
         case .focus, .shortBreak, .longBreak: return Self.name(of: running?.kind ?? .focus)
         case .countdown:
@@ -251,6 +258,7 @@ struct NotchTimerPage: View {
             HStack(spacing: 2) {
                 tabButton("DURATION", selected: tab == .duration) { panel = .settings(.duration) }
                 tabButton("NOTIFICATIONS", selected: tab == .notifications) { panel = .settings(.notifications) }
+                tabButton("THIS WEEK", selected: tab == .week) { panel = .settings(.week) }
             }
             .padding(2)
             .background(Capsule().fill(.white.opacity(0.08)))
@@ -269,6 +277,8 @@ struct NotchTimerPage: View {
                         optionRow("Pause During Calls", isOn: $timers.options.pausesForCalls)
                     }
                     .padding(.top, 4)
+                case .week:
+                    NotchFocusWeek(days: NotchTimers.week(timers.focusHistory, endingOn: Date()))
                 }
             }
             .frame(maxWidth: 360)
@@ -281,7 +291,7 @@ struct NotchTimerPage: View {
                 .font(.app(size: 10, weight: .medium))
                 .tracking(0.8)
                 .foregroundStyle(.white.opacity(selected ? 0.95 : 0.55))
-                .frame(width: 120, height: 24)
+                .frame(width: 110, height: 24)
                 .background(Capsule().fill(.white.opacity(selected ? 0.16 : 0)))
                 .contentShape(Capsule())
         }
@@ -420,6 +430,51 @@ struct NotchTimerPage: View {
 /// The pomodoro's progress: a grey track, and the time gone as an arc in VoxOS's own violet,
 /// running from a cool periwinkle through the brand colour to magenta clockwise from the top,
 /// glowing a little. A plain timer draws in white.
+/// The last seven days' focus time as bars, today last and lit, with the week's total.
+struct NotchFocusWeek: View {
+    let days: [(day: Date, seconds: TimeInterval)]
+
+    static let barArea: CGFloat = 62
+
+    var body: some View {
+        let most = max(days.map(\.seconds).max() ?? 0, 1)
+        let total = days.reduce(0) { $0 + $1.seconds }
+        VStack(spacing: 6) {
+            HStack(alignment: .bottom, spacing: 14) {
+                ForEach(Array(days.enumerated()), id: \.offset) { index, entry in
+                    VStack(spacing: 4) {
+                        Capsule()
+                            .fill(
+                                index == days.count - 1
+                                    ? NotchTimerPage.faceColor(for: .focus)
+                                    : .white.opacity(entry.seconds > 0 ? 0.45 : 0.12)
+                            )
+                            .frame(width: 14, height: max(4, Self.barArea * entry.seconds / most))
+                            .frame(height: Self.barArea, alignment: .bottom)
+                            .help(Text(verbatim: NotchFocusWeek.duration(entry.seconds)))
+                        Text(verbatim: entry.day.formatted(.dateTime.weekday(.narrow)))
+                            .font(.app(size: 9, weight: .medium))
+                            .foregroundStyle(.white.opacity(0.5))
+                    }
+                }
+            }
+            Text("\(NotchFocusWeek.duration(total)) of focus this week")
+                .font(.app(size: 11, weight: .medium))
+                .foregroundStyle(.white.opacity(0.7))
+        }
+        .frame(maxWidth: .infinity)
+        .padding(.top, 2)
+        .accessibilityElement(children: .ignore)
+        .accessibilityLabel(Text("\(NotchFocusWeek.duration(total)) of focus this week"))
+    }
+
+    /// "1h 40m", "25m", "0m".
+    nonisolated static func duration(_ seconds: TimeInterval) -> String {
+        let minutes = Int((seconds / 60).rounded())
+        return minutes >= 60 ? "\(minutes / 60)h \(minutes % 60)m" : "\(minutes)m"
+    }
+}
+
 struct NotchPomodoroRing: View {
     let progress: Double
     let kind: NotchTimer.Kind

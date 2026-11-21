@@ -37,6 +37,7 @@ struct PreferencesBackup: Codable, Equatable {
         DefaultsKeys.notchMeetingsEnabled, DefaultsKeys.meetingNotesEnabled,
         DefaultsKeys.meetingNotesIncludeMicrophone, DefaultsKeys.meetingNotesLiveTranscript,
         DefaultsKeys.meetingNotesToNotes, DefaultsKeys.notchVolumePresets, DefaultsKeys.notchCallPreset,
+        DefaultsKeys.meetingActionsToReminders, DefaultsKeys.notchFreeTimeEnabled, DefaultsKeys.notchFocusHiddenApps,
         DefaultsKeys.notchMusicEnabled,
         DefaultsKeys.notchMusicBarsEnabled, DefaultsKeys.notchMusicBarsOnBattery,
         DefaultsKeys.notchHUDStyle, DefaultsKeys.notchNotificationsEnabled, DefaultsKeys.lockScreenWidgetsEnabled,
@@ -106,6 +107,9 @@ struct PreferencesBackup: Codable, Equatable {
         DefaultsKeys.notchSoundSection, AppSidebar.collapsedKey, DefaultsKeys.meetingNotesPending,
         // A note on this Mac, by id: another Mac has not got it
         DefaultsKeys.notchPinnedNote, DefaultsKeys.notchDailyNote, DefaultsKeys.notchMeetingNotes,
+        DefaultsKeys.notchAppNotes,
+        // A pause for now, not a preference
+        DefaultsKeys.notchQuietUntil,
         // Secrets and licensing
         DefaultsKeys.agentLinearAPIToken, DefaultsKeys.voxOSLicenseRequiresActivation,
         DefaultsKeys.voxOSActivationsLimit, DefaultsKeys.voxOSDeviceIdentifier,

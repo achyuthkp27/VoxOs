@@ -55,10 +55,10 @@ enum NotchNoteExport {
             if body.length > 0 {
                 note.enumerateAttribute(.font, in: body) { value, run, _ in
                     let traits = (value as? NSFont)?.fontDescriptor.symbolicTraits ?? []
-                    runs.append(
-                        Line.Run(
-                            text: string.substring(with: run), bold: traits.contains(.bold),
-                            italic: traits.contains(.italic)))
+                    // An image is one placeholder character; it has no text to export.
+                    let text = string.substring(with: run).replacingOccurrences(of: "\u{FFFC}", with: "")
+                    guard !text.isEmpty else { return }
+                    runs.append(Line.Run(text: text, bold: traits.contains(.bold), italic: traits.contains(.italic)))
                 }
             }
             lines.append(Line(kind: kind, runs: runs))

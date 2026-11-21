@@ -167,6 +167,7 @@ struct ShortcutBackupCoverageTests {
         "openHistoryWindow": .openHistoryWindow, "quickAddToDictionary": .quickAddToDictionary,
         "undoLastPaste": .undoLastPaste, "toggleMeetingNotes": .toggleMeetingNotes,
         "toggleLiveTranscript": .toggleLiveTranscript, "newNote": .newNote,
+        "dictateToTodaysNote": .dictateToTodaysNote,
         "captureSystemAudio": .captureSystemAudio,
         "recallSystemAudio": .recallSystemAudio, "agentDoubleTap": .agentDoubleTap, "dictateAndSend": .dictateAndSend,
     ]

@@ -13,6 +13,7 @@ enum ShortcutAction: Hashable {
     case toggleMeetingNotes
     case toggleLiveTranscript
     case newNote
+    case dictateToTodaysNote
     case captureSystemAudio
     case recallSystemAudio
     case agentDoubleTap
@@ -60,6 +61,8 @@ enum ShortcutAction: Hashable {
             return "toggleLiveTranscript"
         case .newNote:
             return "newNote"
+        case .dictateToTodaysNote:
+            return "dictateToTodaysNote"
         case .captureSystemAudio:
             return "captureSystemAudio"
         case .recallSystemAudio:
@@ -103,6 +106,8 @@ enum ShortcutAction: Hashable {
             return String(localized: "Show or Hide Live Transcript")
         case .newNote:
             return String(localized: "New Note in the Notch")
+        case .dictateToTodaysNote:
+            return String(localized: "Dictate into Today's Note")
         case .captureSystemAudio:
             return String(localized: "Capture System Audio")
         case .recallSystemAudio:
@@ -136,6 +141,7 @@ enum ShortcutAction: Hashable {
         .toggleMeetingNotes,
         .toggleLiveTranscript,
         .newNote,
+        .dictateToTodaysNote,
         .openHistoryWindow,
         .quickAddToDictionary,
         .captureSystemAudio,
@@ -183,7 +189,8 @@ extension ShortcutAction {
         case .primaryRecording, .secondaryRecording, .pasteLastTranscription, .pasteLastEnhancement,
             .retryLastTranscription, .cancelRecorder, .openHistoryWindow, .quickAddToDictionary, .undoLastPaste:
             return .namedField
-        case .captureSystemAudio, .recallSystemAudio, .toggleMeetingNotes, .toggleLiveTranscript, .newNote:
+        case .captureSystemAudio, .recallSystemAudio, .toggleMeetingNotes, .toggleLiveTranscript, .newNote,
+            .dictateToTodaysNote:
             return .byName
         case .mode:
             return .withItsMode
@@ -195,5 +202,6 @@ extension ShortcutAction {
     /// The actions `GeneralBackup.shortcuts` carries.
     static let backedUpByName: [ShortcutAction] = [
         .captureSystemAudio, .recallSystemAudio, .toggleMeetingNotes, .toggleLiveTranscript, .newNote,
+        .dictateToTodaysNote,
     ]
 }

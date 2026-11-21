@@ -283,6 +283,15 @@ struct NotchHomeView: View {
             }
             .foregroundStyle(.white)
             .frame(maxWidth: NotchHome.noticeWing - inset - NotchDesign.contentInset, alignment: .leading)
+        case .free:
+            HStack(spacing: 7) {
+                Image(systemName: "calendar").font(.system(size: 11, weight: .semibold))
+                    .foregroundStyle(Color(red: 0.42, green: 0.86, blue: 0.56))
+                Text("Free").font(.app(size: 12, weight: .semibold)).lineLimit(1)
+            }
+            .foregroundStyle(.white)
+            .frame(maxWidth: NotchHome.noticeWing - inset - NotchDesign.contentInset, alignment: .leading)
+            .contextMenu { NotchQuietMenu() }
         case .download(let item, _):
             HStack(spacing: 7) {
                 Image(systemName: "arrow.down.circle.fill").font(.system(size: 12, weight: .semibold))
@@ -349,6 +358,14 @@ struct NotchHomeView: View {
         case .meeting(let meeting):
             NotchMeetingTrailing(meeting: meeting, onJoin: { onJoin(meeting) })
                 .contextMenu { NotchMeetingMenu(meeting: meeting) }
+        case .free(let until):
+            TimelineView(.everyMinute) { context in
+                Text(verbatim: NotchHome.freeDetail(until, now: context.date))
+                    .font(.app(size: 12, weight: .medium))
+                    .foregroundStyle(.white.opacity(0.65))
+                    .lineLimit(1)
+            }
+            .contextMenu { NotchQuietMenu() }
         case .download(let item, let others):
             HStack(spacing: 6) {
                 if others > 0 {
@@ -589,9 +606,28 @@ struct NotchMeetingMenu: View {
         if meeting.start > Date() {
             Button("Remind Me at the Start", systemImage: "clock") { NotchToday.shared.snoozeMeeting() }
         }
+        if !meeting.attendeeEmails.isEmpty {
+            Button("Draft “Running Late” Email", systemImage: "envelope") { NotchToday.draftRunningLate(meeting) }
+        }
         Button("Hide This Meeting", systemImage: "xmark") { NotchToday.shared.dismissMeeting() }
         Button("Turn Off Meeting Countdown", systemImage: "bell.slash") {
             UserDefaults.standard.set(false, forKey: DefaultsKeys.notchMeetingsEnabled)
+        }
+        NotchQuietMenu()
+    }
+}
+
+/// Keeping notices and the meeting band out of the notch for a while (VoxOS only: macOS's Focus
+/// and other devices are left alone). Music, timers and the open card carry on.
+struct NotchQuietMenu: View {
+    var body: some View {
+        Menu("Quiet the Notch") {
+            if NotchHome.quietUntil() != nil {
+                Button("Stop Being Quiet") { NotchHome.setQuiet(until: nil) }
+                Divider()
+            }
+            Button("For 1 Hour") { NotchHome.setQuiet(until: Date().addingTimeInterval(3600)) }
+            Button("Until Tomorrow") { NotchHome.setQuiet(until: NotchHome.tomorrowMorning()) }
         }
     }
 }

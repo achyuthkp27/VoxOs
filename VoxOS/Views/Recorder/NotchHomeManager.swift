@@ -63,6 +63,7 @@ final class NotchHomeManager {
     private var meetingsWatched = false
     private var mixerWasOn = false
     private var meetingWatch: AnyCancellable?
+    private var quietTimer: Timer?
     private let logger = Logger(subsystem: "com.achyuthkp.voxos", category: "NotchHome")
 
     init(uiManager: RecorderUIManager) {
@@ -190,6 +191,7 @@ final class NotchHomeManager {
             NotchPrivacy.shared.stop()
         }
         NotchCalls.shared.setActive(callsWanted)
+        NotchFocusApps.shared.start()
         if enabled && NotchDownloads.isEnabled { NotchDownloads.shared.start() } else { NotchDownloads.shared.stop() }
         if enabled && NotchFocus.isEnabled { NotchFocus.shared.start() } else { NotchFocus.shared.stop() }
         NotchRainWatch.shared.setActive(enabled && NotchRainWatch.isEnabled && NotchRainWatch.locationAllowed)
@@ -203,7 +205,13 @@ final class NotchHomeManager {
         // Switched off: every app back to full, which also ends its tap.
         if !(enabled && NotchMixer.isEnabled), mixerWasOn { NotchMixer.shared.reset() }
         mixerWasOn = enabled && NotchMixer.isEnabled
-        let meeting = watchMeetings(enabled && NotchHome.meetingsEnabled && NotchToday.accessGranted)
+        let quietUntil = NotchHome.quietUntil()
+        scheduleQuietEnd(quietUntil)
+        // The free time is read from the same watch as the meeting countdown.
+        let watched = watchMeetings(
+            enabled && (NotchHome.meetingsEnabled || NotchHome.freeTimeEnabled) && NotchToday.accessGranted)
+        let meeting = NotchHome.meetingsEnabled && quietUntil == nil ? watched : nil
+        let freeUntil = meetingsWatched && NotchHome.freeTimeEnabled ? NotchToday.shared.freeUntil : nil
         watchDrags(enabled)
 
         let tracks = wantsMusic ? makeTracks() : []
@@ -231,10 +239,15 @@ final class NotchHomeManager {
             blocked: uiManager.isRecorderPanelVisible || uiManager.isClaudeCodeCardVisible || Prompter.shared.isShown,
             hovered: hovered,
             dropping: dropping,
-            notice: firstNotice ?? deviceNotice ?? agentNotice ?? watchNotice,
+            // Quiet, only a timer that just finished is said: the user set it.
+            notice: quietUntil != nil
+                ? Self.notice(device: nil, finished: timers.finished)
+                : firstNotice ?? deviceNotice ?? agentNotice ?? watchNotice,
             timerRunning: timers.running != nil, musicPlaying: track?.isPlaying == true, meeting: meeting,
             privacy: NotchPrivacy.isEnabled ? NotchPrivacy.shared.state : nil, level: NotchHUD.shared.level,
-            downloads: NotchDownloads.shared.active, pinnedNote: NotchNotes.shared.pinnedLine)
+            downloads: NotchDownloads.shared.active,
+            pinnedNote: NotchNotes.shared.bandLine(frontApp: NSWorkspace.shared.frontmostApplication?.bundleIdentifier),
+            freeUntil: freeUntil)
         // The keys are taken from macOS only while the notch can answer them.
         NotchHUD.shared.update(canShow: content != .hidden)
         if model?.level != NotchHUD.shared.level { model?.level = NotchHUD.shared.level }
@@ -278,13 +291,30 @@ final class NotchHomeManager {
         if let panel, panel.sharingType != sharing { panel.sharingType = sharing }
     }
 
+    /// Quiet ends by itself: the notch is looked at again then.
+    private func scheduleQuietEnd(_ until: Date?) {
+        guard quietTimer?.fireDate != until else { return }
+        quietTimer?.invalidate()
+        quietTimer = nil
+        guard let until else { return }
+        let timer = Timer(fire: until.addingTimeInterval(1), interval: 0, repeats: false) { [weak self] _ in
+            Task { @MainActor in
+                self?.quietTimer = nil
+                self?.setNeedsRefresh()
+            }
+        }
+        RunLoop.main.add(timer, forMode: .common)
+        quietTimer = timer
+    }
+
     /// The meeting countdown runs only while wanted and the calendar may be read; the calendar is
     /// not touched otherwise, so nothing asks for access from here.
     private func watchMeetings(_ wanted: Bool) -> NotchToday.Event? {
         if wanted != meetingsWatched {
             meetingsWatched = wanted
             if wanted, meetingWatch == nil {
-                meetingWatch = NotchToday.shared.$meeting.dropFirst().receive(on: RunLoop.main)
+                meetingWatch = NotchToday.shared.$meeting.combineLatest(NotchToday.shared.$freeUntil).dropFirst()
+                    .receive(on: RunLoop.main)
                     .sink { [weak self] _ in self?.setNeedsRefresh() }
             }
             NotchToday.shared.watchMeetings(wanted)
@@ -757,16 +787,16 @@ final class NotchHomeManager {
             if changed, model.content == .expanded { readModes(of: track) }
         }
         if content == .expanded, model.content != .expanded {
+            let bandNote = NotchNotes.shared.bandNoteID(
+                frontApp: NSWorkspace.shared.frontmostApplication?.bundleIdentifier)
             land()
             model.page = NotchHomePage.preferred(
                 hasTrack: track != nil, timerRunning: timerRunning, dropping: dropping || shelfForDrag,
                 meeting: meetingsWatched && NotchToday.shared.meeting != nil,
-                pinnedNote: NotchNotes.shared.pinnedID != nil)
-            // Opened from the pinned note's band: that note, ready to read.
-            if model.page == .notes, model.content == .note(NotchNotes.shared.pinnedLine ?? ""),
-                let pinned = NotchNotes.shared.pinnedID
-            {
-                NotchNotes.shared.openID = pinned
+                pinnedNote: bandNote != nil)
+            // Opened from a note's band (pinned, or the front app's): that note, ready to read.
+            if model.page == .notes, case .note = model.content, let bandNote {
+                NotchNotes.shared.openID = bandNote
             }
             readModes(of: track)
         }
@@ -902,7 +932,8 @@ final class NotchHomeManager {
             }
             .store(in: &cancellables)
         // The pinned note's band follows its first line.
-        NotchNotes.shared.$pinnedLine.dropFirst().removeDuplicates().receive(on: RunLoop.main)
+        NotchNotes.shared.$pinnedLine.combineLatest(NotchNotes.shared.$appNotesChanged).dropFirst()
+            .receive(on: RunLoop.main)
             .sink { [weak self] _ in self?.setNeedsRefresh() }
             .store(in: &cancellables)
         // So do the Pomodoro page's settings.

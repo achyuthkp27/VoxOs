@@ -30,6 +30,8 @@ struct NotchSettingsPage: View {
     @AppStorage(DefaultsKeys.meetingNotesIncludeMicrophone) private var meetingNotesIncludeMicrophone = true
     @AppStorage(DefaultsKeys.meetingNotesLiveTranscript) private var meetingNotesLiveTranscript = true
     @AppStorage(DefaultsKeys.meetingNotesToNotes) private var meetingNotesToNotes = true
+    @AppStorage(DefaultsKeys.meetingActionsToReminders) private var meetingActionsToReminders = false
+    @AppStorage(DefaultsKeys.notchFreeTimeEnabled) private var notchFreeTimeEnabled = false
     @AppStorage(DefaultsKeys.notchMusicEnabled) private var notchMusicEnabled = true
     @AppStorage(DefaultsKeys.notchMusicBarsEnabled) private var notchMusicBarsEnabled = false
     @AppStorage(DefaultsKeys.notchMusicBarsOnBattery) private var notchMusicBarsOnBattery = true
@@ -282,6 +284,14 @@ struct NotchSettingsPage: View {
                             )
                         }
                     }
+                    Toggle(isOn: $notchFreeTimeEnabled) {
+                        HStack(spacing: 2) {
+                            Text("Free Time")
+                            InfoTip(
+                                "When nothing else shows and no meeting is on, the notch says how long until your next meeting today. Needs Calendar access."
+                            )
+                        }
+                    }
                     Toggle(isOn: $meetingNotesEnabled) {
                         HStack(spacing: 2) {
                             Text("Meeting Notes")
@@ -312,6 +322,14 @@ struct NotchSettingsPage: View {
                                 Text("Save to Notes")
                                 InfoTip(
                                     "Each meeting's notes are also kept as a note on the Notes page, with its action items as a checklist and the transcript under them."
+                                )
+                            }
+                        }
+                        Toggle(isOn: $meetingActionsToReminders) {
+                            HStack(spacing: 2) {
+                                Text("Action Items to Reminders")
+                                InfoTip(
+                                    "Each meeting's action items are added to Reminders when its notes are written, with a due date when the item names one. Needs Reminders access."
                                 )
                             }
                         }

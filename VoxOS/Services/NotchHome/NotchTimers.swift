@@ -25,6 +25,13 @@ struct NotchTimer: Codable, Equatable {
     var completedFocus: Int = 0
     /// Set while paused: the time that was left. `ends` means nothing meanwhile.
     var pausedRemaining: TimeInterval? = nil
+    /// The checklist item a focus session is for; ticked in its note when the session ends.
+    var task: FocusTask? = nil
+
+    struct FocusTask: Codable, Equatable {
+        let note: UUID
+        let item: String
+    }
 
     var isPaused: Bool { pausedRemaining != nil }
 
@@ -160,6 +167,10 @@ final class NotchTimers: ObservableObject {
     }
     /// Today's finished focus sessions.
     @Published private(set) var focusLog: FocusLog
+    /// Focus time by day ("2026-11-21": seconds), for the last few weeks.
+    @Published private(set) var focusHistory: [String: TimeInterval]
+    private static let focusHistoryKey = "NotchFocusHistory"
+    nonisolated static let historyDays = 28
     /// Paused because a call began, so the call's end may go on with it.
     private(set) var pausedForCall = false
     private static let durationsKey = "NotchPomodoroDurations"
@@ -169,12 +180,22 @@ final class NotchTimers: ObservableObject {
     private var tick: Timer?
     private let defaults: UserDefaults
     private let chime: () -> Void
+    private let onTaskDone: @MainActor (NotchTimer.FocusTask) -> Void
 
-    init(defaults: UserDefaults = .standard, chime: @escaping () -> Void = { NSSound(named: "Glass")?.play() }) {
+    init(
+        defaults: UserDefaults = .standard, chime: @escaping () -> Void = { NSSound(named: "Glass")?.play() },
+        onTaskDone: @escaping @MainActor (NotchTimer.FocusTask) -> Void = {
+            NotchNotes.shared.tick($0.item, in: $0.note)
+        }
+    ) {
         self.defaults = defaults
         self.chime = chime
+        self.onTaskDone = onTaskDone
+        focusHistory = Self.load(Self.focusHistoryKey, from: defaults) ?? [:]
         let today = NotchNotes.dayKey(Date())
         focusLog = (Self.load(Self.focusLogKey, from: defaults) ?? FocusLog(day: today)).on(today)
+        // Today's count from before the history was kept starts it.
+        if focusHistory.isEmpty, focusLog.seconds > 0 { focusHistory[focusLog.day] = focusLog.seconds }
         if let saved: PomodoroDurations = Self.load(Self.durationsKey, from: defaults) { durations = saved }
         if let saved: PomodoroOptions = Self.load(Self.optionsKey, from: defaults) { options = saved }
         if let data = defaults.data(forKey: Self.storageKey),
@@ -195,7 +216,7 @@ final class NotchTimers: ObservableObject {
 
     /// Starts a pomodoro with the session asked for, a focus or either break; it carries on from
     /// there as usual.
-    func startPomodoro(_ kind: NotchTimer.Kind = .focus, now: Date = Date()) {
+    func startPomodoro(_ kind: NotchTimer.Kind = .focus, task: NotchTimer.FocusTask? = nil, now: Date = Date()) {
         let kind: NotchTimer.Kind = kind == .countdown ? .focus : kind
         let length = durations.length(of: kind)
         let label: String
@@ -204,7 +225,10 @@ final class NotchTimers: ObservableObject {
         case .longBreak: label = "Long break"
         default: label = "Focus"
         }
-        start(NotchTimer(kind: kind, label: label, duration: length, ends: now.addingTimeInterval(length)))
+        start(
+            NotchTimer(
+                kind: kind, label: kind == .focus ? task?.item ?? label : label, duration: length,
+                ends: now.addingTimeInterval(length), task: kind == .focus ? task : nil))
     }
 
     func cancel() {
@@ -263,6 +287,28 @@ final class NotchTimers: ObservableObject {
         return log
     }
 
+    /// The history with `seconds` added to `day`, and days beyond the kept weeks dropped (day
+    /// keys sort by date).
+    nonisolated static func recorded(_ history: [String: TimeInterval], adding seconds: TimeInterval, on day: String)
+        -> [String: TimeInterval]
+    {
+        var history = history
+        history[day, default: 0] += seconds
+        let kept = Set(history.keys.sorted().suffix(historyDays))
+        return history.filter { kept.contains($0.key) }
+    }
+
+    /// The last seven days, oldest first, with their focus time.
+    nonisolated static func week(
+        _ history: [String: TimeInterval], endingOn now: Date, calendar: Calendar = .current
+    ) -> [(day: Date, seconds: TimeInterval)] {
+        let today = calendar.startOfDay(for: now)
+        return (0..<7).reversed().compactMap { back in
+            guard let day = calendar.date(byAdding: .day, value: -back, to: today) else { return nil }
+            return (day, history[NotchNotes.dayKey(day, calendar: calendar)] ?? 0)
+        }
+    }
+
     /// "1 session · 25m today", "4 sessions · 1h 40m today".
     nonisolated static func focusSummary(_ log: FocusLog) -> String {
         let minutes = Int((log.seconds / 60).rounded())
@@ -293,6 +339,9 @@ final class NotchTimers: ObservableObject {
         if running.kind == .focus {
             focusLog = Self.logged(focusLog, adding: running.duration, on: NotchNotes.dayKey(now))
             store(focusLog, as: Self.focusLogKey)
+            focusHistory = Self.recorded(focusHistory, adding: running.duration, on: NotchNotes.dayKey(now))
+            store(focusHistory, as: Self.focusHistoryKey)
+            if let task = running.task { onTaskDone(task) }
         }
         finished = Finished(label: label(for: running), next: next, at: now)
         self.running = next

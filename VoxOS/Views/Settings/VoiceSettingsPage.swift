@@ -232,6 +232,20 @@ struct VoiceSettingsPage: View {
                     }
 
                     LabeledContent {
+                        ShortcutRecorder(action: .dictateToTodaysNote) {
+                            recordingShortcutManager.updateShortcutStatus()
+                        }
+                        .controlSize(.small)
+                    } label: {
+                        HStack(spacing: 2) {
+                            Text("Dictate into Today's Note")
+                            InfoTip(
+                                "Starts the recorder, and what you say goes into today's note on a line of its own after the time, instead of into the app in front. Press it again to stop, as with dictation."
+                            )
+                        }
+                    }
+
+                    LabeledContent {
                         HStack(spacing: 8) {
                             ShortcutRecorder(
                                 action: .cancelRecorder,

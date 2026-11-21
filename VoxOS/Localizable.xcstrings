@@ -423,6 +423,22 @@
         }
       }
     },
+    "%@ of focus this week" : {
+      "localizations" : {
+        "de" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "%@ Fokus diese Woche"
+          }
+        },
+        "zh-Hans" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "本周专注 %@"
+          }
+        }
+      }
+    },
     "%@ or %@" : {
       "localizations" : {
         "de" : {
@@ -3588,6 +3604,22 @@
         }
       }
     },
+    "Action Items to Reminders" : {
+      "localizations" : {
+        "de" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Aufgaben an Erinnerungen"
+          }
+        },
+        "zh-Hans" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "行动项添加到提醒事项"
+          }
+        }
+      }
+    },
     "Activate" : {
       "localizations" : {
         "de" : {
@@ -4655,6 +4687,22 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "按下 ⌃⌃ 后，你一停顿，智能体就会发送请求，无需再按一次。它每次都会了解房间有多安静；在嘈杂的房间里，它会改为等待实时转写稳定下来。"
+          }
+        }
+      }
+    },
+    "Agenda" : {
+      "localizations" : {
+        "de" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Tagesordnung"
+          }
+        },
+        "zh-Hans" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "议程"
           }
         }
       }
@@ -5908,6 +5956,22 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "助手回复未存储：%@"
+          }
+        }
+      }
+    },
+    "Attendees" : {
+      "localizations" : {
+        "de" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Teilnehmende"
+          }
+        },
+        "zh-Hans" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "参与者"
           }
         }
       }
@@ -10537,6 +10601,22 @@
         }
       }
     },
+    "Dictate into Today's Note" : {
+      "localizations" : {
+        "de" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "In die heutige Notiz diktieren"
+          }
+        },
+        "zh-Hans" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "口述到今日备忘录"
+          }
+        }
+      }
+    },
     "Dictate with %@ to see your first stats." : {
       "localizations" : {
         "de" : {
@@ -11371,6 +11451,22 @@
         }
       }
     },
+    "Draft “Running Late” Email" : {
+      "localizations" : {
+        "de" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "E-Mail „Ich verspäte mich“ entwerfen"
+          }
+        },
+        "zh-Hans" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "起草“我会晚到”邮件"
+          }
+        }
+      }
+    },
     "Drafts and replies to emails" : {
       "localizations" : {
         "de" : {
@@ -11591,6 +11687,22 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "已结束"
+          }
+        }
+      }
+    },
+    "Each meeting's action items are added to Reminders when its notes are written, with a due date when the item names one. Needs Reminders access." : {
+      "localizations" : {
+        "de" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Die Aufgaben jeder Besprechung werden zu den Erinnerungen hinzugefügt, sobald ihre Notizen geschrieben sind, mit Fälligkeit, wenn die Aufgabe eine nennt. Benötigt Zugriff auf Erinnerungen."
+          }
+        },
+        "zh-Hans" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "会议记录生成后，其行动项会添加到提醒事项；如果某项提到日期，则设为截止日期。需要提醒事项访问权限。"
           }
         }
       }
@@ -13646,6 +13758,22 @@
         }
       }
     },
+    "Focus on This Item" : {
+      "localizations" : {
+        "de" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Auf diesen Punkt fokussieren"
+          }
+        },
+        "zh-Hans" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "专注于此项"
+          }
+        }
+      }
+    },
     "Follow" : {
       "localizations" : {
         "de" : {
@@ -13694,6 +13822,22 @@
         }
       }
     },
+    "For 1 Hour" : {
+      "localizations" : {
+        "de" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Für 1 Stunde"
+          }
+        },
+        "zh-Hans" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "1 小时"
+          }
+        }
+      }
+    },
     "For dictation started with a tap: VoxOS stops and pastes once you pause, a little longer than the Agent's pause." : {
       "localizations" : {
         "de" : {
@@ -13706,6 +13850,38 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "适用于轻点开始的听写：你一停顿，VoxOS 就会停止并粘贴，停顿时间比智能体的稍长。"
+          }
+        }
+      }
+    },
+    "Free" : {
+      "localizations" : {
+        "de" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Frei"
+          }
+        },
+        "zh-Hans" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "空闲"
+          }
+        }
+      }
+    },
+    "Free Time" : {
+      "localizations" : {
+        "de" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Freie Zeit"
+          }
+        },
+        "zh-Hans" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "空闲时间"
           }
         }
       }
@@ -14211,6 +14387,22 @@
         }
       }
     },
+    "Hi all,\n\nI'm running a few minutes late for %@. I'll join as soon as I can.\n" : {
+      "localizations" : {
+        "de" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Hallo zusammen,\n\nich komme ein paar Minuten zu spät zu %@. Ich bin so bald wie möglich dabei.\n"
+          }
+        },
+        "zh-Hans" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "大家好，\n\n我参加 %@ 会晚几分钟，会尽快加入。\n"
+          }
+        }
+      }
+    },
     "Hi-Res Lossless" : {
       "localizations" : {
         "de" : {
@@ -14272,6 +14464,22 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "隐藏程序坞图标"
+          }
+        }
+      }
+    },
+    "Hide During Focus" : {
+      "localizations" : {
+        "de" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Beim Fokus ausblenden"
+          }
+        },
+        "zh-Hans" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "专注时隐藏"
           }
         }
       }
@@ -18638,6 +18846,22 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "下一步"
+          }
+        }
+      }
+    },
+    "No App" : {
+      "localizations" : {
+        "de" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Keine App"
+          }
+        },
+        "zh-Hans" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "无应用"
           }
         }
       }
@@ -23368,6 +23592,22 @@
         }
       }
     },
+    "Quiet the Notch" : {
+      "localizations" : {
+        "de" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Notch ruhig stellen"
+          }
+        },
+        "zh-Hans" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "让刘海保持安静"
+          }
+        }
+      }
+    },
     "Quit" : {
       "localizations" : {
         "de" : {
@@ -25524,6 +25764,22 @@
         }
       }
     },
+    "Running a few minutes late: %@" : {
+      "localizations" : {
+        "de" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Ein paar Minuten später: %@"
+          }
+        },
+        "zh-Hans" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "会晚几分钟：%@"
+          }
+        }
+      }
+    },
     "Runs locally with your user permissions. The final transcript is sent on stdin and exposed as VOXOS_TRANSCRIPT." : {
       "localizations" : {
         "de" : {
@@ -27599,6 +27855,38 @@
         }
       }
     },
+    "Show with an App" : {
+      "localizations" : {
+        "de" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Mit einer App zeigen"
+          }
+        },
+        "zh-Hans" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "随应用显示"
+          }
+        }
+      }
+    },
+    "Shown with %@" : {
+      "localizations" : {
+        "de" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Mit %@ gezeigt"
+          }
+        },
+        "zh-Hans" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "随 %@ 显示"
+          }
+        }
+      }
+    },
     "Shows after a few dictations" : {
       "localizations" : {
         "de" : {
@@ -28561,6 +28849,22 @@
         }
       }
     },
+    "Starts the recorder, and what you say goes into today's note on a line of its own after the time, instead of into the app in front. Press it again to stop, as with dictation." : {
+      "localizations" : {
+        "de" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Startet die Aufnahme; was du sagst, landet in der heutigen Notiz in einer eigenen Zeile nach der Uhrzeit statt in der App im Vordergrund. Erneut drücken zum Beenden, wie beim Diktieren."
+          }
+        },
+        "zh-Hans" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "开始录音，你说的话会以单独一行（前面带时间）写入今日备忘录，而不是前台应用。再按一次停止，与口述相同。"
+          }
+        }
+      }
+    },
     "Stats not updated yet" : {
       "localizations" : {
         "de" : {
@@ -28605,6 +28909,22 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "停止"
+          }
+        }
+      }
+    },
+    "Stop Being Quiet" : {
+      "localizations" : {
+        "de" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Ruhe beenden"
+          }
+        },
+        "zh-Hans" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "结束安静"
           }
         }
       }
@@ -29163,6 +29483,22 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "系统提示词不能为空"
+          }
+        }
+      }
+    },
+    "THIS WEEK" : {
+      "localizations" : {
+        "de" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "DIESE WOCHE"
+          }
+        },
+        "zh-Hans" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "本周"
           }
         }
       }
@@ -31998,6 +32334,22 @@
         }
       }
     },
+    "Until Tomorrow" : {
+      "localizations" : {
+        "de" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Bis morgen"
+          }
+        },
+        "zh-Hans" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "直到明天"
+          }
+        }
+      }
+    },
     "Untitled" : {
       "localizations" : {
         "de" : {
@@ -34016,6 +34368,22 @@
         }
       }
     },
+    "When nothing else shows and no meeting is on, the notch says how long until your next meeting today. Needs Calendar access." : {
+      "localizations" : {
+        "de" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Wenn nichts anderes angezeigt wird und keine Besprechung läuft, zeigt die Notch, wie lange es bis zur nächsten Besprechung heute dauert. Benötigt Kalenderzugriff."
+          }
+        },
+        "zh-Hans" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "当没有其他内容显示且没有进行中的会议时，刘海会显示距离今天下一场会议还有多久。需要日历访问权限。"
+          }
+        }
+      }
+    },
     "When the app running the session is in front, a request waits as a small band with a count instead of a card, since the terminal is asking too. Click the band to answer in the notch." : {
       "localizations" : {
         "de" : {
@@ -35404,6 +35772,22 @@
         }
       }
     },
+    "for %lldm" : {
+      "localizations" : {
+        "de" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "für %lld Min."
+          }
+        },
+        "zh-Hans" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "%lld 分钟"
+          }
+        }
+      }
+    },
     "hear in " : {
       "localizations" : {
         "de" : {
@@ -35812,6 +36196,22 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "撤销刚才的"
+          }
+        }
+      }
+    },
+    "until %@" : {
+      "localizations" : {
+        "de" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "bis %@"
+          }
+        },
+        "zh-Hans" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "直到 %@"
           }
         }
       }

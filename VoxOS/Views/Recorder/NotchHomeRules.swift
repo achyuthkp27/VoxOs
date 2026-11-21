@@ -35,7 +35,7 @@ extension NotchHomeManager {
         case .playing: return allowedWing >= NotchHome.wing
         case .timer: return allowedWing >= NotchHome.timerWing
         case .privacy: return allowedWing >= NotchHome.privacyWing
-        case .download, .note: return allowedWing >= NotchHome.noticeWing
+        case .download, .note, .free: return allowedWing >= NotchHome.noticeWing
         // A meeting is said for minutes, then gone, like a notice.
         default: return true
         }
@@ -74,6 +74,7 @@ extension NotchHomeManager {
         case .privacy(let privacy):
             return "privacy:\(privacy.microphone)|\(privacy.camera)|\(privacy.microphoneApp ?? "")"
         case .note(let line): return "note:\(line)"
+        case .free(let until): return "free:\(Int(until.timeIntervalSince1970))"
         default: return nil
         }
     }

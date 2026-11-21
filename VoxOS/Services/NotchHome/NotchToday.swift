@@ -28,6 +28,12 @@ final class NotchToday: ObservableObject {
         var location: String? = nil
         /// The calendar it is on, said when there is no place.
         var calendarName: String? = nil
+        /// Who else is invited, by name (or address), without the user.
+        var attendees: [String] = []
+        /// Their email addresses, for a note to them.
+        var attendeeEmails: [String] = []
+        /// The event's own notes: often the agenda.
+        var notes: String? = nil
     }
 
     struct Weather: Equatable {
@@ -112,6 +118,9 @@ final class NotchToday: ObservableObject {
     @Published private(set) var calendarAccess: CalendarAccess = NotchToday.currentAccess()
     /// The meeting about to start, or just started.
     @Published private(set) var meeting: Event?
+    /// When the free time ends: the next meeting's start, while no meeting is on and one comes
+    /// within the next twelve hours.
+    @Published private(set) var freeUntil: Date?
 
     private let store = EKEventStore()
     private var weatherFetched: Date?
@@ -201,13 +210,26 @@ final class NotchToday: ObservableObject {
         dayEvents = Self.events(stripEvents, on: selectedDay, calendar: calendar)
     }
 
+    private static func address(of participant: EKParticipant) -> String? {
+        let url = participant.url
+        guard url.scheme?.lowercased() == "mailto" else { return nil }
+        let address = url.absoluteString.dropFirst("mailto:".count).removingPercentEncoding ?? ""
+        return address.contains("@") ? address : nil
+    }
+
     private static func event(from event: EKEvent) -> Event {
-        Event(
+        let others = (event.attendees ?? []).filter { !$0.isCurrentUser }
+        return Event(
             id: event.eventIdentifier ?? UUID().uuidString, title: event.title ?? String(localized: "Untitled"),
             start: event.startDate, end: event.endDate, isAllDay: event.isAllDay,
             color: event.calendar.map { Color(cgColor: $0.cgColor) } ?? .white,
             joinURL: joinURL(in: [event.url?.absoluteString, event.location, event.notes]),
-            location: place(event.location), calendarName: event.calendar?.title)
+            location: place(event.location), calendarName: event.calendar?.title,
+            attendees: others.map { $0.name ?? Self.address(of: $0) ?? "" }.filter { !$0.isEmpty },
+            attendeeEmails: others.compactMap(Self.address(of:)),
+            notes: event.notes.map { $0.trimmingCharacters(in: .whitespacesAndNewlines) }.flatMap {
+                $0.isEmpty ? nil : $0
+            })
     }
 
     /// The first link to a known video-call host, in the order given.
@@ -238,6 +260,7 @@ final class NotchToday: ObservableObject {
             meetingTimer?.invalidate()
             meetingTimer = nil
             meeting = nil
+            freeUntil = nil
         }
     }
 
@@ -266,8 +289,39 @@ final class NotchToday: ObservableObject {
     /// The note kept for this meeting, made the first time, shown on the Notes page.
     static func openNote(for event: Event) {
         ActivityTrail.mark("notch meeting note opened")
-        NotchNotes.shared.openMeetingNote(key: occurrence(of: event), title: event.title, start: event.start)
+        NotchNotes.shared.openMeetingNote(
+            key: occurrence(of: event), title: event.title, start: event.start, attendees: event.attendees,
+            agenda: event.notes, link: event.joinURL)
         NotchNotes.showInNotch()
+    }
+
+    /// A Mail draft to the others invited, saying the user is running a few minutes late. Only
+    /// a draft: Mail opens it, and the user sends it.
+    static func draftRunningLate(_ event: Event) {
+        guard !event.attendeeEmails.isEmpty else { return }
+        ActivityTrail.mark("notch running late drafted")
+        let script = runningLateScript(
+            to: event.attendeeEmails, subject: String(localized: "Running a few minutes late: \(event.title)"),
+            body: String(
+                localized: "Hi all,\n\nI'm running a few minutes late for \(event.title). I'll join as soon as I can.\n"
+            ))
+        Task { _ = await AgentAppleScript.runDetached(script, timeout: 20) }
+    }
+
+    /// Mail's script for a visible draft with one recipient per address; it is never sent.
+    nonisolated static func runningLateScript(to addresses: [String], subject: String, body: String) -> String {
+        let recipients = addresses.map {
+            "make new to recipient at end of to recipients with properties {address:\"\(AgentMusic.escape($0))\"}"
+        }
+        return """
+            tell application "Mail"
+              set draft to make new outgoing message with properties {subject:"\(AgentMusic.escape(subject))", content:"\(AgentMusic.escape(body))", visible:true}
+              tell draft
+                \(recipients.joined(separator: "\n    "))
+              end tell
+              activate
+            end tell
+            """
     }
 
     /// One occurrence of an event: a repeating event shares its identifier across them.
@@ -290,6 +344,7 @@ final class NotchToday: ObservableObject {
             let end = Calendar.current.date(byAdding: .hour, value: 12, to: now)
         else {
             if meeting != nil { meeting = nil }
+            if freeUntil != nil { freeUntil = nil }
             return
         }
         let predicate = store.predicateForEvents(
@@ -303,9 +358,15 @@ final class NotchToday: ObservableObject {
             .filter { event in hiddenMeetings[Self.occurrence(of: event)].map { now < $0 } != true }
         let (current, next) = Self.meeting(in: candidates, now: now)
         if meeting != current { meeting = current }
+        let free = Self.freeUntil(in: candidates, now: now)
+        if freeUntil != free { freeUntil = free }
         // A snoozed meeting comes back at its start.
         let snoozeEnds = hiddenMeetings.values.filter { $0 > now && $0 != .distantFuture }.min()
-        guard let wake = [Self.nextCheck(current: current, next: next, now: now), snoozeEnds].compactMap({ $0 }).min()
+        // A meeting under way ending frees the time.
+        let busyEnds = candidates.filter { !$0.isAllDay && $0.start <= now && $0.end > now }.map(\.end).min()
+        guard
+            let wake = [Self.nextCheck(current: current, next: next, now: now), snoozeEnds, busyEnds]
+                .compactMap({ $0 }).min()
         else { return }
         let timer = Timer(fire: wake, interval: 0, repeats: false) { _ in
             Task { @MainActor in NotchToday.shared.checkMeetings() }
@@ -325,6 +386,13 @@ final class NotchToday: ObservableObject {
         }
         let next = timed.first { $0.start.addingTimeInterval(-meetingLead) > now }
         return (current, next)
+    }
+
+    /// The next meeting's start while none is under way; nil during one, or with none ahead.
+    nonisolated static func freeUntil(in events: [Event], now: Date) -> Date? {
+        let timed = events.filter { !$0.isAllDay }
+        guard !timed.contains(where: { $0.start <= now && $0.end > now }) else { return nil }
+        return timed.map(\.start).filter { $0 > now }.min()
     }
 
     /// When the answer can next change: the shown meeting running out, or the next one coming in.

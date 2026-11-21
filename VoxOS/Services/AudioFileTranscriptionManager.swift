@@ -312,6 +312,11 @@ class AudioTranscriptionManager: ObservableObject {
                     title: title, date: transcription.timestamp, notes: transcription.enhancedText,
                     transcript: transcription.text)
             }
+            if item.meetingTitle != nil, UserDefaults.standard.bool(forKey: DefaultsKeys.meetingActionsToReminders) {
+                let items = NotchNotes.actionItems(from: transcription.enhancedText ?? "")
+                    .map { NotchNoteFormat.reminderItem(from: $0) }
+                Task { @MainActor in _ = await NotchReminders.shared.add(items) }
+            }
 
             item.transcription = transcription
             item.status = .completed

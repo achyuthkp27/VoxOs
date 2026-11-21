@@ -194,6 +194,41 @@ private struct NotchNoteEditorView: View {
         notes.openID = nil
     }
 
+    /// A Pomodoro focus session for the checklist item under the caret; the item is ticked when
+    /// the session ends, and the Pomodoro page shows.
+    private func focusOnItem() {
+        guard let item = controller.caretItem else { return }
+        controller.save()
+        NotchTimers.shared.startPomodoro(.focus, task: NotchTimer.FocusTask(note: note.id, item: item))
+        DistributedNotificationCenter.default().postNotificationName(
+            NotchHome.openRequest, object: NotchHomePage.timer.rawValue, userInfo: nil, deliverImmediately: true)
+    }
+
+    /// The note shown in the notch while an app is in front: the apps open now, ticked for the
+    /// one it is tied to.
+    private var appMenu: some View {
+        let linked = notes.app(of: note.id)
+        return Menu {
+            Button {
+                notes.show(note.id, with: nil)
+            } label: {
+                if linked == nil { Label("No App", systemImage: "checkmark") } else { Text("No App") }
+            }
+            Divider()
+            ForEach(NotchFocusApps.shared.candidates(), id: \.id) { app in
+                Button {
+                    notes.show(note.id, with: app.id)
+                } label: {
+                    if linked == app.id { Label(app.name, systemImage: "checkmark") } else { Text(verbatim: app.name) }
+                }
+            }
+        } label: {
+            Label(
+                linked.map { "Shown with \(NotchHomeApp.name(for: $0) ?? $0)" } ?? "Show with an App",
+                systemImage: "macwindow")
+        }
+    }
+
     /// A copy in Apple Notes; macOS asks once whether VoxOS may control Notes.
     private func sendToAppleNotes() {
         controller.save()
@@ -264,6 +299,14 @@ private struct NotchNoteEditorView: View {
                 Label("Clear Ticked Items", systemImage: "checkmark.circle.badge.xmark")
             }
             .disabled(!controller.hasTicked)
+            Button {
+                focusOnItem()
+            } label: {
+                Label("Focus on This Item", systemImage: "timer")
+            }
+            .disabled(controller.caretItem == nil)
+            Divider()
+            appMenu
             Divider()
             Button {
                 controller.save()
@@ -469,6 +512,18 @@ final class NotchNoteEditorController: ObservableObject {
     /// Where the caret is, for a dictation to go.
     var caret: Int { textView?.selectedRange().location ?? (textView?.string as NSString?)?.length ?? 0 }
 
+    /// The unticked checklist item on the caret's line, if it is on one.
+    var caretItem: String? {
+        guard let string = textView?.string as NSString? else { return nil }
+        let line = string.substring(
+            with: string.paragraphRange(for: NSRange(location: min(caret, string.length), length: 0))
+        )
+        .trimmingCharacters(in: .newlines)
+        guard line.hasPrefix(NotchNoteFormat.unchecked + " ") else { return nil }
+        let item = NotchNoteFormat.strippingMarker(line).trimmingCharacters(in: .whitespaces)
+        return item.isEmpty ? nil : item
+    }
+
     func save() { saveNow() }
 
     func textChanged() {
@@ -635,14 +690,56 @@ final class NotchNoteTextView: NSTextView {
         case "a": selectAll(nil)
         case "c": copy(nil)
         case "x": cut(nil)
-        // Plain, so pasted text takes the note's own white instead of the source's colours.
-        case "v": pasteAsPlainText(nil)
+        // Plain, so pasted text takes the note's own white instead of the source's colours; an
+        // image (a screenshot) goes in as itself.
+        case "v": if !pasteImage(from: .general) { pasteAsPlainText(nil) }
         default: return super.performKeyEquivalent(with: event)
         }
         return true
     }
 
     override func cancelOperation(_ sender: Any?) { onEscape?() }
+
+    /// An image on the pasteboard with no text, as an attachment no wider than the note.
+    func pasteImage(from board: NSPasteboard) -> Bool {
+        guard board.string(forType: .string) == nil, let image = NSImage(pasteboard: board) else { return false }
+        insertImage(image)
+        return true
+    }
+
+    /// Image files dropped on the note go in as images; anything else as usual.
+    override func performDragOperation(_ sender: NSDraggingInfo) -> Bool {
+        let urls =
+            sender.draggingPasteboard.readObjects(
+                forClasses: [NSURL.self], options: [.urlReadingContentsConformToTypes: ["public.image"]]) as? [URL]
+            ?? []
+        let images = urls.compactMap(NSImage.init(contentsOf:))
+        guard !images.isEmpty else { return super.performDragOperation(sender) }
+        let point = convert(sender.draggingLocation, from: nil)
+        setSelectedRange(NSRange(location: characterIndexForInsertion(at: point), length: 0))
+        images.forEach(insertImage)
+        return true
+    }
+
+    private func insertImage(_ image: NSImage) {
+        let width = (textContainer?.size.width ?? bounds.width) - 10
+        let attachment = NSTextAttachment()
+        attachment.image = image
+        attachment.bounds = CGRect(origin: .zero, size: NotchNoteTextView.fitted(image.size, width: width))
+        let piece = NSMutableAttributedString(attachment: attachment)
+        piece.addAttributes(NotchNoteFormat.bodyAttributes, range: NSRange(location: 0, length: piece.length))
+        let range = selectedRange()
+        guard shouldChangeText(in: range, replacementString: piece.string) else { return }
+        textStorage?.replaceCharacters(in: range, with: piece)
+        didChangeText()
+        setSelectedRange(NSRange(location: range.location + piece.length, length: 0))
+    }
+
+    /// An image's size scaled down, never up, to fit `width`.
+    nonisolated static func fitted(_ size: CGSize, width: CGFloat) -> CGSize {
+        guard size.width > width, size.width > 0, width > 0 else { return size }
+        return CGSize(width: width, height: size.height * width / size.width)
+    }
 }
 
 private struct NotchNoteTextEditor: NSViewRepresentable {
@@ -664,7 +761,7 @@ private struct NotchNoteTextEditor: NSViewRepresentable {
         textView.drawsBackground = false
         textView.isRichText = true
         textView.allowsUndo = true
-        textView.importsGraphics = false
+        textView.importsGraphics = true
         textView.usesFindBar = false
         textView.isAutomaticQuoteSubstitutionEnabled = false
         textView.insertionPointColor = .white
@@ -707,10 +804,46 @@ private struct NotchNoteTextEditor: NSViewRepresentable {
         private var pending: Task<Void, Never>?
         private var dirty = false
 
+        private var outsideWatch: NSObjectProtocol?
+        private var flushWatch: NSObjectProtocol?
+
         init(note: UUID, notes: NotchNotes, controller: NotchNoteEditorController) {
             self.note = note
             self.notes = notes
             self.controller = controller
+            super.init()
+            // Changed elsewhere while open (a dictation, a focus session ticking an item): read again,
+            // so a save from here never puts the old text back.
+            outsideWatch = NotificationCenter.default.addObserver(
+                forName: NotchNotes.changedOutside, object: nil, queue: .main
+            ) { [weak self] notification in
+                // By value: a bridged UUID is a new object each time, so `object:` would not match.
+                guard notification.object as? UUID == note else { return }
+                MainActor.assumeIsolated { self?.reload() }
+            }
+            // Posted on the main thread and run at once (no queue): saved before the change.
+            flushWatch = NotificationCenter.default.addObserver(
+                forName: NotchNotes.willChangeOutside, object: nil, queue: nil
+            ) { [weak self] notification in
+                guard notification.object as? UUID == note else { return }
+                MainActor.assumeIsolated { self?.saveNow() }
+            }
+        }
+
+        deinit {
+            if let outsideWatch { NotificationCenter.default.removeObserver(outsideWatch) }
+            if let flushWatch { NotificationCenter.default.removeObserver(flushWatch) }
+        }
+
+        private func reload() {
+            guard let textView = controller.textView else { return }
+            pending?.cancel()
+            dirty = false
+            let selection = textView.selectedRange()
+            textView.textStorage?.setAttributedString(notes.text(of: note))
+            let length = textView.textStorage?.length ?? 0
+            textView.setSelectedRange(NSRange(location: min(selection.location, length), length: 0))
+            controller.textChanged()
         }
 
         func textDidChange(_ notification: Notification) {

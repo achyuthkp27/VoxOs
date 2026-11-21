@@ -28,7 +28,8 @@ enum SettingsSection: CaseIterable, Hashable {
             return [
                 "Additional Shortcuts", "Paste Last Transcription (Original)", "Paste Last Transcription (Enhanced)",
                 "Retry Last Transcription", "Undo Last Paste", "Start or Stop Meeting Notes",
-                "Show or Hide Live Transcript", "New Note in the Notch", "Reset to default", "Cancel Recording",
+                "Show or Hide Live Transcript", "New Note in the Notch", "Dictate into Today's Note",
+                "Reset to default", "Cancel Recording",
                 "Middle-Click Recording", "Activation Delay",
             ]
         case .recorder:
@@ -79,8 +80,9 @@ enum SettingsSection: CaseIterable, Hashable {
         case .notchNotices:
             return [
                 "Notices", "Volume & Brightness in the Notch", "Level Style", "Notifications", "Mic & Camera in Use",
-                "Meeting Countdown",
+                "Meeting Countdown", "Free Time",
                 "Meeting Notes", "Include My Microphone", "Show Live Transcript", "Save to Notes",
+                "Action Items to Reminders",
                 "Device Alerts", "Downloads", "Focus", "Unread Counts", "Rain Soon",
             ]
         case .claudeCode:
