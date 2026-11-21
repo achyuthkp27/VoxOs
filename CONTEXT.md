@@ -55,6 +55,11 @@ SDK with `make local`.
   Application Support (`Notes/`), never synced. While one is open the card takes the keyboard
   without making VoxOS active, and stays open until it loses it. A calendar meeting can have its
   own note (by occurrence), which the meeting's write-up goes into; there is one note per day.
+- **Quiet** — notices and the meeting band kept out of the notch until a time
+  (`DefaultsKeys.notchQuietUntil`); VoxOS only, never macOS Focus. A timer that just finished
+  is still said.
+- **App note** — a note tied to an app; while that app is in front its first line is the band, in
+  place of the pinned note.
 - **Call** — `NotchCalls`: another app using the microphone or a camera for a few seconds. A
   running pomodoro pauses for it and the volume preset chosen for calls applies; both are
   undone when it ends.
