@@ -593,6 +593,7 @@ private struct LiveChip: View {
                 .scaleEffect(isLive && pulse ? 1.35 : 1)
                 .opacity(isLive && pulse ? 0.55 : 1)
             Text(isLive ? "LIVE" : "ENDED")
+                .lineLimit(1)
                 .font(.appMono(size: 10, weight: .bold))
                 .tracking(0.8)
                 .foregroundStyle(isLive ? AppTheme.Status.error : AppTheme.Text.secondary)
@@ -600,6 +601,8 @@ private struct LiveChip: View {
         .padding(.horizontal, 8)
         .padding(.vertical, 5)
         .background(Capsule().fill((isLive ? AppTheme.Status.error : AppTheme.Text.muted).opacity(0.14)))
+        // The title beside it takes the row first; the chip keeps its own size and never wraps.
+        .fixedSize()
         .onAppear {
             withAnimation(.easeInOut(duration: 0.9).repeatForever(autoreverses: true)) { pulse = true }
         }
