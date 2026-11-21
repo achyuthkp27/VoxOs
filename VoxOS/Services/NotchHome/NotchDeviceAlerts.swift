@@ -109,10 +109,11 @@ final class NotchDeviceAlerts: ObservableObject {
         guard event.connected, event.battery == nil, hasBluetoothUsage else { return }
         Task { @MainActor [weak self] in
             try? await Task.sleep(for: .seconds(Self.batteryRetry))
-            self?.bluetooth.battery(named: event.name) { battery in
+            guard let watcher = self?.bluetooth else { return }
+            watcher.battery(named: event.name) { battery in
                 guard let battery else { return }
-                Task { @MainActor [weak self] in
-                    self?.post(
+                Task { @MainActor in
+                    NotchDeviceAlerts.shared.post(
                         key: "bt-\(event.address)-battery", symbol: event.symbol, title: event.name,
                         detail: "\(battery)%")
                 }
