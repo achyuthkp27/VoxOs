@@ -34,6 +34,9 @@ final class NotchNotes: ObservableObject {
     @Published var query = ""
     /// A dictation started from a note, waiting for its text.
     private(set) var dictation: DictationTarget?
+    /// The note pinned to the collapsed notch, and its first line, which the band shows.
+    @Published private(set) var pinnedID: UUID?
+    @Published private(set) var pinnedLine: String?
 
     /// A dictation is followed for this long; one cancelled or never finished then lapses, so a
     /// later dictation goes where the cursor is, as usual.
@@ -45,9 +48,19 @@ final class NotchNotes: ObservableObject {
     private var loaded = false
     private let logger = Logger(subsystem: "com.achyuthkp.voxos", category: "NotchNotes")
 
-    init(folder: URL? = nil) {
+    init(folder: URL? = nil, defaults: UserDefaults = .standard) {
         self.folder = folder ?? Self.defaultFolder
+        self.defaults = defaults
+        // Only the pinned note is read at launch, for the band; the list waits for the page.
+        if let raw = defaults.string(forKey: DefaultsKeys.notchPinnedNote), let id = UUID(uuidString: raw),
+            let text = Self.read(url(of: id))?.string
+        {
+            pinnedID = id
+            pinnedLine = Self.title(from: text)
+        }
     }
+
+    private let defaults: UserDefaults
 
     let folder: URL
 
@@ -92,6 +105,69 @@ final class NotchNotes: ObservableObject {
     static func showInNotch() {
         DistributedNotificationCenter.default().postNotificationName(
             NotchHome.openRequest, object: NotchHomePage.notes.rawValue, userInfo: nil, deliverImmediately: true)
+    }
+
+    // MARK: Pinning
+
+    /// Pins the note to the collapsed notch, in place of any other; pinned already, unpins it.
+    func togglePin(_ id: UUID) {
+        if pinnedID == id {
+            pinnedID = nil
+            pinnedLine = nil
+            defaults.removeObject(forKey: DefaultsKeys.notchPinnedNote)
+        } else {
+            pinnedID = id
+            pinnedLine = Self.title(from: text(of: id).string)
+            defaults.set(id.uuidString, forKey: DefaultsKeys.notchPinnedNote)
+        }
+    }
+
+    // MARK: Meetings
+
+    static var savesMeetings: Bool { UserDefaults.standard.bool(forKey: DefaultsKeys.meetingNotesToNotes) }
+
+    /// A meeting's notes as a note of their own: the title, when it was, the summary with its
+    /// action items as a checklist, and the transcript under them.
+    @discardableResult
+    func saveMeeting(title: String, date: Date, notes summary: String?, transcript: String) -> UUID {
+        loadIfNeeded()
+        let id = create(text: "")
+        openID = nil
+        save(Self.meetingNote(title: title, date: date, notes: summary, transcript: transcript), for: id)
+        return id
+    }
+
+    nonisolated static func meetingNote(title: String, date: Date, notes summary: String?, transcript: String)
+        -> NSAttributedString
+    {
+        let result = NSMutableAttributedString()
+        func add(_ text: String, font: NSFont, color: NSColor = NotchNoteFormat.textColor) {
+            result.append(NSAttributedString(string: text + "\n", attributes: [.font: font, .foregroundColor: color]))
+        }
+        let heading = NSFont.systemFont(ofSize: NotchNoteFormat.headingSizes[2], weight: .bold)
+        add(title, font: .systemFont(ofSize: NotchNoteFormat.headingSizes[0], weight: .bold))
+        add(
+            date.formatted(date: .abbreviated, time: .shortened), font: NotchNoteFormat.bodyFont,
+            color: NotchNoteFormat.textColor.withAlphaComponent(0.6))
+        add("", font: NotchNoteFormat.bodyFont)
+        var inActions = false
+        for line in NotchNoteFormat.fromMarkdown(summary ?? "").components(separatedBy: .newlines) {
+            let label = line.trimmingCharacters(in: CharacterSet(charactersIn: ": ")).lowercased()
+            if ["summary", "decisions", "action items"].contains(label) {
+                inActions = label == "action items"
+                add(line.trimmingCharacters(in: CharacterSet(charactersIn: ": ")), font: heading)
+                continue
+            }
+            // An action item is something to tick off.
+            let item = inActions && line.hasPrefix("• ") ? "\(NotchNoteFormat.unchecked) " + line.dropFirst(2) : line
+            add(String(item), font: NotchNoteFormat.bodyFont)
+        }
+        if !transcript.isEmpty {
+            add("", font: NotchNoteFormat.bodyFont)
+            add(String(localized: "Transcript"), font: heading)
+            add(transcript, font: NotchNoteFormat.bodyFont)
+        }
+        return result
     }
 
     // MARK: Dictation
@@ -160,6 +236,7 @@ final class NotchNotes: ObservableObject {
             return
         }
         let title = Self.title(from: text.string)
+        if id == pinnedID { pinnedLine = title }
         if let index = notes.firstIndex(where: { $0.id == id }) {
             notes[index].title = title
             notes[index].text = text.string
@@ -170,6 +247,7 @@ final class NotchNotes: ObservableObject {
     }
 
     func delete(_ id: UUID) {
+        if id == pinnedID { togglePin(id) }
         try? FileManager.default.removeItem(at: url(of: id))
         notes.removeAll { $0.id == id }
         if openID == id { openID = nil }

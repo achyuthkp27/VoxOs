@@ -29,6 +29,7 @@ struct NotchSettingsPage: View {
     @AppStorage(DefaultsKeys.meetingNotesEnabled) private var meetingNotesEnabled = false
     @AppStorage(DefaultsKeys.meetingNotesIncludeMicrophone) private var meetingNotesIncludeMicrophone = true
     @AppStorage(DefaultsKeys.meetingNotesLiveTranscript) private var meetingNotesLiveTranscript = true
+    @AppStorage(DefaultsKeys.meetingNotesToNotes) private var meetingNotesToNotes = true
     @AppStorage(DefaultsKeys.notchMusicEnabled) private var notchMusicEnabled = true
     @AppStorage(DefaultsKeys.notchMusicBarsEnabled) private var notchMusicBarsEnabled = false
     @AppStorage(DefaultsKeys.notchMusicBarsOnBattery) private var notchMusicBarsOnBattery = true
@@ -303,6 +304,14 @@ struct NotchSettingsPage: View {
                                 Text("Show Live Transcript")
                                 InfoTip(
                                     "While a meeting is recorded, a small window shows what is being said, transcribed every few seconds with the mode's speech model. The notes in History are written from the whole recording afterwards, with who spoke."
+                                )
+                            }
+                        }
+                        Toggle(isOn: $meetingNotesToNotes) {
+                            HStack(spacing: 2) {
+                                Text("Save to Notes")
+                                InfoTip(
+                                    "Each meeting's notes are also kept as a note on the Notes page, with its action items as a checklist and the transcript under them."
                                 )
                             }
                         }

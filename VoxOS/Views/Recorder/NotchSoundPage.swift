@@ -78,6 +78,7 @@ struct NotchSoundPage: View {
                     }
                 }
                 Spacer(minLength: 6)
+                if shown == .apps { presetsMenu }
                 NotchToggleChip(
                     symbol: keepAwake.isOn ? "cup.and.saucer.fill" : "cup.and.saucer", on: keepAwake.isOn,
                     tint: .orange,
@@ -143,6 +144,41 @@ struct NotchSoundPage: View {
             }
             .scrollIndicators(.automatic)
         }
+    }
+
+    /// Saved sets of levels and outputs: one click applies a set; the current one can be saved.
+    private var presetsMenu: some View {
+        Menu {
+            if mixer.presets.isEmpty {
+                Text("No presets yet")
+            }
+            ForEach(mixer.presets) { preset in
+                Button(preset.name) { mixer.applyPreset(preset) }
+            }
+            Divider()
+            Button("Save Current Levels as a Preset") { mixer.saveCurrentAsPreset() }
+                .disabled(!mixer.apps.contains { $0.gain < 0.999 || $0.output != nil })
+            if !mixer.presets.isEmpty {
+                Menu("Delete a Preset") {
+                    ForEach(mixer.presets) { preset in
+                        Button(preset.name, role: .destructive) { mixer.deletePreset(preset) }
+                    }
+                }
+            }
+        } label: {
+            Image(systemName: "slider.horizontal.3")
+                .font(.system(size: 10, weight: .semibold))
+                .foregroundStyle(.white.opacity(0.7))
+                .frame(width: 24, height: 20)
+                .background(Capsule().fill(.white.opacity(0.06)))
+                .contentShape(Capsule())
+        }
+        .menuStyle(.button)
+        .buttonStyle(.plain)
+        .menuIndicator(.hidden)
+        .fixedSize()
+        .help(Text("Volume Presets"))
+        .accessibilityLabel(Text("Volume Presets"))
     }
 
     // MARK: Output

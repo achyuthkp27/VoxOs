@@ -228,7 +228,7 @@ final class MeetingNotes: ObservableObject {
         let manager = AudioTranscriptionManager.shared
         manager.addToQueue(
             urls: [url], prompt: Self.prompt(title: title), deletesSourceWhenDone: true,
-            label: String(localized: "Meeting Notes"))
+            label: String(localized: "Meeting Notes"), meetingTitle: title)
         manager.startProcessing(modelContext: engine.modelContext, engine: engine, mode: mode)
     }
 

@@ -99,6 +99,8 @@ enum NotchHome {
         case privacy(NotchPrivacy.State)
         /// A download in progress, and how many others are.
         case download(NotchDownloads.Item, others: Int)
+        /// The note pinned to the notch: its first line, when nothing else is to be said.
+        case note(String)
         case expanded
 
         /// Shows something beyond the hardware notch.
@@ -127,7 +129,7 @@ enum NotchHome {
     static func content(
         enabled: Bool, hasNotch: Bool, blocked: Bool, hovered: Bool, dropping: Bool, notice: Notice?,
         timerRunning: Bool, musicPlaying: Bool, meeting: NotchToday.Event? = nil, privacy: NotchPrivacy.State? = nil,
-        level: NotchHUD.Level? = nil, downloads: [NotchDownloads.Item] = []
+        level: NotchHUD.Level? = nil, downloads: [NotchDownloads.Item] = [], pinnedNote: String? = nil
     ) -> Content {
         guard enabled, hasNotch, !blocked else { return .hidden }
         if hovered || dropping { return .expanded }
@@ -139,6 +141,7 @@ enum NotchHome {
         if let download = downloads.first { return .download(download, others: downloads.count - 1) }
         if timerRunning { return .timer }
         if musicPlaying { return .playing }
+        if let pinnedNote { return .note(pinnedNote) }
         return .bare
     }
 
@@ -152,7 +155,7 @@ enum NotchHome {
             return CGSize(width: notchWidth + wing * 2, height: notchHeight)
         case .timer:
             return CGSize(width: notchWidth + timerWing * 2, height: notchHeight)
-        case .notice, .meeting, .download:
+        case .notice, .meeting, .download, .note:
             return CGSize(width: notchWidth + noticeWing * 2, height: notchHeight)
         case .privacy:
             return CGSize(width: notchWidth + privacyWing * 2, height: notchHeight)
@@ -176,7 +179,7 @@ enum NotchHome {
     static func radii(for content: Content) -> NotchDesign.Radii {
         switch content {
         case .hidden, .bare: return NotchDesign.resting
-        case .playing, .timer, .notice, .meeting, .privacy, .level, .download: return NotchDesign.listening
+        case .playing, .timer, .notice, .meeting, .privacy, .level, .download, .note: return NotchDesign.listening
         case .expanded: return NotchDesign.expanded
         }
     }

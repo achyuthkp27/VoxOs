@@ -223,7 +223,7 @@ final class NotchHomeManager {
             notice: firstNotice ?? deviceNotice ?? agentNotice ?? watchNotice,
             timerRunning: timers.running != nil, musicPlaying: track?.isPlaying == true, meeting: meeting,
             privacy: NotchPrivacy.shared.state, level: NotchHUD.shared.level,
-            downloads: NotchDownloads.shared.active)
+            downloads: NotchDownloads.shared.active, pinnedNote: NotchNotes.shared.pinnedLine)
         // The keys are taken from macOS only while the notch can answer them.
         NotchHUD.shared.update(canShow: content != .hidden)
         if model?.level != NotchHUD.shared.level { model?.level = NotchHUD.shared.level }
@@ -737,7 +737,14 @@ final class NotchHomeManager {
             land()
             model.page = NotchHomePage.preferred(
                 hasTrack: track != nil, timerRunning: timerRunning, dropping: dropping || shelfForDrag,
-                meeting: meetingsWatched && NotchToday.shared.meeting != nil)
+                meeting: meetingsWatched && NotchToday.shared.meeting != nil,
+                pinnedNote: NotchNotes.shared.pinnedID != nil)
+            // Opened from the pinned note's band: that note, ready to read.
+            if model.page == .notes, model.content == .note(NotchNotes.shared.pinnedLine ?? ""),
+                let pinned = NotchNotes.shared.pinnedID
+            {
+                NotchNotes.shared.openID = pinned
+            }
             readModes(of: track)
         }
         // A page that went away (no track, or switched off in Settings) gives way to the first
@@ -849,8 +856,9 @@ final class NotchHomeManager {
         model.$mirrorShown.dropFirst().removeDuplicates().receive(on: RunLoop.main)
             .sink { [weak self] _ in self?.fitCard() }
             .store(in: &cancellables)
-        // A note open on the Notes page, or its search, takes the keyboard; anything else gives
-        // it back.
+        // With a note open on the Notes page, or its search, the card may take the keyboard (a
+        // click into it does); anything else gives it back. Opening the card never takes it by
+        // itself, or a hover would pull typing away from the app in front.
         Publishers.CombineLatest4(
             model.$content, model.$page, NotchNotes.shared.$openID, NotchNotes.shared.$searching
         )
@@ -859,6 +867,21 @@ final class NotchHomeManager {
             self?.updateKeyboard(wanted: content == .expanded && page == .notes && (openID != nil || searching))
         }
         .store(in: &cancellables)
+        // A note opened or the search shown with a click, while the card is up: ready to type.
+        Publishers.CombineLatest(NotchNotes.shared.$openID, NotchNotes.shared.$searching)
+            .dropFirst()
+            .receive(on: RunLoop.main)
+            .sink { [weak self] openID, searching in
+                guard let panel = self?.panel, panel.acceptsKeyboard, panel.isVisible,
+                    openID != nil || searching
+                else { return }
+                panel.makeKey()
+            }
+            .store(in: &cancellables)
+        // The pinned note's band follows its first line.
+        NotchNotes.shared.$pinnedLine.dropFirst().removeDuplicates().receive(on: RunLoop.main)
+            .sink { [weak self] _ in self?.setNeedsRefresh() }
+            .store(in: &cancellables)
         // So do the Pomodoro page's settings.
         model.$timerSettingsShown.dropFirst().removeDuplicates().receive(on: RunLoop.main)
             .sink { [weak self] _ in self?.fitCard() }
@@ -915,11 +938,7 @@ final class NotchHomeManager {
         guard let panel else { return }
         guard panel.acceptsKeyboard != wanted else { return }
         panel.acceptsKeyboard = wanted
-        if wanted {
-            panel.makeKey()
-        } else if panel.isKeyWindow {
-            panel.resignKey()
-        }
+        if !wanted, panel.isKeyWindow { panel.resignKey() }
     }
 
     /// The open card follows its page's height. Growing, the window grows first and the card with it;

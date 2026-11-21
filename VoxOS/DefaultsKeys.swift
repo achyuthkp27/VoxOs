@@ -189,6 +189,12 @@ enum DefaultsKeys {
     static let meetingNotesIncludeMicrophone = "MeetingNotesIncludeMicrophone"
     /// A window shows the meeting's words as they are said while it is recorded. On by default.
     static let meetingNotesLiveTranscript = "MeetingNotesLiveTranscript"
+    /// Meeting notes are also saved as a note on Notch Home's Notes page. On by default.
+    static let meetingNotesToNotes = "MeetingNotesToNotes"
+    /// The note whose first line the collapsed notch shows, by id; none when unset.
+    static let notchPinnedNote = "NotchPinnedNote"
+    /// Saved sets of app volumes and outputs for the Sound page, as JSON.
+    static let notchVolumePresets = "NotchVolumePresets"
     /// Meetings recorded when VoxOS quit, written up at the next launch: path and title.
     static let meetingNotesPending = "MeetingNotesPending"
     /// The notch shows the playing track and opens into a player on hover.

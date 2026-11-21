@@ -96,6 +96,7 @@ enum AppDefaults {
             DefaultsKeys.notchMeetingsEnabled: true,
             DefaultsKeys.meetingNotesIncludeMicrophone: true,
             DefaultsKeys.meetingNotesLiveTranscript: true,
+            DefaultsKeys.meetingNotesToNotes: true,
             DefaultsKeys.notchMusicEnabled: true,
             // Off: listening to the sound output turns on macOS's purple recording dot.
             DefaultsKeys.notchMusicBarsEnabled: false,

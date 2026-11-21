@@ -273,6 +273,14 @@ struct NotchHomeView: View {
             .frame(maxWidth: NotchHome.noticeWing - inset - NotchDesign.contentInset, alignment: .leading)
         case .privacy(let privacy):
             NotchPrivacyGlyphs(state: privacy, onToggleMute: onToggleMute)
+        case .note(let line):
+            HStack(spacing: 7) {
+                Image(systemName: "note.text").font(.system(size: 11, weight: .semibold))
+                    .foregroundStyle(Color(red: 1, green: 0.84, blue: 0.3))
+                Text(verbatim: line).font(.app(size: 12, weight: .semibold)).lineLimit(1)
+            }
+            .foregroundStyle(.white)
+            .frame(maxWidth: NotchHome.noticeWing - inset - NotchDesign.contentInset, alignment: .leading)
         case .download(let item, _):
             HStack(spacing: 7) {
                 Image(systemName: "arrow.down.circle.fill").font(.system(size: 12, weight: .semibold))

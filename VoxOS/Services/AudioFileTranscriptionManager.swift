@@ -27,8 +27,10 @@ class AudioTranscriptionManager: ObservableObject {
 
     /// Add one or more audio file URLs to the queue. Invalid files are silently skipped. A
     /// `prompt` replaces the mode's prompt for these files' AI step.
-    func addToQueue(urls: [URL], prompt: CustomPrompt? = nil, deletesSourceWhenDone: Bool = false, label: String? = nil)
-    {
+    func addToQueue(
+        urls: [URL], prompt: CustomPrompt? = nil, deletesSourceWhenDone: Bool = false, label: String? = nil,
+        meetingTitle: String? = nil
+    ) {
         for url in urls {
             guard FileManager.default.fileExists(atPath: url.path) else { continue }
             guard SupportedMedia.isSupported(url: url) else { continue }
@@ -40,7 +42,8 @@ class AudioTranscriptionManager: ObservableObject {
             }
 
             let item = AudioFileQueueItem(
-                url: url, prompt: prompt, deletesSourceWhenDone: deletesSourceWhenDone, label: label)
+                url: url, prompt: prompt, deletesSourceWhenDone: deletesSourceWhenDone, label: label,
+                meetingTitle: meetingTitle)
             queue.append(item)
         }
     }
@@ -304,6 +307,11 @@ class AudioTranscriptionManager: ObservableObject {
             try modelContext.save()
             NotificationCenter.default.post(name: .transcriptionCreated, object: transcription)
             NotificationCenter.default.post(name: .transcriptionCompleted, object: transcription)
+            if let title = item.meetingTitle, NotchNotes.savesMeetings {
+                NotchNotes.shared.saveMeeting(
+                    title: title, date: transcription.timestamp, notes: transcription.enhancedText,
+                    transcript: transcription.text)
+            }
 
             item.transcription = transcription
             item.status = .completed

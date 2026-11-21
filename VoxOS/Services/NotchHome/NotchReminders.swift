@@ -62,10 +62,10 @@ final class NotchReminders: ObservableObject {
         }
     }
 
-    /// New reminders in the default list, one per title, asking for access first if it has not
-    /// been given. Returns how many were added.
-    func add(_ titles: [String]) async -> Int {
-        guard !titles.isEmpty else { return 0 }
+    /// New reminders in the default list, one per item, with its due date when it has one, asking
+    /// for access first if it has not been given. Returns how many were added.
+    func add(_ items: [NotchNoteFormat.ReminderItem]) async -> Int {
+        guard !items.isEmpty else { return 0 }
         if access != .granted {
             let granted = (try? await store.requestFullAccessToReminders()) ?? false
             access = granted ? .granted : Self.currentAccess()
@@ -74,10 +74,11 @@ final class NotchReminders: ObservableObject {
         }
         guard let list = store.defaultCalendarForNewReminders() else { return 0 }
         var added = 0
-        for title in titles {
+        for item in items {
             let reminder = EKReminder(eventStore: store)
-            reminder.title = title
+            reminder.title = item.title
             reminder.calendar = list
+            reminder.dueDateComponents = item.due
             if (try? store.save(reminder, commit: false)) != nil { added += 1 }
         }
         try? store.commit()

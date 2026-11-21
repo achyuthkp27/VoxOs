@@ -52,18 +52,21 @@ enum NotchHomePage: String, CaseIterable, Identifiable {
     }
 
     /// What opening the notch shows: files being dragged in go to the shelf, a meeting about to
-    /// start to the calendar, then whatever is running — a timer, then music — and otherwise the
-    /// first page that is on. A page switched off falls through to that first page too.
+    /// start to the calendar, then whatever is running — a timer, then music — then the note
+    /// pinned to the notch, and otherwise the first page that is on. A page switched off falls through to that first page too.
     static func preferred(
         hasTrack: Bool,
         timerRunning: Bool,
         dropping: Bool,
         meeting: Bool = false,
+        pinnedNote: Bool = false,
         defaults: UserDefaults = .standard
     ) -> NotchHomePage {
         let pages = available(hasTrack: hasTrack, defaults: defaults)
         let wanted: NotchHomePage =
-            dropping ? .shelf : meeting ? .today : timerRunning ? .timer : hasTrack ? .music : .today
+            dropping
+            ? .shelf
+            : meeting ? .today : timerRunning ? .timer : hasTrack ? .music : pinnedNote ? .notes : .today
         return pages.contains(wanted) ? wanted : pages.first ?? .today
     }
 }

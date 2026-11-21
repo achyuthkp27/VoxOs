@@ -32,8 +32,18 @@ final class NotchMixer: ObservableObject {
         var isMuted: Bool { gain <= 0.001 }
     }
 
+    /// A saved set of levels and outputs, applied with one click ("Meeting": Music at 20%, Zoom
+    /// on AirPods). Apps it does not name go back to full on the default output.
+    struct Preset: Codable, Identifiable, Equatable {
+        var id = UUID()
+        var name: String
+        var levels: [String: Float]
+        var outputs: [String: String]
+    }
+
     /// Levels the user set, by app, for this run.
     @Published private(set) var apps: [App] = []
+    @Published private(set) var presets: [Preset] = NotchMixer.loadPresets()
     private var gains: [String: Float] = [:]
     /// The level an app had before it was muted, to go back to.
     private var unmuted: [String: Float] = [:]
@@ -94,6 +104,71 @@ final class NotchMixer: ObservableObject {
         outputs[bundleID] = uid
         if let index = apps.firstIndex(where: { $0.bundleID == bundleID }) { apps[index].output = uid }
         apply(bundleID)
+    }
+
+    // MARK: Presets
+
+    /// What is set now (every app turned down or sent elsewhere), kept as a preset.
+    func saveCurrentAsPreset() {
+        let levels = gains.filter { $0.value < 0.999 }
+        guard !levels.isEmpty || !outputs.isEmpty else { return }
+        let pairs = NotchAudioOutput.outputDevices().compactMap { device in
+            AppVolumeTap.uid(of: device.id).map { ($0, device.name) }
+        }
+        let devices = Dictionary(pairs, uniquingKeysWith: { first, _ in first })
+        let name = Self.presetName(
+            levels: levels, outputs: outputs, appName: { NotchHomeApp.name(for: $0) ?? $0 },
+            deviceName: { devices[$0] ?? $0 })
+        presets.append(Preset(name: name, levels: levels, outputs: outputs))
+        savePresets()
+    }
+
+    func applyPreset(_ preset: Preset) {
+        let touched = Set(gains.keys).union(outputs.keys).union(preset.levels.keys).union(preset.outputs.keys)
+        gains = preset.levels
+        outputs = preset.outputs
+        unmuted = [:]
+        for index in apps.indices {
+            apps[index].gain = gains[apps[index].bundleID] ?? 1
+            apps[index].output = outputs[apps[index].bundleID]
+        }
+        for bundleID in touched { apply(bundleID) }
+        setVisible(listening)
+    }
+
+    func deletePreset(_ preset: Preset) {
+        presets.removeAll { $0.id == preset.id }
+        savePresets()
+    }
+
+    /// "Music 20% · Zoom on AirPods": the first few apps it changes, in name order.
+    nonisolated static func presetName(
+        levels: [String: Float], outputs: [String: String], appName: (String) -> String,
+        deviceName: (String) -> String
+    ) -> String {
+        let apps = Set(levels.keys).union(outputs.keys).map { (id: $0, name: appName($0)) }
+            .sorted { $0.name.localizedCaseInsensitiveCompare($1.name) == .orderedAscending }
+        let parts = apps.prefix(3).map { app -> String in
+            var part = app.name
+            if let level = levels[app.id] {
+                part += level <= 0.001 ? " " + String(localized: "muted") : " \(Int((level * 100).rounded()))%"
+            }
+            if let output = outputs[app.id] { part += " → " + deviceName(output) }
+            return part
+        }
+        let more = apps.count > 3 ? " +\(apps.count - 3)" : ""
+        return parts.joined(separator: " · ") + more
+    }
+
+    private static func loadPresets() -> [Preset] {
+        guard let data = UserDefaults.standard.data(forKey: DefaultsKeys.notchVolumePresets) else { return [] }
+        return (try? JSONDecoder().decode([Preset].self, from: data)) ?? []
+    }
+
+    private func savePresets() {
+        if let data = try? JSONEncoder().encode(presets) {
+            UserDefaults.standard.set(data, forKey: DefaultsKeys.notchVolumePresets)
+        }
     }
 
     /// Turns every app back to full, as when the feature is switched off.

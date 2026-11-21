@@ -179,6 +179,70 @@ enum NotchNoteFormat {
             .filter { !$0.isEmpty }
     }
 
+    /// Every ticked checklist line taken out, with its line break.
+    static func removeTicked(in text: NSMutableAttributedString) {
+        let string = text.string as NSString
+        var lines: [NSRange] = []
+        string.enumerateSubstrings(
+            in: NSRange(location: 0, length: string.length), options: [.byParagraphs, .substringNotRequired]
+        ) { _, _, enclosing, _ in
+            if string.substring(with: enclosing).hasPrefix("\(checked) ") { lines.append(enclosing) }
+        }
+        for line in lines.reversed() { text.deleteCharacters(in: line) }
+    }
+
+    static func hasTicked(_ text: String) -> Bool {
+        text.components(separatedBy: .newlines).contains { $0.hasPrefix("\(checked) ") }
+    }
+
+    /// A model's Markdown as note text: its lists with the note's own markers, checkboxes as
+    /// boxes, and the emphasis marks and heading hashes dropped.
+    static func fromMarkdown(_ markdown: String) -> String {
+        markdown.components(separatedBy: .newlines).map { raw -> String in
+            var line = raw.trimmingCharacters(in: .whitespaces)
+            for (prefix, marker) in [
+                ("- [ ] ", "\(unchecked) "), ("* [ ] ", "\(unchecked) "), ("- [x] ", "\(checked) "),
+                ("- [X] ", "\(checked) "), ("* [x] ", "\(checked) "), ("- ", "• "), ("* ", "• "),
+            ] where line.hasPrefix(prefix) {
+                line = marker + line.dropFirst(prefix.count)
+                break
+            }
+            while line.hasPrefix("#") { line.removeFirst() }
+            return line.replacingOccurrences(of: "**", with: "").replacingOccurrences(of: "__", with: "")
+                .trimmingCharacters(in: .whitespaces)
+        }
+        .joined(separator: "\n")
+        .trimmingCharacters(in: .whitespacesAndNewlines)
+    }
+
+    /// A checklist item read for a reminder: a date or time in it ("tomorrow 3pm", "on Friday")
+    /// becomes the reminder's due date and leaves the title.
+    struct ReminderItem: Equatable {
+        let title: String
+        let due: DateComponents?
+    }
+
+    static func reminderItem(from text: String, now: Date = Date(), calendar: Calendar = .current) -> ReminderItem {
+        guard let detector = try? NSDataDetector(types: NSTextCheckingResult.CheckingType.date.rawValue),
+            let match = detector.firstMatch(
+                in: text, options: [], range: NSRange(location: 0, length: (text as NSString).length)),
+            let date = match.date
+        else { return ReminderItem(title: text, due: nil) }
+        let phrase = (text as NSString).substring(with: match.range)
+        var title = (text as NSString).replacingCharacters(in: match.range, with: " ")
+            .split(whereSeparator: \.isWhitespace).joined(separator: " ")
+        // The little word that led into the date goes with it.
+        if let word = ["on", "at", "by", "due", "before"].first(where: { title.lowercased().hasSuffix(" " + $0) }) {
+            title = String(title.dropLast(word.count + 1))
+        }
+        guard !title.isEmpty else { return ReminderItem(title: text, due: nil) }
+        let lower = phrase.lowercased()
+        let clock = lower.contains("am") || lower.contains("pm") || lower.contains(":")
+        let hasTime = lower.contains("noon") || (phrase.rangeOfCharacter(from: .decimalDigits) != nil && clock)
+        let parts: Set<Calendar.Component> = hasTime ? [.year, .month, .day, .hour, .minute] : [.year, .month, .day]
+        return ReminderItem(title: title, due: calendar.dateComponents(parts, from: date))
+    }
+
     /// The box at `index`, ticked or unticked; nil if there is none there.
     static func toggledBox(_ character: String) -> String? {
         switch character {

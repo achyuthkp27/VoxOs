@@ -36,8 +36,14 @@ class AudioFileQueueItem: Identifiable, ObservableObject {
     let deletesSourceWhenDone: Bool
     /// The label History shows in place of the mode's name: "Meeting Notes" for a meeting.
     let label: String?
+    /// A meeting's title: its notes are also saved as a note (see `NotchNotes.saveMeeting`).
+    let meetingTitle: String?
 
-    init(url: URL, prompt: CustomPrompt? = nil, deletesSourceWhenDone: Bool = false, label: String? = nil) {
+    init(
+        url: URL, prompt: CustomPrompt? = nil, deletesSourceWhenDone: Bool = false, label: String? = nil,
+        meetingTitle: String? = nil
+    ) {
+        self.meetingTitle = meetingTitle
         self.url = url
         self.filename = url.lastPathComponent
         self.prompt = prompt

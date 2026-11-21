@@ -56,7 +56,7 @@ struct NotchNotesPage: View {
                 ScrollView(.vertical) {
                     VStack(spacing: 4) {
                         ForEach(notes.shown) { note in
-                            NotchNoteRow(note: note) { notes.openID = note.id }
+                            NotchNoteRow(note: note, pinned: notes.pinnedID == note.id) { notes.openID = note.id }
                         }
                     }
                 }
@@ -95,12 +95,18 @@ struct NotchNotesPage: View {
 
 private struct NotchNoteRow: View {
     let note: NotchNotes.Note
+    let pinned: Bool
     let action: () -> Void
     @State private var hovered = false
 
     var body: some View {
         Button(action: action) {
             HStack(spacing: 8) {
+                if pinned {
+                    Image(systemName: "pin.fill").font(.system(size: 10, weight: .semibold))
+                        .foregroundStyle(Color(red: 1, green: 0.84, blue: 0.3))
+                        .help(Text("Pinned to the notch"))
+                }
                 Text(verbatim: note.title)
                     .font(.app(size: 13, weight: .semibold))
                     .foregroundStyle(.white)
@@ -130,34 +136,36 @@ private struct NotchNoteEditorView: View {
     @State private var confirmingDelete = false
     /// How many reminders the last click added, shown for a moment.
     @State private var remindersAdded: Int?
+    /// An AI action under way, and why the last one failed.
+    @State private var aiRunning: NotchNoteAI.Action?
+    @State private var aiError: String?
 
     var body: some View {
         VStack(spacing: 8) {
-            ZStack {
-                Text(verbatim: NotchNotes.edited(note.modified))
-                    .font(.app(size: 13, weight: .semibold))
-                    .foregroundStyle(.white.opacity(0.55))
-                HStack(spacing: 8) {
-                    NotchNoteCircleButton(symbol: "chevron.left", label: "All Notes") { close() }
-                    Spacer()
-                    NotchNoteCircleButton(symbol: "mic.fill", label: "Dictate into This Note") { dictate() }
-                    if controller.uncheckedItems > 0 || remindersAdded != nil {
-                        NotchNoteCircleButton(
-                            symbol: remindersAdded == nil ? "checklist" : "checkmark",
-                            label: remindersAdded.map { "Added \($0) to Reminders" } ?? "Add Checklist to Reminders",
-                            tint: remindersAdded == nil ? nil : .green
-                        ) { addToReminders() }
+            HStack(spacing: 8) {
+                NotchNoteCircleButton(symbol: "chevron.left", label: "All Notes") { close() }
+                Group {
+                    if let aiError {
+                        Text(verbatim: aiError).foregroundStyle(.orange)
+                    } else {
+                        Text(verbatim: NotchNotes.edited(note.modified)).foregroundStyle(.white.opacity(0.55))
                     }
-                    NotchNoteCircleButton(symbol: "doc.on.doc.fill", label: "Copy Note") {
-                        controller.save()
-                        notes.copy(note.id)
-                    }
-                    NotchNoteCircleButton(
-                        symbol: "trash.fill", label: confirmingDelete ? "Click Again to Delete" : "Delete Note",
-                        tint: confirmingDelete ? .red : nil
-                    ) {
-                        if confirmingDelete { notes.delete(note.id) } else { confirmingDelete = true }
-                    }
+                }
+                .font(.app(size: 12, weight: .semibold))
+                .lineLimit(1)
+                Spacer(minLength: 4)
+                NotchNoteCircleButton(symbol: "mic.fill", label: "Dictate into This Note") { dictate() }
+                aiMenu
+                moreMenu
+                NotchNoteCircleButton(symbol: "doc.on.doc.fill", label: "Copy Note") {
+                    controller.save()
+                    notes.copy(note.id)
+                }
+                NotchNoteCircleButton(
+                    symbol: "trash.fill", label: confirmingDelete ? "Click Again to Delete" : "Delete Note",
+                    tint: confirmingDelete ? .red : nil
+                ) {
+                    if confirmingDelete { notes.delete(note.id) } else { confirmingDelete = true }
                 }
             }
             .frame(height: NotchNoteCircleButton.size)
@@ -191,10 +199,90 @@ private struct NotchNoteEditorView: View {
         NotificationCenter.default.post(name: .toggleRecorderPanel, object: nil)
     }
 
-    /// The checklist's unticked items as reminders in the default list.
+    /// Sparkles: the AI actions on this note; a spinner while one runs.
+    private var aiMenu: some View {
+        Menu {
+            ForEach(NotchNoteAI.Action.allCases) { action in
+                Button {
+                    runAI(action)
+                } label: {
+                    Label(action.title, systemImage: action.symbol)
+                }
+            }
+        } label: {
+            NotchNoteMenuLabel(symbol: "sparkles", busy: aiRunning != nil)
+        }
+        .menuStyle(.button)
+        .buttonStyle(.plain)
+        .menuIndicator(.hidden)
+        .fixedSize()
+        .disabled(aiRunning != nil || controller.isEmpty)
+        .help(Text("AI"))
+        .accessibilityLabel(Text("AI"))
+    }
+
+    /// Pinning, and what can be done with the checklist.
+    private var moreMenu: some View {
+        Menu {
+            Button {
+                notes.togglePin(note.id)
+            } label: {
+                if notes.pinnedID == note.id {
+                    Label("Unpin from the Notch", systemImage: "pin.slash")
+                } else {
+                    Label("Pin to the Notch", systemImage: "pin")
+                }
+            }
+            Divider()
+            Button {
+                addToReminders()
+            } label: {
+                Label(
+                    remindersAdded.map { "Added \($0) to Reminders" } ?? "Add Checklist to Reminders",
+                    systemImage: "checklist")
+            }
+            .disabled(controller.uncheckedItems == 0 || remindersAdded != nil)
+            Button {
+                controller.perform(.clearTicked)
+            } label: {
+                Label("Clear Ticked Items", systemImage: "checkmark.circle.badge.xmark")
+            }
+            .disabled(!controller.hasTicked)
+        } label: {
+            NotchNoteMenuLabel(symbol: notes.pinnedID == note.id ? "pin.fill" : "ellipsis", busy: false)
+        }
+        .menuStyle(.button)
+        .buttonStyle(.plain)
+        .menuIndicator(.hidden)
+        .fixedSize()
+        .help(Text("More"))
+        .accessibilityLabel(Text("More"))
+    }
+
+    private func runAI(_ action: NotchNoteAI.Action) {
+        controller.save()
+        let text = controller.textView?.string ?? ""
+        aiError = nil
+        aiRunning = action
+        Task { @MainActor in
+            defer { aiRunning = nil }
+            do {
+                let result = try await NotchNoteAI.run(action, on: text)
+                controller.apply(result, placement: action.placement)
+            } catch {
+                aiError = error.localizedDescription
+                try? await Task.sleep(for: .seconds(4))
+                aiError = nil
+            }
+        }
+    }
+
+    /// The checklist's unticked items as reminders in the default list; a date or time in an
+    /// item becomes its due date.
     private func addToReminders() {
         guard remindersAdded == nil else { return }
         let items = NotchNoteFormat.uncheckedItems(in: controller.textView?.string ?? "")
+            .map { NotchNoteFormat.reminderItem(from: $0) }
         Task { @MainActor in
             let added = await NotchReminders.shared.add(items)
             remindersAdded = added
@@ -278,6 +366,27 @@ private struct NotchNoteCircleButton: View {
     }
 }
 
+/// A menu's button in the note's top row, drawn like the round buttons beside it.
+private struct NotchNoteMenuLabel: View {
+    let symbol: String
+    let busy: Bool
+
+    var body: some View {
+        ZStack {
+            Circle().fill(.white.opacity(0.14))
+            Circle().strokeBorder(.white.opacity(0.1), lineWidth: 1)
+            if busy {
+                ProgressView().controlSize(.mini).tint(.white)
+            } else {
+                Image(systemName: symbol)
+                    .font(.system(size: 12, weight: .semibold))
+                    .foregroundStyle(.white.opacity(0.9))
+            }
+        }
+        .frame(width: NotchNoteCircleButton.size, height: NotchNoteCircleButton.size)
+    }
+}
+
 /// A round glass button in the toolbar.
 private struct NotchNoteToolButton<Label: View>: View {
     let label: LocalizedStringKey
@@ -311,11 +420,14 @@ final class NotchNoteEditorController: ObservableObject {
         case heading(Int)
         case list(NotchNoteFormat.List)
         case table
+        case clearTicked
     }
 
     @Published private(set) var isEmpty = true
     /// The checklist's items not yet ticked.
     @Published private(set) var uncheckedItems = 0
+    /// Some checklist items are ticked.
+    @Published private(set) var hasTicked = false
     weak var textView: NotchNoteTextView?
     var saveNow: () -> Void = {}
 
@@ -329,6 +441,8 @@ final class NotchNoteEditorController: ObservableObject {
         isEmpty = text.isEmpty
         let unchecked = NotchNoteFormat.uncheckedItems(in: text).count
         if unchecked != uncheckedItems { uncheckedItems = unchecked }
+        let ticked = NotchNoteFormat.hasTicked(text)
+        if ticked != hasTicked { hasTicked = ticked }
     }
 
     func perform(_ action: Action) {
@@ -396,8 +510,34 @@ final class NotchNoteEditorController: ObservableObject {
             }
             textView.insertText(table, replacementRange: selection)
             textView.typingAttributes = NotchNoteFormat.bodyAttributes
+        case .clearTicked:
+            let whole = NSRange(location: 0, length: storage.length)
+            transform(whole, in: textView, keep: NSRange(location: 0, length: 0)) { text, _ in
+                NotchNoteFormat.removeTicked(in: text)
+            }
         }
         textChanged()
+    }
+
+    /// An AI result into the note: in its place, on top or under it, through the text view so it
+    /// can be undone.
+    func apply(_ result: String, placement: NotchNoteAI.Placement) {
+        guard let textView, let storage = textView.textStorage else { return }
+        let whole = NSRange(location: 0, length: storage.length)
+        let body = NotchNoteFormat.bodyAttributes
+        transform(whole, in: textView, keep: NSRange(location: 0, length: 0)) { text, range in
+            switch placement {
+            case .replace:
+                text.replaceCharacters(in: range, with: NSAttributedString(string: result, attributes: body))
+            case .top:
+                text.insert(NSAttributedString(string: result + "\n\n", attributes: body), at: 0)
+            case .bottom:
+                let gap = text.length == 0 ? "" : "\n\n"
+                text.append(NSAttributedString(string: gap + result, attributes: body))
+            }
+        }
+        textChanged()
+        saveNow()
     }
 
     /// Replaces `range` with a formatted copy of itself, through the text view so it can be undone.

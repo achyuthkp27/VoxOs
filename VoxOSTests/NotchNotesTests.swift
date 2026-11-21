@@ -165,6 +165,77 @@ struct NotchNotesTests {
         #expect(NotchNoteFormat.uncheckedItems(in: text) == ["milk", "bread"])
     }
 
+    @Test func tickedLinesAreCleared() {
+        let text = Self.body("List\n☑ done\n☐ todo\n☑ also done")
+        NotchNoteFormat.removeTicked(in: text)
+        #expect(text.string == "List\n☐ todo\n")
+        #expect(!NotchNoteFormat.hasTicked(text.string))
+    }
+
+    @Test func markdownBecomesNoteText() {
+        let markdown = "## Plan\n- **milk**\n* eggs\n- [ ] call Sam\n- [x] book"
+        #expect(NotchNoteFormat.fromMarkdown(markdown) == "Plan\n• milk\n• eggs\n☐ call Sam\n☑ book")
+    }
+
+    @Test func aDateInAChecklistItemBecomesItsDueDate() {
+        let calendar = Calendar(identifier: .gregorian)
+        let now = Date(timeIntervalSince1970: 1_700_000_000)
+        let timed = NotchNoteFormat.reminderItem(from: "Call Sam tomorrow at 3pm", now: now, calendar: calendar)
+        #expect(timed.title == "Call Sam")
+        #expect(timed.due?.hour == 15)
+        let dated = NotchNoteFormat.reminderItem(from: "Pay rent on Friday", now: now, calendar: calendar)
+        #expect(dated.title == "Pay rent")
+        #expect(dated.due?.day != nil && dated.due?.hour == nil)
+        let plain = NotchNoteFormat.reminderItem(from: "Buy milk", now: now, calendar: calendar)
+        #expect(plain == NotchNoteFormat.ReminderItem(title: "Buy milk", due: nil))
+    }
+
+    @Test func aMeetingNoteHasItsActionsAsAChecklist() {
+        let summary = "Summary:\nWe met.\nDecisions:\n- Ship Friday\nAction items:\n- Sam writes the post"
+        let note = NotchNotes.meetingNote(title: "Standup", date: Date(), notes: summary, transcript: "Hello.")
+        let text = note.string
+        #expect(text.hasPrefix("Standup\n"))
+        #expect(text.contains("• Ship Friday"))
+        #expect(text.contains("☐ Sam writes the post"))
+        #expect(text.contains("Hello."))
+    }
+
+    @Test func aPinnedNoteIsRememberedAndFollowsItsText() throws {
+        let folder = FileManager.default.temporaryDirectory.appendingPathComponent("NotchNotesPin-\(UUID())")
+        defer { try? FileManager.default.removeItem(at: folder) }
+        let defaults = try #require(UserDefaults(suiteName: "NotchNotesPin-\(UUID())"))
+        let notes = NotchNotes(folder: folder, defaults: defaults)
+        let id = notes.create(text: "Remember the keys")
+        notes.togglePin(id)
+        #expect(notes.pinnedLine == "Remember the keys")
+        notes.save(Self.body("Remember the umbrella"), for: id)
+        #expect(notes.pinnedLine == "Remember the umbrella")
+        let reopened = NotchNotes(folder: folder, defaults: defaults)
+        #expect(reopened.pinnedID == id && reopened.pinnedLine == "Remember the umbrella")
+        reopened.delete(id)
+        #expect(reopened.pinnedID == nil)
+    }
+
+    @Test func thePinnedNoteIsTheQuietestBand() {
+        func content(music: Bool, note: String?) -> NotchHome.Content {
+            NotchHome.content(
+                enabled: true, hasNotch: true, blocked: false, hovered: false, dropping: false, notice: nil,
+                timerRunning: false, musicPlaying: music, pinnedNote: note)
+        }
+        #expect(content(music: false, note: "Keys") == .note("Keys"))
+        #expect(content(music: true, note: "Keys") == .playing)
+        #expect(content(music: false, note: nil) == .bare)
+        #expect(NotchHomeManager.bandKey(.note("Keys"), track: nil, timer: nil) == "note:Keys")
+    }
+
+    @Test func aPresetIsNamedByWhatItChanges() {
+        let name = NotchMixer.presetName(
+            levels: ["music": 0.2, "slack": 0], outputs: ["zoom": "airpods"], appName: { $0.capitalized },
+            deviceName: { _ in "AirPods" })
+        #expect(name.hasPrefix("Music 20% · Slack "))
+        #expect(name.hasSuffix(" · Zoom → AirPods"))
+    }
+
     // MARK: The card
 
     @Test func theOpenWindowHasRoomForTheBarUnderTheCard() {
