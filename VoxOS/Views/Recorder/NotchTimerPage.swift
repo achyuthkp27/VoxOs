@@ -3,10 +3,12 @@ import CoreAudio
 import SwiftUI
 import UniformTypeIdentifiers
 
-/// A ring with the time in it, what is running, and the controls; or, idle, a ready ring and
-/// one clear way to start.
+/// The time, large, in the colour of what runs (orange for focus, green for a break), with what it
+/// is beside it, and two round buttons: pause or start, and stop or the settings.
 struct NotchTimerPage: View {
     @ObservedObject var timers: NotchTimers
+    /// The settings take a taller card than the face.
+    var onSettingsShown: (Bool) -> Void = { _ in }
     /// The timer, its settings, or one setting being changed. Back to the timer whenever the page
     /// goes away, since the view goes with it.
     @State private var panel: Panel = .timer
@@ -31,13 +33,27 @@ struct NotchTimerPage: View {
         case sessions
     }
 
-    static let ringSize: CGFloat = 148
     static let buttonSize: CGFloat = 34
+    /// The face's round buttons.
+    static let faceButtonSize: CGFloat = 52
 
-    /// The card's height on this page: the ring, and the buttons under it.
+    /// The card's height on this page: one row, the buttons and the time.
     static var cardHeight: CGFloat {
-        let content: CGFloat = ringSize + 10 + buttonSize
-        return NotchHome.Card.top + content + NotchHome.Card.bottom + 6
+        NotchHome.Card.top + faceButtonSize + 14 + NotchHome.Card.bottom
+    }
+
+    /// With the settings shown: a title, the tabs and four rows.
+    static var settingsHeight: CGFloat {
+        NotchHome.Card.top + 30 + 8 + 28 + 8 + 4 * 26 + NotchHome.Card.bottom + 6
+    }
+
+    /// Focus in orange; a break in green; a plain timer in white.
+    nonisolated static func faceColor(for kind: NotchTimer.Kind) -> Color {
+        switch kind {
+        case .focus: return Color(red: 1, green: 0.62, blue: 0.04)
+        case .shortBreak, .longBreak: return Color(red: 0.42, green: 0.86, blue: 0.56)
+        case .countdown: return .white
+        }
     }
 
     var body: some View {
@@ -52,6 +68,8 @@ struct NotchTimerPage: View {
         .padding(.horizontal, AgentComposer.panelInset + 6)
         .padding(.bottom, NotchHome.Card.bottom)
         .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .top)
+        .onChange(of: panel) { _, panel in onSettingsShown(panel != .timer) }
+        .onDisappear { onSettingsShown(false) }
     }
 
     // MARK: Timer
@@ -63,62 +81,58 @@ struct NotchTimerPage: View {
     private func timerFace(at now: Date) -> some View {
         let running = timers.running
         let kind = running?.kind ?? startKind
-        return VStack(spacing: 10) {
-            ZStack {
-                NotchPomodoroRing(progress: running?.progress(at: now) ?? 0, kind: kind)
-                VStack(spacing: 5) {
-                    Image(systemName: Self.symbol(for: kind))
-                        .font(.system(size: 14))
-                        .foregroundStyle(.white.opacity(0.85))
-                    Text(verbatim: Self.clock(running?.remaining(at: now) ?? timers.durations.length(of: startKind)))
-                        .font(.app(size: 38, weight: .semibold, design: .rounded))
-                        .monospacedDigit()
-                        .foregroundStyle(.white)
-                        .contentTransition(.numericText(countsDown: true))
-                    if kind.isPomodoro { sessionMarks(running) }
-                    if running == nil {
-                        kindMenu
-                    } else {
-                        Text(verbatim: caption(running))
-                            .font(.app(size: 9, weight: .medium))
-                            .tracking(1.2)
-                            .foregroundStyle(.white.opacity(0.5))
-                            .lineLimit(1)
-                    }
-                }
-                .frame(width: Self.ringSize - 24)
-            }
-            .frame(width: Self.ringSize, height: Self.ringSize)
-            .contextMenu {
-                // Any session can be started at any time, whatever is running.
-                ForEach(Self.startable, id: \.self) { kind in
-                    Button("Start \(Self.name(of: kind))") { timers.startPomodoro(kind) }
-                }
-                if running != nil {
-                    Divider()
-                    Button("Skip to the Next Session") { timers.skip() }
+        let color = Self.faceColor(for: kind)
+        return HStack(spacing: 12) {
+            NotchFaceButton(
+                symbol: running.map { $0.isPaused ? "play.fill" : "pause.fill" } ?? "play.fill",
+                label: running.map { $0.isPaused ? "Resume" : "Pause" } ?? "Start", tint: color
+            ) {
+                if let running {
+                    if running.isPaused { timers.resume() } else { timers.pause() }
+                } else {
+                    timers.startPomodoro(startKind)
                 }
             }
-            HStack(spacing: 0) {
-                NotchOutlineButton(symbol: "arrow.uturn.backward", label: "Reset") { timers.cancel() }
-                    .opacity(running == nil ? 0.35 : 1)
-                    .disabled(running == nil)
-                Spacer(minLength: 0)
-                NotchPillButton(title: pillTitle(running)) {
-                    if let running {
-                        if running.isPaused { timers.resume() } else { timers.pause() }
-                    } else {
-                        timers.startPomodoro(startKind)
-                    }
-                }
-                Spacer(minLength: 0)
-                NotchOutlineButton(symbol: "gearshape", label: "Pomodoro Settings") {
+            if running != nil {
+                NotchFaceButton(symbol: "xmark", label: "Stop", tint: nil) { timers.cancel() }
+            } else {
+                NotchFaceButton(symbol: "gearshape.fill", label: "Pomodoro Settings", tint: nil) {
                     panel = .settings(.duration)
                 }
             }
-            .frame(width: Self.ringSize + 132, height: Self.buttonSize)
+            Spacer(minLength: 8)
+            VStack(alignment: .trailing, spacing: 4) {
+                if running == nil {
+                    kindMenu(color: color)
+                } else {
+                    Text(verbatim: caption(running))
+                        .font(.app(size: 15, weight: .semibold))
+                        .foregroundStyle(color)
+                        .lineLimit(1)
+                }
+                if kind.isPomodoro { sessionMarks(running) }
+            }
+            Text(verbatim: Self.clock(running?.remaining(at: now) ?? timers.durations.length(of: startKind)))
+                .font(.system(size: 50, weight: .medium, design: .rounded))
+                .monospacedDigit()
+                .foregroundStyle(color)
+                .contentTransition(.numericText(countsDown: true))
+                .opacity(running?.isPaused == true ? 0.6 : 1)
+                .lineLimit(1)
+                .fixedSize()
         }
-        .frame(maxWidth: .infinity)
+        .frame(maxWidth: .infinity, maxHeight: .infinity)
+        .contentShape(Rectangle())
+        .contextMenu {
+            // Any session can be started at any time, whatever is running.
+            ForEach(Self.startable, id: \.self) { kind in
+                Button("Start \(Self.name(of: kind))") { timers.startPomodoro(kind) }
+            }
+            if running != nil {
+                Divider()
+                Button("Skip to the Next Session") { timers.skip() }
+            }
+        }
     }
 
     /// One mark per focus session before the long break: those done and the one under way lit.
@@ -128,7 +142,7 @@ struct NotchTimerPage: View {
         return HStack(spacing: 5) {
             ForEach(0..<total, id: \.self) { index in
                 Capsule()
-                    .fill(index < lit ? NotchPomodoroRing.accent : .white.opacity(0.25))
+                    .fill(index < lit ? Self.faceColor(for: running?.kind ?? .focus) : .white.opacity(0.25))
                     .frame(width: 3, height: 8)
             }
         }
@@ -161,18 +175,17 @@ struct NotchTimerPage: View {
 
     /// The caption under the time while nothing runs: a click moves what START begins on to the
     /// next session (Focus, Short Break, Long Break), drawn as the caption itself.
-    private var kindMenu: some View {
+    private func kindMenu(color: Color) -> some View {
         Button {
             let index = Self.startable.firstIndex(of: startKind) ?? 0
             startKind = Self.startable[(index + 1) % Self.startable.count]
         } label: {
-            HStack(spacing: 3) {
-                Text(verbatim: Self.name(of: startKind).uppercased())
-                Image(systemName: "chevron.up.chevron.down").font(.system(size: 6, weight: .bold))
+            HStack(spacing: 4) {
+                Text(verbatim: Self.name(of: startKind))
+                Image(systemName: "chevron.up.chevron.down").font(.system(size: 8, weight: .bold))
             }
-            .font(.app(size: 9, weight: .medium))
-            .tracking(1.2)
-            .foregroundStyle(.white.opacity(0.5))
+            .font(.app(size: 15, weight: .semibold))
+            .foregroundStyle(color)
             .lineLimit(1)
             .contentShape(Rectangle())
         }
@@ -183,17 +196,10 @@ struct NotchTimerPage: View {
 
     private func caption(_ running: NotchTimer?) -> String {
         switch running?.kind ?? .focus {
-        case .focus: return String(localized: "FOCUS")
-        case .shortBreak: return String(localized: "SHORT BREAK")
-        case .longBreak: return String(localized: "LONG BREAK")
+        case .focus, .shortBreak, .longBreak: return Self.name(of: running?.kind ?? .focus)
         case .countdown:
-            return (running?.label.isEmpty ?? true) ? String(localized: "TIMER") : running!.label.uppercased()
+            return (running?.label.isEmpty ?? true) ? String(localized: "Timer") : running!.label
         }
-    }
-
-    private func pillTitle(_ running: NotchTimer?) -> LocalizedStringKey {
-        guard let running else { return "START" }
-        return running.isPaused ? "RESUME" : "PAUSE"
     }
 
     nonisolated static func symbol(for kind: NotchTimer.Kind) -> String {
@@ -456,25 +462,29 @@ private struct NotchOutlineButton: View {
     }
 }
 
-/// The capsule under the ring: Start, Pause or Resume.
-private struct NotchPillButton: View {
-    let title: LocalizedStringKey
+/// A large round button on the timer's face: tinted in the session's colour for start and pause,
+/// grey for stop and the settings.
+private struct NotchFaceButton: View {
+    let symbol: String
+    let label: LocalizedStringKey
+    let tint: Color?
     let action: () -> Void
     @State private var hovered = false
 
     var body: some View {
+        let size = NotchTimerPage.faceButtonSize
         Button(action: action) {
-            Text(title)
-                .font(.app(size: 11, weight: .semibold))
-                .tracking(1)
-                .foregroundStyle(.white.opacity(0.92))
-                .frame(width: 112, height: NotchTimerPage.buttonSize)
-                .background(Capsule().fill(.white.opacity(hovered ? 0.22 : 0.14)))
-                .overlay(Capsule().strokeBorder(.white.opacity(0.08), lineWidth: 1))
-                .contentShape(Capsule())
+            Image(systemName: symbol)
+                .font(.system(size: size * 0.36, weight: .bold))
+                .foregroundStyle(tint ?? .white.opacity(0.85))
+                .frame(width: size, height: size)
+                .background(Circle().fill((tint ?? .white).opacity(hovered ? 0.42 : tint == nil ? 0.16 : 0.32)))
+                .contentShape(Circle())
         }
         .buttonStyle(.plain)
         .onHover { hovered = $0 }
+        .help(Text(label))
+        .accessibilityLabel(Text(label))
     }
 }
 

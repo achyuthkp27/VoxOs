@@ -24,6 +24,8 @@ struct NotchHomeView: View {
     let onToggleMute: () -> Void
     let onJoin: (NotchToday.Event) -> Void
     let onPin: () -> Void
+    /// A page picked in the bar under the card.
+    let onSelectPage: (NotchHomePage) -> Void
     @ObservedObject var lyrics = NotchLyrics.shared
     @AppStorage(DefaultsKeys.notchMusicBarsEnabled) private var barsEnabled = false
     @Environment(\.accessibilityReduceMotion) private var reduceMotion
@@ -49,6 +51,27 @@ struct NotchHomeView: View {
     static let hotStrip: CGFloat = 0.2
 
     var body: some View {
+        VStack(spacing: NotchHomeNavBar.gap) {
+            card
+            if content == .expanded {
+                NotchHomeNavBar(
+                    pages: NotchHomePage.available(hasTrack: model.track != nil), current: model.page,
+                    onSelect: onSelectPage, timers: .shared
+                )
+                // The bar keeps the card open like the card itself: leaving is decided by the
+                // pointer leaving the window.
+                .onHover { inside in if inside { onHover(true) } }
+                .transition(reduceMotion ? .opacity : .opacity.combined(with: .offset(y: -8)))
+            }
+        }
+        .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .top)
+        .animation(
+            reduceMotion ? nil : (content == .expanded ? NotchDesign.openAnimation : NotchDesign.closeAnimation),
+            value: content
+        )
+    }
+
+    private var card: some View {
         ZStack(alignment: .topLeading) {
             background
             VStack(spacing: 0) {
@@ -79,7 +102,6 @@ struct NotchHomeView: View {
             if content == .expanded || Self.opensAt(point, width: size.width, notch: notchRect) { onHover(true) }
         }
         .environment(\.colorScheme, .dark)
-        .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .top)
         .simultaneousGesture(
             DragGesture(minimumDistance: 12, coordinateSpace: .local)
                 .onChanged { value in onDragChanged(value.translation) }
@@ -177,7 +199,7 @@ struct NotchHomeView: View {
                     onToggleBars: { barsEnabled.toggle() })
             }
         case .timer:
-            NotchTimerPage(timers: .shared)
+            NotchTimerPage(timers: .shared, onSettingsShown: { model.timerSettingsShown = $0 })
         case .today:
             NotchTodayPage(today: .shared, reminders: .shared, onListHeight: { model.todayListHeight = $0 })
         case .weather:
@@ -189,6 +211,8 @@ struct NotchHomeView: View {
             NotchSoundPage(
                 mixer: .shared, clipboard: .shared, mirror: .shared, keepAwake: .shared, pinned: model.pinned,
                 onPin: onPin, onMirrorShown: { model.mirrorShown = $0 })
+        case .notes:
+            NotchNotesPage(notes: .shared)
         }
     }
 
@@ -264,11 +288,6 @@ struct NotchHomeView: View {
                 .contentTransition(.symbolEffect(.replace))
         case .expanded where model.level != nil:
             if let level = model.level { NotchLevelReadout(level: level) }
-        case .expanded:
-            // The player's name on the Music page (several can play at once), the page's elsewhere.
-            NotchHomePageLabel(
-                text: model.page == .music
-                    ? (NotchHomeApp.name(for: model.track?.bundleID) ?? model.page.title) : model.page.title)
         default:
             EmptyView()
         }
@@ -353,8 +372,6 @@ struct NotchHomeView: View {
                     .help(NotchHomeApp.name(for: privacy.microphoneApp) ?? "")
                     .accessibilityLabel(Text(verbatim: NotchHomeApp.name(for: privacy.microphoneApp) ?? ""))
             }
-        case .expanded:
-            NotchHomePageButton(page: model.page) { onPage(true) }
         default:
             EmptyView()
         }
@@ -367,7 +384,10 @@ struct NotchHomeView: View {
     @ViewBuilder
     private var background: some View {
         if content == .expanded, NotchDesign.Material.resolve(materialRaw) == .liquidGlass {
-            NotchGlassSurface(shape: shape, solidHeight: model.notchHeight, totalHeight: size.height)
+            // Black most of the way down, fading into the glass toward the bottom edge.
+            NotchGlassSurface(
+                shape: shape, solidHeight: max(model.notchHeight, size.height * NotchHome.blackShare),
+                totalHeight: size.height, fade: size.height * (1 - NotchHome.blackShare))
         } else {
             solidBackground
         }

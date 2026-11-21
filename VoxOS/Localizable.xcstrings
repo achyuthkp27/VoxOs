@@ -609,6 +609,7 @@
       }
     },
     "%@ · swipe sideways for the next page" : {
+      "extractionState" : "stale",
       "localizations" : {
         "de" : {
           "stringUnit" : {
@@ -4674,6 +4675,22 @@
         }
       }
     },
+    "All Notes" : {
+      "localizations" : {
+        "de" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Alle Notizen"
+          }
+        },
+        "zh-Hans" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "所有备忘录"
+          }
+        }
+      }
+    },
     "All Time" : {
       "extractionState" : "manual",
       "localizations" : {
@@ -5538,6 +5555,7 @@
       }
     },
     "Apps that are playing show here, each with its own volume" : {
+      "extractionState" : "stale",
       "localizations" : {
         "de" : {
           "stringUnit" : {
@@ -5549,6 +5567,22 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "正在播放的应用会显示在这里，各自拥有独立音量"
+          }
+        }
+      }
+    },
+    "Apps that can play sound show here" : {
+      "localizations" : {
+        "de" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Apps, die Ton abspielen können, erscheinen hier"
+          }
+        },
+        "zh-Hans" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "可播放声音的 App 会显示在这里"
           }
         }
       }
@@ -6501,6 +6535,22 @@
         }
       }
     },
+    "Bold" : {
+      "localizations" : {
+        "de" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Fett"
+          }
+        },
+        "zh-Hans" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "粗体"
+          }
+        }
+      }
+    },
     "Bottom" : {
       "localizations" : {
         "de" : {
@@ -6577,6 +6627,22 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "内置"
+          }
+        }
+      }
+    },
+    "Bulleted List" : {
+      "localizations" : {
+        "de" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Aufzählung"
+          }
+        },
+        "zh-Hans" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "项目符号列表"
           }
         }
       }
@@ -7225,6 +7291,22 @@
         }
       }
     },
+    "Checklist" : {
+      "localizations" : {
+        "de" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Checkliste"
+          }
+        },
+        "zh-Hans" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "核对清单"
+          }
+        }
+      }
+    },
     "Choose" : {
       "localizations" : {
         "de" : {
@@ -7785,6 +7867,22 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "清空文件架"
+          }
+        }
+      }
+    },
+    "Click Again to Delete" : {
+      "localizations" : {
+        "de" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Zum Löschen erneut klicken"
+          }
+        },
+        "zh-Hans" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "再次点按以删除"
           }
         }
       }
@@ -8732,6 +8830,22 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "拷贝许可证密钥"
+          }
+        }
+      }
+    },
+    "Copy Note" : {
+      "localizations" : {
+        "de" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Notiz kopieren"
+          }
+        },
+        "zh-Hans" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "拷贝备忘录"
           }
         }
       }
@@ -9816,6 +9930,22 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "删除模型"
+          }
+        }
+      }
+    },
+    "Delete Note" : {
+      "localizations" : {
+        "de" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Notiz löschen"
+          }
+        },
+        "zh-Hans" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "删除备忘录"
           }
         }
       }
@@ -11564,6 +11694,38 @@
         }
       }
     },
+    "Edited %@" : {
+      "localizations" : {
+        "de" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Bearbeitet %@"
+          }
+        },
+        "zh-Hans" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "编辑于 %@"
+          }
+        }
+      }
+    },
+    "Edited Yesterday" : {
+      "localizations" : {
+        "de" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Gestern bearbeitet"
+          }
+        },
+        "zh-Hans" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "昨天编辑"
+          }
+        }
+      }
+    },
     "Edit…" : {
       "localizations" : {
         "de" : {
@@ -12390,6 +12552,7 @@
       }
     },
     "FOCUS" : {
+      "extractionState" : "stale",
       "localizations" : {
         "de" : {
           "stringUnit" : {
@@ -13596,6 +13759,54 @@
         }
       }
     },
+    "Heading 1" : {
+      "localizations" : {
+        "de" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Überschrift 1"
+          }
+        },
+        "zh-Hans" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "标题 1"
+          }
+        }
+      }
+    },
+    "Heading 2" : {
+      "localizations" : {
+        "de" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Überschrift 2"
+          }
+        },
+        "zh-Hans" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "标题 2"
+          }
+        }
+      }
+    },
+    "Heading 3" : {
+      "localizations" : {
+        "de" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Überschrift 3"
+          }
+        },
+        "zh-Hans" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "标题 3"
+          }
+        }
+      }
+    },
     "Hear the reply" : {
       "localizations" : {
         "de" : {
@@ -13868,6 +14079,22 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "在录制会议时隐藏或重新显示实时转写窗口。隐藏不会停止录制。"
+          }
+        }
+      }
+    },
+    "Highlight" : {
+      "localizations" : {
+        "de" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Hervorheben"
+          }
+        },
+        "zh-Hans" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "高亮"
           }
         }
       }
@@ -14858,6 +15085,22 @@
         }
       }
     },
+    "Italic" : {
+      "localizations" : {
+        "de" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Kursiv"
+          }
+        },
+        "zh-Hans" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "斜体"
+          }
+        }
+      }
+    },
     "Join" : {
       "localizations" : {
         "de" : {
@@ -15164,6 +15407,7 @@
       }
     },
     "LONG BREAK" : {
+      "extractionState" : "stale",
       "localizations" : {
         "de" : {
           "stringUnit" : {
@@ -17981,6 +18225,22 @@
         }
       }
     },
+    "New Note" : {
+      "localizations" : {
+        "de" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Neue Notiz"
+          }
+        },
+        "zh-Hans" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "新备忘录"
+          }
+        }
+      }
+    },
     "Next" : {
       "localizations" : {
         "de" : {
@@ -19713,6 +19973,22 @@
         }
       }
     },
+    "Notes you write here stay on this Mac" : {
+      "localizations" : {
+        "de" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Notizen, die du hier schreibst, bleiben auf diesem Mac"
+          }
+        },
+        "zh-Hans" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "你在这里写的备忘录只保存在这台 Mac 上"
+          }
+        }
+      }
+    },
     "Nothing dictated in this period." : {
       "localizations" : {
         "de" : {
@@ -19917,6 +20193,22 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "现在"
+          }
+        }
+      }
+    },
+    "Numbered List" : {
+      "localizations" : {
+        "de" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Nummerierte Liste"
+          }
+        },
+        "zh-Hans" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "编号列表"
           }
         }
       }
@@ -21023,6 +21315,7 @@
       }
     },
     "PAUSE" : {
+      "extractionState" : "stale",
       "localizations" : {
         "de" : {
           "stringUnit" : {
@@ -22578,6 +22871,7 @@
       }
     },
     "RESUME" : {
+      "extractionState" : "stale",
       "localizations" : {
         "de" : {
           "stringUnit" : {
@@ -24266,6 +24560,22 @@
         }
       }
     },
+    "Resume" : {
+      "localizations" : {
+        "de" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Fortsetzen"
+          }
+        },
+        "zh-Hans" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "继续"
+          }
+        }
+      }
+    },
     "Resume Delay" : {
       "localizations" : {
         "de" : {
@@ -24717,6 +25027,7 @@
       }
     },
     "SHORT BREAK" : {
+      "extractionState" : "stale",
       "localizations" : {
         "de" : {
           "stringUnit" : {
@@ -24733,6 +25044,7 @@
       }
     },
     "START" : {
+      "extractionState" : "stale",
       "localizations" : {
         "de" : {
           "stringUnit" : {
@@ -26694,6 +27006,7 @@
       }
     },
     "Shows the next page" : {
+      "extractionState" : "stale",
       "localizations" : {
         "de" : {
           "stringUnit" : {
@@ -27540,6 +27853,22 @@
         }
       }
     },
+    "Start writing…" : {
+      "localizations" : {
+        "de" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Schreib los …"
+          }
+        },
+        "zh-Hans" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "开始书写…"
+          }
+        }
+      }
+    },
     "Starting point" : {
       "comment" : "A tooltip label identifying the first data point as the baseline for later comparisons.",
       "localizations" : {
@@ -28197,6 +28526,7 @@
       }
     },
     "TIMER" : {
+      "extractionState" : "stale",
       "localizations" : {
         "de" : {
           "stringUnit" : {
@@ -28240,6 +28570,22 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "Tab 移动 · 松开切换 · W 关闭 · M 最小化 · H 隐藏 · 两次 Q 退出 · L/R 半屏 · F 铺满 · / 搜索"
+          }
+        }
+      }
+    },
+    "Table" : {
+      "localizations" : {
+        "de" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Tabelle"
+          }
+        },
+        "zh-Hans" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "表格"
           }
         }
       }
@@ -29781,6 +30127,22 @@
         }
       }
     },
+    "Timer" : {
+      "localizations" : {
+        "de" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Timer"
+          }
+        },
+        "zh-Hans" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "计时器"
+          }
+        }
+      }
+    },
     "Tint" : {
       "localizations" : {
         "de" : {
@@ -30730,6 +31092,22 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "不可用"
+          }
+        }
+      }
+    },
+    "Underline" : {
+      "localizations" : {
+        "de" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Unterstrichen"
+          }
+        },
+        "zh-Hans" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "下划线"
           }
         }
       }

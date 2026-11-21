@@ -487,9 +487,13 @@ final class NotchHomeManager {
     /// The incoming page becomes the current one where it stands, and both slide the rest of the
     /// way; a click on the page button starts the same slide from rest.
     private func slide(forward: Bool) {
+        guard let model else { return }
+        slide(to: Self.page(after: model.page, forward: forward, hasTrack: model.track != nil), forward: forward)
+    }
+
+    private func slide(to incoming: NotchHomePage, forward: Bool) {
         guard let model, let panel, model.content == .expanded else { return }
         let width = panel.frame.width
-        let incoming = Self.page(after: model.page, forward: forward, hasTrack: model.track != nil)
         guard incoming != model.page else { return }
         ActivityTrail.mark("notch home page \(incoming.rawValue)")
         if reduceMotion {
@@ -563,7 +567,7 @@ final class NotchHomeManager {
     /// A click-drag reads like a swipe: sideways on the open card the page follows the pointer;
     /// not on the shelf, where dragging a file out must not move the page.
     private func dragChanged(by translation: CGSize) {
-        guard let model, model.content == .expanded, model.page != .shelf,
+        guard let model, model.content == .expanded, !Self.keepsDrags(model.page),
             abs(translation.width) > abs(translation.height)
         else { return }
         // A slide still landing is finished first, so the drag starts from a page at rest.
@@ -576,16 +580,23 @@ final class NotchHomeManager {
     private func dragged(from startX: CGFloat, by translation: CGSize, predicted: CGSize) {
         guard let panel, let model else { return }
         if model.content == .expanded, landing == nil, model.sidePage != nil || reduceMotion,
-            model.page != .shelf, abs(translation.width) > abs(translation.height)
+            !Self.keepsDrags(model.page), abs(translation.width) > abs(translation.height)
         {
             return finishPage(dx: translation.width, flick: (predicted.width - translation.width) / 8)
         }
         let swipe = Self.swipe(
             startX: startX, width: panel.frame.width, fingerDX: translation.width, fingerDY: translation.height,
             expanded: model.content == .expanded)
-        // Pages move only under the pointer, above; the shelf keeps its drags for files.
+        // Pages move only under the pointer, above; some pages keep their drags for themselves.
         if swipe == .nextPage || swipe == .previousPage { return }
+        if model.content == .expanded, Self.keepsDrags(model.page) { return }
         perform(swipe)
+    }
+
+    /// Pages whose click-drags are their own: files dragged off the shelf, a volume row dragged to
+    /// a level, text selected in a note. A two-finger swipe still turns them.
+    nonisolated static func keepsDrags(_ page: NotchHomePage) -> Bool {
+        page == .shelf || page == .sound || page == .notes
     }
 
     /// Open without the pointer, pinned so it stays until unpinned or closed.
@@ -615,6 +626,15 @@ final class NotchHomeManager {
     private func turnPage(forward: Bool) {
         land()
         slide(forward: forward)
+    }
+
+    /// A page picked in the bar: it slides in from the side it lies on in the order.
+    private func selectPage(_ page: NotchHomePage) {
+        guard let model, model.content == .expanded, page != model.page else { return }
+        let pages = NotchHomePage.available(hasTrack: model.track != nil)
+        guard let from = pages.firstIndex(of: model.page), let to = pages.firstIndex(of: page) else { return }
+        land()
+        slide(to: page, forward: to > from)
     }
 
     private func selectPlayer(_ bundleID: String?) {
@@ -674,7 +694,7 @@ final class NotchHomeManager {
     private func checkPointer() {
         guard let panel, hovered else { return }
         // Pinned, or an AirDrop or share sheet from the card is up: the card waits for it.
-        if model?.pinned == true || NotchShelf.shared.isSharing {
+        if model?.pinned == true || NotchShelf.shared.isSharing || panel.isKeyWindow {
             pointerLeftAt = nil
             return
         }
@@ -732,9 +752,10 @@ final class NotchHomeManager {
         if content == .expanded {
             model.musicPanel = nil
             model.mirrorShown = false
+            model.timerSettingsShown = false
             model.cardHeight = NotchHome.Card.height(for: model.page, todayList: model.todayListHeight)
         }
-        let target = NotchHome.size(
+        let target = NotchHome.windowSize(
             for: content, notchWidth: model.notchWidth, notchHeight: model.notchHeight, cardHeight: model.cardHeight)
         let current = panel.frame.size
         let wasVisible = panel.isVisible && model.content != .hidden
@@ -812,7 +833,8 @@ final class NotchHomeManager {
             },
             onToggleMute: { NotchPrivacy.shared.toggleMute() },
             onJoin: { NotchToday.shared.join($0) },
-            onPin: { [weak self] in self?.togglePin() })
+            onPin: { [weak self] in self?.togglePin() },
+            onSelectPage: { [weak self] page in self?.selectPage(page) })
         panel.contentView = NotchRecorderHostingController(rootView: view).view
         panel.sharingType = NotchHome.hiddenFromCapture ? .none : .readOnly
         self.model = model
@@ -826,6 +848,17 @@ final class NotchHomeManager {
         .store(in: &cancellables)
         // Showing or leaving the camera mirror changes the Sound page's height.
         model.$mirrorShown.dropFirst().removeDuplicates().receive(on: RunLoop.main)
+            .sink { [weak self] _ in self?.fitCard() }
+            .store(in: &cancellables)
+        // A note open on the Notes page takes the keyboard; anything else gives it back.
+        Publishers.CombineLatest3(model.$content, model.$page, NotchNotes.shared.$openID)
+            .receive(on: RunLoop.main)
+            .sink { [weak self] content, page, openID in
+                self?.updateKeyboard(wanted: content == .expanded && page == .notes && openID != nil)
+            }
+            .store(in: &cancellables)
+        // So do the Pomodoro page's settings.
+        model.$timerSettingsShown.dropFirst().removeDuplicates().receive(on: RunLoop.main)
             .sink { [weak self] _ in self?.fitCard() }
             .store(in: &cancellables)
         // The Calendar page's list growing or shrinking changes its height.
@@ -876,20 +909,31 @@ final class NotchHomeManager {
         }
     }
 
+    private func updateKeyboard(wanted: Bool) {
+        guard let panel else { return }
+        guard panel.acceptsKeyboard != wanted else { return }
+        panel.acceptsKeyboard = wanted
+        if wanted {
+            panel.makeKey()
+        } else if panel.isKeyWindow {
+            panel.resignKey()
+        }
+    }
+
     /// The open card follows its page's height. Growing, the window grows first and the card with it;
     /// shrinking, the card shrinks first and the window after, so the card is never cut off.
     private func fitCard() {
         guard let model, let panel, let screen else { return }
         let height = NotchHome.Card.height(
             for: model.page, panelOpen: model.musicPanel != nil, mirrorShown: model.mirrorShown,
-            todayList: model.todayListHeight)
+            todayList: model.todayListHeight, timerSettings: model.timerSettingsShown)
         guard height != model.cardHeight else { return }
         guard model.content == .expanded, panel.isVisible else {
             model.cardHeight = height
             return
         }
         resizeTask?.cancel()
-        let target = NotchHome.size(
+        let target = NotchHome.windowSize(
             for: .expanded, notchWidth: model.notchWidth, notchHeight: model.notchHeight, cardHeight: height)
         if height > model.cardHeight {
             panel.setFrame(NotchHome.frame(for: target, screenFrame: screen.frame), display: true)

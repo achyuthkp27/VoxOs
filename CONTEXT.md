@@ -47,9 +47,13 @@ SDK with `make local`.
 - **Notch Home** — `NotchHomeManager`'s panel on the notch between dictations (ADR 0007). Collapsed
   it is a **band** (a notice, the next meeting, a mic or camera in use, a timer or the track) or a
   bare notch-sized target; the top strip of the notch, or a file dragged toward it, opens the
-  **card** with its **pages**: Music, Calendar, Weather, Reminders, Pomodoro, Shelf, Sound. The
+  **card** with its **pages**: Music, Calendar, Weather, Reminders, Pomodoro, Shelf, Sound, Notes.
+  The **page bar** under the open card has a button per page (Pomodoro on its own round one). The
   order is the one set in Settings → Notch, which can also switch a page off (at least one stays
   on). Holding the notch row asks the Agent.
+- **Notes** — `NotchNotes`: rich-text notes written in the card, one RTF file each in
+  Application Support (`Notes/`), never synced. While one is open the card takes the keyboard
+  without making VoxOS active, and stays open until it loses it.
 - **Live music bars** — bars driven by the real output through `SystemAudioLevels` (a Core Audio
   tap), in the band and on the Music page, only when the setting is on (a click on the player's
   bars switches it) and `PowerState` allows: never in Low Power Mode, on battery only if allowed.

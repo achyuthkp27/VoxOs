@@ -137,7 +137,9 @@ struct NotchPomodoroPageTests {
         #expect(NotchHome.Card.height(for: .music, panelOpen: true) > NotchHome.Card.height(for: .music))
         #expect(NotchHome.Card.height(for: .music) == NotchHome.Card.height, "the player keeps its compact card")
         #expect(NotchHome.Card.height(for: .weather) > NotchHome.Card.height)
-        #expect(NotchHome.Card.height(for: .timer) > NotchHome.Card.height)
+        // The face is one row; its settings take a taller card.
+        #expect(NotchHome.Card.height(for: .timer) < NotchHome.Card.height)
+        #expect(NotchHome.Card.height(for: .timer, timerSettings: true) > NotchHome.Card.height)
         let tall = NotchHome.size(for: .expanded, notchWidth: 180, notchHeight: 32, cardHeight: 260)
         #expect(tall.height == 292)
     }

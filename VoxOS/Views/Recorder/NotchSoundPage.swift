@@ -37,6 +37,9 @@ struct NotchSoundPage: View {
         }
     }
 
+    /// Tall enough for three app rows, and for the camera to be seen.
+    static var cardHeight: CGFloat { NotchWeatherPage.cardHeight }
+
     @ObservedObject var mixer: NotchMixer
     @ObservedObject var clipboard: NotchClipboard
     @ObservedObject var mirror: NotchMirror
@@ -133,10 +136,10 @@ struct NotchSoundPage: View {
     @ViewBuilder
     private var apps: some View {
         if mixer.apps.isEmpty {
-            NotchPageHint(symbol: "square.grid.2x2", text: "Apps that are playing show here, each with its own volume")
+            NotchPageHint(symbol: "square.grid.2x2", text: "Apps that can play sound show here")
         } else {
             ScrollView(.vertical) {
-                VStack(spacing: 8) {
+                VStack(spacing: 6) {
                     ForEach(mixer.apps) { app in
                         NotchAppVolumeRow(app: app) { mixer.setGain($0, for: app.bundleID) }
                     }
@@ -213,7 +216,7 @@ struct NotchSoundPage: View {
 }
 
 /// An icon, and a line under it, for a part of a page with nothing in it yet.
-private struct NotchPageHint: View {
+struct NotchPageHint: View {
     let symbol: String
     let text: LocalizedStringKey
 
@@ -309,30 +312,63 @@ private struct NotchClipboardRow: View {
     }
 }
 
+/// One app's volume as a wide capsule that fills from the left to its level: dragged or clicked
+/// anywhere along it, the level follows the pointer.
 private struct NotchAppVolumeRow: View {
     let app: NotchMixer.App
     let onChange: (Float) -> Void
 
+    static let height: CGFloat = 40
+
     var body: some View {
-        HStack(spacing: 10) {
-            if let icon = NotchHomeApp.icon(for: app.bundleID) {
-                Image(nsImage: icon).resizable().frame(width: 20, height: 20)
+        GeometryReader { geometry in
+            ZStack(alignment: .leading) {
+                Rectangle().fill(.white.opacity(0.07))
+                Rectangle()
+                    .fill(.white.opacity(0.24))
+                    .frame(width: geometry.size.width * CGFloat(app.gain))
+                HStack(spacing: 10) {
+                    if let icon = NotchHomeApp.icon(for: app.bundleID) {
+                        Image(nsImage: icon).resizable().frame(width: 22, height: 22)
+                    }
+                    Text(verbatim: app.name)
+                        .font(.app(size: 14, weight: .semibold))
+                        .foregroundStyle(.white)
+                        .lineLimit(1)
+                    Spacer(minLength: 8)
+                    Text(verbatim: "\(Int((app.gain * 100).rounded()))%")
+                        .font(.app(size: 13, weight: .semibold))
+                        .monospacedDigit()
+                        .foregroundStyle(.white.opacity(0.7))
+                }
+                .padding(.horizontal, 14)
             }
-            Text(verbatim: app.name)
-                .font(.app(size: 12, weight: .semibold))
-                .foregroundStyle(.white)
-                .lineLimit(1)
-                .frame(width: 96, alignment: .leading)
-            Slider(value: Binding(get: { Double(app.gain) }, set: { onChange(Float($0)) }), in: 0...1)
-                .controlSize(.small)
-                .tint(.white)
-            Text(verbatim: "\(Int((app.gain * 100).rounded()))%")
-                .font(.appMono(size: 11, weight: .medium))
-                .foregroundStyle(.white.opacity(0.55))
-                .frame(width: 36, alignment: .trailing)
+            .clipShape(Capsule())
+            .contentShape(Capsule())
+            .gesture(
+                DragGesture(minimumDistance: 0)
+                    .onChanged { value in
+                        onChange(Float(NotchAppVolumeRow.level(at: value.location.x, width: geometry.size.width)))
+                    }
+            )
         }
-        .accessibilityElement(children: .combine)
+        .frame(height: Self.height)
+        .accessibilityElement(children: .ignore)
         .accessibilityLabel(Text("\(app.name) volume"))
+        .accessibilityValue(Text("\(Int((app.gain * 100).rounded())) percent"))
+        .accessibilityAdjustableAction { direction in
+            switch direction {
+            case .increment: onChange(min(1, app.gain + 0.1))
+            case .decrement: onChange(max(0, app.gain - 0.1))
+            @unknown default: break
+            }
+        }
+    }
+
+    /// The level for a pointer at `x` along a row `width` wide, in whole percent.
+    nonisolated static func level(at x: CGFloat, width: CGFloat) -> Double {
+        guard width > 0 else { return 1 }
+        return (min(max(Double(x / width), 0), 1) * 100).rounded() / 100
     }
 }
 

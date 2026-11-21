@@ -275,8 +275,9 @@ struct NotchHomeTests {
         func page(_ from: NotchHomePage, _ forward: Bool, track: Bool) -> NotchHomePage {
             NotchHomeManager.page(after: from, forward: forward, hasTrack: track)
         }
-        #expect(page(.sound, true, track: true) == .music, "wraps round")
-        #expect(page(.today, false, track: false) == .sound, "no Music page")
+        #expect(page(.notes, true, track: true) == .music, "wraps round")
+        #expect(page(.sound, true, track: true) == .notes, "Notes, the newest page, last")
+        #expect(page(.today, false, track: false) == .notes, "no Music page")
         #expect(page(.music, true, track: true) == .today)
         #expect(page(.shelf, true, track: true) == .sound, "Sound, with its extras, after the shelf")
     }

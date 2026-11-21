@@ -21,6 +21,8 @@ import os
 /// band, which would otherwise cover it for as long as a session runs.
 enum NotchHome {
     static let artSize: CGFloat = 20
+    /// The open card is solid black down to this share of its height, then fades into the glass.
+    static let blackShare: CGFloat = 0.55
     /// Cover, inset and the band's shoulder: the same rule as Claude Code's glyph wing.
     static var wing: CGFloat { wing(holding: artSize) }
     /// Wide enough for "24:13" beside a small ring.
@@ -58,15 +60,16 @@ enum NotchHome {
         /// per page, never per reading, so a refresh cannot move the card's edge under the pointer.
         static func height(
             for page: NotchHomePage, panelOpen: Bool = false, mirrorShown: Bool = false,
-            todayList: CGFloat = NotchTodayPage.minimumListHeight
+            todayList: CGFloat = NotchTodayPage.minimumListHeight, timerSettings: Bool = false
         ) -> CGFloat {
             switch page {
             case .music: return panelOpen ? NotchMusicPanel.Layout.cardHeight : height
             case .weather: return NotchWeatherPage.cardHeight
-            case .timer: return NotchTimerPage.cardHeight
+            case .timer: return timerSettings ? NotchTimerPage.settingsHeight : NotchTimerPage.cardHeight
             case .today: return NotchTodayPage.cardHeight(list: todayList)
-            // The camera needs room to be seen: as tall as Weather while the mirror shows.
-            case .sound: return mirrorShown ? NotchWeatherPage.cardHeight : height
+            // Room for three app rows, or for the camera to be seen.
+            case .sound: return NotchSoundPage.cardHeight
+            case .notes: return NotchNotesPage.cardHeight
             default: return height
             }
         }
@@ -159,6 +162,15 @@ enum NotchHome {
             return CGSize(
                 width: max(NotchDesign.expandedWidth, notchWidth + wing * 2), height: notchHeight + cardHeight)
         }
+    }
+
+    /// The window: the card, and open, the page bar under it.
+    static func windowSize(
+        for content: Content, notchWidth: CGFloat, notchHeight: CGFloat, cardHeight: CGFloat = Card.height
+    ) -> CGSize {
+        let card = size(for: content, notchWidth: notchWidth, notchHeight: notchHeight, cardHeight: cardHeight)
+        guard content == .expanded else { return card }
+        return CGSize(width: card.width, height: card.height + NotchHomeNavBar.space)
     }
 
     static func radii(for content: Content) -> NotchDesign.Radii {
@@ -269,6 +281,8 @@ final class NotchHomeModel: ObservableObject {
     @Published var audioFormat: NowPlayingQueue.AudioFormat?
     /// The Sound page shows the camera mirror, which takes a taller card.
     @Published var mirrorShown = false
+    /// The Pomodoro page shows its settings, which take a taller card than its face.
+    @Published var timerSettingsShown = false
     /// How tall the Calendar page's list is; the card fits it, up to a few rows.
     @Published var todayListHeight = NotchTodayPage.minimumListHeight
     /// While pages move: how far the current page is from its place, in points…

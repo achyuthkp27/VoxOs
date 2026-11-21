@@ -33,7 +33,7 @@ struct NotchPageLayoutTests {
         #expect(NotchPageLayout.ordered(from: box.defaults).prefix(3) == [.shelf, .timer, .today])
         #expect(
             NotchHomePage.available(hasTrack: false, defaults: box.defaults)
-                == [.shelf, .timer, .today, .weather, .sound])
+                == [.shelf, .timer, .today, .weather, .sound, .notes])
     }
 
     @Test func aPageAddedLaterIsAppendedRatherThanDropped() {
@@ -44,7 +44,7 @@ struct NotchPageLayoutTests {
         let ordered = NotchPageLayout.ordered(from: box.defaults)
 
         #expect(ordered.prefix(2) == [.shelf, .today])
-        #expect(Set(ordered.dropFirst(2)) == [.music, .weather, .timer, .sound])
+        #expect(Set(ordered.dropFirst(2)) == [.music, .weather, .timer, .sound, .notes])
         #expect(ordered.count == NotchHomePage.allCases.count)
     }
 
@@ -66,8 +66,8 @@ struct NotchPageLayoutTests {
         let withoutTrack = NotchHomePage.available(hasTrack: false, defaults: box.defaults)
         let withTrack = NotchHomePage.available(hasTrack: true, defaults: box.defaults)
 
-        #expect(withoutTrack == [.today, .timer, .sound])
-        #expect(withTrack == [.music, .today, .timer, .sound])
+        #expect(withoutTrack == [.today, .timer, .sound, .notes])
+        #expect(withTrack == [.music, .today, .timer, .sound, .notes])
         #expect(!withoutTrack.contains(.music))
         #expect(!withTrack.contains(.weather))
         #expect(!withTrack.contains(.shelf))

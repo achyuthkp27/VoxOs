@@ -131,7 +131,7 @@ struct NotchGlassSurface<S: Shape>: View {
     let solidHeight: CGFloat
     let totalHeight: CGFloat
     /// How far the black fades into the glass.
-    static var fade: CGFloat { 26 }
+    var fade: CGFloat = 26
 
     var body: some View {
         ZStack {
@@ -143,7 +143,7 @@ struct NotchGlassSurface<S: Shape>: View {
                         stops: [
                             .init(color: .white, location: 0),
                             .init(color: .white, location: min(1, solidHeight / max(totalHeight, 1))),
-                            .init(color: .clear, location: min(1, (solidHeight + Self.fade) / max(totalHeight, 1))),
+                            .init(color: .clear, location: min(1, (solidHeight + fade) / max(totalHeight, 1))),
                         ], startPoint: .top, endPoint: .bottom))
         }
     }

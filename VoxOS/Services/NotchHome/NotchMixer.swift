@@ -3,7 +3,9 @@ import Combine
 import CoreAudio
 import os
 
-/// Per-app volume: each app that is playing, with its own level under the system's.
+/// Per-app volume: each app that can play sound (every app in the Dock, and anything else playing),
+/// with its own level under the system's. An app that has not played yet keeps the level it is
+/// given, and is turned down the moment it starts.
 ///
 /// macOS has no per-app volume. An app turned down is taken with a Core Audio process tap
 /// (macOS 14.2+) that mutes it where it was going, and its sound is played on to the same output
@@ -41,7 +43,7 @@ final class NotchMixer: ObservableObject {
     /// While the Sound page is on screen, or any app is turned down, the list follows the
     /// processes that come and go.
     func setVisible(_ visible: Bool) {
-        let wanted = visible || !taps.isEmpty
+        let wanted = visible || !taps.isEmpty || gains.values.contains { $0 < 0.999 }
         guard wanted != listening else {
             if visible { reload() }
             return
@@ -98,15 +100,38 @@ final class NotchMixer: ObservableObject {
             entry.playing = entry.playing || Self.isRunningOutput(process)
             grouped[bundleID] = entry
         }
-        let shown = grouped.filter { $0.value.playing || gains[$0.key].map { $0 < 1 } == true }
-        apps = shown.map {
-            App(bundleID: $0.key, name: $0.value.name, processes: $0.value.processes, gain: gains[$0.key] ?? 1)
+        // Every app in the Dock can play sound, whether or not it has yet.
+        var dockApps = Set<String>()
+        for app in NSWorkspace.shared.runningApplications
+        where app.activationPolicy == .regular && app.processIdentifier != me {
+            guard let bundleID = app.bundleIdentifier else { continue }
+            dockApps.insert(bundleID)
+            if grouped[bundleID] == nil { grouped[bundleID] = (app.localizedName ?? bundleID, [], false) }
         }
-        .sorted { $0.name.localizedCaseInsensitiveCompare($1.name) == .orderedAscending }
+        // Helpers and menu bar apps show only while they play, or once turned down.
+        let shown = grouped.filter {
+            $0.value.playing || dockApps.contains($0.key) || gains[$0.key].map { $0 < 1 } == true
+        }
+        apps = Self.ordered(
+            shown.map {
+                (
+                    App(bundleID: $0.key, name: $0.value.name, processes: $0.value.processes, gain: gains[$0.key] ?? 1),
+                    $0.value.playing
+                )
+            })
         // An app that started a new helper is taken again with all of its processes.
         for app in apps where taps[app.bundleID]?.processes != app.processes && (gains[app.bundleID] ?? 1) < 1 {
             apply(app.bundleID)
         }
+    }
+
+    /// Playing apps first, then the rest, each by name.
+    nonisolated static func ordered(_ apps: [(App, playing: Bool)]) -> [App] {
+        apps.sorted { lhs, rhs in
+            if lhs.playing != rhs.playing { return lhs.playing }
+            return lhs.0.name.localizedCaseInsensitiveCompare(rhs.0.name) == .orderedAscending
+        }
+        .map(\.0)
     }
 
     private func apply(_ bundleID: String) {
