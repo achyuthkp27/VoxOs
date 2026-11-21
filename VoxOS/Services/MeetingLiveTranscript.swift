@@ -183,6 +183,9 @@ final class MeetingLiveTranscript: ObservableObject {
         }
     }
 
+    /// How long the window stays after a meeting in which nothing was heard.
+    static let emptyWindowLinger: TimeInterval = 6
+
     func stop() async {
         task?.cancel()
         task = nil
@@ -190,6 +193,14 @@ final class MeetingLiveTranscript: ObservableObject {
         stream?.cancel()
         stream = nil
         isRunning = false
+        // Nothing was heard: the empty window says so, then goes, unless a meeting started again.
+        if allText.isEmpty {
+            Task { @MainActor [weak self] in
+                try? await Task.sleep(for: .seconds(Self.emptyWindowLinger))
+                guard let self, !self.isRunning, self.allText.isEmpty else { return }
+                LiveTranscriptWindow.shared.close()
+            }
+        }
         SystemAudioCaptureService.shared.stopLive()
         await registry?.cleanup()
         registry = nil
@@ -506,9 +517,11 @@ struct MeetingTranscriptView: View {
                 .font(.app(size: 14, weight: .semibold))
                 .foregroundStyle(AppTheme.Text.primary)
             Text(
-                live.isStreaming
-                    ? "Words show here as they are said."
-                    : "Words show here every few seconds; this speech model cannot stream."
+                !live.isRunning
+                    ? "No words were heard while the meeting was recorded. This window closes by itself."
+                    : live.isStreaming
+                        ? "Words show here as they are said."
+                        : "Words show here every few seconds; this speech model cannot stream."
             )
             .font(.app(size: 12))
             .foregroundStyle(AppTheme.Text.secondary)
