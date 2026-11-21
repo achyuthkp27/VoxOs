@@ -3782,6 +3782,22 @@
         }
       }
     },
+    "Add Checklist to Reminders" : {
+      "localizations" : {
+        "de" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Checkliste zu Erinnerungen hinzufügen"
+          }
+        },
+        "zh-Hans" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "将核对清单添加到提醒事项"
+          }
+        }
+      }
+    },
     "Add Custom Enhancement Model" : {
       "localizations" : {
         "de" : {
@@ -4411,6 +4427,22 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "已添加 %@"
+          }
+        }
+      }
+    },
+    "Added %lld to Reminders" : {
+      "localizations" : {
+        "de" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "%lld zu Erinnerungen hinzugefügt"
+          }
+        },
+        "zh-Hans" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "已将 %lld 项添加到提醒事项"
           }
         }
       }
@@ -8050,6 +8082,22 @@
         }
       }
     },
+    "Close Search" : {
+      "localizations" : {
+        "de" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Suche schließen"
+          }
+        },
+        "zh-Hans" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "关闭搜索"
+          }
+        }
+      }
+    },
     "Close Settings" : {
       "localizations" : {
         "de" : {
@@ -9689,6 +9737,22 @@
         }
       }
     },
+    "Default Output" : {
+      "localizations" : {
+        "de" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Standardausgabe"
+          }
+        },
+        "zh-Hans" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "默认输出"
+          }
+        }
+      }
+    },
     "Default mode is used when no app or website matches" : {
       "localizations" : {
         "de" : {
@@ -10341,6 +10405,22 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "听写并发送"
+          }
+        }
+      }
+    },
+    "Dictate into This Note" : {
+      "localizations" : {
+        "de" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "In diese Notiz diktieren"
+          }
+        },
+        "zh-Hans" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "听写到此备忘录"
           }
         }
       }
@@ -17576,7 +17656,6 @@
       }
     },
     "Model Catalog" : {
-      "extractionState" : "stale",
       "localizations" : {
         "de" : {
           "stringUnit" : {
@@ -17968,6 +18047,22 @@
         }
       }
     },
+    "Mute" : {
+      "localizations" : {
+        "de" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Stummschalten"
+          }
+        },
+        "zh-Hans" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "静音"
+          }
+        }
+      }
+    },
     "Mute Audio While Recording" : {
       "extractionState" : "stale",
       "localizations" : {
@@ -18013,6 +18108,22 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "将麦克风静音"
+          }
+        }
+      }
+    },
+    "Muted" : {
+      "localizations" : {
+        "de" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Stumm"
+          }
+        },
+        "zh-Hans" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "已静音"
           }
         }
       }
@@ -19107,6 +19218,22 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "无可用模式"
+          }
+        }
+      }
+    },
+    "No notes match" : {
+      "localizations" : {
+        "de" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Keine passenden Notizen"
+          }
+        },
+        "zh-Hans" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "没有匹配的备忘录"
           }
         }
       }
@@ -21946,6 +22073,22 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "播放"
+          }
+        }
+      }
+    },
+    "Play On" : {
+      "localizations" : {
+        "de" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Wiedergabe auf"
+          }
+        },
+        "zh-Hans" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "播放到"
           }
         }
       }
@@ -25396,6 +25539,22 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "搜索"
+          }
+        }
+      }
+    },
+    "Search Notes" : {
+      "localizations" : {
+        "de" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Notizen durchsuchen"
+          }
+        },
+        "zh-Hans" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "搜索备忘录"
           }
         }
       }
@@ -31162,6 +31321,22 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "未知"
+          }
+        }
+      }
+    },
+    "Unmute" : {
+      "localizations" : {
+        "de" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Ton an"
+          }
+        },
+        "zh-Hans" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "取消静音"
           }
         }
       }

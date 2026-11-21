@@ -171,6 +171,14 @@ enum NotchNoteFormat {
         }
     }
 
+    /// The checklist's items not yet ticked, in order, without their boxes.
+    static func uncheckedItems(in text: String) -> [String] {
+        text.components(separatedBy: .newlines)
+            .filter { $0.hasPrefix("\(unchecked) ") }
+            .map { strippingMarker($0).trimmingCharacters(in: .whitespaces) }
+            .filter { !$0.isEmpty }
+    }
+
     /// The box at `index`, ticked or unticked; nil if there is none there.
     static func toggledBox(_ character: String) -> String? {
         switch character {

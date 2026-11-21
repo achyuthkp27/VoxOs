@@ -6,6 +6,7 @@ import SwiftUI
 /// VoxOS the active app, and the card stays open while it has the keyboard.
 struct NotchNotesPage: View {
     @ObservedObject var notes: NotchNotes
+    @FocusState private var searchFocused: Bool
 
     static var cardHeight: CGFloat { 300 }
 
@@ -23,24 +24,38 @@ struct NotchNotesPage: View {
         .padding(.bottom, NotchHome.Card.bottom)
         .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .top)
         .onAppear { notes.loadIfNeeded() }
+        // Leaving the page puts the search away, and gives the keyboard back.
+        .onDisappear { stopSearch() }
     }
 
     private var list: some View {
         VStack(alignment: .leading, spacing: 8) {
-            HStack {
-                Text("Notes")
-                    .font(.app(size: 15, weight: .semibold))
-                    .foregroundStyle(.white)
-                Spacer()
-                NotchNoteCircleButton(symbol: "square.and.pencil", label: "New Note") { notes.create() }
+            HStack(spacing: 8) {
+                if notes.searching {
+                    searchField
+                    NotchNoteCircleButton(symbol: "xmark", label: "Close Search") { stopSearch() }
+                } else {
+                    Text("Notes")
+                        .font(.app(size: 15, weight: .semibold))
+                        .foregroundStyle(.white)
+                    Spacer()
+                    if !notes.notes.isEmpty {
+                        NotchNoteCircleButton(symbol: "magnifyingglass", label: "Search Notes") {
+                            notes.searching = true
+                        }
+                    }
+                    NotchNoteCircleButton(symbol: "square.and.pencil", label: "New Note") { notes.create() }
+                }
             }
             .frame(height: NotchNoteCircleButton.size)
             if notes.notes.isEmpty {
                 NotchPageHint(symbol: "note.text", text: "Notes you write here stay on this Mac")
+            } else if notes.shown.isEmpty {
+                NotchPageHint(symbol: "magnifyingglass", text: "No notes match")
             } else {
                 ScrollView(.vertical) {
                     VStack(spacing: 4) {
-                        ForEach(notes.notes) { note in
+                        ForEach(notes.shown) { note in
                             NotchNoteRow(note: note) { notes.openID = note.id }
                         }
                     }
@@ -48,6 +63,33 @@ struct NotchNotesPage: View {
                 .scrollIndicators(.automatic)
             }
         }
+    }
+
+    private var searchField: some View {
+        HStack(spacing: 6) {
+            Image(systemName: "magnifyingglass")
+                .font(.system(size: 11, weight: .semibold))
+                .foregroundStyle(.white.opacity(0.5))
+            TextField("Search Notes", text: $notes.query)
+                .textFieldStyle(.plain)
+                .font(.app(size: 13))
+                .foregroundStyle(.white)
+                .focused($searchFocused)
+                .onExitCommand { stopSearch() }
+        }
+        .padding(.horizontal, 12)
+        .frame(height: NotchNoteCircleButton.size)
+        .background(Capsule().fill(.white.opacity(0.1)))
+        // The card takes the keyboard once the field shows; the field takes it a moment after.
+        .onAppear {
+            DispatchQueue.main.asyncAfter(deadline: .now() + 0.1) { searchFocused = true }
+        }
+    }
+
+    private func stopSearch() {
+        guard notes.searching || !notes.query.isEmpty else { return }
+        notes.searching = false
+        notes.query = ""
     }
 }
 
@@ -86,6 +128,8 @@ private struct NotchNoteEditorView: View {
     @StateObject private var controller = NotchNoteEditorController()
     /// Delete takes a second click, so a slip never loses a note.
     @State private var confirmingDelete = false
+    /// How many reminders the last click added, shown for a moment.
+    @State private var remindersAdded: Int?
 
     var body: some View {
         VStack(spacing: 8) {
@@ -96,6 +140,14 @@ private struct NotchNoteEditorView: View {
                 HStack(spacing: 8) {
                     NotchNoteCircleButton(symbol: "chevron.left", label: "All Notes") { close() }
                     Spacer()
+                    NotchNoteCircleButton(symbol: "mic.fill", label: "Dictate into This Note") { dictate() }
+                    if controller.uncheckedItems > 0 || remindersAdded != nil {
+                        NotchNoteCircleButton(
+                            symbol: remindersAdded == nil ? "checklist" : "checkmark",
+                            label: remindersAdded.map { "Added \($0) to Reminders" } ?? "Add Checklist to Reminders",
+                            tint: remindersAdded == nil ? nil : .green
+                        ) { addToReminders() }
+                    }
                     NotchNoteCircleButton(symbol: "doc.on.doc.fill", label: "Copy Note") {
                         controller.save()
                         notes.copy(note.id)
@@ -129,6 +181,26 @@ private struct NotchNoteEditorView: View {
     private func close() {
         controller.save()
         notes.openID = nil
+    }
+
+    /// The recorder starts as with the recording shortcut, and what is said goes into this note
+    /// where the caret is, rather than into the app in front.
+    private func dictate() {
+        controller.save()
+        notes.beginDictation(into: note.id, at: controller.caret)
+        NotificationCenter.default.post(name: .toggleRecorderPanel, object: nil)
+    }
+
+    /// The checklist's unticked items as reminders in the default list.
+    private func addToReminders() {
+        guard remindersAdded == nil else { return }
+        let items = NotchNoteFormat.uncheckedItems(in: controller.textView?.string ?? "")
+        Task { @MainActor in
+            let added = await NotchReminders.shared.add(items)
+            remindersAdded = added
+            try? await Task.sleep(for: .seconds(2))
+            remindersAdded = nil
+        }
     }
 
     private var toolbar: some View {
@@ -242,12 +314,22 @@ final class NotchNoteEditorController: ObservableObject {
     }
 
     @Published private(set) var isEmpty = true
+    /// The checklist's items not yet ticked.
+    @Published private(set) var uncheckedItems = 0
     weak var textView: NotchNoteTextView?
     var saveNow: () -> Void = {}
 
+    /// Where the caret is, for a dictation to go.
+    var caret: Int { textView?.selectedRange().location ?? (textView?.string as NSString?)?.length ?? 0 }
+
     func save() { saveNow() }
 
-    func textChanged() { isEmpty = (textView?.string ?? "").isEmpty }
+    func textChanged() {
+        let text = textView?.string ?? ""
+        isEmpty = text.isEmpty
+        let unchecked = NotchNoteFormat.uncheckedItems(in: text).count
+        if unchecked != uncheckedItems { uncheckedItems = unchecked }
+    }
 
     func perform(_ action: Action) {
         guard let textView, let storage = textView.textStorage else { return }

@@ -131,6 +131,40 @@ struct NotchNotesTests {
         #expect(try FileManager.default.contentsOfDirectory(atPath: folder.path).isEmpty)
     }
 
+    @Test func searchMatchesEveryWordInTitleOrText() {
+        let notes = [
+            NotchNotes.Note(id: UUID(), title: "Groceries", modified: Date(), text: "Groceries\nmilk, crème fraîche"),
+            NotchNotes.Note(id: UUID(), title: "Trip", modified: Date(), text: "Trip\npack the charger"),
+        ]
+        #expect(NotchNotes.matching(notes, query: "").count == 2)
+        #expect(NotchNotes.matching(notes, query: "creme").map(\.title) == ["Groceries"])
+        #expect(NotchNotes.matching(notes, query: "TRIP charger").map(\.title) == ["Trip"])
+        #expect(NotchNotes.matching(notes, query: "milk charger").isEmpty)
+    }
+
+    @Test func aDictationGoesIntoTheNoteOnceAndLapses() {
+        let notes = NotchNotes(folder: FileManager.default.temporaryDirectory.appendingPathComponent("unused"))
+        let id = UUID()
+        let start = Date(timeIntervalSince1970: 1000)
+        notes.beginDictation(into: id, at: 4, now: start)
+        #expect(notes.takeDictation(now: start.addingTimeInterval(5))?.note == id)
+        #expect(notes.takeDictation(now: start.addingTimeInterval(6)) == nil, "used once")
+        notes.beginDictation(into: id, at: 4, now: start)
+        #expect(notes.takeDictation(now: start.addingTimeInterval(NotchNotes.dictationLifetime + 1)) == nil)
+    }
+
+    @Test func dictatedTextIsSpacedFromTheWordBeforeIt() {
+        #expect(NotchNotes.joining(" hello ", after: "word") == " hello")
+        #expect(NotchNotes.joining("hello", after: "word ") == "hello")
+        #expect(NotchNotes.joining("hello", after: "") == "hello")
+        #expect(NotchNotes.joining("hello", after: "line\n") == "hello")
+    }
+
+    @Test func onlyUntickedItemsGoToReminders() {
+        let text = "Shopping\n☐ milk\n☑ eggs\n☐  \n☐ bread"
+        #expect(NotchNoteFormat.uncheckedItems(in: text) == ["milk", "bread"])
+    }
+
     // MARK: The card
 
     @Test func theOpenWindowHasRoomForTheBarUnderTheCard() {

@@ -25,6 +25,8 @@ final class TranscriptionDelivery {
     }
 
     func deliver(_ request: Request, actions: Actions) async {
+        // A dictation started from a note goes into the note (once, and only a plain dictation).
+        let noteTarget = NotchNotes.shared.takeDictation()
         guard request.transcription.transcriptionStatus == TranscriptionStatus.completed.rawValue else {
             await actions.dismiss()
             return
@@ -51,7 +53,11 @@ final class TranscriptionDelivery {
             return
         }
 
-        if let text = request.text {
+        if let text = request.text, let noteTarget {
+            SoundManager.shared.playStopSound()
+            await actions.dismiss()
+            NotchNotes.shared.insert(deliverableText(from: text), into: noteTarget)
+        } else if let text = request.text {
             await paste(text, output: request.output, verbatim: request.isVerbatim, actions: actions)
         } else {
             await actions.dismiss()

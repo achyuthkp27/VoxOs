@@ -62,6 +62,29 @@ final class NotchReminders: ObservableObject {
         }
     }
 
+    /// New reminders in the default list, one per title, asking for access first if it has not
+    /// been given. Returns how many were added.
+    func add(_ titles: [String]) async -> Int {
+        guard !titles.isEmpty else { return 0 }
+        if access != .granted {
+            let granted = (try? await store.requestFullAccessToReminders()) ?? false
+            access = granted ? .granted : Self.currentAccess()
+            guard access == .granted else { return 0 }
+            store.reset()
+        }
+        guard let list = store.defaultCalendarForNewReminders() else { return 0 }
+        var added = 0
+        for title in titles {
+            let reminder = EKReminder(eventStore: store)
+            reminder.title = title
+            reminder.calendar = list
+            if (try? store.save(reminder, commit: false)) != nil { added += 1 }
+        }
+        try? store.commit()
+        scheduleReload()
+        return added
+    }
+
     func complete(_ id: String) {
         guard let reminder = store.calendarItem(withIdentifier: id) as? EKReminder else { return }
         reminder.isCompleted = true

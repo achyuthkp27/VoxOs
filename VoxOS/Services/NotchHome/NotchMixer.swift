@@ -26,11 +26,19 @@ final class NotchMixer: ObservableObject {
         /// Its Core Audio process objects (an app and its helpers).
         let processes: [AudioObjectID]
         var gain: Float
+        /// The output device it plays on, by UID; nil for the Mac's default output.
+        var output: String? = nil
+
+        var isMuted: Bool { gain <= 0.001 }
     }
 
     /// Levels the user set, by app, for this run.
     @Published private(set) var apps: [App] = []
     private var gains: [String: Float] = [:]
+    /// The level an app had before it was muted, to go back to.
+    private var unmuted: [String: Float] = [:]
+    /// Apps sent to another output device than the default, by device UID.
+    private var outputs: [String: String] = [:]
     private var taps: [String: AppVolumeTap] = [:]
     private var listening = false
     private var listener: AudioObjectPropertyListenerBlock?
@@ -43,7 +51,7 @@ final class NotchMixer: ObservableObject {
     /// While the Sound page is on screen, or any app is turned down, the list follows the
     /// processes that come and go.
     func setVisible(_ visible: Bool) {
-        let wanted = visible || !taps.isEmpty || gains.values.contains { $0 < 0.999 }
+        let wanted = visible || !taps.isEmpty || gains.values.contains { $0 < 0.999 } || !outputs.isEmpty
         guard wanted != listening else {
             if visible { reload() }
             return
@@ -70,12 +78,35 @@ final class NotchMixer: ObservableObject {
         apply(bundleID)
     }
 
+    /// Muted, back to the level it had; at any level, muted.
+    func toggleMute(_ bundleID: String) {
+        let current = gains[bundleID] ?? 1
+        if current <= 0.001 {
+            setGain(unmuted.removeValue(forKey: bundleID) ?? 1, for: bundleID)
+        } else {
+            unmuted[bundleID] = current
+            setGain(0, for: bundleID)
+        }
+    }
+
+    /// Plays the app on the device with `uid`; nil puts it back on the default output.
+    func setOutput(_ uid: String?, for bundleID: String) {
+        outputs[bundleID] = uid
+        if let index = apps.firstIndex(where: { $0.bundleID == bundleID }) { apps[index].output = uid }
+        apply(bundleID)
+    }
+
     /// Turns every app back to full, as when the feature is switched off.
     func reset() {
         gains = [:]
+        unmuted = [:]
+        outputs = [:]
         taps.values.forEach { $0.stop() }
         taps = [:]
-        for index in apps.indices { apps[index].gain = 1 }
+        for index in apps.indices {
+            apps[index].gain = 1
+            apps[index].output = nil
+        }
         setVisible(false)
     }
 
@@ -111,16 +142,22 @@ final class NotchMixer: ObservableObject {
         // Helpers and menu bar apps show only while they play, or once turned down.
         let shown = grouped.filter {
             $0.value.playing || dockApps.contains($0.key) || gains[$0.key].map { $0 < 1 } == true
+                || outputs[$0.key] != nil
         }
         apps = Self.ordered(
             shown.map {
                 (
-                    App(bundleID: $0.key, name: $0.value.name, processes: $0.value.processes, gain: gains[$0.key] ?? 1),
+                    App(
+                        bundleID: $0.key, name: $0.value.name, processes: $0.value.processes,
+                        gain: gains[$0.key] ?? 1, output: outputs[$0.key]),
                     $0.value.playing
                 )
             })
         // An app that started a new helper is taken again with all of its processes.
-        for app in apps where taps[app.bundleID]?.processes != app.processes && (gains[app.bundleID] ?? 1) < 1 {
+        for app in apps
+        where taps[app.bundleID]?.processes != app.processes
+            && ((gains[app.bundleID] ?? 1) < 1 || outputs[app.bundleID] != nil)
+        {
             apply(app.bundleID)
         }
     }
@@ -136,15 +173,21 @@ final class NotchMixer: ObservableObject {
 
     private func apply(_ bundleID: String) {
         let gain = gains[bundleID] ?? 1
+        let output = outputs[bundleID]
         let processes = apps.first { $0.bundleID == bundleID }?.processes ?? []
-        if gain >= 0.999 || processes.isEmpty {
+        if (gain >= 0.999 && output == nil) || processes.isEmpty {
             taps.removeValue(forKey: bundleID)?.stop()
-        } else if let tap = taps[bundleID], tap.processes == processes {
+        } else if let tap = taps[bundleID], tap.processes == processes, tap.outputUID == output {
             tap.gain = gain
         } else {
             taps.removeValue(forKey: bundleID)?.stop()
-            if let tap = AppVolumeTap(processes: processes, gain: gain) {
+            if let tap = AppVolumeTap(processes: processes, gain: gain, outputUID: output) {
                 taps[bundleID] = tap
+            } else if output != nil {
+                // The device went away: back to the default output rather than silence.
+                logger.error("Per-app output not available for \(bundleID, privacy: .public)")
+                setOutput(nil, for: bundleID)
+                return
             } else {
                 logger.error("Per-app volume tap not created for \(bundleID, privacy: .public)")
             }
@@ -184,9 +227,11 @@ final class NotchMixer: ObservableObject {
 }
 
 /// One app's sound, muted where it was going and played on at `gain` through a private
-/// aggregate of the tap and the default output.
+/// aggregate of the tap and an output: the default one, or the device the app was sent to.
 final class AppVolumeTap: @unchecked Sendable {
     let processes: [AudioObjectID]
+    /// The device it plays on; nil for the default output.
+    let outputUID: String?
     /// Read on the audio thread, written on the main one; a 32-bit store is atomic on Apple
     /// silicon and Intel alike.
     private let level = UnsafeMutablePointer<Float>.allocate(capacity: 1)
@@ -203,8 +248,9 @@ final class AppVolumeTap: @unchecked Sendable {
         set { level.pointee = min(1, max(0, newValue)) }
     }
 
-    init?(processes: [AudioObjectID], gain: Float) {
+    init?(processes: [AudioObjectID], gain: Float, outputUID: String? = nil) {
         self.processes = processes
+        self.outputUID = outputUID
         level.initialize(to: min(1, max(0, gain)))
         let description = CATapDescription(stereoMixdownOfProcesses: processes)
         description.uuid = UUID()
@@ -213,7 +259,7 @@ final class AppVolumeTap: @unchecked Sendable {
         description.muteBehavior = .muted
         var tap = AudioObjectID(kAudioObjectUnknown)
         guard AudioHardwareCreateProcessTap(description, &tap) == noErr, tap != kAudioObjectUnknown,
-            let output = Self.defaultOutputUID()
+            let output = outputUID ?? Self.uid(of: SystemVolume.defaultOutput())
         else {
             level.deallocate()
             return nil
@@ -345,8 +391,8 @@ final class AppVolumeTap: @unchecked Sendable {
         return nil
     }
 
-    private static func defaultOutputUID() -> String? {
-        let device = SystemVolume.defaultOutput()
+    /// A device's UID, which an aggregate names its parts by.
+    static func uid(of device: AudioObjectID) -> String? {
         var address = AudioObjectPropertyAddress(
             mSelector: kAudioDevicePropertyDeviceUID, mScope: kAudioObjectPropertyScopeGlobal,
             mElement: kAudioObjectPropertyElementMain)

@@ -14,12 +14,33 @@ final class NotchNotes: ObservableObject {
         let id: UUID
         var title: String
         var modified: Date
+        /// The plain text, for search.
+        var text: String = ""
+    }
+
+    /// Where a dictation started from a note goes: the note, and where its caret was.
+    struct DictationTarget: Equatable {
+        let note: UUID
+        let location: Int
+        let started: Date
     }
 
     /// Newest first.
     @Published private(set) var notes: [Note] = []
     /// The note open in the editor; nil shows the list.
     @Published var openID: UUID?
+    /// The search field is showing on the list (it takes the keyboard like an open note).
+    @Published var searching = false
+    @Published var query = ""
+    /// A dictation started from a note, waiting for its text.
+    private(set) var dictation: DictationTarget?
+
+    /// A dictation is followed for this long; one cancelled or never finished then lapses, so a
+    /// later dictation goes where the cursor is, as usual.
+    static let dictationLifetime: TimeInterval = 120
+
+    /// The list, filtered by the search when there is one.
+    var shown: [Note] { Self.matching(notes, query: query) }
 
     private var loaded = false
     private let logger = Logger(subsystem: "com.achyuthkp.voxos", category: "NotchNotes")
@@ -48,20 +69,79 @@ final class NotchNotes: ObservableObject {
             else { return nil }
             let modified =
                 (try? url.resourceValues(forKeys: [.contentModificationDateKey]))?.contentModificationDate ?? Date()
-            return Note(id: id, title: Self.title(from: Self.read(url)?.string ?? ""), modified: modified)
+            let text = Self.read(url)?.string ?? ""
+            return Note(id: id, title: Self.title(from: text), modified: modified, text: text)
         }
         .sorted { $0.modified > $1.modified }
     }
 
-    /// A new, empty note, opened.
+    /// A new note, empty or holding `text`, opened.
     @discardableResult
-    func create() -> UUID {
+    func create(text: String = "") -> UUID {
         loadIfNeeded()
         let note = Note(id: UUID(), title: Self.untitled, modified: Date())
         notes.insert(note, at: 0)
-        save(NSAttributedString(string: ""), for: note.id)
+        save(NSAttributedString(string: text, attributes: NotchNoteFormat.bodyAttributes), for: note.id)
+        searching = false
+        query = ""
         openID = note.id
         return note.id
+    }
+
+    /// Opens the card on the Notes page, pinned (from a drop, the menu bar, or a dictation).
+    static func showInNotch() {
+        DistributedNotificationCenter.default().postNotificationName(
+            NotchHome.openRequest, object: NotchHomePage.notes.rawValue, userInfo: nil, deliverImmediately: true)
+    }
+
+    // MARK: Dictation
+
+    /// The next dictation goes into `note` at `location` instead of where the cursor is.
+    func beginDictation(into note: UUID, at location: Int, now: Date = Date()) {
+        dictation = DictationTarget(note: note, location: location, started: now)
+    }
+
+    /// The waiting dictation's target, taken (so it is used once), if it has not lapsed.
+    func takeDictation(now: Date = Date()) -> DictationTarget? {
+        defer { dictation = nil }
+        guard let dictation, now.timeIntervalSince(dictation.started) <= Self.dictationLifetime else { return nil }
+        return dictation
+    }
+
+    /// Dictated text into the note where its caret was, with a space between it and a word
+    /// before it; the note is then shown in the card.
+    func insert(_ dictated: String, into target: DictationTarget) {
+        loadIfNeeded()
+        guard notes.contains(where: { $0.id == target.note }) else { return }
+        let text = NSMutableAttributedString(attributedString: self.text(of: target.note))
+        let location = min(max(0, target.location), text.length)
+        let piece = Self.joining(dictated, after: (text.string as NSString).substring(to: location))
+        text.insert(NSAttributedString(string: piece, attributes: NotchNoteFormat.bodyAttributes), at: location)
+        save(text, for: target.note)
+        openID = target.note
+        // After the recorder has gone: while it shows, the card stays hidden and would not pin.
+        DispatchQueue.main.asyncAfter(deadline: .now() + 0.5) { Self.showInNotch() }
+    }
+
+    /// `dictated`, with a space in front when it follows a word.
+    nonisolated static func joining(_ dictated: String, after before: String) -> String {
+        let trimmed = dictated.trimmingCharacters(in: .whitespacesAndNewlines)
+        guard let last = before.last, !last.isWhitespace else { return trimmed }
+        return " " + trimmed
+    }
+
+    // MARK: Search
+
+    /// Notes whose title or text holds every word of the query, ignoring case and accents.
+    nonisolated static func matching(_ notes: [Note], query: String) -> [Note] {
+        let words = query.split(whereSeparator: \.isWhitespace).map(String.init)
+        guard !words.isEmpty else { return notes }
+        return notes.filter { note in
+            let haystack = note.title + "\n" + note.text
+            return words.allSatisfy {
+                haystack.range(of: $0, options: [.caseInsensitive, .diacriticInsensitive]) != nil
+            }
+        }
     }
 
     func text(of id: UUID) -> NSAttributedString {
@@ -82,6 +162,7 @@ final class NotchNotes: ObservableObject {
         let title = Self.title(from: text.string)
         if let index = notes.firstIndex(where: { $0.id == id }) {
             notes[index].title = title
+            notes[index].text = text.string
             notes[index].modified = Date()
             // The note just edited moves to the top.
             if index != 0 { notes.insert(notes.remove(at: index), at: 0) }

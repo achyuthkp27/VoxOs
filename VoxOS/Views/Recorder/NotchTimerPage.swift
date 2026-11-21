@@ -524,13 +524,8 @@ struct NotchTimerRing: View {
     let kind: NotchTimer.Kind
     var lineWidth: CGFloat = 2.5
 
-    static func color(for kind: NotchTimer.Kind) -> Color {
-        switch kind {
-        case .countdown: return .white
-        case .focus: return NotchPomodoroRing.accent
-        case .shortBreak, .longBreak: return Color(red: 0.42, green: 0.86, blue: 0.56)
-        }
-    }
+    /// The timer face's own colours, so the band, the page bar and the page agree.
+    static func color(for kind: NotchTimer.Kind) -> Color { NotchTimerPage.faceColor(for: kind) }
 
     var body: some View {
         ZStack {

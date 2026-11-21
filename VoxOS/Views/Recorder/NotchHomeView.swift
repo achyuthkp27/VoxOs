@@ -108,7 +108,7 @@ struct NotchHomeView: View {
                 .onEnded { value in onDrag(value.startLocation.x, value.translation, value.predictedEndTranslation) }
         )
         .coordinateSpace(name: NotchHome.cardSpace)
-        .onDrop(of: [.fileURL], delegate: NotchCardDropDelegate(onTargeted: onDropTargeted))
+        .onDrop(of: [.fileURL, .plainText], delegate: NotchCardDropDelegate(onTargeted: onDropTargeted))
         .animation(
             reduceMotion ? nil : (content == .expanded ? NotchDesign.openAnimation : NotchDesign.closeAnimation),
             value: content
@@ -324,7 +324,8 @@ struct NotchHomeView: View {
                 TimelineView(.periodic(from: .now, by: 1)) { context in
                     Text(verbatim: NotchTimers.clock(running.remaining(at: context.date)))
                         .font(.appMono(size: 12, weight: .semibold))
-                        .foregroundStyle(.white)
+                        .foregroundStyle(NotchTimerPage.faceColor(for: running.kind))
+                        .opacity(running.isPaused ? 0.6 : 1)
                         .monospacedDigit()
                 }
             }
@@ -537,14 +538,19 @@ struct NotchLevelSegments: View {
 
 /// "Join", on the meeting band and beside a meeting on the Calendar page.
 /// Files dragged onto the open card: onto the Shelf page's AirDrop zone they go by AirDrop;
-/// anywhere else they are kept on the shelf.
+/// anywhere else they are kept on the shelf. Text dropped on the notch, open or not, becomes a new
+/// note, shown on the Notes page.
 @MainActor
 struct NotchCardDropDelegate: DropDelegate {
     let onTargeted: (Bool) -> Void
 
-    func validateDrop(info: DropInfo) -> Bool { info.hasItemsConforming(to: [.fileURL]) }
+    func validateDrop(info: DropInfo) -> Bool { info.hasItemsConforming(to: [.fileURL, .plainText]) }
+
+    /// Files open the shelf to land on; text has no page to open until it is dropped.
+    private func carriesFiles(_ info: DropInfo) -> Bool { info.hasItemsConforming(to: [.fileURL]) }
 
     func dropEntered(info: DropInfo) {
+        guard carriesFiles(info) else { return }
         onTargeted(true)
         track(info)
     }
@@ -566,7 +572,7 @@ struct NotchCardDropDelegate: DropDelegate {
         let providers = info.itemProviders(for: [.fileURL])
         guard !providers.isEmpty else {
             onTargeted(false)
-            return false
+            return dropText(info)
         }
         Task { @MainActor in
             var urls: [URL] = []
@@ -577,6 +583,22 @@ struct NotchCardDropDelegate: DropDelegate {
             if toAirDrop { shelf.airDrop(urls) } else { shelf.add(urls) }
             if !urls.isEmpty { NotchHome.tap() }
             onTargeted(false)
+        }
+        return true
+    }
+
+    /// Dropped text becomes a new note.
+    private func dropText(_ info: DropInfo) -> Bool {
+        guard let provider = info.itemProviders(for: [.plainText]).first else { return false }
+        _ = provider.loadObject(ofClass: NSString.self) { object, _ in
+            guard let text = (object as? NSString) as String?,
+                !text.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty
+            else { return }
+            Task { @MainActor in
+                NotchNotes.shared.create(text: text)
+                NotchHome.tap()
+                NotchNotes.showInNotch()
+            }
         }
         return true
     }

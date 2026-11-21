@@ -134,7 +134,10 @@ struct NotchSoundPage: View {
             ScrollView(.vertical) {
                 VStack(spacing: 6) {
                     ForEach(mixer.apps) { app in
-                        NotchAppVolumeRow(app: app) { mixer.setGain($0, for: app.bundleID) }
+                        NotchAppVolumeRow(
+                            app: app, onChange: { mixer.setGain($0, for: app.bundleID) },
+                            onMute: { mixer.toggleMute(app.bundleID) },
+                            onOutput: { mixer.setOutput($0, for: app.bundleID) })
                     }
                 }
             }
@@ -257,10 +260,13 @@ private struct NotchToggleChip: View {
 }
 
 /// One app's volume as a wide capsule that fills from the left to its level: dragged or clicked
-/// anywhere along it, the level follows the pointer.
+/// anywhere along it, the level follows the pointer. A click on its icon mutes it (and brings it
+/// back); a right-click sends it to another output device.
 private struct NotchAppVolumeRow: View {
     let app: NotchMixer.App
     let onChange: (Float) -> Void
+    let onMute: () -> Void
+    let onOutput: (String?) -> Void
 
     static let height: CGFloat = 40
 
@@ -272,18 +278,32 @@ private struct NotchAppVolumeRow: View {
                     .fill(.white.opacity(0.24))
                     .frame(width: geometry.size.width * CGFloat(app.gain))
                 HStack(spacing: 10) {
-                    if let icon = NotchHomeApp.icon(for: app.bundleID) {
-                        Image(nsImage: icon).resizable().frame(width: 22, height: 22)
-                    }
+                    icon
                     Text(verbatim: app.name)
                         .font(.app(size: 14, weight: .semibold))
                         .foregroundStyle(.white)
                         .lineLimit(1)
+                    if let device = outputName {
+                        Label {
+                            Text(verbatim: device)
+                        } icon: {
+                            Image(systemName: "arrow.turn.down.right")
+                        }
+                        .font(.app(size: 11, weight: .medium))
+                        .foregroundStyle(.white.opacity(0.55))
+                        .lineLimit(1)
+                    }
                     Spacer(minLength: 8)
-                    Text(verbatim: "\(Int((app.gain * 100).rounded()))%")
-                        .font(.app(size: 13, weight: .semibold))
-                        .monospacedDigit()
-                        .foregroundStyle(.white.opacity(0.7))
+                    Group {
+                        if app.isMuted {
+                            Text("Muted")
+                        } else {
+                            Text(verbatim: "\(Int((app.gain * 100).rounded()))%")
+                        }
+                    }
+                    .font(.app(size: 13, weight: .semibold))
+                    .monospacedDigit()
+                    .foregroundStyle(.white.opacity(0.7))
                 }
                 .padding(.horizontal, 14)
             }
@@ -297,6 +317,7 @@ private struct NotchAppVolumeRow: View {
             )
         }
         .frame(height: Self.height)
+        .contextMenu { outputMenu }
         .accessibilityElement(children: .ignore)
         .accessibilityLabel(Text("\(app.name) volume"))
         .accessibilityValue(Text("\(Int((app.gain * 100).rounded())) percent"))
@@ -305,6 +326,65 @@ private struct NotchAppVolumeRow: View {
             case .increment: onChange(min(1, app.gain + 0.1))
             case .decrement: onChange(max(0, app.gain - 0.1))
             @unknown default: break
+            }
+        }
+    }
+
+    /// The app's icon; a click on it mutes or unmutes, ahead of the row's drag.
+    private var icon: some View {
+        ZStack(alignment: .bottomTrailing) {
+            if let image = NotchHomeApp.icon(for: app.bundleID) {
+                Image(nsImage: image).resizable().frame(width: 22, height: 22)
+                    .opacity(app.isMuted ? 0.4 : 1)
+            } else {
+                Image(systemName: "app.fill").font(.system(size: 18)).foregroundStyle(.white.opacity(0.5))
+            }
+            if app.isMuted {
+                Image(systemName: "speaker.slash.fill")
+                    .font(.system(size: 8, weight: .bold))
+                    .foregroundStyle(.white)
+                    .padding(2)
+                    .background(Circle().fill(.black.opacity(0.8)))
+                    .offset(x: 4, y: 4)
+            }
+        }
+        .frame(width: 24, height: 24)
+        .contentShape(Rectangle())
+        .highPriorityGesture(TapGesture().onEnded { onMute() })
+        .help(Text(app.isMuted ? "Unmute" : "Mute"))
+    }
+
+    /// The device the app was sent to, when it is not the default output.
+    private var outputName: String? {
+        guard let uid = app.output else { return nil }
+        return NotchAudioOutput.outputDevices().first { AppVolumeTap.uid(of: $0.id) == uid }?.name
+    }
+
+    @ViewBuilder
+    private var outputMenu: some View {
+        Button(app.isMuted ? "Unmute" : "Mute", action: onMute)
+        Divider()
+        Section("Play On") {
+            Button {
+                onOutput(nil)
+            } label: {
+                if app.output == nil {
+                    Label("Default Output", systemImage: "checkmark")
+                } else {
+                    Text("Default Output")
+                }
+            }
+            ForEach(NotchAudioOutput.outputDevices(), id: \.id) { device in
+                let uid = AppVolumeTap.uid(of: device.id)
+                Button {
+                    onOutput(uid)
+                } label: {
+                    if uid != nil, uid == app.output {
+                        Label(device.name, systemImage: "checkmark")
+                    } else {
+                        Text(verbatim: device.name)
+                    }
+                }
             }
         }
     }

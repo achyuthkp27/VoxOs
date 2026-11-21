@@ -849,13 +849,16 @@ final class NotchHomeManager {
         model.$mirrorShown.dropFirst().removeDuplicates().receive(on: RunLoop.main)
             .sink { [weak self] _ in self?.fitCard() }
             .store(in: &cancellables)
-        // A note open on the Notes page takes the keyboard; anything else gives it back.
-        Publishers.CombineLatest3(model.$content, model.$page, NotchNotes.shared.$openID)
-            .receive(on: RunLoop.main)
-            .sink { [weak self] content, page, openID in
-                self?.updateKeyboard(wanted: content == .expanded && page == .notes && openID != nil)
-            }
-            .store(in: &cancellables)
+        // A note open on the Notes page, or its search, takes the keyboard; anything else gives
+        // it back.
+        Publishers.CombineLatest4(
+            model.$content, model.$page, NotchNotes.shared.$openID, NotchNotes.shared.$searching
+        )
+        .receive(on: RunLoop.main)
+        .sink { [weak self] content, page, openID, searching in
+            self?.updateKeyboard(wanted: content == .expanded && page == .notes && (openID != nil || searching))
+        }
+        .store(in: &cancellables)
         // So do the Pomodoro page's settings.
         model.$timerSettingsShown.dropFirst().removeDuplicates().receive(on: RunLoop.main)
             .sink { [weak self] _ in self?.fitCard() }
