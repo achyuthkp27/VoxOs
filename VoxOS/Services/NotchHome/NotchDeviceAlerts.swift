@@ -33,6 +33,8 @@ final class NotchDeviceAlerts: ObservableObject {
     /// macOS moves the sound to a headset a moment after it connects; that headset was announced
     /// already, with its battery.
     nonisolated static let outputAfterConnect: TimeInterval = 10
+    /// When a headset that connected without a battery level is asked again.
+    nonisolated static let batteryRetry: TimeInterval = 4
     /// On battery, a notice as the charge falls to each of these.
     nonisolated static let lowBatteryLevels = [20, 10, 5]
 
@@ -102,6 +104,20 @@ final class NotchDeviceAlerts: ObservableObject {
             detail = String(localized: "Disconnected")
         }
         post(key: "bt-\(event.address)-\(event.connected)", symbol: event.symbol, title: event.name, detail: detail)
+        // AirPods and other earbuds report their battery a moment after they connect: asked
+        // again then, and said if it came.
+        guard event.connected, event.battery == nil, hasBluetoothUsage else { return }
+        Task { @MainActor [weak self] in
+            try? await Task.sleep(for: .seconds(Self.batteryRetry))
+            self?.bluetooth.battery(named: event.name) { battery in
+                guard let battery else { return }
+                Task { @MainActor [weak self] in
+                    self?.post(
+                        key: "bt-\(event.address)-battery", symbol: event.symbol, title: event.name,
+                        detail: "\(battery)%")
+                }
+            }
+        }
     }
 
     private func wifiChanged(connected: Bool) {
