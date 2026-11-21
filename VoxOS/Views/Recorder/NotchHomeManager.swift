@@ -22,6 +22,10 @@ final class NotchHomeManager {
     private var scrollMonitor: Any?
     /// When the pointer was first seen outside the open card; nil while it is inside.
     private var pointerLeftAt: Date?
+    /// The window as it was before the card shrank to a shorter page (Pomodoro from the bar): the
+    /// pointer that picked the page is left below the new card, and still counts as inside here
+    /// until it comes back into the card.
+    private var heldArea: NSRect?
     /// The widest band that covers nothing in the menu bar; nil while unknown.
     private var allowedWing: CGFloat?
     private var clearanceMeasured: Date?
@@ -668,6 +672,7 @@ final class NotchHomeManager {
         hovered = inside
         ActivityTrail.mark("notch home hover \(inside)")
         pointerLeftAt = nil
+        heldArea = nil
         if !inside {
             shelfForDrag = false
             model?.pinned = false
@@ -702,7 +707,16 @@ final class NotchHomeManager {
         // Opened by a drag, the card stays while the file is anywhere in the area that opened it:
         // the margin below the card counts, or the card would close under the file it is for.
         let area = (shelfForDrag ? dragZone() : nil) ?? panel.frame.insetBy(dx: -4, dy: -4)
-        guard !area.contains(NSEvent.mouseLocation) else {
+        let mouse = NSEvent.mouseLocation
+        if let held = heldArea {
+            // Back in the card once it has shrunk: the old area no longer counts.
+            if panel.frame.height < held.height, area.contains(mouse) { heldArea = nil }
+            if held.insetBy(dx: -4, dy: -4).contains(mouse) {
+                pointerLeftAt = nil
+                return
+            }
+        }
+        guard !area.contains(mouse) else {
             pointerLeftAt = nil
             return
         }
@@ -959,9 +973,11 @@ final class NotchHomeManager {
         let target = NotchHome.windowSize(
             for: .expanded, notchWidth: model.notchWidth, notchHeight: model.notchHeight, cardHeight: height)
         if height > model.cardHeight {
+            heldArea = nil
             panel.setFrame(NotchHome.frame(for: target, screenFrame: screen.frame), display: true)
             model.cardHeight = height
         } else {
+            if heldArea == nil { heldArea = panel.frame }
             model.cardHeight = height
             resizeTask = Task { @MainActor [weak panel, weak self] in
                 try? await Task.sleep(for: .seconds(NotchDesign.closeDuration + 0.1))
