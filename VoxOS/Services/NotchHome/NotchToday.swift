@@ -120,8 +120,9 @@ final class NotchToday: ObservableObject {
     private var reloadTask: Task<Void, Never>?
     private var watchingMeetings = false
     private var meetingTimer: Timer?
-    /// Meetings joined, hidden or swiped away from the band, by occurrence; they do not come back.
-    private var dismissedMeetings: Set<String> = []
+    /// Meetings joined, hidden or swiped away from the band, by occurrence, and until when: for
+    /// good, or until the start for one snoozed.
+    private var hiddenMeetings: [String: Date] = [:]
     /// Every event in the days around the selected one.
     private var stripEvents: [Event] = []
 
@@ -243,11 +244,30 @@ final class NotchToday: ObservableObject {
     /// Joined, hidden or swiped away: gone until the next meeting (a repeating event's next
     /// occurrence still shows).
     func dismissMeeting() {
+        hideMeeting(until: .distantFuture)
+    }
+
+    /// Snoozed: away until the meeting starts, then back saying "now".
+    func snoozeMeeting() {
+        guard let meeting, meeting.start > Date() else { return }
+        hideMeeting(until: meeting.start)
+    }
+
+    private func hideMeeting(until: Date) {
         guard let meeting else { return }
-        ActivityTrail.mark("notch meeting hidden")
-        dismissedMeetings.insert(Self.occurrence(of: meeting))
+        ActivityTrail.mark(until == .distantFuture ? "notch meeting hidden" : "notch meeting snoozed")
+        hiddenMeetings[Self.occurrence(of: meeting)] = until
+        // Kept small: what has run out is forgotten.
+        hiddenMeetings = hiddenMeetings.filter { $0.value > Date().addingTimeInterval(-Self.meetingGrace) }
         self.meeting = nil
         checkMeetings()
+    }
+
+    /// The note kept for this meeting, made the first time, shown on the Notes page.
+    static func openNote(for event: Event) {
+        ActivityTrail.mark("notch meeting note opened")
+        NotchNotes.shared.openMeetingNote(key: occurrence(of: event), title: event.title, start: event.start)
+        NotchNotes.showInNotch()
     }
 
     /// One occurrence of an event: a repeating event shares its identifier across them.
@@ -280,10 +300,13 @@ final class NotchToday: ObservableObject {
                     && event.attendees?.first(where: \.isCurrentUser)?.participantStatus != .declined
             }
             .map(Self.event(from:))
-            .filter { !dismissedMeetings.contains(Self.occurrence(of: $0)) }
+            .filter { event in hiddenMeetings[Self.occurrence(of: event)].map { now < $0 } != true }
         let (current, next) = Self.meeting(in: candidates, now: now)
         if meeting != current { meeting = current }
-        guard let wake = Self.nextCheck(current: current, next: next, now: now) else { return }
+        // A snoozed meeting comes back at its start.
+        let snoozeEnds = hiddenMeetings.values.filter { $0 > now && $0 != .distantFuture }.min()
+        guard let wake = [Self.nextCheck(current: current, next: next, now: now), snoozeEnds].compactMap({ $0 }).min()
+        else { return }
         let timer = Timer(fire: wake, interval: 0, repeats: false) { _ in
             Task { @MainActor in NotchToday.shared.checkMeetings() }
         }

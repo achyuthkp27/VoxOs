@@ -110,7 +110,17 @@ struct NotchTimerPage: View {
                         .foregroundStyle(color)
                         .lineLimit(1)
                 }
-                if kind.isPomodoro { sessionMarks(running) }
+                if kind.isPomodoro {
+                    HStack(spacing: 6) {
+                        if let today = Self.focusToday(timers.focusLog, now: now) {
+                            Text(verbatim: today)
+                                .font(.app(size: 10, weight: .medium))
+                                .foregroundStyle(.white.opacity(0.5))
+                                .lineLimit(1)
+                        }
+                        sessionMarks(running)
+                    }
+                }
             }
             Text(verbatim: Self.clock(running?.remaining(at: now) ?? timers.durations.length(of: startKind)))
                 .font(.system(size: 50, weight: .medium, design: .rounded))
@@ -160,6 +170,12 @@ struct NotchTimerPage: View {
         case .shortBreak: return running.completedFocus % total
         case .focus: return running.completedFocus % total + 1
         }
+    }
+
+    /// What today's finished focus sessions add up to; nil before the first one of the day.
+    nonisolated static func focusToday(_ log: NotchTimers.FocusLog, now: Date) -> String? {
+        let today = log.on(NotchNotes.dayKey(now))
+        return today.sessions > 0 ? NotchTimers.focusSummary(today) : nil
     }
 
     /// The sessions START can begin.
@@ -245,10 +261,12 @@ struct NotchTimerPage: View {
                         ForEach(Setting.allCases, id: \.self) { setting in settingRow(setting) }
                     }
                 case .notifications:
-                    VStack(spacing: 6) {
+                    // Four rows in the height the Duration tab's four take.
+                    VStack(spacing: 4) {
                         optionRow("Sound When a Session Ends", isOn: $timers.options.sound)
                         optionRow("Start Breaks on Their Own", isOn: $timers.options.startsBreaksOnTheirOwn)
                         optionRow("Start Focus on Its Own After a Break", isOn: $timers.options.startsFocusOnItsOwn)
+                        optionRow("Pause During Calls", isOn: $timers.options.pausesForCalls)
                     }
                     .padding(.top, 4)
                 }

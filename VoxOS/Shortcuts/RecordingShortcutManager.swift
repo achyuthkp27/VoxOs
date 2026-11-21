@@ -488,6 +488,9 @@ class RecordingShortcutManager: ObservableObject {
             }
         case .toggleLiveTranscript:
             LiveTranscriptWindow.shared.toggle()
+        case .newNote:
+            NotchNotes.shared.create()
+            NotchNotes.showInNotch()
         case .captureSystemAudio:
             await SystemAudioCaptureController.shared.toggleCapture()
         case .recallSystemAudio:

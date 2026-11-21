@@ -122,15 +122,120 @@ final class NotchNotes: ObservableObject {
         }
     }
 
+    // MARK: Today's note
+
+    /// The note for today, made the first time it is asked for, with the date as its heading;
+    /// opened either way.
+    @discardableResult
+    func openToday(now: Date = Date(), calendar: Calendar = .current) -> UUID {
+        loadIfNeeded()
+        let day = Self.dayKey(now, calendar: calendar)
+        if let saved = defaults.dictionary(forKey: DefaultsKeys.notchDailyNote) as? [String: String],
+            saved["day"] == day, let id = saved["id"].flatMap(UUID.init(uuidString:)),
+            notes.contains(where: { $0.id == id })
+        {
+            searching = false
+            query = ""
+            openID = id
+            return id
+        }
+        let id = create(text: "")
+        save(Self.heading(now.formatted(.dateTime.weekday(.wide).day().month(.wide))), for: id)
+        defaults.set(["day": day, "id": id.uuidString], forKey: DefaultsKeys.notchDailyNote)
+        return id
+    }
+
+    nonisolated static func dayKey(_ date: Date, calendar: Calendar = .current) -> String {
+        let parts = calendar.dateComponents([.year, .month, .day], from: date)
+        return String(format: "%04d-%02d-%02d", parts.year ?? 0, parts.month ?? 0, parts.day ?? 0)
+    }
+
+    /// A title line in H1, and an empty line under it to write on.
+    nonisolated static func heading(_ title: String) -> NSAttributedString {
+        let result = NSMutableAttributedString(
+            string: title + "\n",
+            attributes: [
+                .font: NSFont.systemFont(ofSize: NotchNoteFormat.headingSizes[0], weight: .bold),
+                .foregroundColor: NotchNoteFormat.textColor,
+            ])
+        result.append(NSAttributedString(string: "", attributes: NotchNoteFormat.bodyAttributes))
+        return result
+    }
+
     // MARK: Meetings
 
     static var savesMeetings: Bool { UserDefaults.standard.bool(forKey: DefaultsKeys.meetingNotesToNotes) }
 
-    /// A meeting's notes as a note of their own: the title, when it was, the summary with its
-    /// action items as a checklist, and the transcript under them.
+    /// A note kept for one occurrence of a calendar event, written in during the call; the
+    /// meeting's write-up goes into it afterwards.
+    struct MeetingLink: Codable, Equatable {
+        let note: UUID
+        let title: String
+        let start: Date
+    }
+
+    /// Links older than this are dropped when a new one is made.
+    nonisolated static let meetingLinkLifetime: TimeInterval = 14 * 24 * 3600
+
+    private var meetingLinks: [String: MeetingLink] {
+        get {
+            defaults.data(forKey: DefaultsKeys.notchMeetingNotes)
+                .flatMap { try? JSONDecoder().decode([String: MeetingLink].self, from: $0) } ?? [:]
+        }
+        set {
+            guard let data = try? JSONEncoder().encode(newValue) else { return }
+            defaults.set(data, forKey: DefaultsKeys.notchMeetingNotes)
+        }
+    }
+
+    /// Opens the note for this meeting, made the first time with its title and time.
+    @discardableResult
+    func openMeetingNote(key: String, title: String, start: Date, now: Date = Date()) -> UUID {
+        loadIfNeeded()
+        if let link = meetingLinks[key], notes.contains(where: { $0.id == link.note }) {
+            searching = false
+            query = ""
+            openID = link.note
+            return link.note
+        }
+        let id = create(text: "")
+        save(Self.meetingHeader(title: title, date: start), for: id)
+        var links = meetingLinks.filter { now.timeIntervalSince($0.value.start) < Self.meetingLinkLifetime }
+        links[key] = MeetingLink(note: id, title: title, start: start)
+        meetingLinks = links
+        return id
+    }
+
+    /// The note made for this meeting during the call: same title, started within the half day
+    /// before the write-up.
+    nonisolated static func linkedNote(
+        in links: [MeetingLink], title: String, date: Date, existing: Set<UUID>
+    ) -> UUID? {
+        links.filter {
+            $0.title == title && existing.contains($0.note) && abs(date.timeIntervalSince($0.start)) < 12 * 3600
+        }
+        .max { $0.start < $1.start }?.note
+    }
+
+    /// A meeting's notes: into the note written during the call when there is one, under what was
+    /// written there; otherwise a note of their own with the title, when it was, the summary
+    /// with its action items as a checklist, and the transcript under them.
     @discardableResult
     func saveMeeting(title: String, date: Date, notes summary: String?, transcript: String) -> UUID {
         loadIfNeeded()
+        let body = Self.meetingBody(notes: summary, transcript: transcript)
+        if let linked = Self.linkedNote(
+            in: Array(meetingLinks.values), title: title, date: date, existing: Set(notes.map(\.id)))
+        {
+            let text = NSMutableAttributedString(attributedString: self.text(of: linked))
+            if !text.string.hasSuffix("\n") {
+                text.append(NSAttributedString(string: "\n", attributes: NotchNoteFormat.bodyAttributes))
+            }
+            text.append(NSAttributedString(string: "\n", attributes: NotchNoteFormat.bodyAttributes))
+            text.append(body)
+            save(text, for: linked)
+            return linked
+        }
         let id = create(text: "")
         openID = nil
         save(Self.meetingNote(title: title, date: date, notes: summary, transcript: transcript), for: id)
@@ -140,16 +245,32 @@ final class NotchNotes: ObservableObject {
     nonisolated static func meetingNote(title: String, date: Date, notes summary: String?, transcript: String)
         -> NSAttributedString
     {
+        let result = NSMutableAttributedString(attributedString: meetingHeader(title: title, date: date))
+        result.append(meetingBody(notes: summary, transcript: transcript))
+        return result
+    }
+
+    /// The title in H1, when it was, and an empty line.
+    nonisolated static func meetingHeader(title: String, date: Date) -> NSAttributedString {
         let result = NSMutableAttributedString()
         func add(_ text: String, font: NSFont, color: NSColor = NotchNoteFormat.textColor) {
             result.append(NSAttributedString(string: text + "\n", attributes: [.font: font, .foregroundColor: color]))
         }
-        let heading = NSFont.systemFont(ofSize: NotchNoteFormat.headingSizes[2], weight: .bold)
         add(title, font: .systemFont(ofSize: NotchNoteFormat.headingSizes[0], weight: .bold))
         add(
             date.formatted(date: .abbreviated, time: .shortened), font: NotchNoteFormat.bodyFont,
             color: NotchNoteFormat.textColor.withAlphaComponent(0.6))
         add("", font: NotchNoteFormat.bodyFont)
+        return result
+    }
+
+    /// The summary with its action items as a checklist, and the transcript under it.
+    nonisolated static func meetingBody(notes summary: String?, transcript: String) -> NSAttributedString {
+        let result = NSMutableAttributedString()
+        func add(_ text: String, font: NSFont, color: NSColor = NotchNoteFormat.textColor) {
+            result.append(NSAttributedString(string: text + "\n", attributes: [.font: font, .foregroundColor: color]))
+        }
+        let heading = NSFont.systemFont(ofSize: NotchNoteFormat.headingSizes[2], weight: .bold)
         var inActions = false
         for line in NotchNoteFormat.fromMarkdown(summary ?? "").components(separatedBy: .newlines) {
             let label = line.trimmingCharacters(in: CharacterSet(charactersIn: ": ")).lowercased()

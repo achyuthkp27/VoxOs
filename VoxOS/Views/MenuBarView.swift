@@ -88,6 +88,11 @@ struct MenuBarView: View {
                 NotchNotes.showInNotch()
             }
             .disabled(!notchEnabled)
+            Button("Today's Note") {
+                NotchNotes.shared.openToday()
+                NotchNotes.showInNotch()
+            }
+            .disabled(!notchEnabled)
             Toggle("Key Sounds", isOn: $keySoundsEnabled)
             Toggle("Focus Blur", isOn: $focusBlurEnabled)
             Button(prompter.isShown ? "Close Prompter" : "Show Prompter") { prompter.toggle() }

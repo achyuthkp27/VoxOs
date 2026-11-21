@@ -1584,6 +1584,22 @@
         }
       }
     },
+    "%lld sessions · %@ today" : {
+      "localizations" : {
+        "de" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "%lld Einheiten · %@ heute"
+          }
+        },
+        "zh-Hans" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "今天 %lld 个时段 · %@"
+          }
+        }
+      }
+    },
     "%lld snippets" : {
       "localizations" : {
         "de" : {
@@ -2144,6 +2160,22 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "1 条替换"
+          }
+        }
+      }
+    },
+    "1 session · %@ today" : {
+      "localizations" : {
+        "de" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "1 Einheit · %@ heute"
+          }
+        },
+        "zh-Hans" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "今天 1 个时段 · %@"
           }
         }
       }
@@ -4282,6 +4314,22 @@
         }
       }
     },
+    "Add to Apple Notes" : {
+      "localizations" : {
+        "de" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Zu Apple Notizen hinzufügen"
+          }
+        },
+        "zh-Hans" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "添加到 Apple 备忘录"
+          }
+        }
+      }
+    },
     "Add to Vocabulary" : {
       "localizations" : {
         "de" : {
@@ -4443,6 +4491,22 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "已将 %lld 项添加到提醒事项"
+          }
+        }
+      }
+    },
+    "Added to Apple Notes" : {
+      "localizations" : {
+        "de" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Zu Apple Notizen hinzugefügt"
+          }
+        },
+        "zh-Hans" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "已添加到 Apple 备忘录"
           }
         }
       }
@@ -5357,6 +5421,22 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "追加到日记"
+          }
+        }
+      }
+    },
+    "Apple Notes did not take the note. Check Automation in Privacy settings." : {
+      "localizations" : {
+        "de" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Apple Notizen hat die Notiz nicht übernommen. Prüfe „Automation“ in den Datenschutzeinstellungen."
+          }
+        },
+        "zh-Hans" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Apple 备忘录未能添加该备忘录。请在隐私设置中检查“自动化”。"
           }
         }
       }
@@ -11467,6 +11547,22 @@
         }
       }
     },
+    "During Calls" : {
+      "localizations" : {
+        "de" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Während Anrufen"
+          }
+        },
+        "zh-Hans" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "通话期间"
+          }
+        }
+      }
+    },
     "During recording, press Option + 1-9 to switch modes quickly." : {
       "localizations" : {
         "de" : {
@@ -12676,6 +12772,38 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "导出全部设置，或在导入备份时选择特定类别。"
+          }
+        }
+      }
+    },
+    "Export as Markdown…" : {
+      "localizations" : {
+        "de" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Als Markdown exportieren …"
+          }
+        },
+        "zh-Hans" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "导出为 Markdown…"
+          }
+        }
+      }
+    },
+    "Export as PDF…" : {
+      "localizations" : {
+        "de" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Als PDF exportieren …"
+          }
+        },
+        "zh-Hans" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "导出为 PDF…"
           }
         }
       }
@@ -17364,6 +17492,22 @@
         }
       }
     },
+    "Meeting Note" : {
+      "localizations" : {
+        "de" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Besprechungsnotiz"
+          }
+        },
+        "zh-Hans" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "会议备忘录"
+          }
+        }
+      }
+    },
     "Meeting Notes" : {
       "localizations" : {
         "de" : {
@@ -18462,6 +18606,22 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "新备忘录"
+          }
+        }
+      }
+    },
+    "New Note in the Notch" : {
+      "localizations" : {
+        "de" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Neue Notiz in der Notch"
+          }
+        },
+        "zh-Hans" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "在刘海中新建备忘录"
           }
         }
       }
@@ -19824,6 +19984,22 @@
         }
       }
     },
+    "No words were heard while the meeting was recorded. This window closes by itself." : {
+      "localizations" : {
+        "de" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Während der Aufnahme des Termins wurden keine Worte erkannt. Dieses Fenster schließt sich von selbst."
+          }
+        },
+        "zh-Hans" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "录制会议期间未听到任何话语。此窗口将自动关闭。"
+          }
+        }
+      }
+    },
     "No words yet" : {
       "localizations" : {
         "de" : {
@@ -20198,6 +20374,22 @@
         }
       }
     },
+    "Note" : {
+      "localizations" : {
+        "de" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Notiz"
+          }
+        },
+        "zh-Hans" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "备忘录"
+          }
+        }
+      }
+    },
     "Note: Press Option 1-9 during recording to switch modes manually." : {
       "localizations" : {
         "de" : {
@@ -20242,6 +20434,22 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "你在这里写的备忘录只保存在这台 Mac 上"
+          }
+        }
+      }
+    },
+    "Nothing" : {
+      "localizations" : {
+        "de" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Keines"
+          }
+        },
+        "zh-Hans" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "无"
           }
         }
       }
@@ -21395,6 +21603,22 @@
         }
       }
     },
+    "Opens the notch on a new note, ready to type in, whatever app is in front. Needs the Notes page switched on in Settings → Notch." : {
+      "localizations" : {
+        "de" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Öffnet die Notch mit einer neuen Notiz, bereit zum Schreiben, egal welche App vorne ist. Dafür muss die Notizen-Seite unter Einstellungen → Notch eingeschaltet sein."
+          }
+        },
+        "zh-Hans" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "无论前台是哪个应用，都会在刘海中打开一条新备忘录，可直接输入。需要在“设置 → 刘海”中打开备忘录页面。"
+          }
+        }
+      }
+    },
     "Opens the update window" : {
       "localizations" : {
         "de" : {
@@ -21923,6 +22147,22 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "发送前的停顿"
+          }
+        }
+      }
+    },
+    "Pause During Calls" : {
+      "localizations" : {
+        "de" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Bei Anrufen pausieren"
+          }
+        },
+        "zh-Hans" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "通话时暂停"
           }
         }
       }
@@ -24052,6 +24292,22 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "保留时长"
+          }
+        }
+      }
+    },
+    "Remind Me at the Start" : {
+      "localizations" : {
+        "de" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Zum Beginn erinnern"
+          }
+        },
+        "zh-Hans" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "开始时提醒我"
           }
         }
       }
@@ -30591,6 +30847,22 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "今天"
+          }
+        }
+      }
+    },
+    "Today's Note" : {
+      "localizations" : {
+        "de" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Heutige Notiz"
+          }
+        },
+        "zh-Hans" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "今日备忘录"
           }
         }
       }

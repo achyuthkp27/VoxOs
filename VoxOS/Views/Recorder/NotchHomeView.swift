@@ -272,7 +272,7 @@ struct NotchHomeView: View {
             .foregroundStyle(.white)
             .frame(maxWidth: NotchHome.noticeWing - inset - NotchDesign.contentInset, alignment: .leading)
             .contentShape(Rectangle())
-            .contextMenu { NotchMeetingMenu() }
+            .contextMenu { NotchMeetingMenu(meeting: meeting) }
         case .privacy(let privacy):
             NotchPrivacyGlyphs(state: privacy, onToggleMute: onToggleMute)
         case .note(let line):
@@ -348,7 +348,7 @@ struct NotchHomeView: View {
             }
         case .meeting(let meeting):
             NotchMeetingTrailing(meeting: meeting, onJoin: { onJoin(meeting) })
-                .contextMenu { NotchMeetingMenu() }
+                .contextMenu { NotchMeetingMenu(meeting: meeting) }
         case .download(let item, let others):
             HStack(spacing: 6) {
                 if others > 0 {
@@ -578,9 +578,17 @@ struct NotchMeetingTrailing: View {
     }
 }
 
-/// A right click on the meeting band: hide this one, or stop the countdown for all meetings.
+/// A right click on the meeting band: its note, back at the start, hide this one, or stop the
+/// countdown for all meetings.
 struct NotchMeetingMenu: View {
+    let meeting: NotchToday.Event
+
     var body: some View {
+        Button("Meeting Note", systemImage: "note.text") { NotchToday.openNote(for: meeting) }
+        Divider()
+        if meeting.start > Date() {
+            Button("Remind Me at the Start", systemImage: "clock") { NotchToday.shared.snoozeMeeting() }
+        }
         Button("Hide This Meeting", systemImage: "xmark") { NotchToday.shared.dismissMeeting() }
         Button("Turn Off Meeting Countdown", systemImage: "bell.slash") {
             UserDefaults.standard.set(false, forKey: DefaultsKeys.notchMeetingsEnabled)

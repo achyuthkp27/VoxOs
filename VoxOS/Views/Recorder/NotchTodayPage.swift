@@ -381,6 +381,10 @@ private struct NotchAgendaEvent: View {
         }
         .fixedSize(horizontal: false, vertical: true)
         .opacity(event.end <= now ? 0.4 : 1)
+        .contentShape(Rectangle())
+        .contextMenu {
+            Button("Meeting Note", systemImage: "note.text") { NotchToday.openNote(for: event) }
+        }
     }
 }
 

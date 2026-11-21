@@ -91,6 +91,9 @@ final class NotchTimers: ObservableObject {
         var startsBreaksOnTheirOwn = true
         /// A focus session starts by itself when a break ends.
         var startsFocusOnItsOwn = true
+        /// A running pomodoro waits while another app uses the microphone or a camera, and goes
+        /// on when the call ends.
+        var pausesForCalls = true
 
         init() {}
 
@@ -101,6 +104,7 @@ final class NotchTimers: ObservableObject {
             let both = try values.decodeIfPresent(Bool.self, forKey: .startsNextOnItsOwn) ?? true
             startsBreaksOnTheirOwn = try values.decodeIfPresent(Bool.self, forKey: .startsBreaksOnTheirOwn) ?? both
             startsFocusOnItsOwn = try values.decodeIfPresent(Bool.self, forKey: .startsFocusOnItsOwn) ?? both
+            pausesForCalls = try values.decodeIfPresent(Bool.self, forKey: .pausesForCalls) ?? true
         }
 
         func encode(to encoder: Encoder) throws {
@@ -108,6 +112,7 @@ final class NotchTimers: ObservableObject {
             try values.encode(sound, forKey: .sound)
             try values.encode(startsBreaksOnTheirOwn, forKey: .startsBreaksOnTheirOwn)
             try values.encode(startsFocusOnItsOwn, forKey: .startsFocusOnItsOwn)
+            try values.encode(pausesForCalls, forKey: .pausesForCalls)
         }
 
         /// Whether the session that follows starts by itself.
@@ -120,7 +125,18 @@ final class NotchTimers: ObservableObject {
             case startsNextOnItsOwn
             case startsBreaksOnTheirOwn
             case startsFocusOnItsOwn
+            case pausesForCalls
         }
+    }
+
+    /// Focus sessions finished today and the time they took; a new day starts at nothing.
+    struct FocusLog: Equatable, Codable {
+        var day: String
+        var sessions = 0
+        var seconds: TimeInterval = 0
+
+        /// Today's log, or an empty one when the saved one is from another day.
+        func on(_ day: String) -> FocusLog { self.day == day ? self : FocusLog(day: day) }
     }
 
     /// The finished timer, shown in the notch for a moment.
@@ -142,7 +158,12 @@ final class NotchTimers: ObservableObject {
     @Published var options = PomodoroOptions() {
         didSet { store(options, as: Self.optionsKey) }
     }
+    /// Today's finished focus sessions.
+    @Published private(set) var focusLog: FocusLog
+    /// Paused because a call began, so the call's end may go on with it.
+    private(set) var pausedForCall = false
     private static let durationsKey = "NotchPomodoroDurations"
+    private static let focusLogKey = "NotchFocusToday"
     private static let optionsKey = "NotchPomodoroOptions"
 
     private var tick: Timer?
@@ -152,6 +173,8 @@ final class NotchTimers: ObservableObject {
     init(defaults: UserDefaults = .standard, chime: @escaping () -> Void = { NSSound(named: "Glass")?.play() }) {
         self.defaults = defaults
         self.chime = chime
+        let today = NotchNotes.dayKey(Date())
+        focusLog = (Self.load(Self.focusLogKey, from: defaults) ?? FocusLog(day: today)).on(today)
         if let saved: PomodoroDurations = Self.load(Self.durationsKey, from: defaults) { durations = saved }
         if let saved: PomodoroOptions = Self.load(Self.optionsKey, from: defaults) { options = saved }
         if let data = defaults.data(forKey: Self.storageKey),
@@ -185,6 +208,7 @@ final class NotchTimers: ObservableObject {
     }
 
     func cancel() {
+        pausedForCall = false
         running = nil
         finished = nil
         save()
@@ -199,6 +223,7 @@ final class NotchTimers: ObservableObject {
     }
 
     func resume(now: Date = Date()) {
+        pausedForCall = false
         guard var timer = running, let left = timer.pausedRemaining else { return }
         timer.ends = now.addingTimeInterval(left)
         timer.pausedRemaining = nil
@@ -214,7 +239,41 @@ final class NotchTimers: ObservableObject {
         schedule()
     }
 
+    // MARK: Calls
+
+    /// A call began: a running pomodoro waits, if that is wanted. A countdown keeps going; it is
+    /// a time set for something else.
+    func callStarted(now: Date = Date()) {
+        guard options.pausesForCalls, let running, running.kind.isPomodoro, !running.isPaused else { return }
+        pause(now: now)
+        pausedForCall = true
+    }
+
+    /// The call ended: the pomodoro it paused goes on. One paused by hand stays paused.
+    func callEnded(now: Date = Date()) {
+        guard pausedForCall else { return }
+        resume(now: now)
+    }
+
+    /// Today's count with a focus session of `seconds` added.
+    nonisolated static func logged(_ log: FocusLog, adding seconds: TimeInterval, on day: String) -> FocusLog {
+        var log = log.on(day)
+        log.sessions += 1
+        log.seconds += seconds
+        return log
+    }
+
+    /// "1 session · 25m today", "4 sessions · 1h 40m today".
+    nonisolated static func focusSummary(_ log: FocusLog) -> String {
+        let minutes = Int((log.seconds / 60).rounded())
+        let time = minutes >= 60 ? "\(minutes / 60)h \(minutes % 60)m" : "\(minutes)m"
+        return log.sessions == 1
+            ? String(localized: "1 session · \(time) today")
+            : String(localized: "\(log.sessions) sessions · \(time) today")
+    }
+
     private func start(_ timer: NotchTimer) {
+        pausedForCall = false
         running = timer
         finished = nil
         save()
@@ -230,6 +289,10 @@ final class NotchTimers: ObservableObject {
         var next = running.next(after: now, durations: durations)
         if let kind = next?.kind, !options.startsOnItsOwn(kind), let length = next?.duration {
             next?.pausedRemaining = length
+        }
+        if running.kind == .focus {
+            focusLog = Self.logged(focusLog, adding: running.duration, on: NotchNotes.dayKey(now))
+            store(focusLog, as: Self.focusLogKey)
         }
         finished = Finished(label: label(for: running), next: next, at: now)
         self.running = next

@@ -182,7 +182,14 @@ final class NotchHomeManager {
         } else {
             NotchDeviceAlerts.shared.stop()
         }
-        if enabled && NotchPrivacy.isEnabled { NotchPrivacy.shared.start() } else { NotchPrivacy.shared.stop() }
+        // The band, or a call that pauses the pomodoro or applies a volume preset, needs it.
+        let callsWanted = enabled && NotchCalls.isWanted
+        if enabled && (NotchPrivacy.isEnabled || callsWanted) {
+            NotchPrivacy.shared.start()
+        } else {
+            NotchPrivacy.shared.stop()
+        }
+        NotchCalls.shared.setActive(callsWanted)
         if enabled && NotchDownloads.isEnabled { NotchDownloads.shared.start() } else { NotchDownloads.shared.stop() }
         if enabled && NotchFocus.isEnabled { NotchFocus.shared.start() } else { NotchFocus.shared.stop() }
         NotchRainWatch.shared.setActive(enabled && NotchRainWatch.isEnabled && NotchRainWatch.locationAllowed)
@@ -226,7 +233,7 @@ final class NotchHomeManager {
             dropping: dropping,
             notice: firstNotice ?? deviceNotice ?? agentNotice ?? watchNotice,
             timerRunning: timers.running != nil, musicPlaying: track?.isPlaying == true, meeting: meeting,
-            privacy: NotchPrivacy.shared.state, level: NotchHUD.shared.level,
+            privacy: NotchPrivacy.isEnabled ? NotchPrivacy.shared.state : nil, level: NotchHUD.shared.level,
             downloads: NotchDownloads.shared.active, pinnedNote: NotchNotes.shared.pinnedLine)
         // The keys are taken from macOS only while the notch can answer them.
         NotchHUD.shared.update(canShow: content != .hidden)

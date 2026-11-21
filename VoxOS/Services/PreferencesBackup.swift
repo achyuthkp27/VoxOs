@@ -36,7 +36,7 @@ struct PreferencesBackup: Codable, Equatable {
         DefaultsKeys.notchRainEnabled, DefaultsKeys.notchUnreadEnabled, DefaultsKeys.notchPrivacyEnabled,
         DefaultsKeys.notchMeetingsEnabled, DefaultsKeys.meetingNotesEnabled,
         DefaultsKeys.meetingNotesIncludeMicrophone, DefaultsKeys.meetingNotesLiveTranscript,
-        DefaultsKeys.meetingNotesToNotes, DefaultsKeys.notchVolumePresets,
+        DefaultsKeys.meetingNotesToNotes, DefaultsKeys.notchVolumePresets, DefaultsKeys.notchCallPreset,
         DefaultsKeys.notchMusicEnabled,
         DefaultsKeys.notchMusicBarsEnabled, DefaultsKeys.notchMusicBarsOnBattery,
         DefaultsKeys.notchHUDStyle, DefaultsKeys.notchNotificationsEnabled, DefaultsKeys.lockScreenWidgetsEnabled,
@@ -105,7 +105,7 @@ struct PreferencesBackup: Codable, Equatable {
         DefaultsKeys.openRouterModels, DefaultsKeys.aiFallbackProviders, DefaultsKeys.selectedPromptId,
         DefaultsKeys.notchSoundSection, AppSidebar.collapsedKey, DefaultsKeys.meetingNotesPending,
         // A note on this Mac, by id: another Mac has not got it
-        DefaultsKeys.notchPinnedNote,
+        DefaultsKeys.notchPinnedNote, DefaultsKeys.notchDailyNote, DefaultsKeys.notchMeetingNotes,
         // Secrets and licensing
         DefaultsKeys.agentLinearAPIToken, DefaultsKeys.voxOSLicenseRequiresActivation,
         DefaultsKeys.voxOSActivationsLimit, DefaultsKeys.voxOSDeviceIdentifier,

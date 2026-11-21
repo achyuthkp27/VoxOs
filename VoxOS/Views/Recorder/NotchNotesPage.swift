@@ -44,6 +44,7 @@ struct NotchNotesPage: View {
                             notes.searching = true
                         }
                     }
+                    NotchNoteCircleButton(symbol: "calendar", label: "Today's Note") { notes.openToday() }
                     NotchNoteCircleButton(symbol: "square.and.pencil", label: "New Note") { notes.create() }
                 }
             }
@@ -139,6 +140,8 @@ private struct NotchNoteEditorView: View {
     /// An AI action under way, and why the last one failed.
     @State private var aiRunning: NotchNoteAI.Action?
     @State private var aiError: String?
+    /// Apple Notes took this note.
+    @State private var sentToNotes = false
 
     var body: some View {
         VStack(spacing: 8) {
@@ -189,6 +192,19 @@ private struct NotchNoteEditorView: View {
     private func close() {
         controller.save()
         notes.openID = nil
+    }
+
+    /// A copy in Apple Notes; macOS asks once whether VoxOS may control Notes.
+    private func sendToAppleNotes() {
+        controller.save()
+        let text = notes.text(of: note.id)
+        Task { @MainActor in
+            if await NotchNoteExport.sendToAppleNotes(text) {
+                sentToNotes = true
+            } else {
+                aiError = String(localized: "Apple Notes did not take the note. Check Automation in Privacy settings.")
+            }
+        }
     }
 
     /// The recorder starts as with the recording shortcut, and what is said goes into this note
@@ -248,6 +264,25 @@ private struct NotchNoteEditorView: View {
                 Label("Clear Ticked Items", systemImage: "checkmark.circle.badge.xmark")
             }
             .disabled(!controller.hasTicked)
+            Divider()
+            Button {
+                controller.save()
+                NotchNoteExport.saveMarkdown(notes.text(of: note.id), title: note.title)
+            } label: {
+                Label("Export as Markdown…", systemImage: "doc.plaintext")
+            }
+            Button {
+                controller.save()
+                NotchNoteExport.savePDF(notes.text(of: note.id), title: note.title)
+            } label: {
+                Label("Export as PDF…", systemImage: "doc.richtext")
+            }
+            Button {
+                sendToAppleNotes()
+            } label: {
+                Label(sentToNotes ? "Added to Apple Notes" : "Add to Apple Notes", systemImage: "note.text.badge.plus")
+            }
+            .disabled(sentToNotes)
         } label: {
             NotchNoteMenuLabel(symbol: notes.pinnedID == note.id ? "pin.fill" : "ellipsis", busy: false)
         }

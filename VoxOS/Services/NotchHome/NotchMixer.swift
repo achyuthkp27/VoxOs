@@ -136,6 +136,11 @@ final class NotchMixer: ObservableObject {
         setVisible(listening)
     }
 
+    /// What is set now, unnamed, to go back to after a preset applied for a while (a call).
+    var current: Preset {
+        Preset(name: "", levels: gains.filter { $0.value < 0.999 }, outputs: outputs)
+    }
+
     func deletePreset(_ preset: Preset) {
         presets.removeAll { $0.id == preset.id }
         savePresets()

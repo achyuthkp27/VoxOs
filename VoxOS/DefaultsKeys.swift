@@ -195,6 +195,13 @@ enum DefaultsKeys {
     static let notchPinnedNote = "NotchPinnedNote"
     /// Saved sets of app volumes and outputs for the Sound page, as JSON.
     static let notchVolumePresets = "NotchVolumePresets"
+    /// The volume preset applied while another app uses the microphone or a camera, by id; none
+    /// when unset.
+    static let notchCallPreset = "NotchCallPreset"
+    /// Today's note: its day ("2026-11-21") and id.
+    static let notchDailyNote = "NotchDailyNote"
+    /// Notes written for calendar meetings, by occurrence, as JSON.
+    static let notchMeetingNotes = "NotchMeetingNotes"
     /// Meetings recorded when VoxOS quit, written up at the next launch: path and title.
     static let meetingNotesPending = "MeetingNotesPending"
     /// The notch shows the playing track and opens into a player on hover.

@@ -28,7 +28,7 @@ enum SettingsSection: CaseIterable, Hashable {
             return [
                 "Additional Shortcuts", "Paste Last Transcription (Original)", "Paste Last Transcription (Enhanced)",
                 "Retry Last Transcription", "Undo Last Paste", "Start or Stop Meeting Notes",
-                "Show or Hide Live Transcript", "Reset to default", "Cancel Recording",
+                "Show or Hide Live Transcript", "New Note in the Notch", "Reset to default", "Cancel Recording",
                 "Middle-Click Recording", "Activation Delay",
             ]
         case .recorder:

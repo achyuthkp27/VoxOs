@@ -12,6 +12,7 @@ enum ShortcutAction: Hashable {
     case undoLastPaste
     case toggleMeetingNotes
     case toggleLiveTranscript
+    case newNote
     case captureSystemAudio
     case recallSystemAudio
     case agentDoubleTap
@@ -57,6 +58,8 @@ enum ShortcutAction: Hashable {
             return "toggleMeetingNotes"
         case .toggleLiveTranscript:
             return "toggleLiveTranscript"
+        case .newNote:
+            return "newNote"
         case .captureSystemAudio:
             return "captureSystemAudio"
         case .recallSystemAudio:
@@ -98,6 +101,8 @@ enum ShortcutAction: Hashable {
             return String(localized: "Start or Stop Meeting Notes")
         case .toggleLiveTranscript:
             return String(localized: "Show or Hide Live Transcript")
+        case .newNote:
+            return String(localized: "New Note in the Notch")
         case .captureSystemAudio:
             return String(localized: "Capture System Audio")
         case .recallSystemAudio:
@@ -130,6 +135,7 @@ enum ShortcutAction: Hashable {
         .undoLastPaste,
         .toggleMeetingNotes,
         .toggleLiveTranscript,
+        .newNote,
         .openHistoryWindow,
         .quickAddToDictionary,
         .captureSystemAudio,
@@ -177,7 +183,7 @@ extension ShortcutAction {
         case .primaryRecording, .secondaryRecording, .pasteLastTranscription, .pasteLastEnhancement,
             .retryLastTranscription, .cancelRecorder, .openHistoryWindow, .quickAddToDictionary, .undoLastPaste:
             return .namedField
-        case .captureSystemAudio, .recallSystemAudio, .toggleMeetingNotes, .toggleLiveTranscript:
+        case .captureSystemAudio, .recallSystemAudio, .toggleMeetingNotes, .toggleLiveTranscript, .newNote:
             return .byName
         case .mode:
             return .withItsMode
@@ -188,6 +194,6 @@ extension ShortcutAction {
 
     /// The actions `GeneralBackup.shortcuts` carries.
     static let backedUpByName: [ShortcutAction] = [
-        .captureSystemAudio, .recallSystemAudio, .toggleMeetingNotes, .toggleLiveTranscript,
+        .captureSystemAudio, .recallSystemAudio, .toggleMeetingNotes, .toggleLiveTranscript, .newNote,
     ]
 }

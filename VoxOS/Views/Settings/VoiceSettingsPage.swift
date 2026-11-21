@@ -218,6 +218,20 @@ struct VoiceSettingsPage: View {
                     }
 
                     LabeledContent {
+                        ShortcutRecorder(action: .newNote) {
+                            recordingShortcutManager.updateShortcutStatus()
+                        }
+                        .controlSize(.small)
+                    } label: {
+                        HStack(spacing: 2) {
+                            Text("New Note in the Notch")
+                            InfoTip(
+                                "Opens the notch on a new note, ready to type in, whatever app is in front. Needs the Notes page switched on in Settings → Notch."
+                            )
+                        }
+                    }
+
+                    LabeledContent {
                         HStack(spacing: 8) {
                             ShortcutRecorder(
                                 action: .cancelRecorder,

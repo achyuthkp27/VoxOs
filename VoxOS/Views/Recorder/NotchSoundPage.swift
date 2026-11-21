@@ -49,6 +49,8 @@ struct NotchSoundPage: View {
     @AppStorage(DefaultsKeys.notchSoundOutputEnabled) private var outputOn = true
     @AppStorage(DefaultsKeys.notchSoundInputEnabled) private var inputOn = true
     @AppStorage(DefaultsKeys.notchMirrorEnabled) private var mirrorOn = true
+    /// The preset applied during calls, by id; empty for none.
+    @AppStorage(DefaultsKeys.notchCallPreset) private var callPreset = ""
     @AppStorage(DefaultsKeys.notchSoundSection) private var selectedSectionRaw = Section.apps.rawValue
 
     private var sections: [Section] {
@@ -156,6 +158,14 @@ struct NotchSoundPage: View {
                 Button(preset.name) { mixer.applyPreset(preset) }
             }
             Divider()
+            if !mixer.presets.isEmpty {
+                // Applied while another app uses the microphone or a camera, undone after.
+                Picker("During Calls", selection: $callPreset) {
+                    Text("Nothing").tag("")
+                    ForEach(mixer.presets) { preset in Text(verbatim: preset.name).tag(preset.id.uuidString) }
+                }
+                .pickerStyle(.menu)
+            }
             Button("Save Current Levels as a Preset") { mixer.saveCurrentAsPreset() }
                 .disabled(!mixer.apps.contains { $0.gain < 0.999 || $0.output != nil })
             if !mixer.presets.isEmpty {
