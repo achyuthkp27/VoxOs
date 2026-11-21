@@ -7986,6 +7986,7 @@
       }
     },
     "Clipboard History" : {
+      "extractionState" : "stale",
       "localizations" : {
         "de" : {
           "stringUnit" : {
@@ -17575,6 +17576,7 @@
       }
     },
     "Model Catalog" : {
+      "extractionState" : "stale",
       "localizations" : {
         "de" : {
           "stringUnit" : {
@@ -20502,6 +20504,7 @@
       }
     },
     "On the Sound page: the last few pieces of text you copied; a click copies one again. Kept in memory only, never what a password manager marks as secret. Off by default: it checks the clipboard once a second." : {
+      "extractionState" : "stale",
       "localizations" : {
         "de" : {
           "stringUnit" : {
@@ -28883,6 +28886,7 @@
       }
     },
     "Text you copy shows here, to copy again" : {
+      "extractionState" : "stale",
       "localizations" : {
         "de" : {
           "stringUnit" : {

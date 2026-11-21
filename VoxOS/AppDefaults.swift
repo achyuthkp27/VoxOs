@@ -87,7 +87,6 @@ enum AppDefaults {
             DefaultsKeys.notchSoundSection: "apps",
             DefaultsKeys.notchMirrorEnabled: true,
             // Off: watching the clipboard is a wake-up a second, and what is copied is private.
-            DefaultsKeys.notchClipboardEnabled: false,
             // Off: a lookup tells lrclib.net what is playing.
             DefaultsKeys.notchLyricsEnabled: false,
             DefaultsKeys.notchRainEnabled: true,

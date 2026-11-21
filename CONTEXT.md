@@ -61,8 +61,8 @@ SDK with `make local`.
 - **Shelf** — files dropped on the notch, kept by path in `shelf.json`; details only when clicked.
 - **Level band** — `NotchHUD`: volume or brightness just changed with the keys, shown in the notch
   in place of macOS's pop-up (in the open card's top row while it is open).
-- **Sound page** — the last page, for the extras: per-app volume (`NotchMixer`, process taps),
-  the clipboard (`NotchClipboard`), the user's Shortcuts (`NotchShortcuts`) and the camera mirror
+- **Sound page** — the page for the extras: per-app volume (`NotchMixer`, process taps),
+  the user's Shortcuts (`NotchShortcuts`) and the camera mirror
   (`NotchMirror`, on request only), each behind its own switch, with keeping awake and pinning the
   card.
 - **Notice** — a band that passes by itself: a device, Focus, Claude Code limits, a Codex or

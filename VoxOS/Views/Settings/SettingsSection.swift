@@ -74,7 +74,7 @@ enum SettingsSection: CaseIterable, Hashable {
             return ["Music", "Music in the Notch", "Lyrics", "Live Music Bars", "Live Bars on Battery"]
         case .notchSound:
             return [
-                "Sound Page", "Per-App Volume", "Sound Output", "Microphone Input", "Clipboard History", "Mirror",
+                "Sound Page", "Per-App Volume", "Sound Output", "Microphone Input", "Mirror",
             ]
         case .notchNotices:
             return [
@@ -172,7 +172,7 @@ enum SettingsSection: CaseIterable, Hashable {
         case .notchMusic: return ["now playing", "visualizer"]
         case .notchSound:
             return [
-                "mixer", "app volume", "speakers", "headphones", "output", "microphone", "clipboard", "camera",
+                "mixer", "app volume", "speakers", "headphones", "output", "microphone", "camera",
                 "webcam",
             ]
         case .notchNotices:

@@ -32,7 +32,7 @@ struct PreferencesBackup: Codable, Equatable {
         DefaultsKeys.notchHomeInFullScreen, DefaultsKeys.notchFollowsActiveDisplay, DefaultsKeys.notchHUDEnabled,
         DefaultsKeys.notchHiddenFromCapture, DefaultsKeys.notchDownloadsEnabled, DefaultsKeys.notchFocusEnabled,
         DefaultsKeys.notchMixerEnabled, DefaultsKeys.notchSoundOutputEnabled, DefaultsKeys.notchSoundInputEnabled,
-        DefaultsKeys.notchMirrorEnabled, DefaultsKeys.notchClipboardEnabled, DefaultsKeys.notchLyricsEnabled,
+        DefaultsKeys.notchMirrorEnabled, DefaultsKeys.notchLyricsEnabled,
         DefaultsKeys.notchRainEnabled, DefaultsKeys.notchUnreadEnabled, DefaultsKeys.notchPrivacyEnabled,
         DefaultsKeys.notchMeetingsEnabled, DefaultsKeys.meetingNotesEnabled,
         DefaultsKeys.meetingNotesIncludeMicrophone, DefaultsKeys.meetingNotesLiveTranscript,

@@ -3,15 +3,14 @@ import CoreAudio
 import SwiftUI
 import UniformTypeIdentifiers
 
-/// One page for the extras, so they do not each take a page: each playing app's volume, the
-/// clipboard and the camera mirror (each when switched on in Settings), with keeping the Mac
+/// One page for the extras, so they do not each take a page: each app's volume, the sound output,
+/// the microphone and the camera mirror (each when switched on in Settings), with keeping the Mac
 /// awake and pinning the card in its corner.
 struct NotchSoundPage: View {
     enum Section: String, CaseIterable, Identifiable {
         case apps
         case output
         case input
-        case clipboard
         case mirror
 
         var id: String { rawValue }
@@ -21,7 +20,6 @@ struct NotchSoundPage: View {
             case .apps: return "square.grid.2x2"
             case .output: return "speaker.wave.2"
             case .input: return "mic"
-            case .clipboard: return "doc.on.clipboard"
             case .mirror: return "person.crop.square"
             }
         }
@@ -31,7 +29,6 @@ struct NotchSoundPage: View {
             case .apps: return "App volumes"
             case .output: return "Sound output"
             case .input: return "Microphone"
-            case .clipboard: return "Clipboard"
             case .mirror: return "Mirror"
             }
         }
@@ -41,7 +38,6 @@ struct NotchSoundPage: View {
     static var cardHeight: CGFloat { NotchWeatherPage.cardHeight }
 
     @ObservedObject var mixer: NotchMixer
-    @ObservedObject var clipboard: NotchClipboard
     @ObservedObject var mirror: NotchMirror
     @ObservedObject var keepAwake: NotchKeepAwake
     @ObservedObject private var audioDeviceManager = AudioDeviceManager.shared
@@ -52,7 +48,6 @@ struct NotchSoundPage: View {
     @AppStorage(DefaultsKeys.notchMixerEnabled) private var appsOn = true
     @AppStorage(DefaultsKeys.notchSoundOutputEnabled) private var outputOn = true
     @AppStorage(DefaultsKeys.notchSoundInputEnabled) private var inputOn = true
-    @AppStorage(DefaultsKeys.notchClipboardEnabled) private var clipboardOn = false
     @AppStorage(DefaultsKeys.notchMirrorEnabled) private var mirrorOn = true
     @AppStorage(DefaultsKeys.notchSoundSection) private var selectedSectionRaw = Section.apps.rawValue
 
@@ -62,7 +57,6 @@ struct NotchSoundPage: View {
             case .apps: return appsOn
             case .output: return outputOn
             case .input: return inputOn
-            case .clipboard: return clipboardOn
             case .mirror: return mirrorOn
             }
         }
@@ -100,7 +94,6 @@ struct NotchSoundPage: View {
                 case .apps: apps
                 case .output: outputList
                 case .input: inputList
-                case .clipboard: clipboardList
                 case .mirror: mirrorView
                 case nil:
                     Text("Switch on sound features in Settings → Notch Home")
@@ -161,24 +154,6 @@ struct NotchSoundPage: View {
     @ViewBuilder
     private var inputList: some View {
         NotchSoundInputList(audioDeviceManager: audioDeviceManager)
-    }
-
-    // MARK: Clipboard
-
-    @ViewBuilder
-    private var clipboardList: some View {
-        if clipboard.items.isEmpty {
-            NotchPageHint(symbol: "doc.on.clipboard", text: "Text you copy shows here, to copy again")
-        } else {
-            ScrollView(.vertical) {
-                VStack(spacing: 4) {
-                    ForEach(clipboard.items) { item in
-                        NotchClipboardRow(item: item) { clipboard.copy(item) }
-                    }
-                }
-            }
-            .scrollIndicators(.automatic)
-        }
     }
 
     // MARK: Mirror
@@ -278,37 +253,6 @@ private struct NotchToggleChip: View {
         .help(help)
         .accessibilityLabel(Text(help))
         .accessibilityAddTraits(on ? .isSelected : [])
-    }
-}
-
-private struct NotchClipboardRow: View {
-    let item: NotchClipboard.Item
-    let action: () -> Void
-    @State private var copied = false
-
-    var body: some View {
-        Button {
-            action()
-            copied = true
-        } label: {
-            HStack(spacing: 10) {
-                Text(verbatim: item.text.replacingOccurrences(of: "\n", with: " "))
-                    .font(.app(size: 12))
-                    .foregroundStyle(.white.opacity(0.88))
-                    .lineLimit(1)
-                    .truncationMode(.tail)
-                Spacer(minLength: 6)
-                Text(copied ? "Copied" : item.at.formatted(.relative(presentation: .named)))
-                    .font(.app(size: 10))
-                    .foregroundStyle(.white.opacity(0.4))
-            }
-            .padding(.horizontal, 10)
-            .frame(height: 24)
-            .background(RoundedRectangle(cornerRadius: 8, style: .continuous).fill(.white.opacity(0.06)))
-            .contentShape(Rectangle())
-        }
-        .buttonStyle(.plain)
-        .help(item.text)
     }
 }
 

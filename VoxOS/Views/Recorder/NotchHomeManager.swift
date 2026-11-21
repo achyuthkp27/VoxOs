@@ -181,7 +181,6 @@ final class NotchHomeManager {
         if enabled && NotchPrivacy.isEnabled { NotchPrivacy.shared.start() } else { NotchPrivacy.shared.stop() }
         if enabled && NotchDownloads.isEnabled { NotchDownloads.shared.start() } else { NotchDownloads.shared.stop() }
         if enabled && NotchFocus.isEnabled { NotchFocus.shared.start() } else { NotchFocus.shared.stop() }
-        if enabled && NotchClipboard.isEnabled { NotchClipboard.shared.start() } else { NotchClipboard.shared.stop() }
         NotchRainWatch.shared.setActive(enabled && NotchRainWatch.isEnabled && NotchRainWatch.locationAllowed)
         if enabled && NotchUnread.isEnabled { NotchUnread.shared.start() } else { NotchUnread.shared.stop() }
         if enabled && NotchNotifications.isEnabled {

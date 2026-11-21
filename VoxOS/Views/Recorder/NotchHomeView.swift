@@ -209,7 +209,7 @@ struct NotchHomeView: View {
                 shelf: .shared, dropping: model.dropping, pinned: model.pinned, onPin: onPin)
         case .sound:
             NotchSoundPage(
-                mixer: .shared, clipboard: .shared, mirror: .shared, keepAwake: .shared, pinned: model.pinned,
+                mixer: .shared, mirror: .shared, keepAwake: .shared, pinned: model.pinned,
                 onPin: onPin, onMirrorShown: { model.mirrorShown = $0 })
         case .notes:
             NotchNotesPage(notes: .shared)

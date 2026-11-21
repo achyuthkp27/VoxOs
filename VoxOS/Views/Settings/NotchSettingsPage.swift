@@ -22,7 +22,6 @@ struct NotchSettingsPage: View {
     @AppStorage(DefaultsKeys.notchSoundOutputEnabled) private var notchSoundOutputEnabled = true
     @AppStorage(DefaultsKeys.notchSoundInputEnabled) private var notchSoundInputEnabled = true
     @AppStorage(DefaultsKeys.notchMirrorEnabled) private var notchMirrorEnabled = true
-    @AppStorage(DefaultsKeys.notchClipboardEnabled) private var notchClipboardEnabled = false
     @AppStorage(DefaultsKeys.notchLyricsEnabled) private var notchLyricsEnabled = false
     @AppStorage(DefaultsKeys.notchRainEnabled) private var notchRainEnabled = true
     @AppStorage(DefaultsKeys.notchUnreadEnabled) private var notchUnreadEnabled = true
@@ -220,14 +219,6 @@ struct NotchSettingsPage: View {
                             Text("Microphone Input")
                             InfoTip(
                                 "On the Sound page: switch the active microphone between built-in, AirPods and external microphones."
-                            )
-                        }
-                    }
-                    Toggle(isOn: $notchClipboardEnabled) {
-                        HStack(spacing: 2) {
-                            Text("Clipboard History")
-                            InfoTip(
-                                "On the Sound page: the last few pieces of text you copied; a click copies one again. Kept in memory only, never what a password manager marks as secret. Off by default: it checks the clipboard once a second."
                             )
                         }
                     }

@@ -173,8 +173,6 @@ enum DefaultsKeys {
     static let notchSoundSection = "NotchSoundSection"
     /// On the Sound page: the camera as a mirror, only on request.
     static let notchMirrorEnabled = "NotchMirrorEnabled"
-    /// On the Sound page: text copied lately, kept in memory only.
-    static let notchClipboardEnabled = "NotchClipboardEnabled"
     /// The sung line on the Music page, from lrclib.net.
     static let notchLyricsEnabled = "NotchLyricsEnabled"
     /// A notice when rain is about to start.

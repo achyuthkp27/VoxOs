@@ -147,25 +147,6 @@ struct NotchExtrasTests {
         #expect(spoken.contains("See the docs."))
     }
 
-    // MARK: Clipboard
-
-    @Test func secretsAreNeverKeptAndRepeatsMoveUp() {
-        #expect(!NotchClipboard.mayKeep(["public.utf8-plain-text", "org.nspasteboard.ConcealedType"]))
-        #expect(!NotchClipboard.mayKeep(["org.nspasteboard.TransientType"]))
-        #expect(NotchClipboard.mayKeep(["public.utf8-plain-text"]))
-        let clipboard = NotchClipboard.shared
-        clipboard.stop()
-        defer { clipboard.stop() }
-        clipboard.add("one")
-        clipboard.add("two")
-        clipboard.add("one")
-        #expect(clipboard.items.map(\.text) == ["one", "two"])
-        for index in 0..<(NotchClipboard.limit + 3) { clipboard.add("item \(index)") }
-        #expect(clipboard.items.count == NotchClipboard.limit)
-        clipboard.add("   ")
-        #expect(clipboard.items.first?.text != "", "blank copies are ignored")
-    }
-
     // MARK: Lyrics, shelf
 
     @Test func timedLyricsAreReadAndFollowed() {
@@ -229,7 +210,7 @@ struct NotchExtrasTests {
 
     @Test func soundPageSectionsHaveDistinctSymbolsAndLabels() {
         let sections = NotchSoundPage.Section.allCases
-        #expect(sections == [.apps, .output, .input, .clipboard, .mirror])
+        #expect(sections == [.apps, .output, .input, .mirror])
         #expect(NotchSoundPage.Section.output.symbol == "speaker.wave.2")
         #expect(NotchSoundPage.Section.input.symbol == "mic")
         #expect(NotchSoundPage.Section.apps.symbol == "square.grid.2x2")

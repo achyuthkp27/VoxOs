@@ -10,7 +10,7 @@ enum NotchHomePage: String, CaseIterable, Identifiable {
     case weather
     case timer
     case shelf
-    /// Per-app volume, with the clipboard, the camera mirror, keeping awake and pinning.
+    /// Per-app volume, with the sound devices, the camera mirror, keeping awake and pinning.
     case sound
     /// Notes kept on this Mac, written in the card.
     case notes
